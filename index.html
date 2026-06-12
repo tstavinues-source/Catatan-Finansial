@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AuraFi - The Living Wealth OS</title>
     
-    <!-- Tailwind CSS & FontAwesome -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -18,7 +17,7 @@
             --font-display: 'Space Grotesk', sans-serif;
         }
 
-        /* 3 TEMA AMAZING & POWERFUL DENGAN KONTRAS ADAPTIF */
+        /* 3 PILIHAN TEMA DENGAN KONTRAS ADAPTIF DAN JELAS */
         [data-theme="midnight"] {
             --bg-base: #030712; 
             --bg-surface: rgba(15, 23, 42, 0.65); 
@@ -30,20 +29,22 @@
             --color-income: #10b981; 
             --color-expense: #f43f5e; 
             --border-glass: rgba(255, 255, 255, 0.08);
+            --invert-contrast: #ffffff;
         }
 
         [data-theme="sakura"] {
-            /* Tema Sakura Terang Berkontras Tinggi - Tulisan Gelap */
+            /* Tema Terang Berkontras Tinggi - Tulisan Gelap Terbaca Sempurna */
             --bg-base: #fff5f5; 
             --bg-surface: rgba(255, 228, 230, 0.85); 
             --bg-glass: rgba(251, 207, 214, 0.6);
-            --text-main: #4c0519; /* Merah Marun Gelap */
+            --text-main: #4c0519; 
             --text-muted: #9f1239; 
-            --accent-primary: #db2777; /* Pink Rose */
+            --accent-primary: #db2777; 
             --accent-glow: rgba(219, 39, 119, 0.2);
             --color-income: #059669; 
             --color-expense: #dc2626; 
             --border-glass: rgba(159, 18, 57, 0.15);
+            --invert-contrast: #4c0519;
         }
 
         [data-theme="neon"] {
@@ -57,6 +58,7 @@
             --color-income: #22c55e; 
             --color-expense: #ef4444; 
             --border-glass: rgba(132, 204, 22, 0.15);
+            --invert-contrast: #ffffff;
         }
 
         body { 
@@ -142,9 +144,8 @@
         }
     </style>
 </head>
-<body class="flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
+<body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
 
-    <!-- MODAL KONFIRMASI HAPUS -->
     <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-[var(--color-expense)] shadow-2xl">
             <div class="w-16 h-16 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--color-expense)]/30">
@@ -159,7 +160,6 @@
         </div>
     </div>
 
-    <!-- MODAL EDIT ITEM -->
     <div id="modal-edit-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -186,7 +186,6 @@
         </div>
     </div>
 
-    <!-- MODAL SETTINGS & COGNITIVE KEY POOL SETUP (PASSWORD PROTECTED) -->
     <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent">
             <div class="flex justify-between items-center mb-6">
@@ -205,7 +204,7 @@
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">PIN Dekripsi Key Vault</label>
                     <input type="password" id="vault-pin-input" class="v-input w-full rounded-xl p-3 text-sm tracking-wider font-mono outline-none" placeholder="Masukkan PIN Key Vault">
-                    <p class="text-[9px] text-[var(--text-muted)] mt-1.5 leading-relaxed">Masukkan PIN enkripsi yang Anda buat saat menyimpan API Key di Nexus Vault sebelumnya.</p>
+                    <p class="text-[9px] text-[var(--text-muted)] mt-1.5 leading-relaxed">Masukkan PIN enkripsi yang Anda buat saat menyimpan Kunci 1-7 di Nexus Vault sebelumnya.</p>
                 </div>
                 
                 <button id="btn-sync-vault" onclick="syncKeyPool()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
@@ -216,13 +215,11 @@
     </div>
 
 
-    <!-- ================= MAIN APP CONTAINER ================= -->
     <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
         
-        <!-- HEADER GLOBAL -->
         <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
             <div>
-                <h1 class="text-2xl font-display font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-[var(--accent-primary)]">AuraFi<span class="text-accent">.</span></h1>
+                <h1 class="text-2xl font-display font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--invert-contrast)] to-[var(--accent-primary)]">AuraFi<span class="text-accent">.</span></h1>
                 <p class="text-[9px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5" id="live-rate-display">Mendapatkan kurs...</p>
             </div>
             <div class="flex items-center gap-2">
@@ -239,17 +236,14 @@
             </div>
         </header>
 
-        <!-- DYNAMIC VIEW AREA -->
         <main class="flex-1 overflow-y-auto no-scrollbar relative" id="view-container">
             
-            <!-- VIEW: DASHBOARD (THE LIVING CORE) -->
             <div id="view-dashboard" class="p-4 space-y-5 block view-transition">
                 <div class="flex justify-between items-center">
                     <span class="text-[10px] text-[var(--text-muted)] uppercase font-extrabold tracking-widest">Ringkasan Ekosistem</span>
                     <button onclick="window.print()" class="px-3 py-1.5 glass-panel text-[10px] font-bold hover:text-accent transition flex items-center gap-1.5 border-[var(--border-glass)]"><i class="fa-solid fa-file-pdf"></i> Cetak PDF</button>
                 </div>
 
-                <!-- LIVING CORE WRAPPER -->
                 <div class="flex flex-col items-center justify-center py-2 relative">
                     <div id="living-core" class="w-44 h-44 rounded-full living-core flex flex-col items-center justify-center relative overflow-hidden">
                         <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIpIi8+Cjwvc3ZnPg==')] opacity-25"></div>
@@ -259,7 +253,6 @@
                     </div>
                 </div>
 
-                <!-- CARDS CASH & CASHLESS -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-panel p-3.5 flex flex-col items-center text-center">
                         <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-1.5"><i class="fa-solid fa-money-bill-wave text-[var(--text-muted)] text-sm"></i></div>
@@ -274,22 +267,20 @@
                     </div>
                 </div>
 
-                <!-- CASHLESS IMPULSIVE ALERT -->
                 <div id="warn-cashless" class="glass-panel border-l-4 border-l-[var(--color-expense)] p-4 flex items-start gap-3 hidden animate-pulse">
                     <div class="w-10 h-10 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center shrink-0">
                         <i class="fa-solid fa-brain text-[var(--color-expense)] text-lg"></i>
                     </div>
                     <div>
                         <h4 class="text-[var(--color-expense)] font-bold text-xs">Ilusi Cashless Terdeteksi!</h4>
-                        <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">Dana <span id="warn-cashless-pct" class="font-bold text-white">0%</span> terbakar melalui metode Cashless secara impulsif. Atur pertahanan keuangan Anda!</p>
+                        <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">Dana <span id="warn-cashless-pct" class="font-bold text-[var(--text-main)]">0%</span> terbakar melalui metode Cashless secara impulsif. Atur pertahanan keuangan Anda!</p>
                     </div>
                 </div>
 
-                <!-- BURN RATE RADAR CARD -->
                 <div class="glass-panel p-4 relative overflow-hidden">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-fire-flame-curved text-orange-500"></i> Burn Rate Radar</h3>
-                        <button onclick="promptBudget()" class="text-[10px] text-[var(--text-muted)] underline font-bold hover:text-white"><i class="fa-solid fa-pen"></i> Set Limit</button>
+                        <button onclick="promptBudget()" class="text-[10px] text-[var(--text-muted)] underline font-bold hover:text-[var(--text-main)]"><i class="fa-solid fa-pen"></i> Set Limit</button>
                     </div>
                     <div class="w-full h-2.5 bg-black/40 rounded-full overflow-hidden mb-2.5 border border-white/5">
                         <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000" style="width: 0%"></div>
@@ -304,7 +295,6 @@
                 </div>
             </div>
 
-            <!-- VIEW: TRANSAKSI (LOG) -->
             <div id="view-transactions" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Log Ekosistem</h2>
@@ -313,7 +303,6 @@
                 <div id="trx-list-container" class="space-y-5"></div>
             </div>
 
-            <!-- VIEW: ANALYTICS -->
             <div id="view-analytics" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Analisis Inti</h2>
@@ -329,7 +318,6 @@
                 </div>
             </div>
 
-            <!-- VIEW: GOALS -->
             <div id="view-goals" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Misi Tabungan</h2>
@@ -346,12 +334,11 @@
                 <div id="goals-list-container" class="space-y-3"></div>
             </div>
 
-            <!-- VIEW: ORACLE CHAT -->
             <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
                 <div class="p-4 flex items-center gap-3 border-b border-[var(--border-glass)] bg-[var(--bg-base)] z-10 shrink-0 sticky top-0">
                     <div class="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center border border-accent/40"><i class="fa-solid fa-brain text-accent text-sm"></i></div>
                     <div>
-                        <h2 class="font-bold text-white text-xs text-accent">Aura Oracle V2</h2>
+                        <h2 class="font-bold text-[var(--text-main)] text-xs text-accent">Aura Oracle V2</h2>
                         <p class="text-[8px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-wider"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Realtime Failover Engine</p>
                     </div>
                 </div>
@@ -359,7 +346,6 @@
                 <div id="chat-anchor" class="h-4 shrink-0"></div>
             </div>
 
-            <!-- VIEW: TRASH -->
             <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
@@ -370,23 +356,20 @@
 
         </main>
 
-        <!-- OMNIPRESENT INPUT BAR -->
         <div id="omnipresent-input" class="w-full px-4 pt-1.5 pb-2.5 bg-[var(--bg-base)] z-40 shrink-0 border-t border-[var(--border-glass)]">
             
-            <!-- IMAGE PREVIEW -->
             <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
                 <img id="img-preview" src="" class="h-14 rounded-lg object-cover">
                 <button onclick="removeImage()" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <!-- AKORDION CARA PEMAKAIAN AI -->
             <div class="mb-1.5">
                 <button onclick="toggleAccordion('ai-help')" class="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] p-2 rounded-xl flex justify-between items-center text-[9px] font-tech font-bold text-[var(--text-muted)] hover:text-accent transition-colors">
                     <span class="flex items-center gap-1.5 tracking-wider"><i class="fa-solid fa-book-open"></i> PANDUAN INTEGRASI FITUR AI</span>
                     <i id="ai-help-icon" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
                 </button>
                 <div id="ai-help" class="hidden mt-1 p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl text-[11px] text-[var(--text-muted)] leading-relaxed space-y-2">
-                    <p><strong class="text-accent">1. Teks Kognitif:</strong> Masukkan transaksi manual. Contoh: <em class="text-white">"Gajian masuk Rp 1.500.000"</em> atau <em class="text-white">"Beli ramen di Shinjuku 1200 Yen tunai"</em>.</p>
+                    <p><strong class="text-accent">1. Teks Kognitif:</strong> Masukkan transaksi manual. Contoh: <em class="text-[var(--text-main)]">"Gajian masuk Rp 1.500.000"</em> atau <em class="text-[var(--text-main)]">"Beli ramen di Shinjuku 1200 Yen tunai"</em>.</p>
                     <p><strong class="text-accent">2. Sensor Suara:</strong> Tekan ikon <i class="fa-solid fa-microphone text-accent"></i>, sebutkan belanjaan Anda, dan sistem akan mengonversinya secara instan.</p>
                     <p><strong class="text-accent">3. Pindai Struk Visual:</strong> Klik ikon <i class="fa-solid fa-camera text-accent"></i>, foto struk fisik Anda. AI memproses pemisahan barang & hitung ulang total otomatis.</p>
                 </div>
@@ -407,7 +390,6 @@
             </div>
         </div>
 
-        <!-- FLOATING BOTTOM NAVIGATION -->
         <nav class="w-full h-[65px] glass-nav flex justify-around items-center px-1 z-50 shrink-0 safe-pb">
             <button onclick="switchView('dashboard')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--accent-primary)] active:scale-95 transition" data-target="dashboard">
                 <i class="fa-solid fa-meteor text-base"></i>
@@ -434,11 +416,9 @@
 
     </div>
 
-    <!-- MIGRATED TO REALTIME DATABASE V10 MODULES -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-        // Menggunakan Realtime Database murni sesuai instruksi, mencegah bentrokan
         import { getDatabase, ref, set, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
         // Konfigurasi Project Agrivision Terpadu Anda
@@ -457,7 +437,7 @@
         const db = getDatabase(app);
 
         let userObj = null;
-        const ledgerNode = 'aurafi_ledger'; // Node penempatan tersendiri, anti tabrakan dengan nexus_api_vault
+        const ledgerNode = 'aurafi_ledger'; 
 
         const initAuth = async () => {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -477,7 +457,6 @@
             }
         });
 
-        // --- LOAD REALTIME DATA FROM DB (ANTI TABRAKAN) ---
         function loadRealtimeDatabaseData() {
             if (!userObj) return;
 
@@ -524,7 +503,6 @@
             }, (error) => console.error("Realtime Settings error:", error));
         }
 
-        // --- GLOBAL WRITING BINDINGS UNTUK REALTIME DATABASE ---
         window.saveTransactionToDb = async (data) => {
             if(!userObj) return;
             const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
@@ -561,7 +539,7 @@
             await update(docRef, data);
         };
 
-        // --- INTEGRATED UNIFIED FAILOVER API KEY ENGINE ---
+        // --- UPDATE: UNIFIED FAILOVER API KEY ENGINE (7 TARGET KEYS INJECTED) ---
         function getDecryptedKey(encryptedBase64, userPin) {
             try {
                 let text = atob(encryptedBase64);
@@ -578,13 +556,16 @@
                 this.pin = pinCode;
                 this.keysPool = []; 
                 this.currentIndex = 0;
-                this.targetIds = ["GEMINI","KEY 2","KEY 3","KEY 4","KEY 5","KEY 6"]; 
+                this.targetIds = ["1","2","3","4","5","6","7"]; // Konfigurasi 7 ID Target terupdate Anda
             }
 
             async init() {
+                this.keysPool = []; 
                 const snapshot = await get(ref(db, 'nexus_api_vault'));
+                
                 if (snapshot.exists()) {
                     const vaultData = snapshot.val();
+                    
                     this.targetIds.forEach(targetName => {
                         for (const id in vaultData) {
                             if (vaultData[id].name === targetName) {
@@ -600,13 +581,13 @@
                     });
                 }
                 
-                console.log(`[FAILOVER ENGINE] Berhasil memuat ${this.keysPool.length} Kunci.`);
+                console.log(`[FAILOVER ENGINE] Berhasil memuat ${this.keysPool.length} Kunci Cadangan.`);
                 return this.keysPool.length;
             }
 
             async executeRequest(payload, base64Image = null) {
                 if (this.keysPool.length === 0) {
-                    throw new Error("KUNCI POOL KOSONG. Harap masukkan PIN dekripsi yang benar di setelan!");
+                    throw new Error("Pool kunci kosong. Jalankan .init() terlebih dahulu.");
                 }
 
                 const model = 'gemini-2.5-flash';
@@ -617,14 +598,11 @@
                     const activeKeyObj = this.keysPool[this.currentIndex];
                     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKeyObj.value}`;
                     
-                    console.log(`[TRY] Request menggunakan Kunci: [${activeKeyObj.id}]`);
+                    console.log(`[TRY] Mencoba request menggunakan Kunci: [${activeKeyObj.id}] (Mencoba ${attempt + 1}/${totalKeys})`);
                     
                     if (base64Image) {
-                        // Sisipkan inlineData gambar jika ada
                         const base64Data = base64Image.split(',')[1] || base64Image;
-                        payload.contents[0].parts.push({
-                            inlineData: { mimeType: "image/jpeg", data: base64Data }
-                        });
+                        payload.contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: base64Data } });
                     }
 
                     try {
@@ -635,7 +613,7 @@
                         });
 
                         if (response.status === 429 || response.status === 400 || response.status === 401) {
-                            console.warn(`[LIMIT/EXPIRED] Kunci [${activeKeyObj.id}] error (HTTP ${response.status}). Berputar...`);
+                            console.warn(`[LIMIT] Kunci [${activeKeyObj.id}] tidak berfungsi atau terkena Limit (HTTP ${response.status}).`);
                             this.rotateKey(); 
                             attempt++;
                             continue; 
@@ -647,17 +625,17 @@
                         }
 
                         const result = await response.json();
-                        console.log(`[SUCCESS] Diproses oleh Kunci [${activeKeyObj.id}].`);
+                        console.log(`[SUCCESS] Sukses diproses oleh Kunci [${activeKeyObj.id}].`);
                         return JSON.parse(result.candidates[0].content.parts[0].text);
 
                     } catch (err) {
-                        console.error(`[ERROR] Kunci [${activeKeyObj.id}] gagal: ${err.message}`);
+                        console.error(`[ERROR] Terjadi kendala dengan kunci [${activeKeyObj.id}]: ${err.message}`);
                         this.rotateKey();
                         attempt++;
                     }
                 }
 
-                throw new Error("SEMUA KUNCI CADANGAN TERKENA LIMIT ATAU EXPIRED!");
+                throw new Error("SEMUA KUNCI CADANGAN TERKENA LIMIT / KUOTA HABIS!");
             }
 
             rotateKey() {
@@ -668,11 +646,9 @@
             }
         }
 
-        // BIND KE GLOBAL WINDOW UNTUK DIKONSUMSI SCRIPT DIBAWAH
         window.GeminiFailoverEngine = GeminiFailoverEngine;
     </script>
 
-    <!-- SCRIPT LOGIKA APLIKASI UTAMA -->
     <script>
         window.currentTheme = 'midnight';
         window.displayCurrency = 'JPY'; 
@@ -684,13 +660,12 @@
         window.monthlyBudget = 100000;
 
         let base64Upload = ""; 
-        let oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Saya telah bertransformasi ke Realtime Database murni dan siap merotasi 6 API Key cadangan dari brankas Anda jika terkena limit kuota. Mau input struk atau edit apa hari ini?'}];
+        let oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Saya telah memuat susunan 7 tim kunci cadangan dari brankas Anda. Siap melakukan bypass otomatis jika salah satu terkena limit kuota. Mau input struk atau analisis apa hari ini?'}];
         let pendingOracleAction = null; 
         let deleteTargetData = null; 
         let editItemTargetData = null;
         let isProcessing = false;
         
-        // Instance Engine Global
         let failoverEngineInstance = null;
 
         function parseCleanJSON(text) {
@@ -703,7 +678,6 @@
             }
         }
 
-        // --- ENGINE GEMINI INTEGRASI SENSING SYSTEM ---
         async function fetchGeminiAPI(payload, base64Img = null) {
             if (!failoverEngineInstance) {
                 throw new Error("Kunci belum disinkronkan. Buka Setelan (Sandi 99) dan masukkan PIN Anda!");
@@ -716,11 +690,10 @@
             renderOracleChats(); 
             window.applyTheme();
             
-            // Ambil pin otomatis dari session storage jika ada
             const savedPin = sessionStorage.getItem('aurafi_vault_pin');
             if (savedPin) {
                 document.getElementById('vault-pin-input').value = savedPin;
-                setTimeout(() => syncKeyPool(true), 1500); // Auto sync on load
+                setTimeout(() => syncKeyPool(true), 1500); 
             }
             
             const tx = document.getElementById('main-input-field');
@@ -730,7 +703,6 @@
             });
         };
 
-        // --- SISTEM SINKRONISASI POOL KUNCI CADANGAN ---
         async function syncKeyPool(silent = false) {
             const pin = document.getElementById('vault-pin-input').value.trim();
             if (!pin) {
@@ -743,7 +715,6 @@
             badge.innerText = "DECRYPTING...";
 
             try {
-                // Inisialisasi engine failover
                 const engine = new window.GeminiFailoverEngine(pin);
                 const loadedCount = await engine.init();
 
@@ -751,11 +722,11 @@
                     failoverEngineInstance = engine;
                     sessionStorage.setItem('aurafi_vault_pin', pin);
                     
-                    badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+                    badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
                     badge.innerText = `ACTIVE (${loadedCount} KEYS)`;
                     
                     if(!silent) {
-                        showToast(`SINKRONISASI SUKSES: ${loadedCount} KUNCI AKTIF!`);
+                        showToast(`SINKRONISASI SUKSES: ${loadedCount} KUNCI CADANGAN SINKRON!`);
                         closeSettingsModal();
                     }
                 } else {
@@ -793,7 +764,6 @@
             document.documentElement.setAttribute('data-theme', window.currentTheme); 
         }
 
-        // --- SISTEM KEAMANAN SETELAN (SANDI 99) ---
         window.promptSettingsAccess = () => {
             const pwd = prompt("OTORISASI DIWAJIBKAN. Masukkan Kode Akses:");
             if (pwd === "99") {
@@ -864,7 +834,6 @@
             window.reCalculateAll();
         }
 
-        // --- KALKULATOR UTAMA ---
         const convertVal = (amt, fromCurr) => {
             if(fromCurr === window.displayCurrency) return amt;
             if(fromCurr === 'JPY' && window.displayCurrency === 'IDR') return amt * window.exchangeRateIDR;
@@ -923,7 +892,6 @@
                 groupedTrx[dStr].items.push(trx);
             });
 
-            // UI Dashboard
             document.getElementById('dash-total-balance').innerText = formatVal(totBal);
             document.getElementById('dash-cash').innerText = formatVal(cashBal);
             document.getElementById('dash-cashless').innerText = formatVal(cashlessBal);
@@ -962,7 +930,6 @@
             const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
             topCatDiv.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.slice(0,4).map(([c,v]) => `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0"><div><p class="font-bold">${c}</p><p class="text-[9px] text-[var(--text-muted)] font-bold">${((v/thisMthSpent)*100).toFixed(0)}% dari total belanja</p></div><p class="font-mono text-xs font-bold">${formatVal(v)}</p></div>`).join('');
 
-            // UI Log Transaksi
             document.getElementById('trx-list-container').innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
                 const g = groupedTrx[dateStr]; 
                 const dObj = new Date(dateStr);
@@ -973,11 +940,9 @@
                 }).join('')}</div></div>`
             }).join('');
 
-            // UI Analytics
             const maxDSp = Math.max(...Object.values(dailySp), 1);
             document.getElementById('chart-7days').innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
 
-            // UI Goals
             const glList = window.allGoals || [];
             document.getElementById('goals-list-container').innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
                 const targetVal = convertVal(g.targetAmount, g.currency);
@@ -986,12 +951,10 @@
                 return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="confirmDelGoal('${g.id}','${g.name}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
             }).join('');
 
-            // UI Trash Bin
             const trashList = window.trashTransactions || [];
             document.getElementById('trash-list-container').innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="restoreTransaction('${t.id}')" class="bg-green-500/20 text-green-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="deleteForever('${t.id}')" class="bg-red-500/20 text-red-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
         }
 
-        // --- SISTEM PEMROSESAN ASISTEN & TRANSAKSI ---
         function setProcessingStatus(isProc) {
             isProcessing = isProc;
             const btn = document.getElementById('btn-send-main'); 
@@ -1043,11 +1006,9 @@
             else await processTransactionParsing(txt);
         }
 
-        // --- SISTEM PEMROSESAN STRUK VISION (PERBAIKAN SKEMA) ---
         async function processTransactionParsing(text) {
             setProcessingStatus(true);
             
-            // Perbaikan skema type menggunakan huruf kecil sesuai standar v1beta Gemini API terbaru
             const payload = {
                 contents: [{role: "user", parts: [{text: text || "Ekstrak struk"}]}],
                 systemInstruction: { parts: [{text: `AuraFi AI. TRANSLATE ITEM NAMES TO 100% INDONESIAN. Type: "pemasukan"/"pengeluaran". Method: "cashless"/"tunai". If Japanese receipt, include tax (8/10%) inside each unit price. Total items.harga*qty MUST exactly equal nominal value. Specific category. Output raw JSON format strictly without markdown.`}] },
@@ -1084,7 +1045,6 @@
             };
 
             try {
-                // Eksekusi request memanfaatkan Failover Engine
                 const res = await fetchGeminiAPI(payload, base64Upload);
                 if (res.is_receipt && res.items?.length > 0 && res.tipe === 'pengeluaran') {
                     let sum = res.items.reduce((a, b) => a + (b.harga * (b.qty || 1)), 0);
@@ -1110,7 +1070,6 @@
             }
         }
 
-        // --- CHAT ASISTEN (ORACLE) ---
         function renderOracleChats() {
             const chatBox = document.getElementById('oracle-chat-box');
             chatBox.innerHTML = oracleChats.map(c => `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}"><div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel'} leading-relaxed shadow-sm">${c.text}</div></div>`).join('');
@@ -1171,7 +1130,7 @@
 
             const payload = {
                 contents: [{role: "user", parts: [{text}]}],
-                systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Realtime Database Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah dimodifikasi ke new_items.`}] },
+                systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Realtime Database Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah modifikasi ke new_items.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
                     responseSchema: { 
@@ -1213,7 +1172,6 @@
             }
         }
 
-        // --- TOASTS & MODAL POPUPS MUTATOR ---
         function showToast(msg, isError = false) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
