@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AuraFi - The Living Wealth OS</title>
     
-    <!-- Tailwind CSS, FontAwesome, dan CryptoJS untuk Kompatibilitas Algoritma Enkripsi Lama -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Diperlukan untuk dekripsi AES kompatibilitas data lama -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <style>
@@ -127,13 +127,21 @@
         .view-transition { transition: opacity 0.25s ease, transform 0.25s ease; }
         
         .v-input {
-            background: var(--bg-base); border: 1px solid var(--border-glass);
-            color: var(--text-main); transition: all 0.3s ease;
+            background: var(--bg-base);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            transition: all 0.3s ease;
         }
-        .v-input:focus { border-color: var(--accent-primary); box-shadow: 0 0 10px var(--accent-glow); outline: none; }
+        .v-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-glow);
+            outline: none;
+        }
     </style>
 </head>
 <body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
+
+    <div id="toast-container" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
 
     <!-- MODAL KONFIRMASI HAPUS -->
     <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
@@ -199,12 +207,13 @@
                     <p class="text-[9px] text-[var(--text-muted)] mt-1.5 leading-relaxed">Masukkan PIN enkripsi yang Anda buat saat menyimpan API Key di Nexus Vault sebelumnya.</p>
                 </div>
                 
-                <button id="btn-sync-vault" onclick="window.syncKeyPool()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+                <button id="btn-sync-vault" onclick="window.syncKeyPool()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs uppercase tracking-wider shadow-lg shadow-[var(--accent-glow)] transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-satellite-dish"></i> Sinkronisasi Pool Kunci
                 </button>
             </div>
         </div>
     </div>
+
 
     <!-- ================= MAIN APP CONTAINER ================= -->
     <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
@@ -383,14 +392,14 @@
             </div>
 
             <div class="glass-panel p-1 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] bg-[var(--bg-surface)] focus-within:border-[var(--accent-primary)] transition-all">
-                <button onclick="document.getElementById('file-upload').click()" class="w-11 h-11 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
+                <button onclick="document.getElementById('file-upload').click()" class="w-11 h-11 text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
                     <i class="fa-solid fa-camera text-base"></i>
                     <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="window.handleImage(event)">
                 </button>
-                <button id="btn-voice" onclick="window.startVoice()" class="w-11 h-11 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Rekam Suara">
+                <button id="btn-voice" onclick="window.startVoice()" class="w-11 h-11 text-[var(--text-muted)] hover:text-[var(--text-main)] rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Rekam Suara">
                     <i class="fa-solid fa-microphone text-base"></i>
                 </button>
-                <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-sm text-white outline-none py-3 px-1.5 max-h-20 min-h-[40px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik/Suara/Foto Transaksi..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
+                <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-sm text-[var(--text-main)] outline-none py-3 px-1.5 max-h-20 min-h-[40px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik/Suara/Foto Transaksi..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
                 <button id="btn-send-main" onclick="window.handleSend()" class="w-11 h-11 bg-accent text-[var(--bg-base)] rounded-xl flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition disabled:opacity-50" aria-label="Kirim Input">
                     <i class="fa-solid fa-paper-plane text-sm" id="icon-send"></i>
                 </button>
@@ -426,10 +435,11 @@
 
     <!-- MIGRATED TO REALTIME DATABASE V10 MODULES -->
     <script type="module">
+        // PENGHAPUSAN FIREBASE AUTH UNTUK BYPASS AUTH-NOT-FOUND ERROR
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getDatabase, ref, set, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
+        // Konfigurasi Project Agrivision Terpadu
         const firebaseConfig = {
             apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
             authDomain: "agrivision-574be.firebaseapp.com",
@@ -441,49 +451,34 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
         const db = getDatabase(app);
 
-        let userObj = null;
         const ledgerNode = 'aurafi_ledger'; 
+        
+        // MEMBUAT DEVICE ID LOKAL SEBAGAI PENGGANTI USER-UID
+        let localDeviceId = localStorage.getItem('aurafi_device_id');
+        if (!localDeviceId) {
+            localDeviceId = 'user_' + Date.now() + Math.floor(Math.random()*1000);
+            localStorage.setItem('aurafi_device_id', localDeviceId);
+        }
 
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-
-        initAuth().catch(e => console.error("Auth Failure", e));
-
-        onAuthStateChanged(auth, (u) => {
-            if(u) {
-                userObj = u;
-                window.user = u;
-                loadRealtimeDatabaseData();
-            }
-        });
-
+        // Pemuatan data Realtime tanpa memerlukan status login Auth
         function loadRealtimeDatabaseData() {
-            if (!userObj) return;
-
-            const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
+            const trxRef = ref(db, `${ledgerNode}/${localDeviceId}/transactions`);
             onValue(trxRef, (snapshot) => {
                 const all = [];
                 const data = snapshot.val();
                 if (data) {
                     Object.entries(data).forEach(([key, val]) => {
-                        // SPREAD OPERATOR FIXED: ...val
                         all.push({ id: key, ...val });
                     });
                 }
                 window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
                 window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
-                window.reCalculateAll();
+                if(window.reCalculateAll) window.reCalculateAll();
             }, (error) => console.error("Realtime Trx error:", error));
 
-            const goalsRef = ref(db, `${ledgerNode}/${userObj.uid}/goals`);
+            const goalsRef = ref(db, `${ledgerNode}/${localDeviceId}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const goals = [];
                 const data = snapshot.val();
@@ -493,59 +488,55 @@
                     });
                 }
                 window.allGoals = goals;
-                window.reCalculateAll();
+                if(window.reCalculateAll) window.reCalculateAll();
             }, (error) => console.error("Realtime Goals error:", error));
 
-            const settingsRef = ref(db, `${ledgerNode}/${userObj.uid}/settings`);
+            const settingsRef = ref(db, `${ledgerNode}/${localDeviceId}/settings`);
             onValue(settingsRef, (snapshot) => {
                 const d = snapshot.val();
                 if (d) {
                     if(d.budget) window.monthlyBudget = d.budget;
                     if(d.theme && d.theme !== window.currentTheme) {
                         window.currentTheme = d.theme;
-                        window.applyTheme();
+                        if(window.applyTheme) window.applyTheme();
                     }
                 }
             }, (error) => console.error("Realtime Settings error:", error));
         }
 
+        loadRealtimeDatabaseData();
+
         window.saveTransactionToDb = async (data) => {
-            if(!userObj) return;
-            const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
+            const trxRef = ref(db, `${ledgerNode}/${localDeviceId}/transactions`);
             await push(trxRef, data);
         };
 
         window.updateTransactionInDb = async (trxId, data) => {
-            if(!userObj) return;
-            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions/${trxId}`);
+            const docRef = ref(db, `${ledgerNode}/${localDeviceId}/transactions/${trxId}`);
             await update(docRef, data);
         };
 
         window.deleteTransactionPermanently = async (trxId) => {
-            if(!userObj) return;
-            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions/${trxId}`);
+            const docRef = ref(db, `${ledgerNode}/${localDeviceId}/transactions/${trxId}`);
             await remove(docRef);
         };
 
         window.saveGoalToDb = async (data) => {
-            if(!userObj) return;
-            const goalsRef = ref(db, `${ledgerNode}/${userObj.uid}/goals`);
+            const goalsRef = ref(db, `${ledgerNode}/${localDeviceId}/goals`);
             await push(goalsRef, data);
         };
 
         window.deleteGoalFromDb = async (goalId) => {
-            if(!userObj) return;
-            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/goals/${goalId}`);
+            const docRef = ref(db, `${ledgerNode}/${localDeviceId}/goals/${goalId}`);
             await remove(docRef);
         };
 
         window.updateSettingsInDb = async (data) => {
-            if(!userObj) return;
-            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/settings`);
+            const docRef = ref(db, `${ledgerNode}/${localDeviceId}/settings`);
             await update(docRef, data);
         };
 
-        // --- UPDATE: UNIFIED FAILOVER API KEY ENGINE ---
+        // --- UNIFIED FAILOVER API KEY ENGINE ---
         function getDecryptedKey(encryptedText, userPin) {
             try {
                 // 1. KEMBALIKAN ALGORITMA AES ORIGINAL (Kompatibilitas data Firebase lama)
@@ -553,7 +544,7 @@
                 const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
                 if (decryptedData) return decryptedData;
                 
-                // 2. FALLBACK XOR (Untuk kunci yang disimpan dengan metode Base64/XOR)
+                // 2. FALLBACK XOR 
                 let text = atob(encryptedText);
                 let result = '';
                 for (let i = 0; i < text.length; i++) {
@@ -561,7 +552,6 @@
                 }
                 return result;
             } catch(e) { 
-                // Fallback terakhir
                 try {
                     let text = atob(encryptedText);
                     let result = '';
@@ -589,7 +579,7 @@
                 if (snapshot.exists()) {
                     const vaultData = snapshot.val();
                     
-                    // PEMINDAIAN DINAMIS - Mengabaikan asumsi nama "1,2,3" agar Gemini_11 tetap terbaca
+                    // PEMINDAIAN DINAMIS KE SELURUH DATA BASE
                     for (const id in vaultData) {
                         const item = vaultData[id];
                         const decrypted = getDecryptedKey(item.value, this.pin);
@@ -609,7 +599,7 @@
 
             async executeRequest(payload, base64Image = null) {
                 if (this.keysPool.length === 0) {
-                    throw new Error("Pool kunci kosong. Jalankan .init() terlebih dahulu.");
+                    throw new Error("Pool kunci kosong. Harap masukkan PIN dekripsi yang benar di setelan!");
                 }
 
                 const model = 'gemini-2.5-flash';
@@ -622,7 +612,7 @@
                     
                     console.log(`[TRY] Request menggunakan Kunci: [${activeKeyObj.id}] (Percobaan ${attempt + 1}/${totalKeys})`);
                     
-                    // SAFE CLONING & SAFE NAVIGATION MENCEGAH UNDEFINED CRASH
+                    // SAFE CLONING MENCEGAH UNDEFINED CRASH
                     const requestPayload = JSON.parse(JSON.stringify(payload));
 
                     if (base64Image) {
@@ -644,7 +634,7 @@
                         });
 
                         if (response.status === 429 || response.status === 400 || response.status === 401) {
-                            console.warn(`[LIMIT] Kunci [${activeKeyObj.id}] error (HTTP ${response.status}). Memutar...`);
+                            console.warn(`[LIMIT] Kunci [${activeKeyObj.id}] error (HTTP ${response.status}). Memutar ke kunci berikutnya...`);
                             this.rotateKey(); 
                             attempt++;
                             continue; 
@@ -662,7 +652,7 @@
                         if (!textResponse) throw new Error("Format respons API tidak sesuai atau kosong.");
                         
                         console.log(`[SUCCESS] Diproses oleh Kunci [${activeKeyObj.id}].`);
-                        return JSON.parse(textResponse);
+                        return window.parseCleanJSON(textResponse);
 
                     } catch (err) {
                         console.error(`[ERROR] Kunci [${activeKeyObj.id}] gagal: ${err.message}`);
@@ -685,7 +675,7 @@
         window.GeminiFailoverEngine = GeminiFailoverEngine;
     </script>
 
-    <!-- SCRIPT LOGIKA APLIKASI UTAMA -->
+    <!-- SCRIPT LOGIKA APLIKASI UTAMA (GLOBAL SCOPED) -->
     <script>
         window.currentTheme = 'midnight';
         window.displayCurrency = 'JPY'; 
@@ -697,7 +687,6 @@
         window.monthlyBudget = 100000;
         window.activeView = 'dashboard'; 
 
-        // PENGIKATAN GLOBAL AGAR AMAN DARI REFERENCE ERROR
         window.base64Upload = ""; 
         window.oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Aku sudah siap menampung chat dan memproses struk menggunakan perlindungan rotasi kunci. Mau mulai dari mana?'}];
         window.pendingOracleAction = null; 
@@ -904,6 +893,30 @@
             window.reCalculateAll(); 
         };
 
+        function getCategoryStyle(cat) {
+            const styles = {
+                'Pendapatan': 'text-emerald-400 border-emerald-400/30 bg-emerald-400/5',
+                'Makanan': 'text-orange-400 border-orange-400/30 bg-orange-400/5',
+                'Minuman': 'text-cyan-400 border-cyan-400/30 bg-cyan-400/5',
+                'Sabun & Pembersih': 'text-teal-400 border-teal-400/30 bg-teal-400/5',
+                'Kebutuhan Harian': 'text-purple-400 border-purple-400/30 bg-purple-400/5',
+                'Transportasi': 'text-yellow-400 border-yellow-400/30 bg-yellow-400/5',
+            };
+            return styles[cat] || 'text-[var(--text-muted)] border-[var(--border-glass)] bg-[var(--bg-base)]';
+        }
+
+        function getCategoryIcon(cat) {
+             const icons = {
+                'Pendapatan': 'fa-money-bill-wave',
+                'Makanan': 'fa-burger',
+                'Minuman': 'fa-mug-hot',
+                'Sabun & Pembersih': 'fa-pump-soap',
+                'Kebutuhan Harian': 'fa-box',
+                'Transportasi': 'fa-train',
+            };
+            return icons[cat] || 'fa-tag';
+        }
+
         window.reCalculateAll = function() {
             let totBal = 0, cashBal = 0, cashlessBal = 0;
             let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
@@ -922,22 +935,23 @@
             txList.forEach(trx => {
                 const val = convertVal(trx.nominal, trx.mata_uang);
                 const isCash = trx.metode_pembayaran === 'tunai';
-                const d = new Date(trx.tanggal); 
                 const dStr = trx.tanggal ? trx.tanggal.split('T')[0] : '';
-
+                // Perlindungan terhadap parsing tanggal aneh dari AI
+                const d = new Date(dStr || trx.tanggal); 
+                
                 if(!groupedTrx[dStr]) groupedTrx[dStr] = { total: 0, items: [] };
 
                 if(trx.tipe === 'pemasukan') {
                     totBal += val; 
                     if(isCash) cashBal += val; else cashlessBal += val; 
                     groupedTrx[dStr].total += val;
-                    if(d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) thisMthIncome += val;
+                    if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) thisMthIncome += val;
                 } else {
                     totBal -= val; 
                     if(isCash) cashBal -= val; else cashlessBal -= val; 
                     groupedTrx[dStr].total -= val;
                     if(trx.sifat === 'impulsif') impulsif++;
-                    if(d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                    if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
                         thisMthSpent += val; 
                         if(!isCash) thisMthCashless += val;
                         const c = trx.kategori || 'Lainnya'; 
@@ -1003,14 +1017,15 @@
 
             const trxListContainer = document.getElementById('trx-list-container');
             if (trxListContainer) {
-                // SPREAD FIX, HTML QUOTES FIX (Passing param as ID, not JSON Obj)
+                // FIXED BUG: Parameter murni menggunakan window.openEditItem('${t.id}', ${idx})
                 trxListContainer.innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
                     const g = groupedTrx[dateStr]; 
                     const dObj = new Date(dateStr);
-                    return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${dObj.getDate().toString().padStart(2,'0')}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${dObj.toLocaleDateString('id-ID', {weekday:'short'})}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-white'}">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
+                    return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${!isNaN(dObj)?dObj.getDate().toString().padStart(2,'0'):'--'}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj)?dObj.toLocaleDateString('id-ID', {weekday:'short'}):'---'}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-[var(--text-main)]'}">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
                         const isExp = expItemsState[t.id]; 
                         const hasItems = t.is_receipt && Array.isArray(t.items) && t.items.length > 0;
-                        return `<div class="glass-panel p-4 relative group"><button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : '<i class="fa-solid fa-basket-shopping text-[var(--text-main)]"></i>'}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', ${idx})" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', ${idx})" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
+                        const catIcon = getCategoryIcon(t.kategori || 'Lainnya');
+                        return `<div class="glass-panel p-4 relative group"><button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', ${idx})" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', ${idx})" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
                     }).join('')}</div></div>`
                 }).join('');
             }
@@ -1028,7 +1043,7 @@
                     const targetVal = convertVal(g.targetAmount, g.currency);
                     const diffDays = Math.ceil((new Date(g.targetDate) - new Date()) / (1000 * 3600 * 24));
                     const daily = diffDays > 0 ? targetVal/diffDays : 0;
-                    return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
+                    return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
                 }).join('');
             }
 
@@ -1085,20 +1100,20 @@
             rec.onend = () => document.getElementById('btn-voice').classList.remove('text-rose-500', 'animate-pulse'); 
         };
 
-        // --- PENGIRIMAN DATA CERDAS ---
+        // --- PENGIRIMAN DATA CERDAS (MEMPERBAIKI BUG CHAT/FOTO TIDAK TERKIRIM) ---
         window.handleSend = async function() {
             const txtField = document.getElementById('main-input-field');
             if (!txtField) return;
             const txt = txtField.value.trim();
-            const imgData = window.base64Upload; // Amankan state gambar saat ini
+            const imgData = window.base64Upload; 
 
             if(!txt && !imgData) return;
             
             txtField.value = "";
             txtField.style.height = '40px';
-            window.removeImage(); // Bersihkan UI gambar langsung agar pengguna tidak spam klik
+            window.removeImage(); 
             
-            // Pengalihan cerdas beserta gambar (memperbaiki bug gambar tidak terkirim)
+            // Pengiriman ganda teks + gambar ke AI secara sempurna
             if(window.activeView === 'oracle') {
                 await window.processOracleChat(txt, imgData);
             } else {
@@ -1110,8 +1125,8 @@
             window.setProcessingStatus(true);
             
             const payload = {
-                contents: [{role: "user", parts: [{text: text || "Ekstrak struk"}]}],
-                systemInstruction: { parts: [{text: `AuraFi AI. TRANSLATE ITEM NAMES TO 100% INDONESIAN. Type: "pemasukan"/"pengeluaran". Method: "cashless"/"tunai". If Japanese receipt, include tax (8/10%) inside each unit price. Total items.harga*qty MUST exactly equal nominal value. Specific category. Output raw JSON format strictly without markdown.`}] },
+                contents: [{role: "user", parts: [{text: text || "Ekstrak struk ini dengan teliti."}]}],
+                systemInstruction: { parts: [{text: `AuraFi AI. TRANSLATE ITEM NAMES TO 100% INDONESIAN. Format tanggal wajib "YYYY-MM-DD". Type: "pemasukan"/"pengeluaran". Method: "cashless"/"tunai". If Japanese receipt, include tax (8/10%) inside each unit price. Total items.harga*qty MUST exactly equal nominal value. Specific category. Output raw JSON format strictly without markdown.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
                     responseSchema: { 
@@ -1152,7 +1167,6 @@
                 }
                 
                 if(window.saveTransactionToDb) {
-                    // SPREAD OPERATOR FIXED: ...res
                     await window.saveTransactionToDb({ 
                         ...res, 
                         is_deleted: false, 
@@ -1184,9 +1198,7 @@
             }, 50);
         };
 
-        // OBROLAN ORACLE - KINI MENERIMA GAMBAR
         window.processOracleChat = async function(text, base64Img = null) {
-            // Jika tidak ada teks tapi ada gambar, beri tahu UI
             const uiText = text || (base64Img ? "[Menganalisis Gambar Terlampir...]" : "");
             window.oracleChats.push({role: 'user', text: uiText}); 
             window.setProcessingStatus(true); 
@@ -1230,7 +1242,7 @@
             }
 
             const rec = window.allTransactions.slice(0,12).map(t => {
-                let it = t.items ? `| Items:[${t.items.map(i=>`{nama:"${i.nama_barang}", harga:${i.harga}, qty:${i.qty}}`).join(', ')}]` : ''; 
+                let it = t.items && Array.isArray(t.items) ? `| Items:[${t.items.map(i=>`{nama:"${i.nama_barang}", harga:${i.harga}, qty:${i.qty}}`).join(', ')}]` : ''; 
                 return `ID:${t.id} | Kat:${t.kategori} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
             }).join('\n');
 
@@ -1264,7 +1276,6 @@
             };
 
             try {
-                // Teruskan base64Img jika pengguna mengirim gambar saat chat oracle
                 const res = await window.fetchGeminiAPI(payload, base64Img);
                 window.oracleChats.push({role: 'ai', text: res.reply});
                 if(res.action !== 'none' && res.target_id) { 
@@ -1357,7 +1368,6 @@
             if(!window.editItemTargetData) return;
             const trx = window.allTransactions.find(t=>t.id === window.editItemTargetData.id);
             if(trx && window.updateTransactionInDb) {
-                // SPREAD OPERATOR FIXED: ...trx.items dan ...nItems[window.editItemTargetData.idx]
                 const nItems = [...trx.items];
                 nItems[window.editItemTargetData.idx] = { 
                     ...nItems[window.editItemTargetData.idx], 
@@ -1416,7 +1426,7 @@
             let csv = "Tanggal,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Catatan_AI\n";
             window.allTransactions.forEach(r => {
                 const d = r.tanggal?.split('T')[0] || ''; 
-                const items = r.items ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga})`).join('|') : '-'; 
+                const items = r.items && Array.isArray(r.items) ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga})`).join('|') : '-'; 
                 const note = r.catatan_ai ? r.catatan_ai.replace(/,/g, '') : '';
                 csv += `${d},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
             });
@@ -1428,8 +1438,6 @@
             link.remove();
         };
 
-        // Memastikan dukungan legacy untuk scope onclick HTML murni
-        window.window = window;
     </script>
 </body>
 </html>
