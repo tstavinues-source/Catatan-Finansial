@@ -11,7 +11,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 
     <style>
-        /* KUNCI VISUAL ANTI-BERANTAKAN & MOBILE FIRST DESIGN */
         .hidden { display: none !important; }
         
         :root {
@@ -19,6 +18,7 @@
             --font-display: 'Space Grotesk', sans-serif;
         }
 
+        /* 3 TEMA AMAZING & POWERFUL DENGAN KONTRAS ADAPTIF */
         [data-theme="midnight"] {
             --bg-base: #030712; 
             --bg-surface: rgba(15, 23, 42, 0.65); 
@@ -33,16 +33,17 @@
         }
 
         [data-theme="sakura"] {
-            --bg-base: #1c0a10; 
-            --bg-surface: rgba(45, 16, 26, 0.7); 
-            --bg-glass: rgba(73, 27, 43, 0.45);
-            --text-main: #fff1f2; 
-            --text-muted: #fca5a5; 
-            --accent-primary: #f43f5e; 
-            --accent-glow: rgba(244, 63, 94, 0.35);
-            --color-income: #06b6d4; 
-            --color-expense: #f43f5e; 
-            --border-glass: rgba(255, 255, 255, 0.1);
+            /* Tema Sakura Terang Berkontras Tinggi - Tulisan Gelap */
+            --bg-base: #fff5f5; 
+            --bg-surface: rgba(255, 228, 230, 0.85); 
+            --bg-glass: rgba(251, 207, 214, 0.6);
+            --text-main: #4c0519; /* Merah Marun Gelap */
+            --text-muted: #9f1239; 
+            --accent-primary: #db2777; /* Pink Rose */
+            --accent-glow: rgba(219, 39, 119, 0.2);
+            --color-income: #059669; 
+            --color-expense: #dc2626; 
+            --border-glass: rgba(159, 18, 57, 0.15);
         }
 
         [data-theme="neon"] {
@@ -79,7 +80,7 @@
             border-radius: 1.25rem; 
         }
         .glass-nav { 
-            background: rgba(3, 7, 18, 0.85); 
+            background: var(--bg-surface); 
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--border-glass); 
@@ -88,7 +89,6 @@
         .no-scrollbar::-webkit-scrollbar { display: none; } 
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* PULSE ANIMATION UNTUK LIVING CORE */
         @keyframes pulse-core { 
             0%, 100% { box-shadow: 0 0 35px var(--accent-glow), inset 0 0 15px var(--accent-glow); transform: scale(1); } 
             50% { box-shadow: 0 0 70px var(--accent-glow), inset 0 0 35px var(--accent-glow); transform: scale(1.03); } 
@@ -129,12 +129,16 @@
             transition: opacity 0.25s ease, transform 0.25s ease;
         }
 
-        @media print {
-            body { background: white !important; color: black !important; }
-            .no-print, #omnipresent-input, #bottom-nav, #global-header, .glass-panel { background: white !important; border: 1px solid #ccc !important; box-shadow: none !important; }
-            .no-print { display: none !important; }
-            #view-container { overflow: visible !important; height: auto !important; }
-            * { color: black !important; }
+        .v-input {
+            background: var(--bg-base);
+            border: 1px solid var(--border-glass);
+            color: var(--text-main);
+            transition: all 0.3s ease;
+        }
+        .v-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-glow);
+            outline: none;
         }
     </style>
 </head>
@@ -147,10 +151,10 @@
                 <i class="fa-solid fa-triangle-exclamation text-2xl text-[var(--color-expense)]"></i>
             </div>
             <h3 class="text-xl font-bold mb-2 font-display">Konfirmasi Tindakan</h3>
-            <p class="text-sm text-[var(--text-muted)] mb-6 leading-relaxed" id="confirm-msg">Yakin ingin membuang data ini dari ekosistem?</p>
+            <p class="text-sm text-[var(--text-muted)] mb-6 leading-relaxed" id="confirm-msg">Yakin ingin membuang data ini?</p>
             <div class="flex gap-3">
-                <button onclick="closeConfirmModal()" class="flex-1 py-3 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm active:scale-95 transition">Batal</button>
-                <button id="btn-execute-delete" class="flex-1 py-3 rounded-xl bg-[var(--color-expense)] text-white font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.3)] active:scale-95 transition">Eksekusi</button>
+                <button onclick="closeConfirmModal()" class="flex-1 py-3 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm transition">Batal</button>
+                <button id="btn-execute-delete" class="flex-1 py-3 rounded-xl bg-[var(--color-expense)] text-white font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.3)] transition">Eksekusi</button>
             </div>
         </div>
     </div>
@@ -160,25 +164,54 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-nib"></i> Edit Instrumen</h3>
-                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 active:scale-90 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Barang / Transaksi</label>
-                    <input type="text" id="edit-item-name" class="w-full bg-[var(--bg-base)] border border-[var(--border-glass)] rounded-xl p-3 text-sm text-white outline-none focus:border-[var(--accent-primary)] transition">
+                    <input type="text" id="edit-item-name" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                 </div>
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kuantitas</label>
-                        <input type="number" id="edit-item-qty" class="w-full bg-[var(--bg-base)] border border-[var(--border-glass)] rounded-xl p-3 text-sm text-white text-center outline-none focus:border-[var(--accent-primary)] transition">
+                        <input type="number" id="edit-item-qty" class="v-input w-full rounded-xl p-3 text-sm text-center outline-none">
                     </div>
                     <div class="w-2/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold font-mono">Harga Satuan</label>
-                        <input type="number" id="edit-item-price" class="w-full bg-[var(--bg-base)] border border-[var(--border-glass)] rounded-xl p-3 text-sm text-white outline-none focus:border-[var(--accent-primary)] transition">
+                        <input type="number" id="edit-item-price" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                     </div>
                 </div>
             </div>
-            <button onclick="saveEditItem()" class="w-full mt-6 py-3.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] active:scale-[0.98] transition">Simpan Pembaruan</button>
+            <button onclick="saveEditItem()" class="w-full mt-6 py-3.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition">Simpan Pembaruan</button>
+        </div>
+    </div>
+
+    <!-- MODAL SETTINGS & COGNITIVE KEY POOL SETUP (PASSWORD PROTECTED) -->
+    <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-brain"></i> COGNITIVE LINK SETUP</h3>
+                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="space-y-4">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="text-[10px] uppercase text-[var(--text-muted)] font-bold tracking-widest">Status Engine:</span>
+                    <span id="failover-status-badge" class="text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono">
+                        UNLINKED
+                    </span>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">PIN Dekripsi Key Vault</label>
+                    <input type="password" id="vault-pin-input" class="v-input w-full rounded-xl p-3 text-sm tracking-wider font-mono outline-none" placeholder="Masukkan PIN Key Vault">
+                    <p class="text-[9px] text-[var(--text-muted)] mt-1.5 leading-relaxed">Masukkan PIN enkripsi yang Anda buat saat menyimpan API Key di Nexus Vault sebelumnya.</p>
+                </div>
+                
+                <button id="btn-sync-vault" onclick="syncKeyPool()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-satellite-dish"></i> Sinkronisasi Pool Kunci
+                </button>
+            </div>
         </div>
     </div>
 
@@ -187,14 +220,17 @@
     <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
         
         <!-- HEADER GLOBAL -->
-        <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 no-print border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
+        <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
             <div>
                 <h1 class="text-2xl font-display font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-[var(--accent-primary)]">AuraFi<span class="text-accent">.</span></h1>
                 <p class="text-[9px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5" id="live-rate-display">Mendapatkan kurs...</p>
             </div>
-            <div class="flex items-center gap-3">
-                <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white active:scale-90 transition" aria-label="Ganti Tema">
+            <div class="flex items-center gap-2">
+                <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition" aria-label="Ganti Tema">
                     <i class="fa-solid fa-palette text-sm"></i>
+                </button>
+                <button onclick="promptSettingsAccess()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition" aria-label="Pengaturan AI">
+                    <i class="fa-solid fa-gear text-sm"></i>
                 </button>
                 <div class="glass-panel p-0.5 flex rounded-xl border border-[var(--border-glass)]">
                     <button id="btn-curr-jpy" onclick="setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
@@ -208,13 +244,13 @@
             
             <!-- VIEW: DASHBOARD (THE LIVING CORE) -->
             <div id="view-dashboard" class="p-4 space-y-5 block view-transition">
-                <div class="flex justify-between items-center no-print">
+                <div class="flex justify-between items-center">
                     <span class="text-[10px] text-[var(--text-muted)] uppercase font-extrabold tracking-widest">Ringkasan Ekosistem</span>
-                    <button onclick="window.print()" class="px-3 py-1.5 glass-panel text-[10px] font-bold hover:text-accent active:scale-95 transition flex items-center gap-1.5 border-[var(--border-glass)]"><i class="fa-solid fa-file-pdf"></i> Cetak PDF</button>
+                    <button onclick="window.print()" class="px-3 py-1.5 glass-panel text-[10px] font-bold hover:text-accent transition flex items-center gap-1.5 border-[var(--border-glass)]"><i class="fa-solid fa-file-pdf"></i> Cetak PDF</button>
                 </div>
 
                 <!-- LIVING CORE WRAPPER -->
-                <div class="flex flex-col items-center justify-center py-2 relative no-print">
+                <div class="flex flex-col items-center justify-center py-2 relative">
                     <div id="living-core" class="w-44 h-44 rounded-full living-core flex flex-col items-center justify-center relative overflow-hidden">
                         <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIpIi8+Cjwvc3ZnPg==')] opacity-25"></div>
                         <div class="absolute w-[140%] h-[140%] border border-[var(--border-glass)] rounded-full border-t-[var(--accent-primary)] animate-[spin_12s_linear_infinite] opacity-60"></div>
@@ -245,7 +281,7 @@
                     </div>
                     <div>
                         <h4 class="text-[var(--color-expense)] font-bold text-xs">Ilusi Cashless Terdeteksi!</h4>
-                        <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">Dana <span id="warn-cashless-pct" class="font-bold text-white">0%</span> terbakar melalui metode Cashless (Suica/PayPay/Kartu) secara impulsif. Atur pertahanan keuangan Anda!</p>
+                        <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">Dana <span id="warn-cashless-pct" class="font-bold text-white">0%</span> terbakar melalui metode Cashless secara impulsif. Atur pertahanan keuangan Anda!</p>
                     </div>
                 </div>
 
@@ -300,10 +336,10 @@
                     <button onclick="toggleGoalForm()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-accent hover:bg-white/10 active:scale-90 transition"><i class="fa-solid fa-plus"></i></button>
                 </div>
                 <div id="goal-form" class="glass-panel p-4 space-y-3 hidden border-t-2 border-t-accent shadow-lg">
-                    <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo)" class="w-full bg-[var(--bg-base)] border border-[var(--border-glass)] rounded-xl p-3 text-sm text-white outline-none focus:border-[var(--accent-primary)] transition">
+                    <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo)" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                     <div class="flex gap-2">
-                        <input type="number" id="goal-target" placeholder="Target Dana" class="w-1/2 bg-[var(--bg-base)] border border-[var(--border-glass)] rounded-xl p-3 text-sm text-white outline-none focus:border-[var(--accent-primary)] transition">
-                        <input type="date" id="goal-date" class="w-1/2 bg-[var(--bg-base)] border border-[var(--border-glass)] rounded-xl p-3 text-sm text-[var(--text-muted)] outline-none focus:border-[var(--accent-primary)] transition">
+                        <input type="number" id="goal-target" placeholder="Target Dana" class="v-input w-1/2 rounded-xl p-3 text-sm outline-none">
+                        <input type="date" id="goal-date" class="v-input w-1/2 rounded-xl p-3 text-sm text-[var(--text-muted)] outline-none">
                     </div>
                     <button onclick="saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm">Mulai Misi Menabung</button>
                 </div>
@@ -315,8 +351,8 @@
                 <div class="p-4 flex items-center gap-3 border-b border-[var(--border-glass)] bg-[var(--bg-base)] z-10 shrink-0 sticky top-0">
                     <div class="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center border border-accent/40"><i class="fa-solid fa-brain text-accent text-sm"></i></div>
                     <div>
-                        <h2 class="font-bold text-white text-xs">Aura Oracle V2</h2>
-                        <p class="text-[8px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-wider"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Realtime Engine</p>
+                        <h2 class="font-bold text-white text-xs text-accent">Aura Oracle V2</h2>
+                        <p class="text-[8px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-wider"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Realtime Failover Engine</p>
                     </div>
                 </div>
                 <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-10"></div>
@@ -335,12 +371,25 @@
         </main>
 
         <!-- OMNIPRESENT INPUT BAR -->
-        <div id="omnipresent-input" class="w-full px-4 pt-1.5 pb-2.5 bg-[var(--bg-base)] z-40 shrink-0 border-t border-[var(--border-glass)] no-print">
+        <div id="omnipresent-input" class="w-full px-4 pt-1.5 pb-2.5 bg-[var(--bg-base)] z-40 shrink-0 border-t border-[var(--border-glass)]">
             
             <!-- IMAGE PREVIEW -->
             <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
                 <img id="img-preview" src="" class="h-14 rounded-lg object-cover">
                 <button onclick="removeImage()" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- AKORDION CARA PEMAKAIAN AI -->
+            <div class="mb-1.5">
+                <button onclick="toggleAccordion('ai-help')" class="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] p-2 rounded-xl flex justify-between items-center text-[9px] font-tech font-bold text-[var(--text-muted)] hover:text-accent transition-colors">
+                    <span class="flex items-center gap-1.5 tracking-wider"><i class="fa-solid fa-book-open"></i> PANDUAN INTEGRASI FITUR AI</span>
+                    <i id="ai-help-icon" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+                </button>
+                <div id="ai-help" class="hidden mt-1 p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl text-[11px] text-[var(--text-muted)] leading-relaxed space-y-2">
+                    <p><strong class="text-accent">1. Teks Kognitif:</strong> Masukkan transaksi manual. Contoh: <em class="text-white">"Gajian masuk Rp 1.500.000"</em> atau <em class="text-white">"Beli ramen di Shinjuku 1200 Yen tunai"</em>.</p>
+                    <p><strong class="text-accent">2. Sensor Suara:</strong> Tekan ikon <i class="fa-solid fa-microphone text-accent"></i>, sebutkan belanjaan Anda, dan sistem akan mengonversinya secara instan.</p>
+                    <p><strong class="text-accent">3. Pindai Struk Visual:</strong> Klik ikon <i class="fa-solid fa-camera text-accent"></i>, foto struk fisik Anda. AI memproses pemisahan barang & hitung ulang total otomatis.</p>
+                </div>
             </div>
 
             <div class="glass-panel p-1 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] bg-[var(--bg-surface)] focus-within:border-[var(--accent-primary)] transition-all">
@@ -359,7 +408,7 @@
         </div>
 
         <!-- FLOATING BOTTOM NAVIGATION -->
-        <nav class="w-full h-[65px] glass-nav flex justify-around items-center px-1 z-50 shrink-0 no-print safe-pb">
+        <nav class="w-full h-[65px] glass-nav flex justify-around items-center px-1 z-50 shrink-0 safe-pb">
             <button onclick="switchView('dashboard')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--accent-primary)] active:scale-95 transition" data-target="dashboard">
                 <i class="fa-solid fa-meteor text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
@@ -385,35 +434,31 @@
 
     </div>
 
-    <!-- MIGRATED CLOUD FIRESTORE V11 SDK MODULE -->
+    <!-- MIGRATED TO REALTIME DATABASE V10 MODULES -->
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, addDoc, updateDoc, deleteDoc, query, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        // Menggunakan Realtime Database murni sesuai instruksi, mencegah bentrokan
+        import { getDatabase, ref, set, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // --- BINDING CONFIG & GLOBAL ENVIRONMENT ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const fbConfigText = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-        let firebaseConfigLocal = {};
-        try { firebaseConfigLocal = JSON.parse(fbConfigText); } catch(e) {}
-        
-        if(!firebaseConfigLocal.apiKey) {
-            firebaseConfigLocal = {
-                apiKey: "AIzaSyD1xXE_dnEdrlBvKQuNteCSLteD76FvUsQ",
-                authDomain: "studio-3757380945-76c38.firebaseapp.com",
-                projectId: "studio-3757380945-76c38",
-                storageBucket: "studio-3757380945-76c38.firebasestorage.app"
-            };
-        }
+        // Konfigurasi Project Agrivision Terpadu Anda
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
+            authDomain: "agrivision-574be.firebaseapp.com",
+            databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com",
+            projectId: "agrivision-574be",
+            storageBucket: "agrivision-574be.firebasestorage.app",
+            messagingSenderId: "732120986243",
+            appId: "1:732120986243:web:d025c9a2908b1ca892a1b6"
+        };
 
-        // --- INITIALIZE FIRESTORE & AUTH ---
-        const app = initializeApp(firebaseConfigLocal);
+        const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        const db = getDatabase(app);
 
         let userObj = null;
+        const ledgerNode = 'aurafi_ledger'; // Node penempatan tersendiri, anti tabrakan dengan nexus_api_vault
 
-        // --- AUTHENTICATION FLOW (RULE 3) ---
         const initAuth = async () => {
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
@@ -428,87 +473,203 @@
             if(u) {
                 userObj = u;
                 window.user = u;
-                loadFirestoreData();
+                loadRealtimeDatabaseData();
             }
         });
 
-        // --- DATA LOAD (RULE 1 & 3 PROTECTION) ---
-        function loadFirestoreData() {
+        // --- LOAD REALTIME DATA FROM DB (ANTI TABRAKAN) ---
+        function loadRealtimeDatabaseData() {
             if (!userObj) return;
 
-            // Transactions Snapshot Listener
-            const trxCol = collection(db, 'artifacts', appId, 'users', userObj.uid, 'transactions');
-            onSnapshot(trxCol, (snapshot) => {
+            // 1. Ambil & Dengar Perubahan Transaksi
+            const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
+            onValue(trxRef, (snapshot) => {
                 const all = [];
-                snapshot.forEach(docSnap => {
-                    all.push({ id: docSnap.id, ...docSnap.data() });
-                });
+                const data = snapshot.val();
+                if (data) {
+                    Object.entries(data).forEach(([key, val]) => {
+                        all.push({ id: key, ...val });
+                    });
+                }
                 window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
                 window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
                 window.reCalculateAll();
-            }, (error) => console.error("Trx stream error:", error));
+            }, (error) => console.error("Realtime Trx error:", error));
 
-            // Goals Snapshot Listener
-            const goalsCol = collection(db, 'artifacts', appId, 'users', userObj.uid, 'goals');
-            onSnapshot(goalsCol, (snapshot) => {
+            // 2. Ambil & Dengar Perubahan Sasaran Tabungan (Goals)
+            const goalsRef = ref(db, `${ledgerNode}/${userObj.uid}/goals`);
+            onValue(goalsRef, (snapshot) => {
                 const goals = [];
-                snapshot.forEach(docSnap => {
-                    goals.push({ id: docSnap.id, ...docSnap.data() });
-                });
+                const data = snapshot.val();
+                if (data) {
+                    Object.entries(data).forEach(([key, val]) => {
+                        goals.push({ id: key, ...val });
+                    });
+                }
                 window.allGoals = goals;
                 window.reCalculateAll();
-            }, (error) => console.error("Goals stream error:", error));
+            }, (error) => console.error("Realtime Goals error:", error));
 
-            // Settings Listener
-            const settingsDocRef = doc(db, 'artifacts', appId, 'users', userObj.uid, 'settings', 'global');
-            onSnapshot(settingsDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const d = docSnap.data();
+            // 3. Ambil & Dengar Konfigurasi Setelan
+            const settingsRef = ref(db, `${ledgerNode}/${userObj.uid}/settings`);
+            onValue(settingsRef, (snapshot) => {
+                const d = snapshot.val();
+                if (d) {
                     if(d.budget) window.monthlyBudget = d.budget;
                     if(d.theme && d.theme !== window.currentTheme) {
                         window.currentTheme = d.theme;
                         window.applyTheme();
                     }
                 }
-            }, (error) => console.error("Settings stream error:", error));
+            }, (error) => console.error("Realtime Settings error:", error));
         }
 
-        // --- INJECT FIRESTORE WRITING TO GLOBAL WINDOW ---
+        // --- GLOBAL WRITING BINDINGS UNTUK REALTIME DATABASE ---
         window.saveTransactionToDb = async (data) => {
             if(!userObj) return;
-            const trxCol = collection(db, 'artifacts', appId, 'users', userObj.uid, 'transactions');
-            await addDoc(trxCol, data);
+            const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
+            await push(trxRef, data);
         };
 
         window.updateTransactionInDb = async (trxId, data) => {
             if(!userObj) return;
-            const docRef = doc(db, 'artifacts', appId, 'users', userObj.uid, 'transactions', trxId);
-            await updateDoc(docRef, data);
+            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions/${trxId}`);
+            await update(docRef, data);
         };
 
         window.deleteTransactionPermanently = async (trxId) => {
             if(!userObj) return;
-            const docRef = doc(db, 'artifacts', appId, 'users', userObj.uid, 'transactions', trxId);
-            await deleteDoc(docRef);
+            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions/${trxId}`);
+            await remove(docRef);
         };
 
         window.saveGoalToDb = async (data) => {
             if(!userObj) return;
-            const goalsCol = collection(db, 'artifacts', appId, 'users', userObj.uid, 'goals');
-            await addDoc(goalsCol, data);
+            const goalsRef = ref(db, `${ledgerNode}/${userObj.uid}/goals`);
+            await push(goalsRef, data);
         };
 
         window.deleteGoalFromDb = async (goalId) => {
             if(!userObj) return;
-            const docRef = doc(db, 'artifacts', appId, 'users', userObj.uid, 'goals', goalId);
-            await deleteDoc(docRef);
+            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/goals/${goalId}`);
+            await remove(docRef);
         };
 
         window.updateSettingsInDb = async (data) => {
             if(!userObj) return;
-            const docRef = doc(db, 'artifacts', appId, 'users', userObj.uid, 'settings', 'global');
-            await setDoc(docRef, data, { merge: true });
+            const docRef = ref(db, `${ledgerNode}/${userObj.uid}/settings`);
+            await update(docRef, data);
         };
+
+        // --- INTEGRATED UNIFIED FAILOVER API KEY ENGINE ---
+        function getDecryptedKey(encryptedBase64, userPin) {
+            try {
+                let text = atob(encryptedBase64);
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ userPin.charCodeAt(i % userPin.length));
+                }
+                return result;
+            } catch(e) { return null; }
+        }
+
+        class GeminiFailoverEngine {
+            constructor(pinCode) {
+                this.pin = pinCode;
+                this.keysPool = []; 
+                this.currentIndex = 0;
+                this.targetIds = ["GEMINI","KEY 2","KEY 3","KEY 4","KEY 5","KEY 6"]; 
+            }
+
+            async init() {
+                const snapshot = await get(ref(db, 'nexus_api_vault'));
+                if (snapshot.exists()) {
+                    const vaultData = snapshot.val();
+                    this.targetIds.forEach(targetName => {
+                        for (const id in vaultData) {
+                            if (vaultData[id].name === targetName) {
+                                const decrypted = getDecryptedKey(vaultData[id].value, this.pin);
+                                if (decrypted && decrypted.length > 5) {
+                                    this.keysPool.push({
+                                        id: targetName,
+                                        value: decrypted
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                console.log(`[FAILOVER ENGINE] Berhasil memuat ${this.keysPool.length} Kunci.`);
+                return this.keysPool.length;
+            }
+
+            async executeRequest(payload, base64Image = null) {
+                if (this.keysPool.length === 0) {
+                    throw new Error("KUNCI POOL KOSONG. Harap masukkan PIN dekripsi yang benar di setelan!");
+                }
+
+                const model = 'gemini-2.5-flash';
+                let attempt = 0;
+                const totalKeys = this.keysPool.length;
+
+                while (attempt < totalKeys) {
+                    const activeKeyObj = this.keysPool[this.currentIndex];
+                    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeKeyObj.value}`;
+                    
+                    console.log(`[TRY] Request menggunakan Kunci: [${activeKeyObj.id}]`);
+                    
+                    if (base64Image) {
+                        // Sisipkan inlineData gambar jika ada
+                        const base64Data = base64Image.split(',')[1] || base64Image;
+                        payload.contents[0].parts.push({
+                            inlineData: { mimeType: "image/jpeg", data: base64Data }
+                        });
+                    }
+
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (response.status === 429 || response.status === 400 || response.status === 401) {
+                            console.warn(`[LIMIT/EXPIRED] Kunci [${activeKeyObj.id}] error (HTTP ${response.status}). Berputar...`);
+                            this.rotateKey(); 
+                            attempt++;
+                            continue; 
+                        }
+
+                        if (!response.ok) {
+                            const err = await response.json().catch(() => ({}));
+                            throw new Error(err.error?.message || `HTTP Status ${response.status}`);
+                        }
+
+                        const result = await response.json();
+                        console.log(`[SUCCESS] Diproses oleh Kunci [${activeKeyObj.id}].`);
+                        return JSON.parse(result.candidates[0].content.parts[0].text);
+
+                    } catch (err) {
+                        console.error(`[ERROR] Kunci [${activeKeyObj.id}] gagal: ${err.message}`);
+                        this.rotateKey();
+                        attempt++;
+                    }
+                }
+
+                throw new Error("SEMUA KUNCI CADANGAN TERKENA LIMIT ATAU EXPIRED!");
+            }
+
+            rotateKey() {
+                const prevId = this.keysPool[this.currentIndex].id;
+                this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
+                const nextId = this.keysPool[this.currentIndex].id;
+                console.log(`[ROTATION] Beralih dari [${prevId}] ke [${nextId}].`);
+            }
+        }
+
+        // BIND KE GLOBAL WINDOW UNTUK DIKONSUMSI SCRIPT DIBAWAH
+        window.GeminiFailoverEngine = GeminiFailoverEngine;
     </script>
 
     <!-- SCRIPT LOGIKA APLIKASI UTAMA -->
@@ -523,11 +684,14 @@
         window.monthlyBudget = 100000;
 
         let base64Upload = ""; 
-        let oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Dataku udah bersih dari bug dan database sudah dimigrasikan ke Cloud Firestore yang super aman. Mau input struk atau edit data apa hari ini?'}];
+        let oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Saya telah bertransformasi ke Realtime Database murni dan siap merotasi 6 API Key cadangan dari brankas Anda jika terkena limit kuota. Mau input struk atau edit apa hari ini?'}];
         let pendingOracleAction = null; 
         let deleteTargetData = null; 
         let editItemTargetData = null;
         let isProcessing = false;
+        
+        // Instance Engine Global
+        let failoverEngineInstance = null;
 
         function parseCleanJSON(text) {
             try {
@@ -539,20 +703,12 @@
             }
         }
 
-        // --- ENGINE GEMINI SENSING SYSTEM ---
-        async function fetchGeminiAPI(payload) {
-            const apiKey = ""; 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            
-            const res = await fetch(url, {
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify(payload)
-            });
-            
-            if (!res.ok) throw new Error("Gagal menyambung AI.");
-            const data = await res.json();
-            return parseCleanJSON(data.candidates[0].content.parts[0].text);
+        // --- ENGINE GEMINI INTEGRASI SENSING SYSTEM ---
+        async function fetchGeminiAPI(payload, base64Img = null) {
+            if (!failoverEngineInstance) {
+                throw new Error("Kunci belum disinkronkan. Buka Setelan (Sandi 99) dan masukkan PIN Anda!");
+            }
+            return await failoverEngineInstance.executeRequest(payload, base64Img);
         }
 
         window.onload = () => {
@@ -560,12 +716,57 @@
             renderOracleChats(); 
             window.applyTheme();
             
+            // Ambil pin otomatis dari session storage jika ada
+            const savedPin = sessionStorage.getItem('aurafi_vault_pin');
+            if (savedPin) {
+                document.getElementById('vault-pin-input').value = savedPin;
+                setTimeout(() => syncKeyPool(true), 1500); // Auto sync on load
+            }
+            
             const tx = document.getElementById('main-input-field');
             tx.addEventListener('input', function() {
                 this.style.height = '40px'; 
                 this.style.height = (this.scrollHeight) + 'px';
             });
         };
+
+        // --- SISTEM SINKRONISASI POOL KUNCI CADANGAN ---
+        async function syncKeyPool(silent = false) {
+            const pin = document.getElementById('vault-pin-input').value.trim();
+            if (!pin) {
+                if(!silent) showToast("HARAP MASUKKAN PIN DEKRIPSI!", true);
+                return;
+            }
+
+            const badge = document.getElementById('failover-status-badge');
+            badge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono animate-pulse";
+            badge.innerText = "DECRYPTING...";
+
+            try {
+                // Inisialisasi engine failover
+                const engine = new window.GeminiFailoverEngine(pin);
+                const loadedCount = await engine.init();
+
+                if (loadedCount > 0) {
+                    failoverEngineInstance = engine;
+                    sessionStorage.setItem('aurafi_vault_pin', pin);
+                    
+                    badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+                    badge.innerText = `ACTIVE (${loadedCount} KEYS)`;
+                    
+                    if(!silent) {
+                        showToast(`SINKRONISASI SUKSES: ${loadedCount} KUNCI AKTIF!`);
+                        closeSettingsModal();
+                    }
+                } else {
+                    throw new Error("0 kunci didekripsi.");
+                }
+            } catch(e) {
+                badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+                badge.innerText = "DECRYPT FAILED";
+                if(!silent) showToast("DEKRIPSI GAGAL: PIN SALAH ATAU DATA KOSONG!", true);
+            }
+        }
 
         async function fetchExchangeRate() {
             try {
@@ -592,6 +793,34 @@
             document.documentElement.setAttribute('data-theme', window.currentTheme); 
         }
 
+        // --- SISTEM KEAMANAN SETELAN (SANDI 99) ---
+        window.promptSettingsAccess = () => {
+            const pwd = prompt("OTORISASI DIWAJIBKAN. Masukkan Kode Akses:");
+            if (pwd === "99") {
+                showModal('modal-settings');
+            } else if (pwd !== null) {
+                showToast("AKSES DITOLAK: SANDI SALAH!", true);
+            }
+        }
+
+        window.closeSettingsModal = () => {
+            const m = document.getElementById('modal-settings');
+            m.classList.remove('opacity-100');
+            setTimeout(() => m.classList.add('hidden'), 300);
+        }
+
+        window.toggleAccordion = (id) => {
+            const el = document.getElementById(id);
+            const icon = document.getElementById(id + '-icon');
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+                icon.style.transform = 'rotate(180deg)';
+            } else {
+                el.classList.add('hidden');
+                icon.style.transform = 'rotate(0deg)';
+            }
+        }
+
         window.setCurrency = (curr) => {
             window.displayCurrency = curr;
             document.getElementById('btn-curr-jpy').className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${curr==='JPY'?'bg-accent text-[var(--bg-base)]':'text-[var(--text-muted)]'}`;
@@ -600,7 +829,6 @@
         }
 
         window.switchView = (viewId) => {
-            activeView = viewId;
             ['dashboard', 'transactions', 'analytics', 'goals', 'oracle', 'trash'].forEach(id => {
                 const el = document.getElementById(`view-${id}`); 
                 if(el) {
@@ -664,11 +892,13 @@
             }
             let groupedTrx = {};
 
-            window.allTransactions.forEach(trx => {
+            const txList = window.allTransactions || [];
+
+            txList.forEach(trx => {
                 const val = convertVal(trx.nominal, trx.mata_uang);
                 const isCash = trx.metode_pembayaran === 'tunai';
                 const d = new Date(trx.tanggal); 
-                const dStr = trx.tanggal.split('T')[0];
+                const dStr = trx.tanggal ? trx.tanggal.split('T')[0] : '';
 
                 if(!groupedTrx[dStr]) groupedTrx[dStr] = { total: 0, items: [] };
 
@@ -739,7 +969,7 @@
                 return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${dObj.getDate().toString().padStart(2,'0')}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${dObj.toLocaleDateString('id-ID', {weekday:'short'})}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-white'}">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
                     const isExp = expItemsState[t.id]; 
                     const hasItems = t.is_receipt && t.items && t.items.length > 0;
-                    return `<div class="glass-panel p-4 relative group"><button onclick="confirmDelTrx('${t.id}', '${t.kategori}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : '<i class="fa-solid fa-basket-shopping text-white"></i>'}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-white'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-white font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick='openEditItem(${JSON.stringify({id:t.id, idx, item:it})})' class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="confirmDelItem('${t.id}', ${idx}, '${it.nama_barang}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
+                    return `<div class="glass-panel p-4 relative group"><button onclick="confirmDelTrx('${t.id}', '${t.kategori}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : '<i class="fa-solid fa-basket-shopping text-[var(--text-main)]"></i>'}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick='openEditItem(${JSON.stringify({id:t.id, idx, item:it})})' class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="confirmDelItem('${t.id}', ${idx}, '${it.nama_barang}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
                 }).join('')}</div></div>`
             }).join('');
 
@@ -748,7 +978,8 @@
             document.getElementById('chart-7days').innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
 
             // UI Goals
-            document.getElementById('goals-list-container').innerHTML = window.allGoals.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : window.allGoals.map(g => {
+            const glList = window.allGoals || [];
+            document.getElementById('goals-list-container').innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
                 const targetVal = convertVal(g.targetAmount, g.currency);
                 const diffDays = Math.ceil((new Date(g.targetDate) - new Date()) / (1000 * 3600 * 24));
                 const daily = diffDays > 0 ? targetVal/diffDays : 0;
@@ -756,7 +987,8 @@
             }).join('');
 
             // UI Trash Bin
-            document.getElementById('trash-list-container').innerHTML = window.trashTransactions.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : window.trashTransactions.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="restoreTransaction('${t.id}')" class="bg-green-500/20 text-green-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="deleteForever('${t.id}')" class="bg-red-500/20 text-red-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
+            const trashList = window.trashTransactions || [];
+            document.getElementById('trash-list-container').innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="restoreTransaction('${t.id}')" class="bg-green-500/20 text-green-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="deleteForever('${t.id}')" class="bg-red-500/20 text-red-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
         }
 
         // --- SISTEM PEMROSESAN ASISTEN & TRANSAKSI ---
@@ -811,34 +1043,37 @@
             else await processTransactionParsing(txt);
         }
 
+        // --- SISTEM PEMROSESAN STRUK VISION (PERBAIKAN SKEMA) ---
         async function processTransactionParsing(text) {
             setProcessingStatus(true);
+            
+            // Perbaikan skema type menggunakan huruf kecil sesuai standar v1beta Gemini API terbaru
             const payload = {
                 contents: [{role: "user", parts: [{text: text || "Ekstrak struk"}]}],
                 systemInstruction: { parts: [{text: `AuraFi AI. TRANSLATE ITEM NAMES TO 100% INDONESIAN. Type: "pemasukan"/"pengeluaran". Method: "cashless"/"tunai". If Japanese receipt, include tax (8/10%) inside each unit price. Total items.harga*qty MUST exactly equal nominal value. Specific category. Output raw JSON format strictly without markdown.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
                     responseSchema: { 
-                        type: "OBJECT", 
+                        type: "object", 
                         properties: { 
-                            tanggal: {type:"STRING"}, 
-                            nominal: {type:"NUMBER"}, 
-                            mata_uang: {type:"STRING"}, 
-                            metode_pembayaran: {type:"STRING"}, 
-                            kategori: {type:"STRING"}, 
-                            tipe: {type:"STRING"}, 
-                            sifat: {type:"STRING"}, 
-                            catatan_ai: {type:"STRING"}, 
-                            is_receipt: {type:"BOOLEAN"}, 
+                            tanggal: {type:"string"}, 
+                            nominal: {type:"number"}, 
+                            mata_uang: {type:"string"}, 
+                            metode_pembayaran: {type:"string"}, 
+                            kategori: {type:"string"}, 
+                            tipe: {type:"string"}, 
+                            sifat: {type:"string"}, 
+                            catatan_ai: {type:"string"}, 
+                            is_receipt: {type:"boolean"}, 
                             items: {
-                                type:"ARRAY", 
+                                type:"array", 
                                 items: {
-                                    type:"OBJECT", 
+                                    type:"object", 
                                     properties: {
-                                        nama_barang:{type:"STRING"}, 
-                                        harga:{type:"NUMBER"}, 
-                                        qty:{type:"NUMBER"}, 
-                                        kategori_barang:{type:"STRING"}
+                                        nama_barang:{type:"string"}, 
+                                        harga:{type:"number"}, 
+                                        qty:{type:"number"}, 
+                                        kategori_barang:{type:"string"}
                                     }
                                 }
                             } 
@@ -847,10 +1082,10 @@
                     } 
                 }
             };
-            if(base64Upload) payload.contents[0].parts.push({inlineData: {mimeType: "image/jpeg", data: base64Upload}});
 
             try {
-                const res = await fetchGeminiAPI(payload);
+                // Eksekusi request memanfaatkan Failover Engine
+                const res = await fetchGeminiAPI(payload, base64Upload);
                 if (res.is_receipt && res.items?.length > 0 && res.tipe === 'pengeluaran') {
                     let sum = res.items.reduce((a, b) => a + (b.harga * (b.qty || 1)), 0);
                     if (sum !== res.nominal) res.items[0].harga += (res.nominal - sum); 
@@ -869,7 +1104,7 @@
                 }
             } catch(e) { 
                 console.error(e); 
-                alert("AI gagal memproses atau menyimpan data. Perjelas input gambar/catatan!"); 
+                alert(e.message || "AI gagal memproses data."); 
             } finally { 
                 setProcessingStatus(false); 
             }
@@ -908,7 +1143,7 @@
                                 const sum = pendingOracleAction.new_items.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
                                 await window.updateTransactionInDb(pendingOracleAction.target_id, { items: pendingOracleAction.new_items, nominal: sum });
                             }
-                            oracleChats.push({role: 'ai', text: "Sip bos, database Cloud Firestore sudah kuupdate!"});
+                            oracleChats.push({role: 'ai', text: "Sip bos, database Realtime Database sudah kuupdate!"});
                         }
                     } catch(e) { 
                         oracleChats.push({role:'ai', text: "Ada masalah teknis saat memproses perubahan database."}); 
@@ -936,24 +1171,24 @@
 
             const payload = {
                 contents: [{role: "user", parts: [{text}]}],
-                systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Firestore Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah dimodifikasi ke new_items.`}] },
+                systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Realtime Database Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah dimodifikasi ke new_items.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
                     responseSchema: { 
-                        type: "OBJECT", 
+                        type: "object", 
                         properties: { 
-                            reply: {type:"STRING"}, 
-                            action: {type:"STRING"}, 
-                            target_id: {type:"STRING"}, 
-                            new_nominal: {type:"NUMBER"}, 
+                            reply: {type:"string"}, 
+                            action: {type:"string"}, 
+                            target_id: {type:"string"}, 
+                            new_nominal: {type:"number"}, 
                             new_items: {
-                                type:"ARRAY", 
+                                type:"array", 
                                 items: {
-                                    type:"OBJECT", 
+                                    type:"object", 
                                     properties: {
-                                        nama_barang:{type:"STRING"}, 
-                                        harga:{type:"NUMBER"}, 
-                                        qty:{type:"NUMBER"}
+                                        nama_barang:{type:"string"}, 
+                                        harga:{type:"number"}, 
+                                        qty:{type:"number"}
                                     }
                                 }
                             } 
@@ -971,29 +1206,39 @@
                     document.getElementById('main-input-field').placeholder = "Ketik 'Ya' atau 'Tidak'..."; 
                 }
             } catch(e) { 
-                oracleChats.push({role:'ai', text: "Otakku nge-hang sebentar bos, tolong ketik ulang ya!"}); 
+                oracleChats.push({role:'ai', text: "Otakku terganggu sebentar bos, tolong ketik ulang ya!"}); 
             } finally { 
                 setProcessingStatus(false); 
                 renderOracleChats(); 
             }
         }
 
-        // --- MODAL POPUPS & MUTATOR ---
+        // --- TOASTS & MODAL POPUPS MUTATOR ---
+        function showToast(msg, isError = false) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const icon = isError ? '<i class="fa-solid fa-triangle-exclamation text-[var(--color-expense)]"></i>' : '<i class="fa-solid fa-check text-accent"></i>';
+            toast.className = `toast ${isError ? '!border-l-[var(--color-expense)]' : ''}`;
+            toast.innerHTML = `${icon} <span>${msg}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3400);
+        }
+
         window.confirmDelTrx = (id, name) => { 
             deleteTargetData = { type: 'trx', id, name }; 
-            document.getElementById('confirm-msg').innerText = "Yakin ingin menghapus transaksi ini dari log?"; 
+            document.getElementById('confirm-msg').innerText = "Yakin ingin menghapus transaksi ini?"; 
             showModal('modal-confirm'); 
         }
         
         window.confirmDelItem = (trxId, itemIdx, name) => { 
             deleteTargetData = { type: 'item', id: trxId, name, idx: itemIdx }; 
-            document.getElementById('confirm-msg').innerText = "Buang barang ini dari struk? Total nominal akan dihitung ulang otomatis."; 
+            document.getElementById('confirm-msg').innerText = "Buang barang ini dari struk? Total nominal akan dihitung ulang."; 
             showModal('modal-confirm'); 
         }
         
         window.confirmDelGoal = (id, name) => { 
             deleteTargetData = { type: 'goal', id, name }; 
-            document.getElementById('confirm-msg').innerText = "Batalkan misi tabungan ini selamanya?"; 
+            document.getElementById('confirm-msg').innerText = "Batalkan misi tabungan ini?"; 
             showModal('modal-confirm'); 
         }
         
@@ -1009,32 +1254,6 @@
             setTimeout(()=>m.classList.add('hidden'), 300); 
             deleteTargetData=null; 
         }
-
-        document.getElementById('btn-execute-delete').onclick = async () => {
-            if(!deleteTargetData) return;
-            
-            if(deleteTargetData.type === 'trx') {
-                if(window.updateTransactionInDb) {
-                    await window.updateTransactionInDb(deleteTargetData.id, { is_deleted: true, deletedAt: new Date().toISOString() });
-                }
-            } else if(deleteTargetData.type === 'goal') {
-                if(window.deleteGoalFromDb) {
-                    await window.deleteGoalFromDb(deleteTargetData.id);
-                }
-            } else if(deleteTargetData.type === 'item') {
-                const trx = window.allTransactions.find(t=>t.id === deleteTargetData.id);
-                if(trx && window.updateTransactionInDb) {
-                    const nItems = trx.items.filter((_,i) => i !== deleteTargetData.idx);
-                    if(nItems.length === 0) {
-                        await window.updateTransactionInDb(trx.id, { is_deleted: true, deletedAt: new Date().toISOString() });
-                    } else { 
-                        const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
-                        await window.updateTransactionInDb(trx.id, { items: nItems, nominal: sum }); 
-                    }
-                }
-            }
-            closeConfirmModal();
-        };
 
         window.openEditItem = (data) => {
             editItemTargetData = data;
