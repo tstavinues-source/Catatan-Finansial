@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AuraFi - The Living Wealth OS</title>
     
-    <!-- Tailwind CSS & FontAwesome -->
+    <!-- Tailwind CSS, FontAwesome, dan CryptoJS untuk Kompatibilitas Algoritma Enkripsi Lama -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <style>
         .hidden { display: none !important; }
@@ -18,7 +19,6 @@
             --font-display: 'Space Grotesk', sans-serif;
         }
 
-        /* 3 PILIHAN TEMA DENGAN KONTRAS ADAPTIF DAN JELAS */
         [data-theme="midnight"] {
             --bg-base: #030712; 
             --bg-surface: rgba(15, 23, 42, 0.65); 
@@ -34,7 +34,6 @@
         }
 
         [data-theme="sakura"] {
-            /* Tema Terang Berkontras Tinggi - Tulisan Gelap Terbaca Sempurna */
             --bg-base: #fff5f5; 
             --bg-surface: rgba(255, 228, 230, 0.85); 
             --bg-glass: rgba(251, 207, 214, 0.6);
@@ -124,25 +123,14 @@
             background: linear-gradient(135deg, var(--accent-primary), var(--bg-glass)); 
         }
 
-        .safe-pb {
-            padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-        }
-
-        .view-transition {
-            transition: opacity 0.25s ease, transform 0.25s ease;
-        }
-
+        .safe-pb { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+        .view-transition { transition: opacity 0.25s ease, transform 0.25s ease; }
+        
         .v-input {
-            background: var(--bg-base);
-            border: 1px solid var(--border-glass);
-            color: var(--text-main);
-            transition: all 0.3s ease;
+            background: var(--bg-base); border: 1px solid var(--border-glass);
+            color: var(--text-main); transition: all 0.3s ease;
         }
-        .v-input:focus {
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 10px var(--accent-glow);
-            outline: none;
-        }
+        .v-input:focus { border-color: var(--accent-primary); box-shadow: 0 0 10px var(--accent-glow); outline: none; }
     </style>
 </head>
 <body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
@@ -156,7 +144,7 @@
             <h3 class="text-xl font-bold mb-2 font-display">Konfirmasi Tindakan</h3>
             <p class="text-sm text-[var(--text-muted)] mb-6 leading-relaxed" id="confirm-msg">Yakin ingin membuang data ini?</p>
             <div class="flex gap-3">
-                <button onclick="closeConfirmModal()" class="flex-1 py-3 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm transition">Batal</button>
+                <button onclick="window.closeConfirmModal()" class="flex-1 py-3 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm transition">Batal</button>
                 <button id="btn-execute-delete" class="flex-1 py-3 rounded-xl bg-[var(--color-expense)] text-white font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.3)] transition">Eksekusi</button>
             </div>
         </div>
@@ -167,7 +155,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-nib"></i> Edit Instrumen</h3>
-                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeEditModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
@@ -185,16 +173,16 @@
                     </div>
                 </div>
             </div>
-            <button onclick="saveEditItem()" class="w-full mt-6 py-3.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition">Simpan Pembaruan</button>
+            <button onclick="window.saveEditItem()" class="w-full mt-6 py-3.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition">Simpan Pembaruan</button>
         </div>
     </div>
 
-    <!-- MODAL SETTINGS & COGNITIVE KEY POOL SETUP (PASSWORD PROTECTED) -->
+    <!-- MODAL SETTINGS & COGNITIVE KEY POOL SETUP -->
     <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-brain"></i> COGNITIVE LINK SETUP</h3>
-                <button onclick="closeSettingsModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div class="space-y-4">
@@ -211,13 +199,12 @@
                     <p class="text-[9px] text-[var(--text-muted)] mt-1.5 leading-relaxed">Masukkan PIN enkripsi yang Anda buat saat menyimpan API Key di Nexus Vault sebelumnya.</p>
                 </div>
                 
-                <button id="btn-sync-vault" onclick="syncKeyPool()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
+                <button id="btn-sync-vault" onclick="window.syncKeyPool()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-satellite-dish"></i> Sinkronisasi Pool Kunci
                 </button>
             </div>
         </div>
     </div>
-
 
     <!-- ================= MAIN APP CONTAINER ================= -->
     <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
@@ -229,15 +216,15 @@
                 <p class="text-[9px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5" id="live-rate-display">Mendapatkan kurs...</p>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition" aria-label="Ganti Tema">
+                <button onclick="window.toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition" aria-label="Ganti Tema">
                     <i class="fa-solid fa-palette text-sm"></i>
                 </button>
-                <button onclick="promptSettingsAccess()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition" aria-label="Pengaturan AI">
+                <button onclick="window.promptSettingsAccess()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition" aria-label="Pengaturan AI">
                     <i class="fa-solid fa-gear text-sm"></i>
                 </button>
                 <div class="glass-panel p-0.5 flex rounded-xl border border-[var(--border-glass)]">
-                    <button id="btn-curr-jpy" onclick="setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
-                    <button id="btn-curr-idr" onclick="setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
+                    <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
+                    <button id="btn-curr-idr" onclick="window.setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
                 </div>
             </div>
         </header>
@@ -245,7 +232,7 @@
         <!-- DYNAMIC VIEW AREA -->
         <main class="flex-1 overflow-y-auto no-scrollbar relative" id="view-container">
             
-            <!-- VIEW: DASHBOARD (THE LIVING CORE) -->
+            <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="p-4 space-y-5 block view-transition">
                 <div class="flex justify-between items-center">
                     <span class="text-[10px] text-[var(--text-muted)] uppercase font-extrabold tracking-widest">Ringkasan Ekosistem</span>
@@ -292,7 +279,7 @@
                 <div class="glass-panel p-4 relative overflow-hidden">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-fire-flame-curved text-orange-500"></i> Burn Rate Radar</h3>
-                        <button onclick="promptBudget()" class="text-[10px] text-[var(--text-muted)] underline font-bold hover:text-white"><i class="fa-solid fa-pen"></i> Set Limit</button>
+                        <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] underline font-bold hover:text-[var(--text-main)]"><i class="fa-solid fa-pen"></i> Set Limit</button>
                     </div>
                     <div class="w-full h-2.5 bg-black/40 rounded-full overflow-hidden mb-2.5 border border-white/5">
                         <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000" style="width: 0%"></div>
@@ -311,7 +298,7 @@
             <div id="view-transactions" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Log Ekosistem</h2>
-                    <button onclick="switchView('trash')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition flex items-center gap-1.5 border-[var(--border-glass)]"><i class="fa-solid fa-dumpster"></i> Sampah</button>
+                    <button onclick="window.switchView('trash')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition flex items-center gap-1.5 border-[var(--border-glass)]"><i class="fa-solid fa-dumpster"></i> Sampah</button>
                 </div>
                 <div id="trx-list-container" class="space-y-5"></div>
             </div>
@@ -320,7 +307,7 @@
             <div id="view-analytics" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Analisis Inti</h2>
-                    <button onclick="downloadCSV()" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-download"></i> Ekspor CSV</button>
+                    <button onclick="window.downloadCSV()" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-download"></i> Ekspor CSV</button>
                 </div>
                 <div class="glass-panel p-4">
                     <h3 class="text-[10px] font-black mb-5 text-[var(--text-muted)] text-center tracking-widest uppercase">7 Hari Terakhir</h3>
@@ -336,7 +323,7 @@
             <div id="view-goals" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Misi Tabungan</h2>
-                    <button onclick="toggleGoalForm()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-accent hover:bg-white/10 active:scale-90 transition"><i class="fa-solid fa-plus"></i></button>
+                    <button onclick="window.toggleGoalForm()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-accent hover:bg-white/10 active:scale-90 transition"><i class="fa-solid fa-plus"></i></button>
                 </div>
                 <div id="goal-form" class="glass-panel p-4 space-y-3 hidden border-t-2 border-t-accent shadow-lg">
                     <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo)" class="v-input w-full rounded-xl p-3 text-sm outline-none">
@@ -344,7 +331,7 @@
                         <input type="number" id="goal-target" placeholder="Target Dana" class="v-input w-1/2 rounded-xl p-3 text-sm outline-none">
                         <input type="date" id="goal-date" class="v-input w-1/2 rounded-xl p-3 text-sm text-[var(--text-muted)] outline-none">
                     </div>
-                    <button onclick="saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm">Mulai Misi Menabung</button>
+                    <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm">Mulai Misi Menabung</button>
                 </div>
                 <div id="goals-list-container" class="space-y-3"></div>
             </div>
@@ -366,7 +353,7 @@
             <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
-                    <button onclick="switchView('transactions')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white active:scale-95 transition"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                    <button onclick="window.switchView('transactions')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white active:scale-95 transition"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
                 </div>
                 <div id="trash-list-container" class="space-y-3"></div>
             </div>
@@ -379,12 +366,12 @@
             <!-- IMAGE PREVIEW -->
             <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
                 <img id="img-preview" src="" class="h-14 rounded-lg object-cover">
-                <button onclick="removeImage()" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.removeImage()" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
             <!-- AKORDION CARA PEMAKAIAN AI -->
             <div class="mb-1.5">
-                <button onclick="toggleAccordion('ai-help')" class="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] p-2 rounded-xl flex justify-between items-center text-[9px] font-tech font-bold text-[var(--text-muted)] hover:text-accent transition-colors">
+                <button onclick="window.toggleAccordion('ai-help')" class="w-full bg-[var(--bg-glass)] border border-[var(--border-glass)] p-2 rounded-xl flex justify-between items-center text-[9px] font-tech font-bold text-[var(--text-muted)] hover:text-accent transition-colors">
                     <span class="flex items-center gap-1.5 tracking-wider"><i class="fa-solid fa-book-open"></i> PANDUAN INTEGRASI FITUR AI</span>
                     <i id="ai-help-icon" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
                 </button>
@@ -398,13 +385,13 @@
             <div class="glass-panel p-1 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] bg-[var(--bg-surface)] focus-within:border-[var(--accent-primary)] transition-all">
                 <button onclick="document.getElementById('file-upload').click()" class="w-11 h-11 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
                     <i class="fa-solid fa-camera text-base"></i>
-                    <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="handleImage(event)">
+                    <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="window.handleImage(event)">
                 </button>
-                <button id="btn-voice" onclick="startVoice()" class="w-11 h-11 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Rekam Suara">
+                <button id="btn-voice" onclick="window.startVoice()" class="w-11 h-11 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Rekam Suara">
                     <i class="fa-solid fa-microphone text-base"></i>
                 </button>
-                <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-sm text-white outline-none py-3 px-1.5 max-h-20 min-h-[40px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik/Suara/Foto Transaksi..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); handleSend(); }"></textarea>
-                <button id="btn-send-main" onclick="handleSend()" class="w-11 h-11 bg-accent text-[var(--bg-base)] rounded-xl flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition disabled:opacity-50" aria-label="Kirim Input">
+                <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-sm text-white outline-none py-3 px-1.5 max-h-20 min-h-[40px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik/Suara/Foto Transaksi..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
+                <button id="btn-send-main" onclick="window.handleSend()" class="w-11 h-11 bg-accent text-[var(--bg-base)] rounded-xl flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition disabled:opacity-50" aria-label="Kirim Input">
                     <i class="fa-solid fa-paper-plane text-sm" id="icon-send"></i>
                 </button>
             </div>
@@ -412,23 +399,23 @@
 
         <!-- FLOATING BOTTOM NAVIGATION -->
         <nav class="w-full h-[65px] glass-nav flex justify-around items-center px-1 z-50 shrink-0 safe-pb">
-            <button onclick="switchView('dashboard')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--accent-primary)] active:scale-95 transition" data-target="dashboard">
+            <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--accent-primary)] active:scale-95 transition" data-target="dashboard">
                 <i class="fa-solid fa-meteor text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
             </button>
-            <button onclick="switchView('transactions')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white active:scale-95 transition" data-target="transactions">
+            <button onclick="window.switchView('transactions')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white active:scale-95 transition" data-target="transactions">
                 <i class="fa-solid fa-list-ul text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Log</span>
             </button>
-            <button onclick="switchView('analytics')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white active:scale-95 transition" data-target="analytics">
+            <button onclick="window.switchView('analytics')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white active:scale-95 transition" data-target="analytics">
                 <i class="fa-solid fa-chart-simple text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Stats</span>
             </button>
-            <button onclick="switchView('goals')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white active:scale-95 transition" data-target="goals">
+            <button onclick="window.switchView('goals')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white active:scale-95 transition" data-target="goals">
                 <i class="fa-solid fa-rocket text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Misi</span>
             </button>
-            <button onclick="switchView('oracle')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white relative active:scale-95 transition" data-target="oracle">
+            <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white relative active:scale-95 transition" data-target="oracle">
                 <i class="fa-solid fa-brain text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Oracle</span>
                 <span class="absolute top-1.5 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
@@ -443,7 +430,6 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
         import { getDatabase, ref, set, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // Konfigurasi Project Agrivision Terpadu Anda
         const firebaseConfig = {
             apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
             authDomain: "agrivision-574be.firebaseapp.com",
@@ -479,17 +465,16 @@
             }
         });
 
-        // --- LOAD REALTIME DATA FROM DB (ANTI TABRAKAN) ---
         function loadRealtimeDatabaseData() {
             if (!userObj) return;
 
-            // 1. Ambil & Dengar Perubahan Transaksi
             const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
             onValue(trxRef, (snapshot) => {
                 const all = [];
                 const data = snapshot.val();
                 if (data) {
                     Object.entries(data).forEach(([key, val]) => {
+                        // SPREAD OPERATOR FIXED: ...val
                         all.push({ id: key, ...val });
                     });
                 }
@@ -498,7 +483,6 @@
                 window.reCalculateAll();
             }, (error) => console.error("Realtime Trx error:", error));
 
-            // 2. Ambil & Dengar Perubahan Sasaran Tabungan (Goals)
             const goalsRef = ref(db, `${ledgerNode}/${userObj.uid}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const goals = [];
@@ -512,7 +496,6 @@
                 window.reCalculateAll();
             }, (error) => console.error("Realtime Goals error:", error));
 
-            // 3. Ambil & Dengar Konfigurasi Setelan
             const settingsRef = ref(db, `${ledgerNode}/${userObj.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 const d = snapshot.val();
@@ -526,7 +509,6 @@
             }, (error) => console.error("Realtime Settings error:", error));
         }
 
-        // --- GLOBAL WRITING BINDINGS UNTUK REALTIME DATABASE ---
         window.saveTransactionToDb = async (data) => {
             if(!userObj) return;
             const trxRef = ref(db, `${ledgerNode}/${userObj.uid}/transactions`);
@@ -563,16 +545,34 @@
             await update(docRef, data);
         };
 
-        // --- INTEGRATED UNIFIED FAILOVER API KEY ENGINE ---
-        function getDecryptedKey(encryptedBase64, userPin) {
+        // --- UPDATE: UNIFIED FAILOVER API KEY ENGINE ---
+        function getDecryptedKey(encryptedText, userPin) {
             try {
-                let text = atob(encryptedBase64);
+                // 1. KEMBALIKAN ALGORITMA AES ORIGINAL (Kompatibilitas data Firebase lama)
+                const bytes = CryptoJS.AES.decrypt(encryptedText, userPin);
+                const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
+                if (decryptedData) return decryptedData;
+                
+                // 2. FALLBACK XOR (Untuk kunci yang disimpan dengan metode Base64/XOR)
+                let text = atob(encryptedText);
                 let result = '';
                 for (let i = 0; i < text.length; i++) {
                     result += String.fromCharCode(text.charCodeAt(i) ^ userPin.charCodeAt(i % userPin.length));
                 }
                 return result;
-            } catch(e) { return null; }
+            } catch(e) { 
+                // Fallback terakhir
+                try {
+                    let text = atob(encryptedText);
+                    let result = '';
+                    for (let i = 0; i < text.length; i++) {
+                        result += String.fromCharCode(text.charCodeAt(i) ^ userPin.charCodeAt(i % userPin.length));
+                    }
+                    return result;
+                } catch(err) {
+                    return null; 
+                }
+            }
         }
 
         class GeminiFailoverEngine {
@@ -580,7 +580,6 @@
                 this.pin = pinCode;
                 this.keysPool = []; 
                 this.currentIndex = 0;
-                this.targetIds = ["1","2","3","4","5","6","7"]; // Konfigurasi 7 ID Target terupdate Anda
             }
 
             async init() {
@@ -590,29 +589,27 @@
                 if (snapshot.exists()) {
                     const vaultData = snapshot.val();
                     
-                    this.targetIds.forEach(targetName => {
-                        for (const id in vaultData) {
-                            if (vaultData[id].name === targetName) {
-                                const decrypted = getDecryptedKey(vaultData[id].value, this.pin);
-                                if (decrypted && decrypted.length > 5) {
-                                    this.keysPool.push({
-                                        id: targetName,
-                                        value: decrypted
-                                    });
-                                }
-                            }
+                    // PEMINDAIAN DINAMIS - Mengabaikan asumsi nama "1,2,3" agar Gemini_11 tetap terbaca
+                    for (const id in vaultData) {
+                        const item = vaultData[id];
+                        const decrypted = getDecryptedKey(item.value, this.pin);
+                        // Validasi cerdas: Kunci wajib diawali dengan 'AIza' atau 'AQ.'
+                        if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) {
+                            this.keysPool.push({
+                                id: item.name,
+                                value: decrypted.trim()
+                            });
                         }
-                    });
+                    }
                 }
                 
                 console.log(`[FAILOVER ENGINE] Berhasil memuat ${this.keysPool.length} Kunci.`);
                 return this.keysPool.length;
             }
 
-            // Polymorphic executeRequest: Mendukung payload kompleks (objek) atau string prompt murni
             async executeRequest(payload, base64Image = null) {
                 if (this.keysPool.length === 0) {
-                    throw new Error("Kunci pool kosong. Harap masukkan PIN dekripsi yang benar di setelan!");
+                    throw new Error("Pool kunci kosong. Jalankan .init() terlebih dahulu.");
                 }
 
                 const model = 'gemini-2.5-flash';
@@ -625,11 +622,15 @@
                     
                     console.log(`[TRY] Request menggunakan Kunci: [${activeKeyObj.id}] (Percobaan ${attempt + 1}/${totalKeys})`);
                     
-                    // Deep clone payload untuk mencegah mutasi berganda pada pengulangan/retry
+                    // SAFE CLONING & SAFE NAVIGATION MENCEGAH UNDEFINED CRASH
                     const requestPayload = JSON.parse(JSON.stringify(payload));
 
                     if (base64Image) {
                         const base64Data = base64Image.split(',')[1] || base64Image;
+                        if (!requestPayload.contents) requestPayload.contents = [{ role: "user", parts: [] }];
+                        if (!requestPayload.contents[0]) requestPayload.contents[0] = { role: "user", parts: [] };
+                        if (!requestPayload.contents[0].parts) requestPayload.contents[0].parts = [];
+                        
                         requestPayload.contents[0].parts.push({ 
                             inlineData: { mimeType: "image/jpeg", data: base64Data } 
                         });
@@ -643,7 +644,7 @@
                         });
 
                         if (response.status === 429 || response.status === 400 || response.status === 401) {
-                            console.warn(`[LIMIT] Kunci [${activeKeyObj.id}] error (HTTP ${response.status}). Memutar ke kunci berikutnya...`);
+                            console.warn(`[LIMIT] Kunci [${activeKeyObj.id}] error (HTTP ${response.status}). Memutar...`);
                             this.rotateKey(); 
                             attempt++;
                             continue; 
@@ -655,8 +656,13 @@
                         }
 
                         const result = await response.json();
+                        
+                        // SAFE NAVIGATION ? PADA RESPON JSON
+                        const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (!textResponse) throw new Error("Format respons API tidak sesuai atau kosong.");
+                        
                         console.log(`[SUCCESS] Diproses oleh Kunci [${activeKeyObj.id}].`);
-                        return JSON.parse(result.candidates[0].content.parts[0].text);
+                        return JSON.parse(textResponse);
 
                     } catch (err) {
                         console.error(`[ERROR] Kunci [${activeKeyObj.id}] gagal: ${err.message}`);
@@ -689,18 +695,18 @@
         window.trashTransactions = []; 
         window.allGoals = []; 
         window.monthlyBudget = 100000;
-        window.activeView = 'dashboard'; // Inisialisasi awal penting agar chat/OCR tidak terhenti
+        window.activeView = 'dashboard'; 
 
-        let base64Upload = ""; 
-        let oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Saya telah memuat susunan 7 kunci cadangan (1-7) dari brankas Anda. Siap melakukan bypass otomatis jika salah satu terkena limit kuota. Mau input struk atau analisis apa hari ini?'}];
-        let pendingOracleAction = null; 
-        let deleteTargetData = null; 
-        let editItemTargetData = null;
-        let isProcessing = false;
-        
-        let failoverEngineInstance = null;
+        // PENGIKATAN GLOBAL AGAR AMAN DARI REFERENCE ERROR
+        window.base64Upload = ""; 
+        window.oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Aku sudah siap menampung chat dan memproses struk menggunakan perlindungan rotasi kunci. Mau mulai dari mana?'}];
+        window.pendingOracleAction = null; 
+        window.deleteTargetData = null; 
+        window.editItemTargetData = null;
+        window.isProcessing = false;
+        window.failoverEngineInstance = null;
 
-        function parseCleanJSON(text) {
+        window.parseCleanJSON = function(text) {
             try {
                 let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
                 return JSON.parse(cleanText);
@@ -708,52 +714,50 @@
                 console.error("JSON Parse Error:", text);
                 throw new Error("Format respon tidak valid");
             }
-        }
+        };
 
-        // --- POLYMORPHIC AI ADAPTER (PERBAIKAN UTAMA BUG CHAT/OCR TIDAK TERKIRIM) ---
-        async function fetchGeminiAPI(input, base64Img = null) {
-            if (!failoverEngineInstance) {
+        // --- POLYMORPHIC AI ADAPTER ---
+        window.fetchGeminiAPI = async function(input, base64Img = null) {
+            if (!window.failoverEngineInstance) {
                 throw new Error("Kunci belum disinkronkan. Buka Setelan (Sandi 99) dan masukkan PIN Anda!");
             }
             
             let payload;
-            
-            // Konversi dinamis string prompt murni menjadi payload terstruktur Gemini
             if (typeof input === 'string') {
-                payload = {
-                    contents: [{ role: "user", parts: [{ text: input }] }]
-                };
+                payload = { contents: [{ role: "user", parts: [{ text: input }] }] };
             } else if (typeof input === 'object' && input !== null) {
                 payload = input;
             } else {
                 throw new Error("Format input AI tidak didukung.");
             }
             
-            return await failoverEngineInstance.executeRequest(payload, base64Img);
-        }
+            return await window.failoverEngineInstance.executeRequest(payload, base64Img);
+        };
 
         window.onload = () => {
-            fetchExchangeRate();
-            renderOracleChats(); 
+            window.fetchExchangeRate();
+            window.renderOracleChats(); 
             window.applyTheme();
             
             const savedPin = sessionStorage.getItem('aurafi_vault_pin');
             if (savedPin) {
                 document.getElementById('vault-pin-input').value = savedPin;
-                setTimeout(() => syncKeyPool(true), 1500); 
+                setTimeout(() => window.syncKeyPool(true), 1500); 
             }
             
             const tx = document.getElementById('main-input-field');
-            tx.addEventListener('input', function() {
-                this.style.height = '40px'; 
-                this.style.height = (this.scrollHeight) + 'px';
-            });
+            if (tx) {
+                tx.addEventListener('input', function() {
+                    this.style.height = '40px'; 
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+            }
         };
 
-        async function syncKeyPool(silent = false) {
+        window.syncKeyPool = async function(silent = false) {
             const pin = document.getElementById('vault-pin-input').value.trim();
             if (!pin) {
-                if(!silent) showToast("HARAP MASUKKAN PIN DEKRIPSI!", true);
+                if(!silent) window.showToast("HARAP MASUKKAN PIN DEKRIPSI!", true);
                 return;
             }
 
@@ -762,19 +766,21 @@
             badge.innerText = "DECRYPTING...";
 
             try {
+                if (!window.GeminiFailoverEngine) throw new Error("Engine belum siap");
+                
                 const engine = new window.GeminiFailoverEngine(pin);
                 const loadedCount = await engine.init();
 
                 if (loadedCount > 0) {
-                    failoverEngineInstance = engine;
+                    window.failoverEngineInstance = engine;
                     sessionStorage.setItem('aurafi_vault_pin', pin);
                     
                     badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
                     badge.innerText = `ACTIVE (${loadedCount} KEYS)`;
                     
                     if(!silent) {
-                        showToast(`SINKRONISASI SUKSES: ${loadedCount} KUNCI CADANGAN SINKRON!`);
-                        closeSettingsModal();
+                        window.showToast(`SINKRONISASI SUKSES: ${loadedCount} KUNCI AKTIF!`);
+                        window.closeSettingsModal();
                     }
                 } else {
                     throw new Error("0 kunci didekripsi.");
@@ -782,11 +788,11 @@
             } catch(e) {
                 badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
                 badge.innerText = "DECRYPT FAILED";
-                if(!silent) showToast("DEKRIPSI GAGAL: PIN SALAH ATAU DATA KOSONG!", true);
+                if(!silent) window.showToast("DEKRIPSI GAGAL: PIN SALAH ATAU DATA KOSONG!", true);
             }
-        }
+        };
 
-        async function fetchExchangeRate() {
+        window.fetchExchangeRate = async function() {
             try {
                 const res = await fetch('https://open.er-api.com/v6/latest/JPY'); 
                 const data = await res.json();
@@ -798,55 +804,57 @@
             } catch(e) { 
                 document.getElementById('live-rate-display').innerText = "1 JPY = Rp 105 (OFFLINE)"; 
             }
-        }
+        };
 
-        window.toggleTheme = () => {
+        window.toggleTheme = function() {
             const themes = ['midnight', 'sakura', 'neon']; 
             window.currentTheme = themes[(themes.indexOf(window.currentTheme) + 1) % themes.length];
             window.applyTheme(); 
             if(window.updateSettingsInDb) window.updateSettingsInDb({ theme: window.currentTheme });
-        }
+        };
         
-        window.applyTheme = () => { 
+        window.applyTheme = function() { 
             document.documentElement.setAttribute('data-theme', window.currentTheme); 
-        }
+        };
 
-        window.promptSettingsAccess = () => {
+        window.promptSettingsAccess = function() {
             const pwd = prompt("OTORISASI DIWAJIBKAN. Masukkan Kode Akses:");
             if (pwd === "99") {
-                showModal('modal-settings');
+                window.showModal('modal-settings');
             } else if (pwd !== null) {
-                showToast("AKSES DITOLAK: SANDI SALAH!", true);
+                window.showToast("AKSES DITOLAK: SANDI SALAH!", true);
             }
-        }
+        };
 
-        window.closeSettingsModal = () => {
+        window.closeSettingsModal = function() {
             const m = document.getElementById('modal-settings');
-            m.classList.remove('opacity-100');
-            setTimeout(() => m.classList.add('hidden'), 300);
-        }
+            if(m) {
+                m.classList.remove('opacity-100');
+                setTimeout(() => m.classList.add('hidden'), 300);
+            }
+        };
 
-        window.toggleAccordion = (id) => {
+        window.toggleAccordion = function(id) {
             const el = document.getElementById(id);
             const icon = document.getElementById(id + '-icon');
-            if (el.classList.contains('hidden')) {
+            if (el && el.classList.contains('hidden')) {
                 el.classList.remove('hidden');
                 icon.style.transform = 'rotate(180deg)';
-            } else {
+            } else if (el) {
                 el.classList.add('hidden');
                 icon.style.transform = 'rotate(0deg)';
             }
-        }
+        };
 
-        window.setCurrency = (curr) => {
+        window.setCurrency = function(curr) {
             window.displayCurrency = curr;
             document.getElementById('btn-curr-jpy').className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${curr==='JPY'?'bg-accent text-[var(--bg-base)]':'text-[var(--text-muted)]'}`;
             document.getElementById('btn-curr-idr').className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${curr==='IDR'?'bg-accent text-[var(--bg-base)]':'text-[var(--text-muted)]'}`;
             window.reCalculateAll();
-        }
+        };
 
-        window.switchView = (viewId) => {
-            window.activeView = viewId; // Simpan status view aktif secara konsisten
+        window.switchView = function(viewId) {
+            window.activeView = viewId; 
             ['dashboard', 'transactions', 'analytics', 'goals', 'oracle', 'trash'].forEach(id => {
                 const el = document.getElementById(`view-${id}`); 
                 if(el) {
@@ -871,7 +879,7 @@
             
             const inputField = document.getElementById('main-input-field');
             if(viewId === 'oracle') { 
-                inputField.placeholder = pendingOracleAction ? "Ketik 'Ya' atau 'Tidak'..." : "Chat Oracle, hapus / edit data..."; 
+                inputField.placeholder = window.pendingOracleAction ? "Ketik 'Ya' atau 'Tidak'..." : "Chat Oracle, hapus / edit data..."; 
                 setTimeout(() => { 
                     const anc = document.getElementById('chat-anchor'); 
                     if(anc) anc.scrollIntoView({behavior:'smooth'}); 
@@ -880,7 +888,7 @@
                 inputField.placeholder = "Ketik/Suara/Foto Transaksi...";
             }
             window.reCalculateAll();
-        }
+        };
 
         const convertVal = (amt, fromCurr) => {
             if(fromCurr === window.displayCurrency) return amt;
@@ -891,12 +899,12 @@
         const formatVal = (amt) => new Intl.NumberFormat(window.displayCurrency==='JPY'?'ja-JP':'id-ID', {style:'currency', currency:window.displayCurrency, maximumFractionDigits:0}).format(amt);
 
         let expItemsState = {};
-        window.toggleReceipt = (id) => { 
+        window.toggleReceipt = function(id) { 
             expItemsState[id] = !expItemsState[id]; 
             window.reCalculateAll(); 
-        }
+        };
 
-        window.reCalculateAll = () => {
+        window.reCalculateAll = function() {
             let totBal = 0, cashBal = 0, cashlessBal = 0;
             let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
             let catSpend = {}, dailySp = {}; 
@@ -948,91 +956,123 @@
             const limitVal = convertVal(window.monthlyBudget, 'JPY');
             const burnPct = limitVal > 0 ? (thisMthSpent / limitVal) * 100 : 0;
             
-            core.className = `w-44 h-44 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`;
-            document.getElementById('burn-progress').style.width = `${Math.min(burnPct, 100)}%`;
-            document.getElementById('burn-progress').style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)';
-            document.getElementById('burn-spent').innerText = `Terpakai: ${formatVal(thisMthSpent)}`;
-            document.getElementById('burn-limit').innerText = `Limit: ${formatVal(limitVal)}`;
+            if (core) {
+                core.className = `w-44 h-44 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`;
+            }
+            const bProg = document.getElementById('burn-progress');
+            if (bProg) {
+                bProg.style.width = `${Math.min(burnPct, 100)}%`;
+                bProg.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)';
+            }
+            
+            const sp = document.getElementById('burn-spent');
+            if (sp) sp.innerText = `Terpakai: ${formatVal(thisMthSpent)}`;
+            
+            const lm = document.getElementById('burn-limit');
+            if (lm) lm.innerText = `Limit: ${formatVal(limitVal)}`;
 
             const daysInMth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
             const proj = (today.getDate() > 0 ? thisMthSpent / today.getDate() : 0) * daysInMth;
             const insightBox = document.getElementById('burn-insight-box');
-            if(proj > limitVal) { 
-                insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${formatVal(proj)}!`; 
-                insightBox.style.borderColor = 'var(--color-expense)'; 
-            } else { 
-                insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi tagihan akhir ${formatVal(proj)}.`; 
-                insightBox.style.borderColor = 'var(--border-glass)'; 
+            if (insightBox) {
+                if(proj > limitVal) { 
+                    insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${formatVal(proj)}!`; 
+                    insightBox.style.borderColor = 'var(--color-expense)'; 
+                } else { 
+                    insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi tagihan akhir ${formatVal(proj)}.`; 
+                    insightBox.style.borderColor = 'var(--border-glass)'; 
+                }
             }
 
             const cashRatio = thisMthSpent > 0 ? (thisMthCashless / thisMthSpent)*100 : 0;
             const warnBox = document.getElementById('warn-cashless');
-            if(cashRatio > 80 && impulsif > 3) { 
-                warnBox.classList.remove('hidden'); 
-                document.getElementById('warn-cashless-pct').innerText = `${cashRatio.toFixed(0)}%`; 
-            } else {
-                warnBox.classList.add('hidden');
+            if (warnBox) {
+                if(cashRatio > 80 && impulsif > 3) { 
+                    warnBox.classList.remove('hidden'); 
+                    document.getElementById('warn-cashless-pct').innerText = `${cashRatio.toFixed(0)}%`; 
+                } else {
+                    warnBox.classList.add('hidden');
+                }
             }
 
             const topCatDiv = document.getElementById('top-categories-list');
             const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
-            topCatDiv.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.slice(0,4).map(([c,v]) => `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0"><div><p class="font-bold">${c}</p><p class="text-[9px] text-[var(--text-muted)] font-bold">${((v/thisMthSpent)*100).toFixed(0)}% dari total belanja</p></div><p class="font-mono text-xs font-bold">${formatVal(v)}</p></div>`).join('');
+            if (topCatDiv) {
+                topCatDiv.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.slice(0,4).map(([c,v]) => `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0"><div><p class="font-bold">${c}</p><p class="text-[9px] text-[var(--text-muted)] font-bold">${((v/thisMthSpent)*100).toFixed(0)}% dari total belanja</p></div><p class="font-mono text-xs font-bold">${formatVal(v)}</p></div>`).join('');
+            }
 
-            document.getElementById('trx-list-container').innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
-                const g = groupedTrx[dateStr]; 
-                const dObj = new Date(dateStr);
-                return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${dObj.getDate().toString().padStart(2,'0')}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${dObj.toLocaleDateString('id-ID', {weekday:'short'})}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-white'}">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
-                    const isExp = expItemsState[t.id]; 
-                    const hasItems = t.is_receipt && t.items && t.items.length > 0;
-                    return `<div class="glass-panel p-4 relative group"><button onclick="confirmDelTrx('${t.id}', '${t.kategori}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : '<i class="fa-solid fa-basket-shopping text-[var(--text-main)]"></i>'}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick='openEditItem(${JSON.stringify({id:t.id, idx, item:it})})' class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="confirmDelItem('${t.id}', ${idx}, '${it.nama_barang}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
-                }).join('')}</div></div>`
-            }).join('');
+            const trxListContainer = document.getElementById('trx-list-container');
+            if (trxListContainer) {
+                // SPREAD FIX, HTML QUOTES FIX (Passing param as ID, not JSON Obj)
+                trxListContainer.innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
+                    const g = groupedTrx[dateStr]; 
+                    const dObj = new Date(dateStr);
+                    return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${dObj.getDate().toString().padStart(2,'0')}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${dObj.toLocaleDateString('id-ID', {weekday:'short'})}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-white'}">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
+                        const isExp = expItemsState[t.id]; 
+                        const hasItems = t.is_receipt && Array.isArray(t.items) && t.items.length > 0;
+                        return `<div class="glass-panel p-4 relative group"><button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : '<i class="fa-solid fa-basket-shopping text-[var(--text-main)]"></i>'}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', ${idx})" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', ${idx})" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
+                    }).join('')}</div></div>`
+                }).join('');
+            }
 
-            const maxDSp = Math.max(...Object.values(dailySp), 1);
-            document.getElementById('chart-7days').innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
+            const c7d = document.getElementById('chart-7days');
+            if (c7d) {
+                const maxDSp2 = Math.max(...Object.values(dailySp), 1);
+                c7d.innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp2)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
+            }
 
-            const glList = window.allGoals || [];
-            document.getElementById('goals-list-container').innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
-                const targetVal = convertVal(g.targetAmount, g.currency);
-                const diffDays = Math.ceil((new Date(g.targetDate) - new Date()) / (1000 * 3600 * 24));
-                const daily = diffDays > 0 ? targetVal/diffDays : 0;
-                return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="confirmDelGoal('${g.id}','${g.name}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
-            }).join('');
+            const gCon = document.getElementById('goals-list-container');
+            if (gCon) {
+                const glList = window.allGoals || [];
+                gCon.innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
+                    const targetVal = convertVal(g.targetAmount, g.currency);
+                    const diffDays = Math.ceil((new Date(g.targetDate) - new Date()) / (1000 * 3600 * 24));
+                    const daily = diffDays > 0 ? targetVal/diffDays : 0;
+                    return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
+                }).join('');
+            }
 
-            const trashList = window.trashTransactions || [];
-            document.getElementById('trash-list-container').innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="restoreTransaction('${t.id}')" class="bg-green-500/20 text-green-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="deleteForever('${t.id}')" class="bg-red-500/20 text-red-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
-        }
+            const trCon = document.getElementById('trash-list-container');
+            if (trCon) {
+                const trashList = window.trashTransactions || [];
+                trCon.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-green-500/20 text-green-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-red-500/20 text-red-400 p-2.5 rounded-lg active:scale-90 transition"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
+            }
+        };
 
-        function setProcessingStatus(isProc) {
-            isProcessing = isProc;
+        window.setProcessingStatus = function(isProc) {
+            window.isProcessing = isProc;
             const btn = document.getElementById('btn-send-main'); 
             const icon = document.getElementById('icon-send');
-            if(isProc) { 
-                btn.disabled = true; 
-                icon.className = "fa-solid fa-circle-notch animate-spin"; 
-            } else { 
-                btn.disabled = false; 
-                icon.className = "fa-solid fa-paper-plane"; 
+            if (btn && icon) {
+                if(isProc) { 
+                    btn.disabled = true; 
+                    icon.className = "fa-solid fa-circle-notch animate-spin"; 
+                } else { 
+                    btn.disabled = false; 
+                    icon.className = "fa-solid fa-paper-plane"; 
+                }
             }
-        }
+        };
 
-        window.handleImage = (e) => { 
+        window.handleImage = function(e) { 
             const f = e.target.files[0]; 
             if(!f) return; 
             document.getElementById('img-preview').src = URL.createObjectURL(f); 
             document.getElementById('image-preview-box').classList.remove('hidden'); 
             const r = new FileReader(); 
-            r.onload = () => base64Upload = r.result.split(',')[1]; 
+            r.onload = () => { window.base64Upload = r.result.split(',')[1]; }; 
             r.readAsDataURL(f); 
-        }
+        };
         
-        window.removeImage = () => { 
-            document.getElementById('image-preview-box').classList.add('hidden'); 
-            base64Upload = ""; 
-            document.getElementById('file-upload').value = "";
-        }
+        window.removeImage = function() { 
+            const box = document.getElementById('image-preview-box');
+            if (box) box.classList.add('hidden'); 
+            window.base64Upload = ""; 
+            const fu = document.getElementById('file-upload');
+            if (fu) fu.value = "";
+        };
         
-        window.startVoice = () => { 
+        window.startVoice = function() { 
             const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; 
             if(!Speech) return alert("Browser tidak mendukung Web Speech API."); 
             const rec = new Speech(); 
@@ -1043,19 +1083,31 @@
                 document.getElementById('main-input-field').value += " " + e.results[0][0].transcript; 
             }; 
             rec.onend = () => document.getElementById('btn-voice').classList.remove('text-rose-500', 'animate-pulse'); 
-        }
+        };
 
-        window.handleSend = async () => {
-            const txt = document.getElementById('main-input-field').value.trim();
-            if(!txt && !base64Upload) return;
-            document.getElementById('main-input-field').value = "";
-            document.getElementById('main-input-field').style.height = '40px';
-            if(window.activeView === 'oracle') await processOracleChat(txt);
-            else await processTransactionParsing(txt);
-        }
+        // --- PENGIRIMAN DATA CERDAS ---
+        window.handleSend = async function() {
+            const txtField = document.getElementById('main-input-field');
+            if (!txtField) return;
+            const txt = txtField.value.trim();
+            const imgData = window.base64Upload; // Amankan state gambar saat ini
 
-        async function processTransactionParsing(text) {
-            setProcessingStatus(true);
+            if(!txt && !imgData) return;
+            
+            txtField.value = "";
+            txtField.style.height = '40px';
+            window.removeImage(); // Bersihkan UI gambar langsung agar pengguna tidak spam klik
+            
+            // Pengalihan cerdas beserta gambar (memperbaiki bug gambar tidak terkirim)
+            if(window.activeView === 'oracle') {
+                await window.processOracleChat(txt, imgData);
+            } else {
+                await window.processTransactionParsing(txt, imgData);
+            }
+        };
+
+        window.processTransactionParsing = async function(text, imgData = null) {
+            window.setProcessingStatus(true);
             
             const payload = {
                 contents: [{role: "user", parts: [{text: text || "Ekstrak struk"}]}],
@@ -1093,20 +1145,20 @@
             };
 
             try {
-                const res = await fetchGeminiAPI(payload, base64Upload);
+                const res = await window.fetchGeminiAPI(payload, imgData);
                 if (res.is_receipt && res.items?.length > 0 && res.tipe === 'pengeluaran') {
                     let sum = res.items.reduce((a, b) => a + (b.harga * (b.qty || 1)), 0);
                     if (sum !== res.nominal) res.items[0].harga += (res.nominal - sum); 
                 }
                 
                 if(window.saveTransactionToDb) {
+                    // SPREAD OPERATOR FIXED: ...res
                     await window.saveTransactionToDb({ 
                         ...res, 
                         is_deleted: false, 
                         createdAt: new Date().toISOString() 
                     });
-                    removeImage(); 
-                    switchView('transactions');
+                    window.switchView('transactions');
                 } else {
                     alert("Koneksi database sedang disiapkan. Harap tunggu beberapa detik.");
                 }
@@ -1114,61 +1166,67 @@
                 console.error(e); 
                 alert(e.message || "AI gagal memproses data."); 
             } finally { 
-                setProcessingStatus(false); 
+                window.setProcessingStatus(false); 
             }
-        }
+        };
 
-        function renderOracleChats() {
+        window.renderOracleChats = function() {
             const chatBox = document.getElementById('oracle-chat-box');
-            chatBox.innerHTML = oracleChats.map(c => `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}"><div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel'} leading-relaxed shadow-sm">${c.text}</div></div>`).join('');
+            if(!chatBox) return;
+            chatBox.innerHTML = window.oracleChats.map(c => `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}"><div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel'} leading-relaxed shadow-sm">${c.text}</div></div>`).join('');
             
-            if(isProcessing && activeView === 'oracle') {
+            if(window.isProcessing && window.activeView === 'oracle') {
                 chatBox.innerHTML += `<div class="flex justify-start"><div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center"><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200"></div></div></div>`;
             }
             setTimeout(() => { 
                 const anc = document.getElementById('chat-anchor'); 
                 if(anc) anc.scrollIntoView({behavior:'smooth'}); 
             }, 50);
-        }
+        };
 
-        async function processOracleChat(text) {
-            oracleChats.push({role: 'user', text}); 
-            setProcessingStatus(true); 
-            renderOracleChats();
+        // OBROLAN ORACLE - KINI MENERIMA GAMBAR
+        window.processOracleChat = async function(text, base64Img = null) {
+            // Jika tidak ada teks tapi ada gambar, beri tahu UI
+            const uiText = text || (base64Img ? "[Menganalisis Gambar Terlampir...]" : "");
+            window.oracleChats.push({role: 'user', text: uiText}); 
+            window.setProcessingStatus(true); 
+            window.renderOracleChats();
 
-            if (pendingOracleAction) {
+            if (window.pendingOracleAction) {
                 const isYes = /ya|iya|y|betul|benar|oke|ok|gas|lanjut/i.test(text); 
                 const isNo = /tidak|bukan|nggak|enggak|t|batal|cancel/i.test(text);
                 if (isYes) {
                     try {
                         if(window.updateTransactionInDb) {
-                            if(pendingOracleAction.action === 'delete_trx') {
-                                await window.updateTransactionInDb(pendingOracleAction.target_id, { is_deleted: true, deletedAt: new Date().toISOString() });
-                            } else if(pendingOracleAction.action === 'update_nominal') {
-                                await window.updateTransactionInDb(pendingOracleAction.target_id, { nominal: pendingOracleAction.new_nominal });
-                            } else if(pendingOracleAction.action === 'update_items') {
-                                const sum = pendingOracleAction.new_items.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
-                                await window.updateTransactionInDb(pendingOracleAction.target_id, { items: pendingOracleAction.new_items, nominal: sum });
+                            if(window.pendingOracleAction.action === 'delete_trx') {
+                                await window.updateTransactionInDb(window.pendingOracleAction.target_id, { is_deleted: true, deletedAt: new Date().toISOString() });
+                            } else if(window.pendingOracleAction.action === 'update_nominal') {
+                                await window.updateTransactionInDb(window.pendingOracleAction.target_id, { nominal: window.pendingOracleAction.new_nominal });
+                            } else if(window.pendingOracleAction.action === 'update_items') {
+                                const sum = window.pendingOracleAction.new_items.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
+                                await window.updateTransactionInDb(window.pendingOracleAction.target_id, { items: window.pendingOracleAction.new_items, nominal: sum });
                             }
-                            oracleChats.push({role: 'ai', text: "Sip bos, database Realtime Database sudah kuupdate!"});
+                            window.oracleChats.push({role: 'ai', text: "Sip bos, database Realtime Database sudah kuupdate!"});
                         }
                     } catch(e) { 
-                        oracleChats.push({role:'ai', text: "Ada masalah teknis saat memproses perubahan database."}); 
+                        window.oracleChats.push({role:'ai', text: "Ada masalah teknis saat memproses perubahan database."}); 
                     }
-                    pendingOracleAction = null; 
-                    document.getElementById('main-input-field').placeholder = "Chat Oracle, hapus / edit data..."; 
-                    setProcessingStatus(false); 
-                    renderOracleChats(); 
+                    window.pendingOracleAction = null; 
+                    const mField = document.getElementById('main-input-field');
+                    if(mField) mField.placeholder = "Chat Oracle, hapus / edit data..."; 
+                    window.setProcessingStatus(false); 
+                    window.renderOracleChats(); 
                     return;
                 } else if (isNo) {
-                    pendingOracleAction = null; 
-                    oracleChats.push({role: 'ai', text: "Okey, instruksi dibatalkan. Ada yang bisa kubantu lagi?"}); 
-                    document.getElementById('main-input-field').placeholder = "Chat Oracle, hapus / edit data..."; 
-                    setProcessingStatus(false); 
-                    renderOracleChats(); 
+                    window.pendingOracleAction = null; 
+                    window.oracleChats.push({role: 'ai', text: "Okey, instruksi dibatalkan. Ada yang bisa kubantu lagi?"}); 
+                    const mField = document.getElementById('main-input-field');
+                    if(mField) mField.placeholder = "Chat Oracle, hapus / edit data..."; 
+                    window.setProcessingStatus(false); 
+                    window.renderOracleChats(); 
                     return;
                 }
-                pendingOracleAction = null; 
+                window.pendingOracleAction = null; 
             }
 
             const rec = window.allTransactions.slice(0,12).map(t => {
@@ -1177,7 +1235,7 @@
             }).join('\n');
 
             const payload = {
-                contents: [{role: "user", parts: [{text}]}],
+                contents: [{role: "user", parts: [{text: text || "Analisis gambar ini."}]}],
                 systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Realtime Database Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah modifikasi ke new_items.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
@@ -1206,120 +1264,140 @@
             };
 
             try {
-                const res = await fetchGeminiAPI(payload);
-                oracleChats.push({role: 'ai', text: res.reply});
+                // Teruskan base64Img jika pengguna mengirim gambar saat chat oracle
+                const res = await window.fetchGeminiAPI(payload, base64Img);
+                window.oracleChats.push({role: 'ai', text: res.reply});
                 if(res.action !== 'none' && res.target_id) { 
-                    pendingOracleAction = res; 
-                    document.getElementById('main-input-field').placeholder = "Ketik 'Ya' atau 'Tidak'..."; 
+                    window.pendingOracleAction = res; 
+                    const mField = document.getElementById('main-input-field');
+                    if (mField) mField.placeholder = "Ketik 'Ya' atau 'Tidak'..."; 
                 }
             } catch(e) { 
-                oracleChats.push({role:'ai', text: "Otakku terganggu sebentar bos, tolong ketik ulang ya!"}); 
+                window.oracleChats.push({role:'ai', text: `Error sistem bos: ${e.message}`}); 
             } finally { 
-                setProcessingStatus(false); 
-                renderOracleChats(); 
+                window.setProcessingStatus(false); 
+                window.renderOracleChats(); 
             }
-        }
+        };
 
-        function showToast(msg, isError = false) {
+        window.showToast = function(msg, isError = false) {
             const container = document.getElementById('toast-container');
+            if(!container) return;
             const toast = document.createElement('div');
             const icon = isError ? '<i class="fa-solid fa-triangle-exclamation text-[var(--color-expense)]"></i>' : '<i class="fa-solid fa-check text-accent"></i>';
             toast.className = `toast ${isError ? '!border-l-[var(--color-expense)]' : ''}`;
             toast.innerHTML = `${icon} <span>${msg}</span>`;
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3400);
-        }
+        };
 
-        window.confirmDelTrx = (id, name) => { 
-            deleteTargetData = { type: 'trx', id, name }; 
-            document.getElementById('confirm-msg').innerText = "Yakin ingin menghapus transaksi ini?"; 
-            showModal('modal-confirm'); 
-        }
-        
-        window.confirmDelItem = (trxId, itemIdx, name) => { 
-            deleteTargetData = { type: 'item', id: trxId, name, idx: itemIdx }; 
-            document.getElementById('confirm-msg').innerText = "Buang barang ini dari struk? Total nominal akan dihitung ulang."; 
-            showModal('modal-confirm'); 
-        }
-        
-        window.confirmDelGoal = (id, name) => { 
-            deleteTargetData = { type: 'goal', id, name }; 
-            document.getElementById('confirm-msg').innerText = "Batalkan misi tabungan ini?"; 
-            showModal('modal-confirm'); 
-        }
-        
-        function showModal(id) { 
+        window.showModal = function(id) { 
             const m = document.getElementById(id); 
-            m.classList.remove('hidden'); 
-            setTimeout(()=>m.classList.add('opacity-100'), 10); 
-        }
-        
-        window.closeConfirmModal = () => { 
-            const m = document.getElementById('modal-confirm'); 
-            m.classList.remove('opacity-100'); 
-            setTimeout(()=>m.classList.add('hidden'), 300); 
-            deleteTargetData=null; 
-        }
+            if(m) {
+                m.classList.remove('hidden'); 
+                setTimeout(()=>m.classList.add('opacity-100'), 10); 
+            }
+        };
 
-        window.openEditItem = (data) => {
-            editItemTargetData = data;
-            document.getElementById('edit-item-name').value = data.item.nama_barang; 
-            document.getElementById('edit-item-qty').value = data.item.qty || 1; 
-            document.getElementById('edit-item-price').value = data.item.harga;
-            showModal('modal-edit-item');
-        }
+        window.confirmDelTrx = function(id) { 
+            const trx = window.allTransactions.find(t=>t.id === id);
+            if(!trx) return;
+            window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; 
+            document.getElementById('confirm-msg').innerText = `Yakin ingin membuang log "${trx.kategori}"?`; 
+            window.showModal('modal-confirm'); 
+        };
         
-        window.closeEditModal = () => { 
+        window.confirmDelItem = function(trxId, itemIdx) { 
+            const trx = window.allTransactions.find(t=>t.id === trxId);
+            if(!trx || !trx.items || !trx.items[itemIdx]) return;
+            const item = trx.items[itemIdx];
+            window.deleteTargetData = { type: 'item', id: trxId, name: item.nama_barang, idx: itemIdx }; 
+            document.getElementById('confirm-msg').innerText = `Hapus "${item.nama_barang}" dari struk ini? Total belanja akan dihitung ulang otomatis.`; 
+            window.showModal('modal-confirm'); 
+        };
+        
+        window.confirmDelGoal = function(id) { 
+            const goal = window.allGoals.find(g=>g.id === id);
+            if(!goal) return;
+            window.deleteTargetData = { type: 'goal', id, name: goal.name }; 
+            document.getElementById('confirm-msg').innerText = `Batalkan misi tabungan "${goal.name}" selamanya?`; 
+            window.showModal('modal-confirm'); 
+        };
+        
+        window.closeConfirmModal = function() { 
+            const m = document.getElementById('modal-confirm'); 
+            if(m) {
+                m.classList.remove('opacity-100'); 
+                setTimeout(()=>m.classList.add('hidden'), 300); 
+            }
+            window.deleteTargetData=null; 
+        };
+
+        window.openEditItem = function(trxId, itemIdx) {
+            const trx = window.allTransactions.find(t=>t.id === trxId);
+            if(!trx || !trx.items || !trx.items[itemIdx]) return;
+            const item = trx.items[itemIdx];
+            window.editItemTargetData = { id: trxId, idx: itemIdx, item: item };
+            document.getElementById('edit-item-name').value = item.nama_barang || ''; 
+            document.getElementById('edit-item-qty').value = item.qty || 1; 
+            document.getElementById('edit-item-price').value = item.harga || 0;
+            window.showModal('modal-edit-item');
+        };
+        
+        window.closeEditModal = function() { 
             const m = document.getElementById('modal-edit-item'); 
-            m.classList.remove('opacity-100'); 
-            setTimeout(()=>m.classList.add('hidden'), 300); 
-            editItemTargetData=null; 
-        }
+            if(m) {
+                m.classList.remove('opacity-100'); 
+                setTimeout(()=>m.classList.add('hidden'), 300); 
+            }
+            window.editItemTargetData=null; 
+        };
         
-        window.saveEditItem = async () => {
-            if(!editItemTargetData) return;
-            const trx = window.allTransactions.find(t=>t.id === editItemTargetData.id);
+        window.saveEditItem = async function() {
+            if(!window.editItemTargetData) return;
+            const trx = window.allTransactions.find(t=>t.id === window.editItemTargetData.id);
             if(trx && window.updateTransactionInDb) {
+                // SPREAD OPERATOR FIXED: ...trx.items dan ...nItems[window.editItemTargetData.idx]
                 const nItems = [...trx.items];
-                nItems[editItemTargetData.idx] = { 
-                    ...nItems[editItemTargetData.idx], 
+                nItems[window.editItemTargetData.idx] = { 
+                    ...nItems[window.editItemTargetData.idx], 
                     nama_barang: document.getElementById('edit-item-name').value, 
-                    qty: parseFloat(document.getElementById('edit-item-qty').value), 
-                    harga: parseFloat(document.getElementById('edit-item-price').value) 
+                    qty: parseFloat(document.getElementById('edit-item-qty').value) || 1, 
+                    harga: parseFloat(document.getElementById('edit-item-price').value) || 0 
                 };
                 const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
                 await window.updateTransactionInDb(trx.id, { items: nItems, nominal: sum });
             }
-            closeEditModal();
-        }
+            window.closeEditModal();
+        };
 
-        window.restoreTransaction = async (id) => {
+        window.restoreTransaction = async function(id) {
             if(window.updateTransactionInDb) {
                 await window.updateTransactionInDb(id, { is_deleted: false, deletedAt: null });
             }
-        }
+        };
 
-        window.deleteForever = async (id) => {
+        window.deleteForever = async function(id) {
             if(window.deleteTransactionPermanently) {
                 await window.deleteTransactionPermanently(id);
             }
-        }
+        };
 
-        window.promptBudget = () => {
+        window.promptBudget = function() {
             const amt = prompt("Masukkan Limit Anggaran Bulanan Baru (dalam JPY):", window.monthlyBudget);
             if(amt && !isNaN(amt)) { 
                 window.monthlyBudget = parseFloat(amt); 
                 if(window.updateSettingsInDb) window.updateSettingsInDb({ budget: window.monthlyBudget }); 
                 window.reCalculateAll(); 
             }
-        }
+        };
 
-        window.toggleGoalForm = () => { 
+        window.toggleGoalForm = function() { 
             const f = document.getElementById('goal-form'); 
-            f.classList.toggle('hidden'); 
-        }
+            if(f) f.classList.toggle('hidden'); 
+        };
         
-        window.saveGoal = async () => {
+        window.saveGoal = async function() {
             const name = document.getElementById('goal-name').value; 
             const amt = document.getElementById('goal-target').value; 
             const dt = document.getElementById('goal-date').value;
@@ -1332,9 +1410,9 @@
                 document.getElementById('goal-target').value = ""; 
                 document.getElementById('goal-date').value = "";
             }
-        }
+        };
 
-        window.downloadCSV = () => {
+        window.downloadCSV = function() {
             let csv = "Tanggal,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Catatan_AI\n";
             window.allTransactions.forEach(r => {
                 const d = r.tanggal?.split('T')[0] || ''; 
@@ -1348,7 +1426,10 @@
             document.body.appendChild(link); 
             link.click(); 
             link.remove();
-        }
+        };
+
+        // Memastikan dukungan legacy untuk scope onclick HTML murni
+        window.window = window;
     </script>
 </body>
 </html>
