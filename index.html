@@ -8,7 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
-    <!-- Diperlukan untuk dekripsi AES kompatibilitas data lama -->
+    
+    <!-- MEMULIHKAN PUSTAKA CRYPTO-JS UNTUK ALGORITMA DEKRIPSI LAMA -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <style>
@@ -153,7 +154,7 @@
             <p class="text-sm text-[var(--text-muted)] mb-6 leading-relaxed" id="confirm-msg">Yakin ingin membuang data ini?</p>
             <div class="flex gap-3">
                 <button onclick="window.closeConfirmModal()" class="flex-1 py-3 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm transition">Batal</button>
-                <button id="btn-execute-delete" class="flex-1 py-3 rounded-xl bg-[var(--color-expense)] text-white font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.3)] transition">Eksekusi</button>
+                <button id="btn-execute-delete" class="flex-1 py-3 rounded-xl bg-[var(--color-expense)] text-white font-bold text-sm shadow-[0_0_15px_rgba(244,63,94,0.3)] transition">Hapus Permanen</button>
             </div>
         </div>
     </div>
@@ -351,7 +352,7 @@
                     <div class="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center border border-accent/40"><i class="fa-solid fa-brain text-accent text-sm"></i></div>
                     <div>
                         <h2 class="font-bold text-[var(--text-main)] text-xs text-accent">Aura Oracle V2</h2>
-                        <p class="text-[8px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-wider"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Realtime Failover Engine</p>
+                        <p class="text-[8px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-wider"><span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Memori Kognitif Aktif</p>
                     </div>
                 </div>
                 <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-10"></div>
@@ -385,7 +386,7 @@
                     <i id="ai-help-icon" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
                 </button>
                 <div id="ai-help" class="hidden mt-1 p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl text-[11px] text-[var(--text-muted)] leading-relaxed space-y-2">
-                    <p><strong class="text-accent">1. Teks Kognitif:</strong> Masukkan transaksi manual. Contoh: <em class="text-[var(--text-main)]">"Gajian masuk Rp 1.500.000"</em> atau <em class="text-[var(--text-main)]">"Beli ramen di Shinjuku 1200 Yen tunai"</em>.</p>
+                    <p><strong class="text-accent">1. Teks Kognitif:</strong> Masukkan transaksi manual. Contoh: <em class="text-[var(--text-main)]">"Gajian masuk Rp 1.500.000"</em> atau <em class="text-[var(--text-main)]">"Beli ramen 1200 Yen tunai"</em>.</p>
                     <p><strong class="text-accent">2. Sensor Suara:</strong> Tekan ikon <i class="fa-solid fa-microphone text-accent"></i>, sebutkan belanjaan Anda, dan sistem akan mengonversinya secara instan.</p>
                     <p><strong class="text-accent">3. Pindai Struk Visual:</strong> Klik ikon <i class="fa-solid fa-camera text-accent"></i>, foto struk fisik Anda. AI memproses pemisahan barang & hitung ulang total otomatis.</p>
                 </div>
@@ -427,7 +428,6 @@
             <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--text-muted)] hover:text-white relative active:scale-95 transition" data-target="oracle">
                 <i class="fa-solid fa-brain text-base"></i>
                 <span class="text-[8px] font-black tracking-widest uppercase">Oracle</span>
-                <span class="absolute top-1.5 right-4 w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span>
             </button>
         </nav>
 
@@ -435,11 +435,9 @@
 
     <!-- MIGRATED TO REALTIME DATABASE V10 MODULES -->
     <script type="module">
-        // PENGHAPUSAN FIREBASE AUTH UNTUK BYPASS AUTH-NOT-FOUND ERROR
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, set, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-        // Konfigurasi Project Agrivision Terpadu
         const firebaseConfig = {
             apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
             authDomain: "agrivision-574be.firebaseapp.com",
@@ -455,14 +453,12 @@
 
         const ledgerNode = 'aurafi_ledger'; 
         
-        // MEMBUAT DEVICE ID LOKAL SEBAGAI PENGGANTI USER-UID
         let localDeviceId = localStorage.getItem('aurafi_device_id');
         if (!localDeviceId) {
             localDeviceId = 'user_' + Date.now() + Math.floor(Math.random()*1000);
             localStorage.setItem('aurafi_device_id', localDeviceId);
         }
 
-        // Pemuatan data Realtime tanpa memerlukan status login Auth
         function loadRealtimeDatabaseData() {
             const trxRef = ref(db, `${ledgerNode}/${localDeviceId}/transactions`);
             onValue(trxRef, (snapshot) => {
@@ -518,7 +514,7 @@
 
         window.deleteTransactionPermanently = async (trxId) => {
             const docRef = ref(db, `${ledgerNode}/${localDeviceId}/transactions/${trxId}`);
-            await remove(docRef);
+            await remove(docRef); // HARD DELETE PERMANEN
         };
 
         window.saveGoalToDb = async (data) => {
@@ -536,32 +532,25 @@
             await update(docRef, data);
         };
 
-        // --- UNIFIED FAILOVER API KEY ENGINE ---
+        // --- MENGEMBALIKAN ALGORITMA ENKRIPSI AES (BUG FIX "DECRYPT FAILED") ---
         function getDecryptedKey(encryptedText, userPin) {
             try {
-                // 1. KEMBALIKAN ALGORITMA AES ORIGINAL (Kompatibilitas data Firebase lama)
+                // Mencoba membaca data lawas dengan CryptoJS (AES)
                 const bytes = CryptoJS.AES.decrypt(encryptedText, userPin);
                 const decryptedData = bytes.toString(CryptoJS.enc.Utf8);
                 if (decryptedData) return decryptedData;
-                
-                // 2. FALLBACK XOR 
+            } catch(e) {}
+            
+            // Fallback: Membaca data baru jika dienkripsi menggunakan XOR Base64
+            try {
                 let text = atob(encryptedText);
                 let result = '';
                 for (let i = 0; i < text.length; i++) {
                     result += String.fromCharCode(text.charCodeAt(i) ^ userPin.charCodeAt(i % userPin.length));
                 }
                 return result;
-            } catch(e) { 
-                try {
-                    let text = atob(encryptedText);
-                    let result = '';
-                    for (let i = 0; i < text.length; i++) {
-                        result += String.fromCharCode(text.charCodeAt(i) ^ userPin.charCodeAt(i % userPin.length));
-                    }
-                    return result;
-                } catch(err) {
-                    return null; 
-                }
+            } catch(err) {
+                return null; 
             }
         }
 
@@ -579,11 +568,11 @@
                 if (snapshot.exists()) {
                     const vaultData = snapshot.val();
                     
-                    // PEMINDAIAN DINAMIS KE SELURUH DATA BASE
+                    // PEMINDAIAN DINAMIS - Mensinkronisasikan kunci lama "Gemini_11" maupun "1, 2, 3"
                     for (const id in vaultData) {
                         const item = vaultData[id];
                         const decrypted = getDecryptedKey(item.value, this.pin);
-                        // Validasi cerdas: Kunci wajib diawali dengan 'AIza' atau 'AQ.'
+                        // Kunci yang didekripsi wajib berisi pola API resmi
                         if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) {
                             this.keysPool.push({
                                 id: item.name,
@@ -599,7 +588,7 @@
 
             async executeRequest(payload, base64Image = null) {
                 if (this.keysPool.length === 0) {
-                    throw new Error("Pool kunci kosong. Harap masukkan PIN dekripsi yang benar di setelan!");
+                    throw new Error("Kunci pool kosong. Harap masukkan PIN dekripsi yang benar di setelan!");
                 }
 
                 const model = 'gemini-2.5-flash';
@@ -612,7 +601,6 @@
                     
                     console.log(`[TRY] Request menggunakan Kunci: [${activeKeyObj.id}] (Percobaan ${attempt + 1}/${totalKeys})`);
                     
-                    // SAFE CLONING MENCEGAH UNDEFINED CRASH
                     const requestPayload = JSON.parse(JSON.stringify(payload));
 
                     if (base64Image) {
@@ -647,7 +635,7 @@
 
                         const result = await response.json();
                         
-                        // SAFE NAVIGATION ? PADA RESPON JSON
+                        // SAFE NAVIGATION ERROR FIX
                         const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (!textResponse) throw new Error("Format respons API tidak sesuai atau kosong.");
                         
@@ -688,12 +676,26 @@
         window.activeView = 'dashboard'; 
 
         window.base64Upload = ""; 
-        window.oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Aku sudah siap menampung chat dan memproses struk menggunakan perlindungan rotasi kunci. Mau mulai dari mana?'}];
+        window.oracleChats = []; 
         window.pendingOracleAction = null; 
         window.deleteTargetData = null; 
         window.editItemTargetData = null;
         window.isProcessing = false;
         window.failoverEngineInstance = null;
+
+        // --- SISTEM PENYIMPANAN RIWAYAT CHAT (BUG FIX: AI HILANG SAAT REFRESH) ---
+        window.saveChat = function() {
+            localStorage.setItem('aurafi_chats', JSON.stringify(window.oracleChats));
+        };
+        
+        window.loadChat = function() {
+            const stored = localStorage.getItem('aurafi_chats');
+            if (stored) {
+                window.oracleChats = JSON.parse(stored);
+            } else {
+                window.oracleChats = [{role: 'ai', text: 'Halo bos! Aura Oracle V2 Online. Memori kognitifku aktif 100%. Mau analisis keuangan apa hari ini?'}];
+            }
+        };
 
         window.parseCleanJSON = function(text) {
             try {
@@ -705,7 +707,7 @@
             }
         };
 
-        // --- POLYMORPHIC AI ADAPTER ---
+        // --- POLYMORPHIC AI ADAPTER (ADAPTOR PESAN DAN GAMBAR) ---
         window.fetchGeminiAPI = async function(input, base64Img = null) {
             if (!window.failoverEngineInstance) {
                 throw new Error("Kunci belum disinkronkan. Buka Setelan (Sandi 99) dan masukkan PIN Anda!");
@@ -725,6 +727,7 @@
 
         window.onload = () => {
             window.fetchExchangeRate();
+            window.loadChat(); // Memuat riwayat dari localStorage
             window.renderOracleChats(); 
             window.applyTheme();
             
@@ -917,6 +920,7 @@
             return icons[cat] || 'fa-tag';
         }
 
+        // --- KALKULATOR UTAMA (BUG FIX: TARIK TUNAI) ---
         window.reCalculateAll = function() {
             let totBal = 0, cashBal = 0, cashlessBal = 0;
             let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
@@ -936,7 +940,6 @@
                 const val = convertVal(trx.nominal, trx.mata_uang);
                 const isCash = trx.metode_pembayaran === 'tunai';
                 const dStr = trx.tanggal ? trx.tanggal.split('T')[0] : '';
-                // Perlindungan terhadap parsing tanggal aneh dari AI
                 const d = new Date(dStr || trx.tanggal); 
                 
                 if(!groupedTrx[dStr]) groupedTrx[dStr] = { total: 0, items: [] };
@@ -946,7 +949,29 @@
                     if(isCash) cashBal += val; else cashlessBal += val; 
                     groupedTrx[dStr].total += val;
                     if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) thisMthIncome += val;
+                
+                // LOGIKA BARU: TARIK TUNAI DARI ATM / CASHLESS
+                } else if (trx.tipe === 'tarik_tunai') {
+                    let adminFee = 0;
+                    if (trx.items && Array.isArray(trx.items)) {
+                        adminFee = trx.items.reduce((a,b) => a + (b.harga * (b.qty || 1)), 0);
+                    }
+                    const feeVal = convertVal(adminFee, trx.mata_uang);
+                    
+                    totBal -= feeVal; // Net balance hanya berkurang seharga biaya admin
+                    cashBal += val; // Uang cash bertambah sesuai tarikan
+                    cashlessBal -= (val + feeVal); // Saldo cashless berkurang total tarikan + admin
+                    
+                    groupedTrx[dStr].total -= feeVal; // Pengaruh harian hanya sebesar kerugian admin
+                    
+                    if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                        thisMthSpent += feeVal; 
+                        thisMthCashless += feeVal;
+                        const c = trx.kategori || 'Biaya Admin'; 
+                        catSpend[c] = (catSpend[c]||0) + feeVal;
+                    }
                 } else {
+                    // Pengeluaran biasa
                     totBal -= val; 
                     if(isCash) cashBal -= val; else cashlessBal -= val; 
                     groupedTrx[dStr].total -= val;
@@ -1017,7 +1042,7 @@
 
             const trxListContainer = document.getElementById('trx-list-container');
             if (trxListContainer) {
-                // FIXED BUG: Parameter murni menggunakan window.openEditItem('${t.id}', ${idx})
+                // FIXED BUG STRING QUOTES pada HTML: Meneruskan variabel string ID murni di dalam onclick
                 trxListContainer.innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
                     const g = groupedTrx[dateStr]; 
                     const dObj = new Date(dateStr);
@@ -1025,7 +1050,13 @@
                         const isExp = expItemsState[t.id]; 
                         const hasItems = t.is_receipt && Array.isArray(t.items) && t.items.length > 0;
                         const catIcon = getCategoryIcon(t.kategori || 'Lainnya');
-                        return `<div class="glass-panel p-4 relative group"><button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${t.tipe==='pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${t.tipe==='pemasukan' ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]'}">${t.tipe==='pengeluaran'?'-':'+'}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', ${idx})" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', ${idx})" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
+                        
+                        const isTarikTunai = t.tipe === 'tarik_tunai';
+                        const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : isTarikTunai ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
+                        const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : isTarikTunai ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
+                        const signChar = t.tipe === 'pemasukan' ? '+' : isTarikTunai ? '⇄' : '-';
+
+                        return `<div class="glass-panel p-4 relative group"><button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button><div class="flex justify-between items-start mb-2 pr-6"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)]">${iconHtml}</div><div><h4 class="font-bold text-sm">${t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono ${colorClass}">${signChar}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.toggleReceipt('${t.id}')" class="w-full flex justify-between text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it, idx) => `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span></div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', ${idx})" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', ${idx})" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`).join('')}</div></div>` : ''}</div>`
                     }).join('')}</div></div>`
                 }).join('');
             }
@@ -1126,7 +1157,7 @@
             
             const payload = {
                 contents: [{role: "user", parts: [{text: text || "Ekstrak struk ini dengan teliti."}]}],
-                systemInstruction: { parts: [{text: `AuraFi AI. TRANSLATE ITEM NAMES TO 100% INDONESIAN. Format tanggal wajib "YYYY-MM-DD". Type: "pemasukan"/"pengeluaran". Method: "cashless"/"tunai". If Japanese receipt, include tax (8/10%) inside each unit price. Total items.harga*qty MUST exactly equal nominal value. Specific category. Output raw JSON format strictly without markdown.`}] },
+                systemInstruction: { parts: [{text: `AuraFi AI. TRANSLATE ITEM NAMES TO 100% INDONESIAN. Format tanggal wajib "YYYY-MM-DD". Type: "pemasukan", "pengeluaran", atau "tarik_tunai". Jika narik uang tunai/ATM, gunakan "tarik_tunai", nominal=jumlah ditarik, masukkan biaya admin ke items jika ada. Method: "cashless" untuk penarikan ATM. Jika Japanese receipt, include tax (8/10%) inside each unit price. Total items.harga*qty MUST exactly equal nominal value. Output raw JSON format strictly without markdown.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
                     responseSchema: { 
@@ -1168,7 +1199,7 @@
                 
                 if(window.saveTransactionToDb) {
                     await window.saveTransactionToDb({ 
-                        ...res, 
+                        ...res, // FIXED SPREAD OPERATOR
                         is_deleted: false, 
                         createdAt: new Date().toISOString() 
                     });
@@ -1196,6 +1227,8 @@
                 const anc = document.getElementById('chat-anchor'); 
                 if(anc) anc.scrollIntoView({behavior:'smooth'}); 
             }, 50);
+            
+            window.saveChat(); // MENYIMPAN CHAT SECARA OTOMATIS SETIAP KALI DIRENDER
         };
 
         window.processOracleChat = async function(text, base64Img = null) {
@@ -1211,7 +1244,7 @@
                     try {
                         if(window.updateTransactionInDb) {
                             if(window.pendingOracleAction.action === 'delete_trx') {
-                                await window.updateTransactionInDb(window.pendingOracleAction.target_id, { is_deleted: true, deletedAt: new Date().toISOString() });
+                                await window.deleteTransactionPermanently(window.pendingOracleAction.target_id); // HARD DELETE
                             } else if(window.pendingOracleAction.action === 'update_nominal') {
                                 await window.updateTransactionInDb(window.pendingOracleAction.target_id, { nominal: window.pendingOracleAction.new_nominal });
                             } else if(window.pendingOracleAction.action === 'update_items') {
@@ -1246,9 +1279,13 @@
                 return `ID:${t.id} | Kat:${t.kategori} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
             }).join('\n');
 
+            // BUG FIX CONTEXT: MEMASUKKAN RIWAYAT CHAT SEBAGAI KONTEKS
+            const historyText = window.oracleChats.map(c => `${c.role.toUpperCase()}: ${c.text}`).join('\n');
+            const contextPrompt = `Konteks Riwayat Percakapan (Sangat penting untuk ingatanmu):\n${historyText}\n\nInstruksi User Terbaru:\n${text || "Analisis gambar ini."}`;
+
             const payload = {
-                contents: [{role: "user", parts: [{text: text || "Analisis gambar ini."}]}],
-                systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Realtime Database Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah modifikasi ke new_items.`}] },
+                contents: [{role: "user", parts: [{text: contextPrompt}]}],
+                systemInstruction: { parts: [{text: `AuraFi Oracle V2. Personaliti: Sarkas, tegas, jenius. \nData Realtime Database Terkini:\n${rec}\nATURAN VERIFIKASI 2 LANGKAH (WAJIB): Jika disuruh HAPUS/EDIT, tanyakan konfirmasi dlu di "reply" (misal: "Bos mau hapus item bakso? Jawab IYA atau TIDAK"). JSON ACTION dapat berupa: delete_trx, update_nominal, update_items, none. Jika update_items, susun array items yang sudah dimodifikasi ke new_items.`}] },
                 generationConfig: { 
                     responseMimeType: "application/json", 
                     responseSchema: { 
@@ -1314,7 +1351,7 @@
             const trx = window.allTransactions.find(t=>t.id === id);
             if(!trx) return;
             window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; 
-            document.getElementById('confirm-msg').innerText = `Yakin ingin membuang log "${trx.kategori}"?`; 
+            document.getElementById('confirm-msg').innerText = `Yakin ingin menghapus transaksi "${trx.kategori}" secara permanen?`; 
             window.showModal('modal-confirm'); 
         };
         
@@ -1438,6 +1475,31 @@
             link.remove();
         };
 
+        document.getElementById('btn-execute-delete').onclick = async () => {
+            if(!window.deleteTargetData) return;
+            
+            if(window.deleteTargetData.type === 'trx') {
+                if(window.deleteTransactionPermanently) {
+                    await window.deleteTransactionPermanently(window.deleteTargetData.id); // HARD DELETE FIX
+                }
+            } else if(window.deleteTargetData.type === 'goal') {
+                if(window.deleteGoalFromDb) {
+                    await window.deleteGoalFromDb(window.deleteTargetData.id);
+                }
+            } else if(window.deleteTargetData.type === 'item') {
+                const trx = window.allTransactions.find(t=>t.id === window.deleteTargetData.id);
+                if(trx && window.updateTransactionInDb) {
+                    const nItems = trx.items.filter((_,i) => i !== window.deleteTargetData.idx);
+                    if(nItems.length === 0) {
+                        await window.deleteTransactionPermanently(trx.id); // HARD DELETE JIKA KOSONG
+                    } else { 
+                        const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
+                        await window.updateTransactionInDb(trx.id, { items: nItems, nominal: sum }); 
+                    }
+                }
+            }
+            window.closeConfirmModal();
+        };
     </script>
 </body>
 </html>
