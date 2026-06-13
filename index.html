@@ -5,16 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AuraFi - The Living Wealth OS</title>
     
-    <!-- KONFIGURASI PWA WAJIB -->
     <link rel="manifest" href="/Catatan-Finansial/manifest.json">
     <meta name="theme-color" content="#2b2b2b">
     
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
-    <link rel="stylesheet" href="[https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css](https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css)">
-    <link href="[https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap](https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap)" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     
-    <!-- PUSTAKA CRYPTO-JS UNTUK ALGORITMA ENKRIPSI KEY API -->
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js](https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js)"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <style>
         .hidden { display: none !important; }
@@ -25,12 +23,12 @@
         }
 
         [data-theme="midnight"] {
-            --bg-base: #030712; 
+            --bg-base: #030712;
             --bg-surface: rgba(15, 23, 42, 0.65); 
             --bg-glass: rgba(30, 41, 59, 0.4);
             --text-main: #f8fafc; 
             --text-muted: #94a3b8; 
-            --accent-primary: #38bdf8; 
+            --accent-primary: #38bdf8;
             --accent-glow: rgba(56, 189, 248, 0.35);
             --color-income: #10b981; 
             --color-expense: #f43f5e; 
@@ -39,12 +37,12 @@
         }
 
         [data-theme="sakura"] {
-            --bg-base: #fff5f5; 
+            --bg-base: #fff5f5;
             --bg-surface: rgba(255, 228, 230, 0.85); 
             --bg-glass: rgba(251, 207, 214, 0.6);
             --text-main: #4c0519; 
             --text-muted: #9f1239; 
-            --accent-primary: #db2777; 
+            --accent-primary: #db2777;
             --accent-glow: rgba(219, 39, 119, 0.2);
             --color-income: #059669; 
             --color-expense: #dc2626; 
@@ -53,12 +51,12 @@
         }
 
         [data-theme="neon"] {
-            --bg-base: #09090b; 
+            --bg-base: #09090b;
             --bg-surface: rgba(20, 20, 23, 0.85); 
             --bg-glass: rgba(34, 34, 38, 0.55);
             --text-main: #f4f4f5; 
             --text-muted: #a1a1aa; 
-            --accent-primary: #84cc16; 
+            --accent-primary: #84cc16;
             --accent-glow: rgba(132, 204, 22, 0.25);
             --color-income: #22c55e; 
             --color-expense: #ef4444; 
@@ -67,7 +65,7 @@
         }
 
         body { 
-            font-family: var(--font-main); 
+            font-family: var(--font-main);
             background-color: var(--bg-base); 
             color: var(--text-main); 
             transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
@@ -80,14 +78,14 @@
         .font-display { font-family: var(--font-display); }
 
         .glass-panel { 
-            background: var(--bg-glass); 
+            background: var(--bg-glass);
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px); 
             border: 1px solid var(--border-glass); 
-            border-radius: 1.25rem; 
+            border-radius: 1.25rem;
         }
         .glass-nav { 
-            background: var(--bg-surface); 
+            background: var(--bg-surface);
             backdrop-filter: blur(20px); 
             -webkit-backdrop-filter: blur(20px);
             border-top: 1px solid var(--border-glass); 
@@ -106,15 +104,15 @@
         }
         
         .living-core { 
-            background: radial-gradient(circle at 35% 35%, var(--bg-glass), var(--bg-base)); 
+            background: radial-gradient(circle at 35% 35%, var(--bg-glass), var(--bg-base));
             border: 1.5px solid var(--border-glass); 
             animation: pulse-core 4s infinite ease-in-out; 
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .living-core.danger { 
-            background: radial-gradient(circle at 35% 35%, rgba(244, 63, 94, 0.15), var(--bg-base)); 
+            background: radial-gradient(circle at 35% 35%, rgba(244, 63, 94, 0.15), var(--bg-base));
             border-color: rgba(244, 63, 94, 0.6); 
-            animation: pulse-danger 1.8s infinite ease-in-out; 
+            animation: pulse-danger 1.8s infinite ease-in-out;
         }
 
         .text-accent { color: var(--accent-primary); } 
@@ -124,7 +122,7 @@
         
         .bubble-ai { border-top-left-radius: 4px; } 
         .bubble-user { 
-            border-top-right-radius: 4px; 
+            border-top-right-radius: 4px;
             background: linear-gradient(135deg, var(--accent-primary), var(--bg-glass)); 
         }
 
@@ -153,7 +151,6 @@
 
     <div id="toast-container" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
 
-    <!-- MODAL LOGIN FIREBASE AUTHENTICATION -->
     <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
         <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar">
             <div class="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-5 border border-accent/30 shadow-[0_0_30px_var(--accent-glow)] shrink-0">
@@ -162,7 +159,6 @@
             <h2 class="text-2xl font-display font-black tracking-tight mb-2">AuraFi OS</h2>
             <p class="text-[11px] text-[var(--text-muted)] mb-6 leading-relaxed">Sistem pencatatan keuangan kognitif. Silakan login untuk mengaktifkan sinkronisasi Database persisten.</p>
             
-            <!-- FORM LOGIN EMAIL -->
             <div class="space-y-3 w-full mb-5">
                 <input type="email" id="login-email" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Email Terdaftar">
                 <input type="password" id="login-pass" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Kata Sandi">
@@ -177,20 +173,17 @@
                 <div class="h-px bg-[var(--border-glass)] flex-1"></div>
             </div>
 
-            <!-- TOMBOL LOGIN GOOGLE -->
             <button onclick="window.loginWithGoogle()" class="w-full py-3.5 mb-3 rounded-xl bg-white text-black font-bold text-sm shadow-lg flex items-center justify-center gap-3 hover:bg-gray-100 transition active:scale-95">
                 <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92(3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                 Masuk dengan Google
             </button>
 
-            <!-- TOMBOL LOGIN TAMU / ANONYMOUS -->
             <button onclick="window.loginAnonymously()" class="w-full py-3.5 rounded-xl border border-[var(--border-glass)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-glass)] hover:text-white transition active:scale-95 flex items-center justify-center gap-2">
                 <i class="fa-solid fa-user-secret"></i> Mode Tamu Sementara
             </button>
         </div>
     </div>
 
-    <!-- MODAL KONFIRMASI HAPUS -->
     <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-[var(--color-expense)] shadow-2xl">
             <div class="w-16 h-16 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--color-expense)]/30">
@@ -205,7 +198,6 @@
         </div>
     </div>
 
-    <!-- MODAL MANUAL TRANSAKSI -->
     <div id="modal-manual-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6">
@@ -258,7 +250,6 @@
         </div>
     </div>
 
-    <!-- MODAL EDIT TRANSAKSI UTAMA -->
     <div id="modal-edit-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -295,7 +286,6 @@
         </div>
     </div>
 
-    <!-- MODAL TAMBAH ITEM KE TRX -->
     <div id="modal-add-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -322,7 +312,6 @@
         </div>
     </div>
 
-    <!-- MODAL EDIT ITEM LAMA -->
     <div id="modal-edit-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -353,7 +342,6 @@
         </div>
     </div>
 
-    <!-- MODAL SETTINGS & AI KEYS SETUP -->
     <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             
@@ -362,7 +350,6 @@
                 <button onclick="window.closeSettingsModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <!-- SECTION PROFILE -->
             <div class="space-y-3 mb-6">
                 <h4 class="text-xs font-bold text-yellow-400 flex items-center gap-1.5"><i class="fa-solid fa-user-gear"></i> PROFIL PENGGUNA</h4>
                 <div>
@@ -378,7 +365,6 @@
                 </button>
             </div>
 
-            <!-- SECTION RECURRING PAYMENTS -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <h4 class="text-xs font-bold text-sky-400 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> TAGIHAN BULANAN RUTIN</h4>
                 <div id="recurring-list" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
@@ -398,7 +384,6 @@
                 </div>
             </div>
 
-            <!-- SECTION GEMINI (VISION/OCR) -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-bold text-indigo-400 flex items-center gap-1.5"><i class="fa-solid fa-eye"></i> GEMINI (VISION)</h4>
@@ -413,7 +398,6 @@
                 </button>
             </div>
 
-            <!-- SECTION GROQ (CHAT/NLP) -->
             <div class="space-y-3 pt-5 border-t border-[var(--border-glass)]">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-bolt"></i> GROQ (CHAT & NLP)</h4>
@@ -426,7 +410,6 @@
                 </div>
             </div>
 
-            <!-- SECTION AKUN & LOGOUT -->
             <div class="mt-6 pt-5 border-t border-[var(--border-glass)]">
                 <button onclick="window.logoutAccount()" class="w-full py-3 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
@@ -437,10 +420,8 @@
     </div>
 
 
-    <!-- ================= MAIN APP CONTAINER ================= -->
     <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
         
-        <!-- HEADER GLOBAL -->
         <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
             <div>
                 <h1 class="text-2xl font-display font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--invert-contrast)] to-[var(--accent-primary)]">AuraFi<span class="text-accent">.</span></h1>
@@ -460,10 +441,8 @@
             </div>
         </header>
 
-        <!-- DYNAMIC VIEW AREA -->
         <main class="flex-1 overflow-y-auto no-scrollbar relative" id="view-container">
             
-            <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="p-4 space-y-5 block view-transition">
                 <div class="flex justify-between items-center">
                     <span class="text-[10px] text-[var(--text-muted)] uppercase font-extrabold tracking-widest">Ringkasan Ekosistem</span>
@@ -521,7 +500,6 @@
                 </div>
             </div>
 
-            <!-- VIEW: TRANSAKSI (LOG) -->
             <div id="view-transactions" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Log Ekosistem</h2>
@@ -533,7 +511,6 @@
                 <div id="trx-list-container" class="space-y-5"></div>
             </div>
 
-            <!-- VIEW: ANALYTICS -->
             <div id="view-analytics" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Analisis Inti</h2>
@@ -549,7 +526,6 @@
                 </div>
             </div>
 
-            <!-- VIEW: GOALS -->
             <div id="view-goals" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black tracking-tight">Misi Tabungan</h2>
@@ -566,7 +542,6 @@
                 <div id="goals-list-container" class="space-y-3"></div>
             </div>
 
-            <!-- VIEW: ORACLE CHAT -->
             <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
                 <div class="p-4 flex items-center gap-3 border-b border-[var(--border-glass)] bg-[var(--bg-base)] z-10 shrink-0 sticky top-0">
                     <div class="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center border border-accent/40"><i class="fa-solid fa-brain text-accent text-sm"></i></div>
@@ -581,7 +556,6 @@
                 <div id="chat-anchor" class="h-4 shrink-0"></div>
             </div>
 
-            <!-- VIEW: TRASH -->
             <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
@@ -592,7 +566,6 @@
 
         </main>
 
-        <!-- OMNIPRESENT INPUT BAR -->
         <div id="omnipresent-input" class="w-full px-4 pt-1.5 pb-2.5 bg-[var(--bg-base)] z-40 shrink-0 border-t border-[var(--border-glass)]">
             
             <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
@@ -607,7 +580,7 @@
                 </button>
                 <div id="ai-help" class="hidden mt-1 p-3 bg-[var(--bg-glass)] border border-[var(--border-glass)] rounded-xl text-[11px] text-[var(--text-muted)] leading-relaxed space-y-2">
                     <p><strong class="text-emerald-400">1. Fallback Otomatis:</strong> Ketik transaksi/pertanyaan. Groq memproses bahasa alami secara utama, jika quota habis otomatis dialihkan ke Gemini secara instan.</p>
-                    <p><strong class="text-orange-400">2. Pajak Jepang:</strong> AI membaca total struk, menghitung subtotal, mendeteksi pajak 8% (makanan/minuman non-alkohol) dan 10% (alkohol, resto, dsb), lalu mendistribusikan selisih agar total item 100% sama dengan total struk.</p>
+                    <p><strong class="text-orange-400">2. Pajak Jepang:</strong> AI reads total receipt, calculates subtotal, detects 8% (food/non-alcoholic drinks) and 10% tax, then distributes differences accordingly.</p>
                 </div>
             </div>
 
@@ -626,7 +599,6 @@
             </div>
         </div>
 
-        <!-- FLOATING BOTTOM NAVIGATION -->
         <nav class="w-full h-[65px] glass-nav flex justify-around items-center px-1 z-50 shrink-0 safe-pb">
             <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center gap-0.5 py-2.5 px-3 min-w-[50px] text-[var(--accent-primary)] active:scale-95 transition" data-target="dashboard">
                 <i class="fa-solid fa-meteor text-base"></i>
@@ -651,7 +623,6 @@
         </nav>
     </div>
 
-    <!-- PEMANGGILAN SCRIPT EKSTERNAL DENGAN TYPE MODULE (WAJIB UNTUK FIREBASE) -->
-    <script src="/Catatan-Finansial/script.js" type="module"></script>
+    <script src="./script.js" type="module"></script>
 </body>
 </html>
