@@ -5,7 +5,6 @@ const BASE_PATH = "/Catatan-Finansial/";
 const urlsToCache = [
   BASE_PATH,
   BASE_PATH + "index.html",
-  BASE_PATH + "style.css",
   BASE_PATH + "script.js"
 ];
 
