@@ -1,15 +1,15 @@
-import { initializeApp } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js)";
-import { getDatabase, ref, push, update, remove, onValue, get } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js)";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getDatabase, ref, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, 
     signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, 
     signOut, setPersistence, browserLocalPersistence 
-} from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js)";
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
     authDomain: "agrivision-574be.firebaseapp.com",
-    databaseURL: "[https://agrivision-574be-default-rtdb.firebaseio.com](https://agrivision-574be-default-rtdb.firebaseio.com)",
+    databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com",
     projectId: "agrivision-574be",
     storageBucket: "agrivision-574be.firebasestorage.app",
     messagingSenderId: "732120986243",
@@ -118,25 +118,25 @@ window.EncryptionService = {
 // ==========================================
 window.FirebaseService = {
     async saveTransaction(data) { 
-        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), data); 
+        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), data);
     },
     async updateTransaction(id, data) { 
-        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), data); 
+        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), data);
     },
     async moveToTrash(id) { 
-        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() }); 
+        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() });
     },
     async deleteTransactionPermanently(id) { 
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`)); 
+        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`));
     },
     async saveGoal(data) { 
-        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), data); 
+        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), data);
     },
     async deleteGoal(id) { 
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/goals/${id}`)); 
+        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/goals/${id}`));
     },
     async updateSettings(data) { 
-        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), data); 
+        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), data);
     },
     async saveGroqKey(encryptedKey) {
         await push(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys`), {
@@ -144,7 +144,7 @@ window.FirebaseService = {
         });
     },
     async deleteGroqKey(keyId) { 
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys/${keyId}`)); 
+        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys/${keyId}`));
     },
     async pushOracleChat(chatObj) { 
         await push(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), chatObj); 
@@ -197,7 +197,8 @@ window.FinancialSummaryService = {
                 cashBal += val;
                 cashlessBal -= (val + adminFee);
             } else {
-                if (isCash) cashBal -= val; else cashlessBal -= val;
+                if (isCash) cashBal -= val; 
+                else cashlessBal -= val;
                 if (new Date(t.tanggal).getMonth() === today.getMonth() && new Date(t.tanggal).getFullYear() === today.getFullYear()) {
                     totSpent += val;
                 }
@@ -207,7 +208,7 @@ window.FinancialSummaryService = {
         const profile = window.settingsData?.profile || {};
         const nickname = profile.nickname || "User";
         const fullName = profile.fullName || "User AuraFi";
-        
+
         return `--- PROFIL & RINGKASAN PENGGUNA ---
 Nama: ${fullName} (${nickname})
 Negara: Jepang/Indonesia
@@ -263,7 +264,7 @@ window.GroqService = {
 
     async fetch(messages, requireJson = false) {
         if(this.keysPool.length === 0) throw new Error("API Key Groq Kosong.");
-
+        
         let attempt = 0;
         const totalKeys = this.keysPool.length;
 
@@ -273,7 +274,7 @@ window.GroqService = {
                 const payload = { model: this.model, messages: messages, temperature: requireJson ? 0.1 : 0.7 };
                 if(requireJson) payload.response_format = { type: "json_object" };
 
-                const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -284,7 +285,8 @@ window.GroqService = {
                     this.switchToNextApiKey(); attempt++; continue;
                 }
                 if (!response.ok) {
-                    const err = await response.json(); throw new Error(err.error?.message || "Groq Error");
+                    const err = await response.json();
+                    throw new Error(err.error?.message || "Groq Error");
                 }
 
                 const data = await response.json();
@@ -305,7 +307,7 @@ window.GeminiFailoverEngine = class GeminiFailoverEngine {
     constructor(pinCode) { this.pin = pinCode; this.keysPool = []; this.currentIndex = 0; }
 
     async init() {
-        this.keysPool = []; 
+        this.keysPool = [];
         const snapshot = await get(ref(db, 'nexus_api_vault'));
         
         if (snapshot.exists()) {
@@ -331,7 +333,6 @@ window.GeminiFailoverEngine = class GeminiFailoverEngine {
 
     async fetch(payload, base64Image) {
         if (this.keysPool.length === 0) throw new Error("Kunci Gemini Kosong / PIN Salah.");
-        
         let attempt = 0; const totalKeys = this.keysPool.length;
 
         while (attempt < totalKeys) {
@@ -353,16 +354,18 @@ window.GeminiFailoverEngine = class GeminiFailoverEngine {
                 });
 
                 if (response.status === 429 || response.status === 400 || response.status === 401) {
-                    this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; continue; 
+                    this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
+                    attempt++; continue; 
                 }
                 if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
-                
+
                 const result = await response.json();
                 const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!textResponse) throw new Error("Format respons API tidak sesuai");
                 return textResponse;
             } catch (err) {
-                this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++;
+                this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
+                attempt++;
             }
         }
         throw new Error("SEMUA KUNCI GEMINI TERKENA LIMIT!");
@@ -425,6 +428,7 @@ function loadRealtimeDatabaseData() {
         const activeCount = window.GroqService.init(window.rawGroqKeysData);
         
         const grBadge = document.getElementById('groq-status-badge');
+        
         if(grBadge) {
             if(activeCount > 0) {
                 grBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
@@ -484,7 +488,7 @@ window.saveUserProfile = async function() {
     const fn = document.getElementById('user-fullname').value.trim();
     const nn = document.getElementById('user-nickname').value.trim();
     if(!fn || !nn) return window.showToast("Lengkapi form nama profil!", true);
-    
+
     try {
         await window.FirebaseService.updateSettings({
             profile: { fullName: fn, nickname: nn }
@@ -615,7 +619,7 @@ window.syncGeminiEngine = async function(silent = false) {
     const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
     
     if (!pin) { 
-        if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true); 
+        if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true);
         return; 
     }
 
@@ -794,7 +798,7 @@ Struktur JSON:
         window.showToast("Transaksi berhasil dianalisis & disimpan secara aman!");
 
     } catch(e) { 
-        console.error(e); 
+        console.error(e);
         window.showToast(e.message || "AI gagal memproses data.", true); 
     } finally { 
         window.setProcessingStatus(false); 
@@ -825,7 +829,8 @@ Data Transaksi Relevan Terkait:
 ${txString}
 
 ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
-AI DILARANG keras merusak struktur atau menghapus data yang tidak diminta! Hanya kembalikan output spesifik berikut.
+AI DILARANG keras merusak struktur atau menghapus data yang tidak diminta!
+Hanya kembalikan output spesifik berikut.
 1. action="update_transaction": Untuk merubah storeName, metode_pembayaran, atau nominal global dari sebuah ID transaksi. "target_id" wajib.
 2. action="add_item": Menambahkan item spesifik ke "target_id". "new_items" berisi array item baru.
 3. action="edit_item": Edit 1 item spesifik. Wajib menyertakan "target_item_id" dari data relevan di atas, dan "new_items" berisi data 1 item baru (nama/harga/qty) yang menimpa.
@@ -923,13 +928,13 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
 // ==========================================
 window.currentTheme = 'midnight';
 window.displayCurrency = 'JPY'; 
-window.exchangeRateIDR = 105; 
+window.exchangeRateIDR = 105;
 window.isRatesLoaded = false;
 window.allTransactions = []; 
 window.trashTransactions = []; 
 window.allGoals = []; 
 window.monthlyBudget = 100000;
-window.activeView = 'dashboard'; 
+window.activeView = 'dashboard';
 
 window.base64Upload = ""; 
 window.oracleChats = []; 
@@ -960,20 +965,20 @@ window.onload = () => {
 
 window.fetchExchangeRate = async function() {
     try {
-        const res = await fetch('[https://open.er-api.com/v6/latest/JPY](https://open.er-api.com/v6/latest/JPY)'); 
+        const res = await fetch('https://open.er-api.com/v6/latest/JPY');
         const data = await res.json();
         if(data?.rates?.IDR) { 
-            window.exchangeRateIDR = data.rates.IDR; 
+            window.exchangeRateIDR = data.rates.IDR;
             window.isRatesLoaded = true; 
-            document.getElementById('live-rate-display').innerText = `1 JPY = Rp ${window.exchangeRateIDR.toLocaleString('id-ID')}`; 
+            document.getElementById('live-rate-display').innerText = `1 JPY = Rp ${window.exchangeRateIDR.toLocaleString('id-ID')}`;
         }
     } catch(e) { 
-        document.getElementById('live-rate-display').innerText = "1 JPY = Rp 105 (OFFLINE)"; 
+        document.getElementById('live-rate-display').innerText = "1 JPY = Rp 105 (OFFLINE)";
     }
 };
 
 window.toggleTheme = function() {
-    const themes = ['midnight', 'sakura', 'neon']; 
+    const themes = ['midnight', 'sakura', 'neon'];
     window.currentTheme = themes[(themes.indexOf(window.currentTheme) + 1) % themes.length];
     window.applyTheme(); 
     if(window.FirebaseService?.updateSettings) window.FirebaseService.updateSettings({ theme: window.currentTheme });
@@ -989,7 +994,8 @@ window.closeSettingsModal = function() {
 };
 
 window.toggleAccordion = function(id) {
-    const el = document.getElementById(id); const icon = document.getElementById(id + '-icon');
+    const el = document.getElementById(id);
+    const icon = document.getElementById(id + '-icon');
     if (el && el.classList.contains('hidden')) { el.classList.remove('hidden'); icon.style.transform = 'rotate(180deg)'; } 
     else if (el) { el.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; }
 };
@@ -1002,7 +1008,7 @@ window.setCurrency = function(curr) {
 };
 
 window.switchView = function(viewId) {
-    window.activeView = viewId; 
+    window.activeView = viewId;
     ['dashboard', 'transactions', 'analytics', 'goals', 'oracle', 'trash'].forEach(id => {
         const el = document.getElementById(`view-${id}`); 
         if(el) {
@@ -1010,15 +1016,16 @@ window.switchView = function(viewId) {
             else { el.classList.add('hidden'); el.style.display = ''; }
         }
     });
+    
     document.querySelectorAll('.nav-btn').forEach(btn => {
         if(btn.dataset.target === viewId) { btn.classList.add('text-[var(--accent-primary)]'); btn.classList.remove('text-[var(--text-muted)]'); } 
         else { btn.classList.remove('text-[var(--accent-primary)]'); btn.classList.add('text-[var(--text-muted)]'); }
     });
-    
+
     const inputField = document.getElementById('main-input-field');
     if(viewId === 'oracle') { 
-        inputField.placeholder = "Chat Oracle / Edit Data..."; 
-        setTimeout(() => { const anc = document.getElementById('chat-anchor'); if(anc) anc.scrollIntoView({behavior:'smooth'}); }, 100); 
+        inputField.placeholder = "Chat Oracle / Edit Data...";
+        setTimeout(() => { const anc = document.getElementById('chat-anchor'); if(anc) anc.scrollIntoView({behavior:'smooth'}); }, 100);
     } else {
         inputField.placeholder = "Ketik/Suara/Foto Transaksi...";
     }
@@ -1031,6 +1038,7 @@ const convertVal = (amt, fromCurr) => {
     if(fromCurr === 'IDR' && window.displayCurrency === 'JPY') return amt / window.exchangeRateIDR;
     return amt;
 };
+
 const formatVal = (amt) => new Intl.NumberFormat(window.displayCurrency==='JPY'?'ja-JP':'id-ID', {style:'currency', currency:window.displayCurrency, maximumFractionDigits:0}).format(amt);
 
 let expItemsState = {};
@@ -1048,16 +1056,16 @@ function getCategoryIcon(cat) {
 window.reCalculateAll = function() {
     let totBal = 0, cashBal = 0, cashlessBal = 0;
     let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
-    let catSpend = {}, dailySp = {}; 
+    let catSpend = {}, dailySp = {};
     const today = new Date();
     
     for(let i=6; i>=0; i--) { 
-        let d=new Date(today); d.setDate(d.getDate()-i); dailySp[d.toISOString().split('T')[0]] = 0; 
+        let d=new Date(today);
+        d.setDate(d.getDate()-i); dailySp[d.toISOString().split('T')[0]] = 0; 
     }
     let groupedTrx = {};
 
     const txList = window.allTransactions || [];
-
     txList.forEach(trx => {
         const val = convertVal(trx.nominal, trx.mata_uang);
         const isCash = trx.metode_pembayaran === 'tunai';
@@ -1085,22 +1093,20 @@ window.reCalculateAll = function() {
             cashBal += mainVal; 
             cashlessBal -= (mainVal + feeVal); 
             
-            groupedTrx[dStr].total -= feeVal; 
-            
+            groupedTrx[dStr].total -= feeVal;
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
-                thisMthSpent += feeVal; 
+                thisMthSpent += feeVal;
                 thisMthCashless += feeVal;
                 const c = 'Tagihan'; 
                 catSpend[c] = (catSpend[c]||0) + feeVal;
             }
         } else {
-            totBal -= val; 
+            totBal -= val;
             if(isCash) cashBal -= val; else cashlessBal -= val; 
             groupedTrx[dStr].total -= val;
             if(trx.sifat === 'impulsif') impulsif++;
-            
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
-                thisMthSpent += val; 
+                thisMthSpent += val;
                 if(!isCash) thisMthCashless += val;
                 const c = trx.kategori || 'Lainnya'; 
                 catSpend[c] = (catSpend[c]||0) + val;
@@ -1144,13 +1150,14 @@ window.reCalculateAll = function() {
     const daysInMth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
     const proj = (today.getDate() > 0 ? thisMthSpent / today.getDate() : 0) * daysInMth;
     const insightBox = document.getElementById('burn-insight-box');
+    
     if (insightBox) {
         if(proj > limitVal) { 
-            insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${formatVal(proj)}!`; 
+            insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${formatVal(proj)}!`;
             insightBox.style.borderColor = 'var(--color-expense)'; 
         } else { 
             insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi akhir ${formatVal(proj)}.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa Anggaran: ${formatVal(remainingBudget)}</span>`; 
-            insightBox.style.borderColor = 'var(--border-glass)'; 
+            insightBox.style.borderColor = 'var(--border-glass)';
         }
     }
 
@@ -1181,7 +1188,7 @@ window.reCalculateAll = function() {
                 const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : isTarikTunai ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
                 const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : isTarikTunai ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
                 const signChar = t.tipe === 'pemasukan' ? '+' : isTarikTunai ? '⇄' : '-';
-
+                
                 return `<div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-10 text-[var(--text-muted)] hover:text-accent opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button>
@@ -1227,10 +1234,12 @@ window.setProcessingStatus = function(isProc) {
 };
 
 window.handleImage = function(e) { 
-    const f = e.target.files[0]; if(!f) return; 
+    const f = e.target.files[0];
+    if(!f) return; 
     document.getElementById('img-preview').src = URL.createObjectURL(f); 
     document.getElementById('image-preview-box').classList.remove('hidden'); 
-    const r = new FileReader(); r.onload = () => { window.base64Upload = r.result.split(',')[1]; }; r.readAsDataURL(f); 
+    const r = new FileReader(); r.onload = () => { window.base64Upload = r.result.split(',')[1]; };
+    r.readAsDataURL(f); 
 };
 
 window.removeImage = function() { 
@@ -1239,10 +1248,10 @@ window.removeImage = function() {
 };
 
 window.startVoice = function() { 
-    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition; 
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(!Speech) return alert("Browser tidak mendukung Web Speech API."); 
     const rec = new Speech(); rec.lang = 'id-ID'; rec.start(); 
-    document.getElementById('btn-voice').classList.add('text-rose-500', 'animate-pulse'); 
+    document.getElementById('btn-voice').classList.add('text-rose-500', 'animate-pulse');
     rec.onresult = e => { document.getElementById('main-input-field').value += " " + e.results[0][0].transcript; }; 
     rec.onend = () => document.getElementById('btn-voice').classList.remove('text-rose-500', 'animate-pulse'); 
 };
@@ -1255,8 +1264,7 @@ window.handleSend = async function() {
 
     if(!txt && !imgData) return;
     
-    txtField.value = ""; txtField.style.height = '40px'; window.removeImage(); 
-    
+    txtField.value = ""; txtField.style.height = '40px'; window.removeImage();
     if(window.activeView === 'oracle') { await window.processOracleChat(txt, imgData); } 
     else { await window.processTransactionParsing(txt, imgData); }
 };
@@ -1318,7 +1326,7 @@ window.toggleManualFormFields = function() {
 };
 
 window.saveManualTransaction = async function() {
-    const tipe = document.getElementById('manual-trx-type').value; 
+    const tipe = document.getElementById('manual-trx-type').value;
     const curr = document.getElementById('manual-trx-curr').value;
     const method = document.getElementById('manual-trx-method').value;
     const amount = parseFloat(document.getElementById('manual-trx-amount').value) || 0;
@@ -1364,7 +1372,7 @@ window.openEditTrxModal = function(id) {
 };
 
 window.closeEditTrxModal = function() {
-    const m = document.getElementById('modal-edit-trx'); 
+    const m = document.getElementById('modal-edit-trx');
     if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
     window.editTrxTargetData = null;
 };
@@ -1446,13 +1454,13 @@ window.confirmDelTrx = function(id) {
     const trx = window.allTransactions.find(t=>t.id === id); if(!trx) return;
     window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; 
     document.getElementById('confirm-msg').innerText = `Pindahkan transaksi "${trx.storeName || trx.kategori}" ke tempat sampah?`; 
-    window.showModal('modal-confirm'); 
+    window.showModal('modal-confirm');
 };
 
 window.confirmDelItem = function(trxId, itemId) { 
     const trx = window.allTransactions.find(t=>t.id === trxId);
     if(!trx || !trx.items) return;
-    
+
     const item = trx.items.find(i => (i.itemId || '') === itemId);
     if(!item) return;
 
@@ -1462,7 +1470,8 @@ window.confirmDelItem = function(trxId, itemId) {
 };
 
 window.confirmDelGoal = function(id) { 
-    const goal = window.allGoals.find(g=>g.id === id); if(!goal) return;
+    const goal = window.allGoals.find(g=>g.id === id);
+    if(!goal) return;
     window.deleteTargetData = { type: 'goal', id, name: goal.name }; 
     document.getElementById('confirm-msg').innerText = `Batalkan misi tabungan "${goal.name}" selamanya?`; 
     window.showModal('modal-confirm'); 
@@ -1483,7 +1492,7 @@ window.openEditItem = function(trxId, itemId) {
 
     window.editItemTargetData = { id: trxId, itemId: itemId, item: item };
     document.getElementById('edit-store-name').value = trx.storeName || '';
-    document.getElementById('edit-item-name').value = item.nama_barang || ''; 
+    document.getElementById('edit-item-name').value = item.nama_barang || '';
     document.getElementById('edit-item-qty').value = item.qty || 1; 
     document.getElementById('edit-item-price').value = item.harga || 0;
     window.showModal('modal-edit-item');
@@ -1511,7 +1520,7 @@ window.saveEditItem = async function() {
             }
             return it;
         });
-        
+
         const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
         await window.FirebaseService.updateTransaction(trx.id, { 
             items: nItems, 
@@ -1539,11 +1548,11 @@ window.deleteForever = async function(id) {
 window.promptBudget = function() {
     const amt = prompt("Masukkan Limit Anggaran Bulanan Baru (dalam JPY):", window.monthlyBudget);
     if(amt && !isNaN(amt)) { 
-        window.monthlyBudget = parseFloat(amt); 
+        window.monthlyBudget = parseFloat(amt);
         if(window.FirebaseService?.updateSettings) {
             window.FirebaseService.updateSettings({ 
                 monthlyBudget: { limit: window.monthlyBudget } 
-            }); 
+            });
         }
         window.reCalculateAll(); 
     }
@@ -1553,13 +1562,13 @@ window.toggleGoalForm = function() { const f = document.getElementById('goal-for
 
 window.saveGoal = async function() {
     const name = document.getElementById('goal-name').value; 
-    const amt = document.getElementById('goal-target').value; 
+    const amt = document.getElementById('goal-target').value;
     const dt = document.getElementById('goal-date').value;
     if(!name || !amt || !dt) return window.showToast("Harap lengkapi semua form!", true);
-    
+
     if(window.FirebaseService?.saveGoal) {
         await window.FirebaseService.saveGoal({ name, targetAmount: parseFloat(amt), targetDate: dt, currency: window.displayCurrency });
-        document.getElementById('goal-form').classList.add('hidden'); 
+        document.getElementById('goal-form').classList.add('hidden');
         document.getElementById('goal-name').value = ""; document.getElementById('goal-target').value = ""; document.getElementById('goal-date').value = "";
         window.showToast("Misi Tabungan Berhasil Ditambahkan!");
     }
@@ -1574,6 +1583,7 @@ window.downloadCSV = function() {
         const store = r.storeName || r.kategori || 'Toko';
         csv += `${d},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
     });
+
     const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csv); 
     link.download = `AuraFi_Report_${new Date().toISOString().split('T')[0]}.csv`; 
     document.body.appendChild(link); link.click(); link.remove();
@@ -1581,12 +1591,12 @@ window.downloadCSV = function() {
 
 document.getElementById('btn-execute-delete').onclick = async () => {
     if(!window.deleteTargetData) return;
-    
+
     if(window.deleteTargetData.type === 'trx') {
         if(window.activeView === 'trash') {
-            if(window.FirebaseService?.deleteTransactionPermanently) await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id); 
+            if(window.FirebaseService?.deleteTransactionPermanently) await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id);
         } else {
-            if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(window.deleteTargetData.id); 
+            if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(window.deleteTargetData.id);
         }
     } else if(window.deleteTargetData.type === 'goal') {
         if(window.FirebaseService?.deleteGoal) await window.FirebaseService.deleteGoal(window.deleteTargetData.id);
@@ -1595,9 +1605,9 @@ document.getElementById('btn-execute-delete').onclick = async () => {
         if(trx && window.FirebaseService?.updateTransaction) {
             const nItems = trx.items.filter(item => item.itemId !== window.deleteTargetData.itemId);
             if(nItems.length === 0) {
-                if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(trx.id); 
+                if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(trx.id);
             } else { 
-                const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
+                const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
                 await window.FirebaseService.updateTransaction(trx.id, { items: nItems, nominal: sum }); 
             }
         }
@@ -1606,14 +1616,13 @@ document.getElementById('btn-execute-delete').onclick = async () => {
     window.showToast("Perubahan Berhasil Disinkronkan secara Realtime.");
 };
 
-
 // ===============================
 // SERVICE WORKER REGISTRATION (PWA)
 // ===============================
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/Catatan-Finansial/service-worker.js")
+    navigator.serviceWorker.register("./service-worker.js")
       .then((registration) => {
         console.log("Service Worker aktif:", registration.scope);
       })
