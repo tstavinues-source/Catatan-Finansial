@@ -138,23 +138,50 @@
             box-shadow: 0 0 10px var(--accent-glow);
             outline: none;
         }
+        
+        .markdown-content p { margin-bottom: 0.5em; }
+        .markdown-content strong { font-weight: 700; color: var(--text-main); }
+        .markdown-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.5em; }
+        .markdown-content ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.5em; }
     </style>
 </head>
 <body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
 
     <div id="toast-container" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
 
-    <!-- MODAL LOGIN GOOGLE AUTHENTICATION -->
+    <!-- MODAL LOGIN FIREBASE AUTHENTICATION (GOOGLE, EMAIL, ANONYMOUS) -->
     <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
-        <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center">
-            <div class="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-5 border border-accent/30 shadow-[0_0_30px_var(--accent-glow)]">
+        <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar">
+            <div class="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-5 border border-accent/30 shadow-[0_0_30px_var(--accent-glow)] shrink-0">
                 <i class="fa-solid fa-fingerprint text-4xl text-accent"></i>
             </div>
             <h2 class="text-2xl font-display font-black tracking-tight mb-2">AuraFi OS</h2>
-            <p class="text-[11px] text-[var(--text-muted)] mb-8 leading-relaxed">Sistem pencatatan keuangan kognitif. Harap verifikasi identitas Anda dengan akun Google untuk sinkronisasi Database.</p>
-            <button onclick="window.loginWithGoogle()" class="w-full py-3.5 rounded-xl bg-white text-black font-bold text-sm shadow-lg flex items-center justify-center gap-3 hover:bg-gray-100 transition active:scale-95">
+            <p class="text-[11px] text-[var(--text-muted)] mb-6 leading-relaxed">Sistem pencatatan keuangan kognitif. Silakan login untuk mengaktifkan sinkronisasi Database persisten.</p>
+            
+            <!-- FORM LOGIN EMAIL -->
+            <div class="space-y-3 w-full mb-5">
+                <input type="email" id="login-email" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Email Terdaftar">
+                <input type="password" id="login-pass" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Kata Sandi">
+                <button onclick="window.loginWithEmail()" class="w-full py-3.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-sm shadow-lg shadow-accent/20 hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-envelope"></i> Masuk via Email
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full mb-5">
+                <div class="h-px bg-[var(--border-glass)] flex-1"></div>
+                <span class="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-widest">ATAU</span>
+                <div class="h-px bg-[var(--border-glass)] flex-1"></div>
+            </div>
+
+            <!-- TOMBOL LOGIN GOOGLE -->
+            <button onclick="window.loginWithGoogle()" class="w-full py-3.5 mb-3 rounded-xl bg-white text-black font-bold text-sm shadow-lg flex items-center justify-center gap-3 hover:bg-gray-100 transition active:scale-95">
                 <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                 Masuk dengan Google
+            </button>
+
+            <!-- TOMBOL LOGIN TAMU / ANONYMOUS -->
+            <button onclick="window.loginAnonymously()" class="w-full py-3.5 rounded-xl border border-[var(--border-glass)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-glass)] hover:text-white transition active:scale-95 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-secret"></i> Mode Tamu Sementara
             </button>
         </div>
     </div>
@@ -247,8 +274,8 @@
 
             <!-- SECTION 3: AKUN & LOGOUT -->
             <div class="mt-6 pt-5 border-t border-[var(--border-glass)]">
-                <button onclick="window.logoutGoogle()" class="w-full py-3 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-right-from-bracket"></i> Keluar / Ganti Akun
+                <button onclick="window.logoutAccount()" class="w-full py-3 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
                 </button>
             </div>
 
@@ -468,12 +495,16 @@
         </nav>
     </div>
 
-    <!-- MAIN LOGIC & MODULAR SERVICES DENGAN GOOGLE AUTH -->
+    <!-- MAIN LOGIC & MODULAR SERVICES DENGAN GOOGLE AUTH, EMAIL AUTH, DAN ANONYMOUS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getDatabase, ref, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-        // IMPORT FIREBASE GOOGLE AUTH
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        // IMPORT FIREBASE AUTH SESUAI INSTRUKSI (Persistensi & Metode Login)
+        import { 
+            getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, 
+            signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, 
+            signOut, setPersistence, browserLocalPersistence 
+        } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
@@ -492,19 +523,53 @@
         const ledgerNode = 'aurafi_ledger'; 
         
         window.currentUserUid = null;
+        // Clean up legacy local device ID to enforce Auth rule
+        localStorage.removeItem('aurafi_device_id'); 
 
-        // AUTHENTICATION LOGIC (Global Ekspor)
+        // ==========================================
+        // AUTHENTICATION LOGIC (PERSISTENT & MULTI-METHOD)
+        // ==========================================
         window.loginWithGoogle = async function() {
             try {
-                await signInWithPopup(auth, provider);
+                await setPersistence(auth, browserLocalPersistence);
+                await signInWithPopup(auth, provider).catch(async (e) => {
+                    // Fallback to redirect if popup gets blocked or fails
+                    console.warn("Popup blocked/failed, trying redirect", e);
+                    await signInWithRedirect(auth, provider);
+                });
             } catch (error) {
                 console.error("Login failed", error);
                 window.showToast("Login gagal atau dibatalkan.", true);
             }
         };
 
-        window.logoutGoogle = async function() {
+        window.loginWithEmail = async function() {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+            if(!email || !pass) return window.showToast("Harap isi email & password!", true);
+            try {
+                await setPersistence(auth, browserLocalPersistence);
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (error) {
+                window.showToast("Login gagal: " + error.message, true);
+            }
+        };
+
+        window.loginAnonymously = async function() {
+            try {
+                await setPersistence(auth, browserLocalPersistence);
+                await signInAnonymously(auth);
+            } catch (error) {
+                window.showToast("Mode Tamu Gagal: " + error.message, true);
+            }
+        };
+
+        window.logoutAccount = async function() {
             await signOut(auth);
+            // Membersihkan cache chat & cache view secara local (Bukan database)
+            window.oracleChats = [];
+            window.allTransactions = [];
+            window.trashTransactions = [];
             window.location.reload();
         };
 
@@ -531,14 +596,17 @@
         };
 
         // ==========================================
-        // 2. SERVICES / FIREBASE_SERVICE (Updated UID)
+        // 2. SERVICES / FIREBASE_SERVICE (Updated UID + Smart Trash)
         // ==========================================
         window.FirebaseService = {
+            // TIDAK PERNAH MENGGUNAKAN SET() UNTUK NODE ROOT - SELALU MENGGUNAKAN PUSH() DAN UPDATE()
             async saveTransaction(data) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), data); },
             async updateTransaction(id, data) { await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), data); },
-            // Trash System / Soft Delete
+            
+            // Trash System / Soft Delete (Hanya menandai, bukan me-remove)
             async moveToTrash(id) { await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() }); },
-            // Hard Delete (Hanya dari Tempat Sampah)
+            
+            // Hard Delete (Hanya diperbolehkan dari dalam view Tempat Sampah, dan sudah menggunakan Remove spesifik per ID)
             async deleteTransactionPermanently(id) { await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`)); },
             
             async saveGoal(data) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), data); },
@@ -553,12 +621,12 @@
             },
             async deleteGroqKey(keyId) { await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys/${keyId}`)); },
             
-            // Oracle Chat Firebase System (Persistent Memory)
+            // Oracle Chat Firebase System (Persistent Memory untuk AI)
             async pushOracleChat(chatObj) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), chatObj); }
         };
 
         // ==========================================
-        // 3. SERVICES / GROQ_SERVICE (TEKS/NLP)
+        // 3. SERVICES / GROQ_SERVICE (HANYA UNTUK TEKS/NLP)
         // ==========================================
         let groqSecretKey = localStorage.getItem('aurafi_groq_secret');
         if(!groqSecretKey) {
@@ -569,7 +637,7 @@
         window.GroqService = {
             keysPool: [],
             currentIndex: 0,
-            model: "llama-3.3-70b-versatile", // Powerful model
+            model: "llama-3.3-70b-versatile", 
             secret: groqSecretKey,
 
             init(rawKeysArray) {
@@ -616,7 +684,7 @@
                             body: JSON.stringify(payload)
                         });
 
-                        // Merotasi Jika Limit/Error Server
+                        // Merotasi Jika Limit/Error Server (429 Rate Limit, 503 Server Error)
                         if(response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503) {
                             console.warn(`[GROQ] HTTP ${response.status}. Limit Exceeded. Merotasi Kunci...`);
                             this.switchToNextApiKey(); attempt++; continue;
@@ -637,7 +705,7 @@
         };
 
         // ==========================================
-        // 4. SERVICES / GEMINI_SERVICE (GAMBAR/OCR SAJA)
+        // 4. SERVICES / GEMINI_SERVICE (HANYA UNTUK GAMBAR/OCR SAJA)
         // ==========================================
         window.GeminiFailoverEngine = class GeminiFailoverEngine {
             constructor(pinCode) { this.pin = pinCode; this.keysPool = []; this.currentIndex = 0; }
@@ -651,7 +719,7 @@
                     for (const id in vaultData) {
                         const item = vaultData[id];
                         let decrypted = window.EncryptionService.decryptApiKey(item.value, this.pin);
-                        // Fallback jika pakai algoritma XOR yang lama
+                        // Fallback XOR
                         if (!decrypted) {
                             try {
                                 let text = atob(item.value);
@@ -710,10 +778,11 @@
         // ==========================================
         // INIT DATABASE LISTENER REALTIME (TERIKAT PADA AUTH)
         // ==========================================
+        // Dipanggil hanya ketika User sudah terautentikasi (onAuthStateChanged => true)
         function loadRealtimeDatabaseData() {
             if (!window.currentUserUid) return;
 
-            // 1. Load Transactions (Memisahkan Trash dan Active)
+            // 1. Load Transactions (Memisahkan Trash dan Active SECARA REALTIME)
             onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), (snapshot) => {
                 const all = [];
                 const data = snapshot.val();
@@ -721,6 +790,8 @@
                 
                 window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
                 window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+                
+                // Pemicu Realtime: Memanggil ulang render UI dan perhitungan chart seketika data berubah
                 if(window.reCalculateAll) window.reCalculateAll();
             });
 
@@ -733,16 +804,21 @@
                 if(window.reCalculateAll) window.reCalculateAll();
             });
 
-            // 3. Load Settings
+            // 3. Load Settings (Termasuk Limit Budget dan Theme)
             onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), (snapshot) => {
                 const d = snapshot.val();
                 if (d) {
-                    if(d.budget) window.monthlyBudget = d.budget;
+                    // Update Budget Bulanan
+                    if(d.monthlyBudget && d.monthlyBudget.limit) {
+                        window.monthlyBudget = d.monthlyBudget.limit;
+                    }
                     if(d.theme && d.theme !== window.currentTheme) {
                         window.currentTheme = d.theme;
                         if(window.applyTheme) window.applyTheme();
                     }
                 }
+                // Refresh kalkulator Budget saat settings di-load
+                if(window.reCalculateAll) window.reCalculateAll();
             });
 
             // 4. LOAD GROQ KEYS (INDEPENDEN)
@@ -776,8 +852,7 @@
                     chats.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
                 }
                 if(chats.length === 0) {
-                    // Pesan Default Pertama Kali (Tanpa membuang kuota DB)
-                    window.oracleChats = [{role: 'ai', text: 'Halo! Aku Aura Oracle. Aku siap menjadi asisten keuangan ramahmu. Boleh ngobrol santai, catat pemasukan, atau upload struk belanja ke aku! 😎', timestamp: new Date().toISOString()}];
+                    window.oracleChats = [{role: 'ai', text: 'Halo bosku! Aku Aura Oracle. Aku siap jadi penasihat keuangan dan catat laporan harianmu dengan asyik. Mau nambah transaksi atau ngobrol soal investasi hari ini? 😎', timestamp: new Date().toISOString()}];
                 } else {
                     window.oracleChats = chats;
                 }
@@ -786,24 +861,26 @@
         }
 
         // ==========================================
-        // AUTH STATE LISTENER (PINTU MASUK UTAMA)
+        // AUTH STATE LISTENER (PINTU MASUK UTAMA - PERSISTENSI LOGIN)
         // ==========================================
         onAuthStateChanged(auth, (user) => {
             const modalLogin = document.getElementById('modal-login');
             if (user) {
+                // User sudah login / sesi persisten ditemukan
                 window.currentUserUid = user.uid;
-                if(modalLogin) modalLogin.classList.add('hidden');
+                if(modalLogin) modalLogin.classList.add('hidden'); // Hilangkan form login selamanya selama tidak logout
                 
-                // Mulai Listener Realtime DB
+                // Mulai Listener Realtime DB menggunakan UID yang valid
                 loadRealtimeDatabaseData();
 
-                // Unlock otomatis Gemini jika PIN tersimpan
+                // Unlock otomatis Gemini jika PIN tersimpan (Tidak meminta user input ulang)
                 const savedGeminiPin = localStorage.getItem('aurafi_gemini_pin');
                 if (savedGeminiPin && window.syncGeminiEngine) {
                     setTimeout(() => window.syncGeminiEngine(true), 800); 
                 }
 
             } else {
+                // Sesi mati atau belum login
                 window.currentUserUid = null;
                 if(modalLogin) modalLogin.classList.remove('hidden');
             }
@@ -914,7 +991,7 @@
                     
                     const payload = {
                         contents: [{role: "user", parts: [{text: text || "Ekstrak struk ini dengan teliti."}]}],
-                        systemInstruction: { parts: [{text: `AuraFi AI. Misi: Analisis struk secara mutlak. \nATURAN KATEGORI: Klasifikasikan akurat (Misal: Coca Cola -> Minuman, Roti -> Karbohidrat, Sabun -> Kebersihan, Bensin -> Transportasi, PLN -> Tagihan, Ayam -> Protein, dll).\nTERJEMAHKAN KE BAHASA INDONESIA.\nFormat tanggal wajib "YYYY-MM-DD" (Default: ${dateTemplate}).\nTipe trx: "pemasukan", "pengeluaran", atau "tarik_tunai".\nBila narik tunai/ATM: "tipe" WAJIB "tarik_tunai", "nominal"=uang ditarik murni, "metode_pembayaran"="cashless", dan biaya admin dimasukkan ke "items" (nama_barang="Biaya Admin", harga=fee).\nTotal items.harga*qty WAJIB = nominal untuk pengeluaran.\nOutput raw JSON strictly without markdown.`}] },
+                        systemInstruction: { parts: [{text: `AuraFi AI. Misi: Analisis struk secara mutlak. \nATURAN KATEGORI CERDAS: Berdasarkan nama barang, berikan klasifikasi ini: Makanan, Minuman, Transportasi, Belanja, Tagihan, Kesehatan, Hiburan, Elektronik, Rumah Tangga, Pendidikan, Investasi, Pendapatan, Lainnya.\nTERJEMAHKAN NAMA BARANG KE BAHASA INDONESIA.\nFormat tanggal wajib "YYYY-MM-DD" (Default: ${dateTemplate}).\nTipe trx: "pemasukan", "pengeluaran", atau "tarik_tunai".\nBila narik tunai/ATM: "tipe" WAJIB "tarik_tunai", "nominal"=uang ditarik murni, "metode_pembayaran"="cashless", dan biaya admin dimasukkan ke "items" (nama_barang="Biaya Admin", harga=fee).\nTotal items.harga*qty WAJIB = nominal untuk pengeluaran.\nOutput raw JSON strictly without markdown.`}] },
                         generationConfig: { responseMimeType: "application/json", responseSchema: { type: "object", properties: { tanggal: {type:"string"}, nominal: {type:"number"}, mata_uang: {type:"string"}, metode_pembayaran: {type:"string"}, kategori: {type:"string"}, tipe: {type:"string"}, sifat: {type:"string"}, catatan_ai: {type:"string"}, is_receipt: {type:"boolean"}, items: { type:"array", items: { type:"object", properties: { nama_barang:{type:"string"}, harga:{type:"number"}, qty:{type:"number"}, kategori_barang:{type:"string"} } } } }, required: ["tanggal", "nominal", "mata_uang", "metode_pembayaran", "kategori", "tipe", "sifat", "catatan_ai", "is_receipt"] } }
                     };
                     const resStr = await window.failoverEngineInstance.fetch(payload, imgData);
@@ -925,10 +1002,10 @@
                     const messages = [
                         { role: "system", content: `Anda adalah AI Pencatat Keuangan (AuraFi). 
 Output WAJIB JSON Murni tanpa markdown backticks. 
-ATURAN KATEGORI CERDAS: Deteksi klasifikasi akurat: (Minuman, Karbohidrat, Protein, Transportasi, Tagihan, Perawatan Tubuh, Produk Susu, dll).
+ATURAN KATEGORI CERDAS (kategori & kategori_barang): Klasifikasikan per item menjadi: Makanan, Minuman, Transportasi, Belanja, Tagihan, Kesehatan, Hiburan, Elektronik, Rumah Tangga, Pendidikan, Investasi, Pendapatan, atau Lainnya.
 TANGGAL: Jika tidak disebut, gunakan ${dateTemplate}.
 ATURAN TARIK TUNAI: Jika User menarik uang ATM: "tipe"="tarik_tunai", "nominal"=uang tunai ditarik, "metode_pembayaran"="cashless", biaya admin dimasukkan ke "items" dengan nama_barang="Biaya Admin".
-JSON Format: { "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "JPY", "metode_pembayaran": "tunai/cashless", "kategori": "string", "tipe": "pemasukan/pengeluaran/tarik_tunai", "sifat": "kebutuhan/impulsif", "catatan_ai": "Pesan insight asyik max 1 kalimat", "is_receipt": false, "items": [{"nama_barang":"str", "harga":num, "qty":num, "kategori_barang":"str"}] }`},
+JSON Format: { "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "JPY/IDR", "metode_pembayaran": "tunai/cashless", "kategori": "string", "tipe": "pemasukan/pengeluaran/tarik_tunai", "sifat": "kebutuhan/impulsif", "catatan_ai": "Pesan asyik/saran ramah max 1 kalimat", "is_receipt": false, "items": [{"nama_barang":"str", "harga":num, "qty":num, "kategori_barang":"str"}] }`},
                         { role: "user", content: text }
                     ];
                     
@@ -936,7 +1013,7 @@ JSON Format: { "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "JPY", "
                     jsonResult = window.parseCleanJSON(resStr);
                 }
 
-                // Auto-Koreksi Akuntansi
+                // Auto-Koreksi Akuntansi / Perhitungan Validasi Struk OCR
                 if (jsonResult.is_receipt && jsonResult.items?.length > 0 && jsonResult.tipe === 'pengeluaran') {
                     let sum = jsonResult.items.reduce((a, b) => a + (b.harga * (b.qty || 1)), 0);
                     if (sum !== jsonResult.nominal) jsonResult.items[0].harga += (jsonResult.nominal - sum); 
@@ -966,7 +1043,7 @@ JSON Format: { "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "JPY", "
             await window.FirebaseService.pushOracleChat({role: 'user', text: uiText, timestamp: new Date().toISOString()});
             window.setProcessingStatus(true); 
 
-            // Snapshot transaksi untuk referensi database memori AI
+            // Snapshot transaksi untuk referensi database memori AI (Agar AI tahu ID barang/transaksi apa saja yang bisa dia Hapus/Edit)
             const rec = window.allTransactions.slice(0,10).map(t => {
                 let it = t.items && Array.isArray(t.items) ? `| Items:[${t.items.map(i=>`{nama:"${i.nama_barang}", harga:${i.harga}, qty:${i.qty}}`).join(', ')}]` : ''; 
                 return `ID:${t.id} | Tipe:${t.tipe} | Kat:${t.kategori} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
@@ -984,7 +1061,7 @@ JSON Format: { "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "JPY", "
 
                     const payload = {
                         contents: [{role: "user", parts: [{text: contextPrompt}]}],
-                        systemInstruction: { parts: [{text: `Kamu adalah AuraFi Oracle V2. Sifat: Humble, asyik, profesional, ramah. Data Keuangan Terkini: ${rec}\nMisi: Analisis gambar. Keluarkan respon RAW JSON STRICTLY: {"reply": "msg penasihat yang ramah", "action": "none"}`}] },
+                        systemInstruction: { parts: [{text: `Kamu adalah AuraFi Oracle V2. Kepribadian: humble, santai, asyik, jenius, penasihat keuangan profesional. Jangan kaku. Data Keuangan Terkini: ${rec}\nMisi: Analisis gambar. Keluarkan respon RAW JSON STRICTLY: {"reply": "msg penasihat yang ramah", "action": "none"}`}] },
                         generationConfig: { responseMimeType: "application/json", responseSchema: { type: "object", properties: { reply: {type:"string"}, action: {type:"string"} }, required: ["reply", "action"] } }
                     };
                     const rStr = await window.failoverEngineInstance.fetch(payload, base64Img);
@@ -993,20 +1070,20 @@ JSON Format: { "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "JPY", "
                 } else {
                     // TEKS CHAT (GROQ ONLY DENGAN MEMORI HISTORY ARRAY)
                     const messages = [
-                        { role: "system", content: `Kamu adalah AuraFi Oracle V2. Personalitas: Humble, santai, asyik, cerdas, penasihat keuangan yang ramah, hangat, dan logis. JANGAN KASAR.
+                        { role: "system", content: `Kamu adalah AuraFi Oracle V2. Kepribadian: humble, santai, asyik, jenius, profesional keuangan, dan ramah. JANGAN kaku dan JANGAN sarkas berlebihan.
 Data DB Transaksi Terkini:\n${rec}\n
-KAMU PUNYA KONTROL DATABASE! (Hanya Jika Diminta)
+KONTROL DATABASE: Kamu mampu menghapus/mengubah 1 ITEM SAJA dari dalam suatu blok struk transaksi (array items)!
 Jika user minta HAPUS 1 ITEM (misal "hapus susu"), UBAH NAMA, atau UBAH HARGA item dari satu ID:
-1. Pahami blok struknya.
-2. Edit isi array \`items\`.
-3. Hitung \`new_nominal\`.
-4. Beri action: "update_items", \`target_id\`, \`new_nominal\`, dan \`new_items\` terbaru.
-Jika user minta HAPUS 1 TRANSAKSI UTUH: action="moveToTrash".
+1. Analisis array \`items\` dari ID transaksi.
+2. Edit / Filter item yang dimaksud user.
+3. Hitung ulang total harga sisa dari items (QTY * Harga) menjadi \`new_nominal\`.
+4. Beri action: "update_items", \`target_id\`, \`new_nominal\`, dan berikan susunan array \`new_items\` terbaru yang utuh tanpa barang yang dihapus.
+Jika user minta HAPUS SELURUH TRANSAKSI: action="moveToTrash".
 Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
-{"reply": "Balasan ramah, pintar, & asyik ke user (tanyakan konfirmasi Yakin/Tidak jika menghapus/mengubah)", "action": "none/moveToTrash/update_nominal/update_items", "target_id": "ID transaksi", "new_nominal": 0, "new_items": [{"nama_barang": "str", "harga": 0, "qty": 0}]}.` }
+{"reply": "Balasan ramah & asyik ke user (tanyakan konfirmasi jika menghapus/mengubah)", "action": "none/moveToTrash/update_nominal/update_items", "target_id": "ID transaksi", "new_nominal": 0, "new_items": [{"nama_barang": "str", "harga": 0, "qty": 0}]}.` }
                     ];
                     
-                    // Injeksikan memori chat 8 pesan terakhir 
+                    // Injeksikan memori chat 8 pesan terakhir agar API tetap ingat percakapan
                     const recentChats = window.oracleChats.slice(-8);
                     for (let i = 0; i < recentChats.length; i++) {
                         if(recentChats[i].text === uiText && i === recentChats.length -1) continue; 
@@ -1018,7 +1095,7 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
                     resJson = window.parseCleanJSON(rStr);
                 }
 
-                // Eksekusi Manipulasi Database AI ke Firebase
+                // Eksekusi Manipulasi Database AI ke Firebase (Realtime Data Patching)
                 if(resJson.action !== 'none' && resJson.target_id) { 
                     try {
                         if(resJson.action === 'moveToTrash') {
@@ -1029,11 +1106,11 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
                             await window.FirebaseService.updateTransaction(resJson.target_id, { items: resJson.new_items, nominal: resJson.new_nominal });
                         }
                     } catch(e) {
-                        resJson.reply += " (Gagal memodifikasi database lokal).";
+                        resJson.reply += " (Gagal memodifikasi database lokal bos).";
                     }
                 }
 
-                // Push AI response to Firebase DB
+                // Push AI response to Firebase DB (Jadi permanen)
                 await window.FirebaseService.pushOracleChat({role: 'ai', text: resJson.reply, timestamp: new Date().toISOString()});
 
             } catch(e) { 
@@ -1164,12 +1241,16 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
                 'Pendapatan': 'fa-money-bill-wave', 'Makanan': 'fa-burger', 'Minuman': 'fa-mug-hot',
                 'Sabun & Pembersih': 'fa-pump-soap', 'Kebutuhan Harian': 'fa-box', 'Transportasi': 'fa-train',
                 'Protein': 'fa-drumstick-bite', 'Karbohidrat': 'fa-bowl-rice', 'Tagihan': 'fa-file-invoice-dollar',
-                'Kebersihan': 'fa-broom', 'Perawatan Tubuh': 'fa-bath', 'Produk Susu': 'fa-cheese'
+                'Kebersihan': 'fa-broom', 'Perawatan Tubuh': 'fa-bath', 'Produk Susu': 'fa-cheese',
+                'Kesehatan': 'fa-kit-medical', 'Hiburan': 'fa-gamepad', 'Belanja': 'fa-cart-shopping'
             };
             return icons[cat] || 'fa-tag';
         }
 
-        // --- KALKULATOR UTAMA (REALTIME CHART & LOGIC) ---
+        // --- KALKULATOR UTAMA (REALTIME CHART & LOGIC TERMASUK BUDGETING) ---
+        // Karena listener Firebase menggunakan `onValue` pada data list, 
+        // kalkulasi `spent` (Terpakai Bulan Ini) setiap kali data di-load 
+        // OTOMATIS akan kembali ke 0 saat bulan berganti berdasarkan rekam jejak bulan tersebut (Tidak perlu CronJob reset)
         window.reCalculateAll = function() {
             let totBal = 0, cashBal = 0, cashlessBal = 0;
             let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
@@ -1211,6 +1292,7 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
                     groupedTrx[dStr].total -= feeVal; 
                     
                     if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                        // Kalkulasi pengeluaran bulanan bertambah sebesar admin fee
                         thisMthSpent += feeVal; 
                         thisMthCashless += feeVal;
                         const c = trx.kategori || 'Biaya Admin'; 
@@ -1221,6 +1303,8 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
                     if(isCash) cashBal -= val; else cashlessBal -= val; 
                     groupedTrx[dStr].total -= val;
                     if(trx.sifat === 'impulsif') impulsif++;
+                    
+                    // Filter untuk bulan ini
                     if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
                         thisMthSpent += val; 
                         if(!isCash) thisMthCashless += val;
@@ -1238,8 +1322,27 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
             
             const core = document.getElementById('living-core'); 
             const limitVal = convertVal(window.monthlyBudget, 'JPY');
-            const burnPct = limitVal > 0 ? (thisMthSpent / limitVal) * 100 : 0;
             
+            // Dynamic Budget calculation (Otomatis menyesuaikan dengan limit dan bulan saat ini)
+            const burnPct = limitVal > 0 ? (thisMthSpent / limitVal) * 100 : 0;
+            const remainingBudget = limitVal - thisMthSpent;
+            
+            // Auto Update Settings Budget di Database
+            if (window.FirebaseService && window.currentUserUid) {
+                // Throttle the DB update slightly to avoid spamming the DB while rendering
+                clearTimeout(window.budgetUpdateTimer);
+                window.budgetUpdateTimer = setTimeout(() => {
+                    window.FirebaseService.updateSettings({
+                        monthlyBudget: {
+                            limit: window.monthlyBudget,
+                            spent: thisMthSpent,
+                            remaining: remainingBudget,
+                            percentage: burnPct.toFixed(2)
+                        }
+                    });
+                }, 5000);
+            }
+
             if (core) { core.className = `w-44 h-44 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`; }
             const bProg = document.getElementById('burn-progress');
             if (bProg) { bProg.style.width = `${Math.min(burnPct, 100)}%`; bProg.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; }
@@ -1255,7 +1358,7 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
                     insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${formatVal(proj)}!`; 
                     insightBox.style.borderColor = 'var(--color-expense)'; 
                 } else { 
-                    insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi tagihan akhir ${formatVal(proj)}.`; 
+                    insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi tagihan akhir ${formatVal(proj)}.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa Anggaran: ${formatVal(remainingBudget)}</span>`; 
                     insightBox.style.borderColor = 'var(--border-glass)'; 
                 }
             }
@@ -1473,7 +1576,11 @@ Kamu WAJIB merespon JSON Murni (tanpa \`\`\`). Struktur:
             const amt = prompt("Masukkan Limit Anggaran Bulanan Baru (dalam JPY):", window.monthlyBudget);
             if(amt && !isNaN(amt)) { 
                 window.monthlyBudget = parseFloat(amt); 
-                if(window.FirebaseService?.updateSettings) window.FirebaseService.updateSettings({ budget: window.monthlyBudget }); 
+                if(window.FirebaseService?.updateSettings) {
+                    window.FirebaseService.updateSettings({ 
+                        monthlyBudget: { limit: window.monthlyBudget } 
+                    }); 
+                }
                 window.reCalculateAll(); 
             }
         };
