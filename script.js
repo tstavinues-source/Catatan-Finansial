@@ -25,10 +25,12 @@ const ledgerNode = 'aurafi_ledger';
 window.currentUserUid = null;
 localStorage.removeItem('aurafi_device_id'); 
 
+// Helper: Generate Unique UUID-like String for Item ID
 window.generateItemId = function() {
     return 'itm_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
 };
 
+// Helper: Sanitasi Item agar Selalu Memiliki Atribut Lengkap & Aman
 window.sanitizeItems = function(items, defaultPayment, timestamp) {
     return (items || []).map(item => {
         return {
@@ -44,6 +46,7 @@ window.sanitizeItems = function(items, defaultPayment, timestamp) {
     });
 };
 
+// Helper: Builder Prompt Dinamis AI Berdasarkan Preferensi User
 window.getOraclePromptConfigs = function() {
     const prefs = window.settingsData?.aiPreferences || {
         persona: 'Kombinasi Humble + Jenius + Profesional',
@@ -60,22 +63,25 @@ window.getOraclePromptConfigs = function() {
 
     let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
     if (prefs.style === "Singkat") styleStr = "Jawab SINGKAT, padat, dan jelas. Maksimal 2 paragraf saja.";
-    else if (prefs.style === "Detail") styleStr = "Jawab dengan SANGAT DETAIL, komprehensif, dan panjang lebar. Lengkapi dengan poin-poin.";
+    else if (prefs.style === "Detail") styleStr = "Jawab dengan SANGAT DETAIL, komprehensif, dan panjang lebar.";
 
     return { personaStr, styleStr };
 };
 
 // ==========================================
-// AUTHENTICATION LOGIC
+// AUTHENTICATION LOGIC (PERSISTENT & MULTI-METHOD)
 // ==========================================
 window.loginWithGoogle = async function() {
     try {
         await setPersistence(auth, browserLocalPersistence);
         await signInWithPopup(auth, provider).catch(async (e) => {
-            console.warn("Popup blocked, trying redirect");
+            console.warn("Popup blocked/failed, trying redirect", e);
             await signInWithRedirect(auth, provider);
         });
-    } catch (error) { window.showToast("Login gagal atau dibatalkan.", true); }
+    } catch (error) {
+        console.error("Login failed", error);
+        window.showToast("Login gagal atau dibatalkan.", true);
+    }
 };
 
 window.loginWithEmail = async function() {
@@ -85,21 +91,31 @@ window.loginWithEmail = async function() {
     try {
         await setPersistence(auth, browserLocalPersistence);
         await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error) { window.showToast("Login gagal: " + error.message, true); }
+    } catch (error) {
+        window.showToast("Login gagal: " + error.message, true);
+    }
 };
 
 window.loginAnonymously = async function() {
     try {
         await setPersistence(auth, browserLocalPersistence);
         await signInAnonymously(auth);
-    } catch (error) { window.showToast("Mode Tamu Gagal: " + error.message, true); }
+    } catch (error) {
+        window.showToast("Mode Tamu Gagal: " + error.message, true);
+    }
 };
 
 window.logoutAccount = async function() {
     await signOut(auth);
+    window.oracleChats = [];
+    window.allTransactions = [];
+    window.trashTransactions = [];
     window.location.reload();
 };
 
+// ==========================================
+// 1. SERVICES / ENCRYPTION_SERVICE
+// ==========================================
 window.EncryptionService = {
     encryptApiKey(apiKey, secretKey) {
         if(!secretKey) return null;
@@ -108,7 +124,8 @@ window.EncryptionService = {
     decryptApiKey(cipherText, secretKey) {
         try {
             const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
-            return bytes.toString(CryptoJS.enc.Utf8) || null;
+            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+            return decrypted || null;
         } catch(e) { return null; }
     },
     validate(apiKey, secretKey) {
@@ -118,24 +135,52 @@ window.EncryptionService = {
     }
 };
 
+// ==========================================
+// 2. SERVICES / FIREBASE_SERVICE (Incremental & Safe Merging)
+// ==========================================
 window.FirebaseService = {
-    async saveTransaction(data) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), data); },
-    async updateTransaction(id, data) { await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), data); },
-    async moveToTrash(id) { await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() }); },
-    async deleteTransactionPermanently(id) { await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`)); },
-    async saveGoal(data) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), data); },
-    async deleteGoal(id) { await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/goals/${id}`)); },
-    async updateSettings(data) { await update(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), data); },
-    async saveGroqKey(encryptedKey) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys`), { encryptedKey: encryptedKey, createdAt: new Date().toISOString(), active: true, usageCount: 0 }); },
-    async deleteGroqKey(keyId) { await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys/${keyId}`)); },
-    async pushOracleChat(chatObj) { await push(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), chatObj); },
-    async deleteOracleChat(id) { await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats/${id}`)); }
+    async saveTransaction(data) { 
+        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), data);
+    },
+    async updateTransaction(id, data) { 
+        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), data);
+    },
+    async moveToTrash(id) { 
+        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() });
+    },
+    async deleteTransactionPermanently(id) { 
+        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`));
+    },
+    async saveGoal(data) { 
+        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), data);
+    },
+    async deleteGoal(id) { 
+        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/goals/${id}`));
+    },
+    async updateSettings(data) { 
+        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), data);
+    },
+    async saveGroqKey(encryptedKey) {
+        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys`), {
+            encryptedKey: encryptedKey, createdAt: new Date().toISOString(), active: true, usageCount: 0
+        });
+    },
+    async deleteGroqKey(keyId) { 
+        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys/${keyId}`));
+    },
+    async pushOracleChat(chatObj) { 
+        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), chatObj); 
+    }
 };
 
+// ==========================================
+// 3. SERVICES / MEMORY RETRIEVAL
+// ==========================================
 window.MemoryService = {
     getRelevantTransactions(query) {
         if (!window.allTransactions || window.allTransactions.length === 0) return [];
         const keyword = (query || "").toLowerCase().trim();
+        
         let matched = window.allTransactions.filter(t => {
             const matchCategory = (t.kategori || "").toLowerCase().includes(keyword);
             const matchStore = (t.merchantName || t.storeName || "").toLowerCase().includes(keyword);
@@ -143,31 +188,45 @@ window.MemoryService = {
             const matchItems = t.items && t.items.some(it => (it.nama_barang || "").toLowerCase().includes(keyword));
             return matchCategory || matchStore || matchItems || matchDesc;
         });
-        if (matched.length > 0) return matched.slice(0, 5);
-        return window.allTransactions.slice(0, 5);
+
+        if (matched.length > 0) {
+            return matched.slice(0, 5);
+        } else {
+            return window.allTransactions.slice(0, 5);
+        }
     },
-    getRelevantChats() { return window.oracleChats ? window.oracleChats.slice(-8) : []; }
+    getRelevantChats() {
+        return window.oracleChats ? window.oracleChats.slice(-8) : [];
+    }
 };
 
+// ==========================================
+// 4. FINANCIAL SUMMARY SERVICE
+// ==========================================
 window.FinancialSummaryService = {
     getSummaryString() {
         let cashBal = 0, cashlessBal = 0, totSpent = 0;
         const today = new Date();
-        const txList = window.allTransactions || [];
         
+        const txList = window.allTransactions || [];
         txList.forEach(t => {
             const val = Number(t.nominal || 0);
             const isCash = t.metode_pembayaran === 'tunai';
+            
             if (t.tipe === 'pemasukan') {
                 if (isCash) cashBal += val; else cashlessBal += val;
             } else if (t.tipe === 'tarik_tunai') {
                 let adminFee = Number(t.admin_fee || 0);
-                cashBal += val; cashlessBal -= (val + adminFee);
+                cashBal += val;
+                cashlessBal -= (val + adminFee);
             } else if (t.tipe === 'setor_tunai') {
                 let adminFee = Number(t.admin_fee || 0);
-                cashBal -= val; cashlessBal += val; cashlessBal -= adminFee; 
+                cashBal -= val; 
+                cashlessBal += val; 
+                cashlessBal -= adminFee; 
             } else {
-                if (isCash) cashBal -= val; else cashlessBal -= val;
+                if (isCash) cashBal -= val; 
+                else cashlessBal -= val;
                 if (new Date(t.tanggal).getMonth() === today.getMonth() && new Date(t.tanggal).getFullYear() === today.getFullYear()) {
                     totSpent += val;
                 }
@@ -178,16 +237,20 @@ window.FinancialSummaryService = {
         const nickname = profile.nickname || "User";
         const fullName = profile.fullName || "User AuraFi";
 
-        return `--- PROFIL & RINGKASAN ---
+        return `--- PROFIL & RINGKASAN PENGGUNA ---
 Nama: ${fullName} (${nickname})
-Mata Uang Aktif: ${window.displayCurrency}
-Tunai: ${cashBal} ${window.displayCurrency}
-Cashless: ${cashlessBal} ${window.displayCurrency}
-Total Aset: ${cashBal + cashlessBal} ${window.displayCurrency}
-Pengeluaran Bulan Ini: ${totSpent} ${window.displayCurrency}`;
+Mata Uang Utama Aktif: ${window.displayCurrency}
+Sisa Tunai (Cash): ${cashBal} ${window.displayCurrency}
+Sisa Cashless: ${cashlessBal} ${window.displayCurrency}
+Total Aset Net Worth: ${cashBal + cashlessBal} ${window.displayCurrency}
+Pengeluaran Bulan Ini: ${totSpent} ${window.displayCurrency}
+Sisa Limit Anggaran Bulanan: ${window.monthlyBudget - totSpent} ${window.displayCurrency}`;
     }
 };
 
+// ==========================================
+// 5. SERVICES / GROQ_SERVICE
+// ==========================================
 let groqSecretKey = localStorage.getItem('aurafi_groq_secret');
 if(!groqSecretKey) {
     groqSecretKey = CryptoJS.lib.WordArray.random(128/8).toString();
@@ -195,50 +258,85 @@ if(!groqSecretKey) {
 }
 
 window.GroqService = {
-    keysPool: [], currentIndex: 0, model: "llama-3.3-70b-versatile", secret: groqSecretKey,
+    keysPool: [],
+    currentIndex: 0,
+    model: "llama-3.3-70b-versatile", 
+    secret: groqSecretKey,
+
     init(rawKeysArray) {
         this.keysPool = [];
         for(let item of rawKeysArray) {
             if(item.active) {
                 const decrypted = window.EncryptionService.decryptApiKey(item.encryptedKey, this.secret);
-                if(decrypted && decrypted.startsWith('gsk_')) this.keysPool.push({ id: item.id, value: decrypted });
+                if(decrypted && decrypted.startsWith('gsk_')) {
+                    this.keysPool.push({ id: item.id, value: decrypted });
+                }
             }
         }
-        this.currentIndex = 0; return this.keysPool.length;
+        this.currentIndex = 0;
+        return this.keysPool.length;
     },
-    getCurrentApiKey() { return this.keysPool.length === 0 ? null : this.keysPool[this.currentIndex].value; },
+
+    getCurrentApiKey() {
+        if(this.keysPool.length === 0) return null;
+        return this.keysPool[this.currentIndex].value;
+    },
+
     switchToNextApiKey() {
         if(this.keysPool.length <= 1) return false;
-        this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; return true;
+        this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
+        console.log(`[GROQ FAILOVER] Rotasi Kunci ke Index: ${this.currentIndex}`);
+        return true;
     },
+
     async fetch(messages, requireJson = false) {
         if(this.keysPool.length === 0) throw new Error("API Key Groq Kosong.");
-        let attempt = 0; const totalKeys = this.keysPool.length;
+        
+        let attempt = 0;
+        const totalKeys = this.keysPool.length;
+
         while (attempt < totalKeys) {
             const apiKey = this.getCurrentApiKey();
             try {
                 const payload = { model: this.model, messages: messages, temperature: requireJson ? 0.1 : 0.7 };
                 if(requireJson) payload.response_format = { type: "json_object" };
+
                 const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
+
                 if(response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503) {
+                    console.warn(`[GROQ] HTTP ${response.status}. Limit Exceeded. Merotasi Kunci...`);
                     this.switchToNextApiKey(); attempt++; continue;
                 }
-                if (!response.ok) { const err = await response.json(); throw new Error(err.error?.message || "Groq Error"); }
-                const data = await response.json(); return data.choices[0].message.content;
-            } catch (err) { this.switchToNextApiKey(); attempt++; }
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error?.message || "Groq Error");
+                }
+
+                const data = await response.json();
+                return data.choices[0].message.content;
+            } catch (err) {
+                console.error("[GROQ ERROR]", err.message);
+                this.switchToNextApiKey(); attempt++;
+            }
         }
         throw new Error("Semua API Key Groq gagal.");
     }
 };
 
+// ==========================================
+// 6. SERVICES / GEMINI_SERVICE (OCR & FALLBACK ENGINE)
+// ==========================================
 window.GeminiFailoverEngine = class GeminiFailoverEngine {
     constructor(pinCode) { this.pin = pinCode; this.keysPool = []; this.currentIndex = 0; }
+
     async init() {
         this.keysPool = [];
         const snapshot = await get(ref(db, 'nexus_api_vault'));
+        
         if (snapshot.exists()) {
             const vaultData = snapshot.val();
             for (const id in vaultData) {
@@ -246,7 +344,8 @@ window.GeminiFailoverEngine = class GeminiFailoverEngine {
                 let decrypted = window.EncryptionService.decryptApiKey(item.value, this.pin);
                 if (!decrypted) {
                     try {
-                        let text = atob(item.value); let result = '';
+                        let text = atob(item.value);
+                        let result = '';
                         for (let i = 0; i < text.length; i++) { result += String.fromCharCode(text.charCodeAt(i) ^ this.pin.charCodeAt(i % this.pin.length)); }
                         decrypted = result;
                     } catch(e) {}
@@ -258,31 +357,51 @@ window.GeminiFailoverEngine = class GeminiFailoverEngine {
         }
         return this.keysPool.length;
     }
+
     async fetch(payload, base64Image) {
-        if (this.keysPool.length === 0) throw new Error("Kunci Gemini Kosong.");
+        if (this.keysPool.length === 0) throw new Error("Kunci Gemini Kosong / PIN Salah.");
         let attempt = 0; const totalKeys = this.keysPool.length;
+
         while (attempt < totalKeys) {
             const activeKeyObj = this.keysPool[this.currentIndex];
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKeyObj.value}`;
+            
             const requestPayload = JSON.parse(JSON.stringify(payload));
+            
             if (base64Image) {
                 const base64Data = base64Image.split(',')[1] || base64Image;
                 if (!requestPayload.contents) requestPayload.contents = [{ role: "user", parts: [] }];
                 if (!requestPayload.contents[0].parts) requestPayload.contents[0].parts = [];
                 requestPayload.contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: base64Data } });
             }
+
             try {
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestPayload) });
-                if (response.status === 429 || response.status === 400 || response.status === 401) { this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; continue; }
+                const response = await fetch(url, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestPayload)
+                });
+
+                if (response.status === 429 || response.status === 400 || response.status === 401) {
+                    this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
+                    attempt++; continue; 
+                }
                 if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
+
                 const result = await response.json();
-                return result.candidates?.[0]?.content?.parts?.[0]?.text;
-            } catch (err) { this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; }
+                const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!textResponse) throw new Error("Format respons API tidak sesuai");
+                return textResponse;
+            } catch (err) {
+                this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
+                attempt++;
+            }
         }
         throw new Error("SEMUA KUNCI GEMINI TERKENA LIMIT!");
     }
 };
 
+// ==========================================
+// INIT DATABASE LISTENER REALTIME (TERIKAT PADA AUTH)
+// ==========================================
 function loadRealtimeDatabaseData() {
     if (!window.currentUserUid) return;
 
@@ -290,28 +409,40 @@ function loadRealtimeDatabaseData() {
         const all = [];
         const data = snapshot.val();
         if (data) Object.entries(data).forEach(([key, val]) => all.push({ id: key, ...val }));
-        window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.createdAt || b.tanggal) - new Date(a.createdAt || a.tanggal)).reverse();
+        
+        window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
         window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+        
         window.checkAndExecuteRecurringPayments();
+
         if(window.reCalculateAll) window.reCalculateAll();
     });
 
     onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), (snapshot) => {
-        const goals = []; const data = snapshot.val();
+        const goals = [];
+        const data = snapshot.val();
         if (data) Object.entries(data).forEach(([key, val]) => goals.push({ id: key, ...val }));
         window.allGoals = goals;
         if(window.reCalculateAll) window.reCalculateAll();
     });
 
     onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), (snapshot) => {
-        const d = snapshot.val(); window.settingsData = d || {};
+        const d = snapshot.val();
+        window.settingsData = d || {};
         if (d) {
-            if(d.monthlyBudget && d.monthlyBudget.limit) window.monthlyBudget = d.monthlyBudget.limit;
-            if(d.theme && d.theme !== window.currentTheme) { window.currentTheme = d.theme; if(window.applyTheme) window.applyTheme(); }
-            if(d.profile) {
-                const elFn = document.getElementById('user-fullname'); if(elFn) elFn.value = d.profile.fullName || '';
-                const elNn = document.getElementById('user-nickname'); if(elNn) elNn.value = d.profile.nickname || '';
+            if(d.monthlyBudget && d.monthlyBudget.limit) {
+                window.monthlyBudget = d.monthlyBudget.limit;
             }
+            if(d.theme && d.theme !== window.currentTheme) {
+                window.currentTheme = d.theme;
+                if(window.applyTheme) window.applyTheme();
+            }
+            if(d.profile) {
+                document.getElementById('user-fullname').value = d.profile.fullName || '';
+                document.getElementById('user-nickname').value = d.profile.nickname || '';
+            }
+            
+            // Populasikan Dropdown Setting AI jika elemennya sudah di-inject
             if (d.aiPreferences) {
                 const elC = document.getElementById('setting-ai-chat'); if(elC) elC.value = d.aiPreferences.modelChat;
                 const elV = document.getElementById('setting-ai-vision'); if(elV) elV.value = d.aiPreferences.modelVision;
@@ -324,10 +455,15 @@ function loadRealtimeDatabaseData() {
     });
 
     onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys`), (snapshot) => {
-        window.rawGroqKeysData = []; const data = snapshot.val();
-        if (data) Object.entries(data).forEach(([key, val]) => window.rawGroqKeysData.push({ id: key, ...val }));
+        window.rawGroqKeysData = [];
+        const data = snapshot.val();
+        if (data) {
+            Object.entries(data).forEach(([key, val]) => window.rawGroqKeysData.push({ id: key, ...val }));
+        }
         const activeCount = window.GroqService.init(window.rawGroqKeysData);
+        
         const grBadge = document.getElementById('groq-status-badge');
+        
         if(grBadge) {
             if(activeCount > 0) {
                 grBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
@@ -341,37 +477,61 @@ function loadRealtimeDatabaseData() {
     });
 
     onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), (snapshot) => {
-        const chats = []; const data = snapshot.val();
-        if (data) Object.entries(data).forEach(([key, val]) => chats.push({ id: key, ...val }));
-        chats.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+        const chats = [];
+        const data = snapshot.val();
+        if (data) {
+            Object.entries(data).forEach(([key, val]) => chats.push({ id: key, ...val }));
+            chats.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+        }
+        
         const nickname = window.settingsData?.profile?.nickname || "Bos";
         if(chats.length === 0) {
-            window.oracleChats = [{id: 'init', role: 'ai', text: `Halo ${nickname}! Aku Aura Oracle V3. Aku siap jadi penasihat keuangan handalmu. Mau ngobrol hari ini? 😎`, timestamp: new Date().toISOString()}];
-        } else { window.oracleChats = chats; }
+            window.oracleChats = [{role: 'ai', text: `Halo ${nickname}! Aku Aura Oracle V2. Aku siap jadi penasihat keuangan handalmu dengan logika presisi. Mau mencatat belanja atau ngobrol hari ini? 😎`, timestamp: new Date().toISOString()}];
+        } else {
+            window.oracleChats = chats;
+        }
         if(window.renderOracleChats) window.renderOracleChats();
     });
 }
 
+// ==========================================
+// AUTH STATE LISTENER (PERSISTENSI LOGIN)
+// ==========================================
 onAuthStateChanged(auth, (user) => {
     const modalLogin = document.getElementById('modal-login');
     if (user) {
         window.currentUserUid = user.uid;
         if(modalLogin) modalLogin.classList.add('hidden');
+        
         loadRealtimeDatabaseData();
+
         const savedGeminiPin = localStorage.getItem('aurafi_gemini_pin');
-        if (savedGeminiPin && window.syncGeminiEngine) setTimeout(() => window.syncGeminiEngine(true), 800); 
+        if (savedGeminiPin && window.syncGeminiEngine) {
+            setTimeout(() => window.syncGeminiEngine(true), 800); 
+        }
+
     } else {
         window.currentUserUid = null;
         if(modalLogin) modalLogin.classList.remove('hidden');
     }
 });
 
-// UI & SETTINGS
+// ==========================================
+// UI & CONFIG SETTINGS FOR AI & RECURRING
+// ==========================================
 window.saveUserProfile = async function() {
     const fn = document.getElementById('user-fullname').value.trim();
     const nn = document.getElementById('user-nickname').value.trim();
     if(!fn || !nn) return window.showToast("Lengkapi form nama profil!", true);
-    try { await window.FirebaseService.updateSettings({ profile: { fullName: fn, nickname: nn } }); window.showToast("Profil tersimpan!"); } catch(e) { window.showToast("Gagal menyimpan profil.", true); }
+
+    try {
+        await window.FirebaseService.updateSettings({
+            profile: { fullName: fn, nickname: nn }
+        });
+        window.showToast("Profil pengguna berhasil disimpan!");
+    } catch(e) {
+        window.showToast("Gagal menyimpan profil: " + e.message, true);
+    }
 };
 
 window.saveAIPreferences = async function() {
@@ -379,10 +539,15 @@ window.saveAIPreferences = async function() {
     const visM = document.getElementById('setting-ai-vision').value;
     const pers = document.getElementById('setting-ai-persona').value;
     const style = document.getElementById('setting-ai-style').value;
+    
     try {
-        await window.FirebaseService.updateSettings({ aiPreferences: { modelChat: chatM, modelVision: visM, persona: pers, style: style } });
-        window.showToast("Setelan Oracle AI V3 tersimpan!");
-    } catch(e) { window.showToast("Gagal menyimpan setelan AI.", true); }
+        await window.FirebaseService.updateSettings({
+            aiPreferences: { modelChat: chatM, modelVision: visM, persona: pers, style: style }
+        });
+        window.showToast("Setelan Oracle AI berhasil disimpan!");
+    } catch(e) { 
+        window.showToast("Gagal menyimpan setelan AI.", true); 
+    }
 };
 
 window.addRecurringPayment = async function() {
@@ -390,66 +555,112 @@ window.addRecurringPayment = async function() {
     const amount = parseFloat(document.getElementById('new-rec-amt').value);
     const date = parseInt(document.getElementById('new-rec-date').value);
     const method = document.getElementById('new-rec-method').value;
-    if(!name || isNaN(amount) || isNaN(date) || date < 1 || date > 31) return window.showToast("Lengkapi form dengan benar (Tanggal 1-31)!", true);
+
+    if(!name || isNaN(amount) || isNaN(date) || date < 1 || date > 31) {
+        return window.showToast("Lengkapi form tagihan dengan benar (Tanggal 1-31)!", true);
+    }
+
     const recId = 'rec_' + Date.now();
-    const updates = {}; updates[`recurringPayments/${recId}`] = { name, amount, date, method, active: true };
+    const updates = {};
+    updates[`recurringPayments/${recId}`] = {
+        name, amount, date, method, active: true
+    };
+
     try {
         await window.FirebaseService.updateSettings(updates);
-        document.getElementById('new-rec-name').value = ""; document.getElementById('new-rec-amt').value = ""; document.getElementById('new-rec-date').value = "";
-        window.showToast("Tagihan bulanan dikonfigurasi!");
-    } catch(e) { window.showToast("Gagal menambahkan tagihan.", true); }
+        document.getElementById('new-rec-name').value = "";
+        document.getElementById('new-rec-amt').value = "";
+        document.getElementById('new-rec-date').value = "";
+        window.showToast("Tagihan bulanan berhasil dikonfigurasi!");
+    } catch(e) {
+        window.showToast("Gagal menambahkan tagihan: " + e.message, true);
+    }
 };
 
 window.removeRecurringPayment = async function(recId) {
     if(confirm("Hapus tagihan bulanan ini?")) {
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/settings/recurringPayments/${recId}`));
-        window.showToast("Tagihan bulanan dihapus!");
+        const dbRef = ref(db, `${ledgerNode}/${window.currentUserUid}/settings/recurringPayments/${recId}`);
+        await remove(dbRef);
+        window.showToast("Tagihan bulanan berhasil dihapus!");
     }
 };
 
 window.renderRecurringUI = function() {
+    const container = document.getElementById('recurring-list');
+    if(!container) return;
+
     const rPayments = window.settingsData?.recurringPayments || {};
     const entries = Object.entries(rPayments);
-    
-    // Ke Settings Modal
-    const setList = document.getElementById('recurring-list');
-    if(setList) {
-        setList.innerHTML = entries.length === 0 ? '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada tagihan.</p>' : entries.map(([id, rp]) => `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]"><div class="flex flex-col"><span class="font-bold text-xs text-sky-400">${rp.name}</span><span class="text-[9px] text-[var(--text-muted)] font-mono">Tgl ${rp.date} | ${rp.amount.toLocaleString()} JPY (${rp.method})</span></div><button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90"><i class="fa-solid fa-trash-can text-xs"></i></button></div>`).join('');
+
+    if(entries.length === 0) {
+        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada tagihan rutin bulanan.</p>';
+        return;
     }
 
-    // Ke Tab Anggaran (Budgets V3)
-    const budList = document.getElementById('budget-bills-container');
-    if(budList) {
-        budList.innerHTML = entries.length === 0 ? '<p class="text-[10px] text-[var(--text-muted)] text-center my-3">Belum ada tagihan otomatis terdaftar.</p>' : entries.map(([id, rp]) => {
-            const due = new Date(); due.setDate(rp.date); 
-            const diff = rp.date - new Date().getDate();
-            const statText = diff < 0 ? 'LEWAT JATUH TEMPO' : diff === 0 ? 'HARI INI' : `${diff} Hari Lagi`;
-            const statCol = diff <= 2 ? 'text-rose-400' : 'text-[var(--text-muted)]';
-            return `<div class="glass-panel p-4 relative group"><div class="flex justify-between items-center mb-1"><h4 class="font-bold text-sm text-[var(--text-main)]"><i class="fa-solid fa-file-invoice-dollar mr-1 text-sky-400"></i> ${rp.name}</h4><span class="font-mono text-sm font-bold text-accent">${formatVal(convertVal(rp.amount, 'JPY'))}</span></div><div class="flex justify-between items-center text-[9px] uppercase tracking-widest mt-2"><span class="${statCol} font-extrabold">${statText} (Tgl ${rp.date})</span><span class="text-[var(--text-muted)]">Metode: ${rp.method}</span></div><button onclick="window.removeRecurringPayment('${id}')" class="absolute top-2 right-2 p-2 text-rose-500 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash text-xs"></i></button></div>`;
-        }).join('');
-    }
+    container.innerHTML = entries.map(([id, rp]) => {
+        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
+            <div class="flex flex-col">
+                <span class="font-bold text-xs text-sky-400">${rp.name}</span>
+                <span class="text-[9px] text-[var(--text-muted)] font-mono">Tgl ${rp.date} | ${rp.amount.toLocaleString()} JPY (${rp.method})</span>
+            </div>
+            <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+            </button>
+        </div>`;
+    }).join('');
 };
 
 window.checkAndExecuteRecurringPayments = async function() {
     const rPayments = window.settingsData?.recurringPayments || {};
     const txList = window.allTransactions || [];
-    const today = new Date(); const curDate = today.getDate();
+    const today = new Date();
+    const curDate = today.getDate();
     const curMonthYearStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2, '0')}`;
 
     for (const [id, rp] of Object.entries(rPayments)) {
         if (curDate >= rp.date) {
-            const alreadyPaid = txList.some(t => t.recurring_id === id && t.tanggal && t.tanggal.startsWith(curMonthYearStr));
+            const alreadyPaid = txList.some(t => {
+                const sameRecurringId = t.recurring_id === id;
+                const sameMonthYear = t.tanggal && t.tanggal.startsWith(curMonthYearStr);
+                return sameRecurringId && sameMonthYear;
+            });
+
             if (!alreadyPaid) {
                 const timestamp = today.toISOString();
                 const itemUnikId = window.generateItemId();
                 const tagihanData = {
-                    tanggal: timestamp.split('T')[0], createdAt: timestamp,
-                    nominal: rp.amount, mata_uang: window.displayCurrency,
-                    metode_pembayaran: rp.method, kategori: 'Tagihan', tipe: 'pengeluaran', sifat: 'kebutuhan',
-                    merchantName: rp.name, description: `Pembayaran otomatis: ${rp.name}`, isCustomDescription: true, recurring_id: id, is_deleted: false,
-                    items: [{ itemId: itemUnikId, nama_barang: rp.name, harga: rp.amount, qty: 1, kategori_barang: 'Utilitas', tax_rate: 0, paymentMethod: rp.method, timestamp: timestamp }]
+                    tanggal: today.toISOString().split('T')[0],
+                    createdAt: timestamp,
+                    nominal: rp.amount,
+                    mata_uang: window.displayCurrency,
+                    metode_pembayaran: rp.method,
+                    kategori: 'Tagihan',
+                    tipe: 'pengeluaran',
+                    sifat: 'kebutuhan',
+                    merchantName: rp.name,
+                    description: `Pembayaran otomatis: ${rp.name}`,
+                    isCustomDescription: true,
+                    recurring_id: id,
+                    is_deleted: false,
+                    items: [
+                        {
+                            itemId: itemUnikId,
+                            nama_barang: rp.name,
+                            harga: rp.amount,
+                            qty: 1,
+                            kategori_barang: 'Utilitas',
+                            tax_rate: 0,
+                            paymentMethod: rp.method,
+                            timestamp: timestamp
+                        }
+                    ]
                 };
-                try { await window.FirebaseService.saveTransaction(tagihanData); window.showToast(`Tagihan otomatis "${rp.name}" berhasil dibayarkan!`); } catch(e) {}
+                try {
+                    await window.FirebaseService.saveTransaction(tagihanData);
+                    window.showToast(`Tagihan otomatis "${rp.name}" berhasil dibayarkan!`);
+                } catch(e) {
+                    console.error("Gagal menjalankan tagihan otomatis", e);
+                }
             }
         }
     }
@@ -458,10 +669,17 @@ window.checkAndExecuteRecurringPayments = async function() {
 window.syncGeminiEngine = async function(silent = false) {
     const pinInput = document.getElementById('gemini-pin-input')?.value.trim();
     const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
-    if (!pin) { if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI!", true); return; }
+    
+    if (!pin) { 
+        if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true);
+        return; 
+    }
 
     const gBadge = document.getElementById('gemini-status-badge');
-    if(gBadge) { gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono animate-pulse"; gBadge.innerText = "DECRYPTING..."; }
+    if(gBadge) {
+        gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono animate-pulse";
+        gBadge.innerText = "DECRYPTING...";
+    }
     
     try {
         const geminiEngine = new window.GeminiFailoverEngine(pin);
@@ -469,42 +687,76 @@ window.syncGeminiEngine = async function(silent = false) {
         if(gCount > 0) {
             window.failoverEngineInstance = geminiEngine;
             localStorage.setItem('aurafi_gemini_pin', pin);
-            if(gBadge) { gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono"; gBadge.innerText = `ACTIVE (${gCount})`; }
+            
+            if(gBadge) {
+                gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+                gBadge.innerText = `ACTIVE (${gCount})`;
+            }
             if(!silent) window.showToast("Gemini Vision Berhasil Di-Unlock.");
         } else { throw new Error(); }
     } catch(e) {
-        if(gBadge) { gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono"; gBadge.innerText = "FAIL / LOCKED"; }
+        if(gBadge) {
+            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+            gBadge.innerText = "FAIL / LOCKED";
+        }
         if(!silent) window.showToast("Dekripsi Gagal: PIN Salah.", true);
     }
 };
 
 window.addGroqKey = async function() {
     const keyInput = document.getElementById('new-groq-key').value.trim();
-    if(!keyInput.startsWith('gsk_')) return window.showToast("Format API Key Groq salah.", true);
+    if(!keyInput.startsWith('gsk_')) return window.showToast("Format API Key Groq salah (harus diawali gsk_).", true);
+    
     if(!window.EncryptionService.validate(keyInput, window.GroqService.secret)) return window.showToast("Kesalahan Enkripsi Fatal.", true);
+    
     const enc = window.EncryptionService.encryptApiKey(keyInput, window.GroqService.secret);
     await window.FirebaseService.saveGroqKey(enc);
-    document.getElementById('new-groq-key').value = ""; window.showToast("Kunci Groq tersimpan.");
+    
+    document.getElementById('new-groq-key').value = "";
+    window.showToast("Kunci Groq berhasil disimpan.");
 };
 
-window.removeGroqKey = async function(id) { if(confirm("Hapus kunci Groq ini?")) await window.FirebaseService.deleteGroqKey(id); };
+window.removeGroqKey = async function(id) {
+    if(confirm("Hapus kunci Groq ini dari Database?")) {
+        await window.FirebaseService.deleteGroqKey(id);
+    }
+};
 
 window.renderGroqKeysUI = function() {
-    const container = document.getElementById('groq-keys-container'); if(!container) return;
+    const container = document.getElementById('groq-keys-container');
+    if(!container) return;
+
     const keys = window.rawGroqKeysData || [];
-    if(keys.length === 0) { container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada API Key Groq.</p>'; return; }
-    container.innerHTML = keys.map((k, i) => {
+    if(keys.length === 0) {
+        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada API Key Groq yang tersimpan.</p>';
+        return;
+    }
+
+    container.innerHTML = keys.map((k, index) => {
         const dec = window.EncryptionService.decryptApiKey(k.encryptedKey, window.GroqService.secret);
-        const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Corrupt)`;
+        const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Rusak/Corrupt)`;
         const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
-        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]"><div class="flex flex-col"><span class="font-mono text-xs ${statusColor}">${display}</span><span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Key #${i + 1}</span></div><button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button></div>`;
+        
+        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
+            <div class="flex flex-col">
+                <span class="font-mono text-xs ${statusColor}">${display}</span>
+                <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Groq Key #${index + 1}</span>
+            </div>
+            <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+        </div>`;
     }).join('');
 };
 
+// ==========================================
+// UNIFIED CALL ENGINE DENGAN FALLBACK OTOMATIS (GROQ -> GEMINI)
+// ==========================================
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     const prefs = window.settingsData?.aiPreferences || {};
-    const chatModel = prefs.modelChat || 'Auto'; const visionModel = prefs.modelVision || 'Auto';
-    let useGroq = false; let useGemini = false;
+    const chatModel = prefs.modelChat || 'Auto';
+    const visionModel = prefs.modelVision || 'Auto';
+    
+    let useGroq = false;
+    let useGemini = false;
 
     if (base64Image) {
         if (visionModel === 'Gemini' || visionModel === 'Auto') useGemini = true;
@@ -512,25 +764,44 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     } else {
         if (chatModel === 'Groq') useGroq = true;
         else if (chatModel === 'Gemini') useGemini = true;
-        else { useGroq = true; useGemini = true; }
+        else { useGroq = true; useGemini = true; } // Auto mode
     }
 
     let lastError = null;
 
     if (useGroq && window.rawGroqKeysData && window.rawGroqKeysData.length > 0) {
-        try { return await window.GroqService.fetch(messages, requireJson); } 
-        catch(e) { lastError = e; if (!useGemini) throw e; }
+        try {
+            console.log("[AuraFi Engine] Mencoba Groq API...");
+            return await window.GroqService.fetch(messages, requireJson);
+        } catch(e) {
+            console.warn("[AuraFi Engine] Groq API Gagal/Quota Limit...", e);
+            lastError = e;
+            if (!useGemini) throw e; 
+        }
     }
 
     if (useGemini && window.failoverEngineInstance && window.failoverEngineInstance.keysPool.length > 0) {
         try {
+            console.log("[AuraFi Engine] Mencoba Gemini API...");
             const userPrompt = messages[messages.length - 1].content;
-            const geminiPayload = { contents: [{ role: "user", parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
-            if (requireJson) geminiPayload.generationConfig = { responseMimeType: "application/json" };
+            
+            const geminiPayload = {
+                contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            if (requireJson) {
+                geminiPayload.generationConfig = { responseMimeType: "application/json" };
+            }
+
             return await window.failoverEngineInstance.fetch(geminiPayload, base64Image);
-        } catch(e) { lastError = e; }
+        } catch(e) {
+            console.error("[AuraFi Engine] Gemini API juga gagal.", e);
+            lastError = e;
+        }
     }
-    throw new Error(lastError ? lastError.message : "Sistem AI offline.");
+
+    throw new Error(lastError ? lastError.message : "Sistem AI offline. Konfigurasikan PIN Gemini atau API Key Groq di Setelan.");
 };
 
 window.processTransactionParsing = async function(text, imgData = null) {
@@ -538,22 +809,46 @@ window.processTransactionParsing = async function(text, imgData = null) {
     window.setProcessingStatus(true);
     
     try {
-        let jsonResult; const activeCurrency = window.displayCurrency || 'JPY';
+        let jsonResult;
+        const activeCurrency = window.displayCurrency || 'JPY';
         const nickname = window.settingsData?.profile?.nickname || "Bos";
 
-        const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang: ${activeCurrency}.
-Output RAW JSON. ATURAN:
-1. "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless berkurang 610, tunai bertambah 500, aset terpotong 110).
-2. "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai berkurang 10000, cashless bertambah 10000. Total aset statis).
-3. PEMBAYARAN BELANJA: Tipe="pengeluaran".
-4. Pahami jumlah item (x2, 2 cup, isi 2). Subtotal item = harga x qty. 'nominal' total wajib = sum(harga x qty) + admin_fee.
-5. KATEGORI ITEM: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
-6. NAMA TOKO: Ekstrak wajib (Misal: Lawson, Amazon). Simpan ke "merchantName".
-7. DESKRIPSI: Berikan catatan detail ke "description".
+        // MEROMBAK SYSTEM PROMPT UNTUK ATURAN AKUNTANSI, MULTIPLIKASI, NAMA TOKO, DAN KATEGORI CERDAS
+        const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang Aktif: ${activeCurrency}.
+Wajib menghasilkan output RAW JSON tanpa markdown backticks (\`\`\`).
+ATURAN UTAMA & AKUNTANSI STRICT:
+1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless berkurang 610, tunai bertambah 500, aset terpotong 110).
+2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai berkurang 10000, cashless bertambah 10000. Total aset statis).
+3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis mengurangi saldo tunai. Jika 'cashless', mengurangi saldo cashless. JANGAN SILANG.
+4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua bungkus). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total block wajib = sum(harga x qty) + admin_fee.
+5. KATEGORI ITEM YANG DIDUKUNG: Setiap item WAJIB diklasifikasikan HANYA ke dalam kategori baku ini: "Makanan", "Minuman", "Bahan Pokok", "Utilitas", "Transportasi", "Kesehatan", "Hiburan", "Belanja Online", "Belanja Offline", "Pendidikan", "Pakaian", "Elektronik", "Lainnya".
+6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Simpan ke field "merchantName". Jika tidak ada, isi "Toko/Merchant".
+7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke tax_rate masing-masing item jika total tidak cocok.
+8. DESKRIPSI (DESCRIPTION): Berikan catatan pendek mengenai transaksi ini ke field "description" untuk disimpan.
 
-{ "merchantName": "string", "tanggal": "YYYY-MM-DD", "nominal": number, "mata_uang": "string", "metode_pembayaran": "tunai/cashless", "kategori": "string", "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai", "admin_fee": number, "description": "string", "items": [{"nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string", "tax_rate": number}] }`;
+Struktur JSON Wajib:
+{
+  "merchantName": "string",
+  "tanggal": "YYYY-MM-DD",
+  "nominal": number,
+  "mata_uang": "string",
+  "metode_pembayaran": "tunai/cashless",
+  "kategori": "string",
+  "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai",
+  "admin_fee": number,
+  "sifat": "kebutuhan/impulsif",
+  "description": "string",
+  "is_receipt": boolean,
+  "items": [{"nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string", "tax_rate": number}]
+}`;
 
-        const messages = [{ role: "system", content: systemPrompt }, { role: "user", content: text || "Ekstrak struk" }];
+        const userContent = `Catat transaksi ini: "${text || "Ekstrak struk Jepang"}" di mata uang ${activeCurrency}.`;
+
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent }
+        ];
+
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, imgData);
         jsonResult = window.parseCleanJSON(aiOutput);
 
@@ -563,16 +858,28 @@ Output RAW JSON. ATURAN:
         if(!jsonResult.merchantName) jsonResult.merchantName = jsonResult.storeName || jsonResult.kategori || "Toko/Merchant";
         if(!jsonResult.mata_uang) jsonResult.mata_uang = activeCurrency;
         
-        await window.FirebaseService.saveTransaction({ ...jsonResult, is_deleted: false, createdAt: timestamp });
-        window.switchView('transactions'); window.showToast("Transaksi dianalisis & disimpan!");
-    } catch(e) { window.showToast(e.message || "AI gagal memproses data.", true); } 
-    finally { window.setProcessingStatus(false); }
+        await window.FirebaseService.saveTransaction({ 
+            ...jsonResult, 
+            is_deleted: false, 
+            createdAt: timestamp 
+        });
+        
+        window.switchView('transactions');
+        window.showToast("Transaksi berhasil dianalisis & disimpan secara aman!");
+
+    } catch(e) { 
+        console.error(e);
+        window.showToast(e.message || "AI gagal memproses data.", true); 
+    } finally { 
+        window.setProcessingStatus(false); 
+    }
 };
 
 window.processOracleChat = async function(text, base64Img = null) {
     if (!window.currentUserUid) return;
-    const uiText = text || (base64Img ? "[Lampiran Gambar...]" : "");
-    const pushObjId = await push(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), { role: 'user', text: uiText, timestamp: new Date().toISOString() }).key;
+    const uiText = text || (base64Img ? "[Menganalisis Gambar Terlampir...]" : "");
+    
+    await window.FirebaseService.pushOracleChat({role: 'user', text: uiText, timestamp: new Date().toISOString()});
     window.setProcessingStatus(true); 
 
     const summaryString = window.FinancialSummaryService.getSummaryString();
@@ -584,24 +891,34 @@ window.processOracleChat = async function(text, base64Img = null) {
         return `ID:${t.id} | Toko:${t.merchantName || t.storeName || 'Merchant'} | Tipe:${t.tipe} | Ket:${t.description || t.catatan_ai} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
     }).join('\n');
 
+    // INJECT PERSONA & RESPONSE STYLE SECARA DINAMIS
     const { personaStr, styleStr } = window.getOraclePromptConfigs();
 
-    const systemPrompt = `Kamu adalah AuraFi Oracle V3. Kepribadian: ${personaStr}. Nama User: ${nickname}.
-Konteks Ringkas:\n${summaryString}\n\nData Relevan:\n${txString}
+    const systemPrompt = `Kamu adalah AuraFi Oracle V2. Kepribadian: ${personaStr}.
+Nama User Panggilan: ${nickname}.
 
-ATURAN UPDATE (SAFE UPDATE):
-DILARANG merusak struktur array. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
-Ketika menghapus atau mengedit 1 item, item lain DILARANG berubah.
+Konteks Keuangan Ringkas:
+${summaryString}
+
+Data Transaksi Relevan Terkait:
+${txString}
+
+ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
+AI DILARANG merusak struktur array. Jangan pernah menggunakan index. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
+Ketika menghapus atau mengedit 1 item, data item lain dalam struk tersebut DILARANG berubah menjadi undefined atau terganti.
+KATEGORI ITEM YANG DIDUKUNG: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
 1. action="update_transaction": Merubah merchantName, metode_pembayaran, tipe (pemasukan/pengeluaran), atau nominal global dari ID transaksi.
-2. action="add_item": Menambah item.
-3. action="edit_item": Edit 1 item spesifik via "target_item_id".
-4. action="delete_item": Hapus 1 item spesifik.
-5. action="moveToTrash": Hapus block "target_id".
+2. action="add_item": Menambahkan item ke "target_id". "new_items" berisi array item baru.
+3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id". "new_items" hanya berisi data 1 item yang menimpa id tersebut (pastikan harga dan qty sesuai instruksi).
+4. action="delete_item": Menghapus 1 item secara penuh berdasarkan "target_item_id".
+5. action="moveToTrash": Menghapus seluruh transaksi block "target_id".
 
-ATURAN JAWABAN: ${styleStr}
+ATURAN BALASAN (WAJIB):
+${styleStr} Jangan menjawab kelewat ringkas seperti "Saldo tidak cukup", berikan alasan, dampak, dan alternatif.
 
+Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
 {
-  "reply": "Kalimat balasan Oracle V3 (Gunakan HTML <b>, <i>, <br> jika perlu. Jangan pakai markdown backtick)",
+  "reply": "Kalimat balasan Oracle V2 sesuai gaya dan kepribadian",
   "action": "none|moveToTrash|update_transaction|add_item|edit_item|delete_item",
   "target_id": "string",
   "target_item_id": "string",
@@ -610,19 +927,23 @@ ATURAN JAWABAN: ${styleStr}
 }`;
 
     try {
+        let resJson;
         const messages = [{ role: "system", content: systemPrompt }];
-        window.MemoryService.getRelevantChats().forEach(h => { if(h.text !== uiText) messages.push({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.text }); });
-        messages.push({ role: "user", content: text || "Analisis..." });
 
-        const prefs = window.settingsData?.aiPreferences || {};
-        const activeModel = base64Img ? (prefs.modelVision || 'Auto') : (prefs.modelChat || 'Auto');
-        
+        const history = window.MemoryService.getRelevantChats();
+        history.forEach(h => {
+            if(h.text === uiText) return; 
+            messages.push({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.text });
+        });
+        messages.push({ role: "user", content: text || "Analisis data keuangan" });
+
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, base64Img);
-        const resJson = window.parseCleanJSON(aiOutput);
+        resJson = window.parseCleanJSON(aiOutput);
 
         if(resJson.action !== 'none' && resJson.target_id) { 
             try {
                 const targetTrx = window.allTransactions.find(t => t.id === resJson.target_id);
+                
                 if(resJson.action === 'moveToTrash') {
                     await window.FirebaseService.moveToTrash(resJson.target_id);
                 } else if(resJson.action === 'update_transaction' && targetTrx) {
@@ -635,87 +956,228 @@ ATURAN JAWABAN: ${styleStr}
                     }
                     await window.FirebaseService.updateTransaction(targetTrx.id, updates);
                 } else if(resJson.action === 'add_item' && targetTrx && resJson.new_items) {
-                    const finalItems = (targetTrx.items || []).concat(window.sanitizeItems(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString()));
+                    const currentItems = targetTrx.items || [];
+                    const sanitizedNew = window.sanitizeItems(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString());
+                    const finalItems = currentItems.concat(sanitizedNew);
                     const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
+                    
                     const upd = { items: finalItems, nominal: sum };
-                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah via AI. Total: ¥${sum}`;
+                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah. Total akhir: ¥${sum}`;
+                    
                     await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                 } else if(resJson.action === 'edit_item' && targetTrx && resJson.target_item_id && resJson.new_items && resJson.new_items.length > 0) {
+                    const currentItems = targetTrx.items || [];
                     const newEditData = resJson.new_items[0];
-                    const finalItems = (targetTrx.items || []).map(it => {
+                    const finalItems = currentItems.map(it => {
                         if(it.itemId === resJson.target_item_id) {
-                            return { ...it, nama_barang: newEditData.nama_barang || it.nama_barang, harga: newEditData.harga !== undefined ? newEditData.harga : it.harga, qty: newEditData.qty !== undefined ? newEditData.qty : it.qty, kategori_barang: newEditData.kategori_barang || it.kategori_barang };
+                            return {
+                                ...it, 
+                                nama_barang: newEditData.nama_barang || it.nama_barang,
+                                harga: newEditData.harga !== undefined ? newEditData.harga : it.harga,
+                                qty: newEditData.qty !== undefined ? newEditData.qty : it.qty,
+                                kategori_barang: newEditData.kategori_barang || it.kategori_barang
+                            };
                         }
                         return it;
                     });
                     const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
+                    
                     const upd = { items: finalItems, nominal: sum };
-                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item diedit via AI. Total: ¥${sum}`;
+                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item disesuaikan. Total akhir: ¥${sum}`;
+                    
                     await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                 } else if(resJson.action === 'delete_item' && targetTrx && resJson.target_item_id) {
-                    const finalItems = (targetTrx.items || []).filter(it => it.itemId !== resJson.target_item_id);
-                    if(finalItems.length === 0) await window.FirebaseService.moveToTrash(targetTrx.id);
-                    else {
+                    const currentItems = targetTrx.items || [];
+                    const finalItems = currentItems.filter(it => it.itemId !== resJson.target_item_id);
+                    if(finalItems.length === 0) {
+                        await window.FirebaseService.moveToTrash(targetTrx.id);
+                    } else {
                         const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
                         const upd = { items: finalItems, nominal: sum };
-                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus via AI. Total: ¥${sum}`;
+                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus. Total akhir: ¥${sum}`;
                         await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                     }
                 }
-            } catch(e) { resJson.reply += "<br><br><i class='text-[10px] text-rose-400'>(Gagal memproses sinkronisasi database)</i>"; }
+            } catch(e) {
+                resJson.reply += " (Gagal memproses sinkronisasi AI ke database. Cek log!)";
+                console.error("AI Safe Sync Error:", e);
+            }
         }
 
-        await window.FirebaseService.pushOracleChat({role: 'ai', text: resJson.reply, timestamp: new Date().toISOString(), model: activeModel });
+        await window.FirebaseService.pushOracleChat({role: 'ai', text: resJson.reply, timestamp: new Date().toISOString()});
 
-    } catch(e) { await window.FirebaseService.pushOracleChat({role: 'ai', text: `Gangguan transmisi: ${e.message}`, timestamp: new Date().toISOString(), model: 'Error' }); } 
-    finally { window.setProcessingStatus(false); }
-};
-
-window.copyChatText = function(text) {
-    if (navigator.clipboard) { navigator.clipboard.writeText(text); window.showToast("Teks disalin ke clipboard!"); }
-};
-
-window.deleteChatLog = async function(id) {
-    if(confirm("Hapus log chat ini?")) { await window.FirebaseService.deleteOracleChat(id); }
+    } catch(e) { 
+        await window.FirebaseService.pushOracleChat({role: 'ai', text: `Gangguan transmisi sistem: ${e.message}`, timestamp: new Date().toISOString()});
+    } finally { 
+        window.setProcessingStatus(false); 
+    }
 };
 
 // ==========================================
 // GLOBAL GUI HELPER SCRIPT & EVENT LISTENERS
 // ==========================================
-window.currentTheme = 'midnight'; window.displayCurrency = 'JPY'; window.exchangeRateIDR = 105;
-window.isRatesLoaded = false; window.allTransactions = []; window.trashTransactions = []; 
-window.allGoals = []; window.monthlyBudget = 100000; window.activeView = 'dashboard';
-window.base64Upload = ""; window.oracleChats = []; window.deleteTargetData = null; 
-window.editItemTargetData = null; window.editTrxTargetData = null; window.addItemTargetTrxId = null;
-window.isProcessing = false; window.failoverEngineInstance = null; 
+window.currentTheme = 'midnight';
+window.displayCurrency = 'JPY'; 
+window.exchangeRateIDR = 105;
+window.isRatesLoaded = false;
+window.allTransactions = []; 
+window.trashTransactions = []; 
+window.allGoals = []; 
+window.monthlyBudget = 100000;
+window.activeView = 'dashboard';
 
-window.parseCleanJSON = function(text) { try { return JSON.parse(text.replace(/```json/gi, '').replace(/```/g, '').trim()); } catch (e) { throw new Error("Format JSON respon tidak valid."); } };
+window.base64Upload = ""; 
+window.oracleChats = []; 
+window.deleteTargetData = null; 
+window.editItemTargetData = null;
+window.editTrxTargetData = null;
+window.addItemTargetTrxId = null;
+window.isProcessing = false;
+window.failoverEngineInstance = null; 
+
+window.parseCleanJSON = function(text) {
+    try { return JSON.parse(text.replace(/```json/gi, '').replace(/```/g, '').trim()); } 
+    catch (e) { throw new Error("Format JSON respon tidak valid."); }
+};
 
 window.onload = () => {
-    window.fetchExchangeRate(); window.applyTheme();
+    window.fetchExchangeRate();
+    window.applyTheme();
+    
     const tx = document.getElementById('main-input-field');
-    if (tx) { tx.addEventListener('input', function() { this.style.height = '48px'; this.style.height = (this.scrollHeight) + 'px'; }); }
+    if (tx) {
+        tx.addEventListener('input', function() {
+            this.style.height = '40px'; 
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
+
+    // --- DOM INJECTION UNTUK UI BARU (TANPA MENGUBAH HTML) ---
+    setTimeout(() => {
+        // 1. Ekstensi Modal Edit Transaksi (Tipe & Deskripsi Kustom)
+        const editTrxSpace = document.querySelector('#modal-edit-trx .space-y-4');
+        if (editTrxSpace && !document.getElementById('edit-global-type')) {
+            editTrxSpace.insertAdjacentHTML('afterbegin', `
+                <div class="flex gap-3 mb-3">
+                    <div class="w-full">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Mutasi Saldo</label>
+                        <select id="edit-global-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="pengeluaran">Pengeluaran (Expense / -)</option>
+                            <option value="pemasukan">Pemasukan (Income / +)</option>
+                        </select>
+                    </div>
+                </div>
+            `);
+            editTrxSpace.insertAdjacentHTML('beforeend', `
+                <div class="mt-3">
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Keterangan Transaksi</label>
+                    <textarea id="edit-global-desc" rows="2" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black" placeholder="Cth: Belanja mingguan bersama keluarga..."></textarea>
+                </div>
+            `);
+        }
+
+        // 2. Ekstensi Modal Pengaturan (Menu AI Oracle)
+        const settingsBody = document.querySelector('#modal-settings .glass-panel');
+        if (settingsBody && !document.getElementById('ai-preferences-section')) {
+            const logoutSection = settingsBody.querySelector('.mt-6.pt-5.border-t');
+            const newSection = document.createElement('div');
+            newSection.id = 'ai-preferences-section';
+            newSection.className = 'space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]';
+            newSection.innerHTML = `
+                <h4 class="text-xs font-bold text-violet-400 flex items-center gap-1.5"><i class="fa-solid fa-robot"></i> KEPRIBADIAN & PREFERENSI AI</h4>
+                
+                <div class="flex gap-2">
+                    <div class="w-1/2">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Chat</label>
+                        <select id="setting-ai-chat" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                            <option value="Auto">Auto (Groq->Gemini)</option>
+                            <option value="Groq">Groq</option>
+                            <option value="Gemini">Gemini</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Vision</label>
+                        <select id="setting-ai-vision" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                            <option value="Auto">Auto / Gemini</option>
+                            <option value="Gemini">Gemini</option>
+                            <option value="Groq Vision">Groq Vision</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kepribadian Oracle (Personality)</label>
+                    <select id="setting-ai-persona" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                        <option value="Humble Profesional">1. Humble Profesional</option>
+                        <option value="Santai dan Asyik">2. Santai dan Asyik</option>
+                        <option value="Sarkas Cerdas">3. Sarkas Cerdas</option>
+                        <option value="Mentor Keuangan">4. Mentor Keuangan</option>
+                        <option value="Formal">5. Formal</option>
+                        <option value="Lucu">6. Lucu</option>
+                        <option value="Kombinasi Humble + Jenius + Profesional">7. Kombinasi Humble + Jenius</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Gaya Jawaban AI</label>
+                    <select id="setting-ai-style" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                        <option value="Normal">Normal (Sedang)</option>
+                        <option value="Singkat">Singkat (Max 2 Paragraf)</option>
+                        <option value="Detail">Detail (Panjang & Lengkap)</option>
+                    </select>
+                </div>
+                
+                <button onclick="window.saveAIPreferences()" class="w-full py-2.5 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
+                </button>
+            `;
+            if(logoutSection) settingsBody.insertBefore(newSection, logoutSection);
+            else settingsBody.appendChild(newSection);
+            
+            // Populasikan nilai lama jika ada
+            if (window.settingsData && window.settingsData.aiPreferences) {
+                document.getElementById('setting-ai-chat').value = window.settingsData.aiPreferences.modelChat || 'Auto';
+                document.getElementById('setting-ai-vision').value = window.settingsData.aiPreferences.modelVision || 'Auto';
+                document.getElementById('setting-ai-persona').value = window.settingsData.aiPreferences.persona || 'Kombinasi Humble + Jenius + Profesional';
+                document.getElementById('setting-ai-style').value = window.settingsData.aiPreferences.style || 'Normal';
+            }
+        }
+    }, 800);
 };
 
 window.fetchExchangeRate = async function() {
     try {
-        const res = await fetch('https://open.er-api.com/v6/latest/JPY'); const data = await res.json();
-        if(data?.rates?.IDR) { window.exchangeRateIDR = data.rates.IDR; window.isRatesLoaded = true; document.getElementById('live-rate-display').innerText = `1 JPY = Rp ${window.exchangeRateIDR.toLocaleString('id-ID')}`; }
-    } catch(e) { document.getElementById('live-rate-display').innerText = "1 JPY = Rp 105 (OFFLINE)"; }
+        const res = await fetch('https://open.er-api.com/v6/latest/JPY');
+        const data = await res.json();
+        if(data?.rates?.IDR) { 
+            window.exchangeRateIDR = data.rates.IDR;
+            window.isRatesLoaded = true; 
+            document.getElementById('live-rate-display').innerText = `1 JPY = Rp ${window.exchangeRateIDR.toLocaleString('id-ID')}`;
+        }
+    } catch(e) { 
+        document.getElementById('live-rate-display').innerText = "1 JPY = Rp 105 (OFFLINE)";
+    }
 };
 
 window.toggleTheme = function() {
     const themes = ['midnight', 'sakura', 'neon'];
-    window.currentTheme = themes[(themes.indexOf(window.currentTheme) + 1) % themes.length]; window.applyTheme(); 
+    window.currentTheme = themes[(themes.indexOf(window.currentTheme) + 1) % themes.length];
+    window.applyTheme(); 
     if(window.FirebaseService?.updateSettings) window.FirebaseService.updateSettings({ theme: window.currentTheme });
 };
 
 window.applyTheme = function() { document.documentElement.setAttribute('data-theme', window.currentTheme); };
+
 window.promptSettingsAccess = function() { window.showModal('modal-settings'); };
-window.closeSettingsModal = function() { const m = document.getElementById('modal-settings'); if(m) { m.classList.remove('opacity-100'); setTimeout(() => m.classList.add('hidden'), 300); } };
+
+window.closeSettingsModal = function() {
+    const m = document.getElementById('modal-settings');
+    if(m) { m.classList.remove('opacity-100'); setTimeout(() => m.classList.add('hidden'), 300); }
+};
 
 window.toggleAccordion = function(id) {
-    const el = document.getElementById(id); const icon = document.getElementById(id + '-icon');
+    const el = document.getElementById(id);
+    const icon = document.getElementById(id + '-icon');
     if (el && el.classList.contains('hidden')) { el.classList.remove('hidden'); icon.style.transform = 'rotate(180deg)'; } 
     else if (el) { el.classList.add('hidden'); icon.style.transform = 'rotate(0deg)'; }
 };
@@ -729,9 +1191,12 @@ window.setCurrency = function(curr) {
 
 window.switchView = function(viewId) {
     window.activeView = viewId;
-    ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash'].forEach(id => {
+    ['dashboard', 'transactions', 'analytics', 'goals', 'oracle', 'trash'].forEach(id => {
         const el = document.getElementById(`view-${id}`); 
-        if(el) { if (id === viewId) { el.classList.remove('hidden'); if (id === 'oracle') el.style.display = 'flex'; } else { el.classList.add('hidden'); el.style.display = ''; } }
+        if(el) {
+            if (id === viewId) { el.classList.remove('hidden'); if (id === 'oracle') el.style.display = 'flex'; } 
+            else { el.classList.add('hidden'); el.style.display = ''; }
+        }
     });
     
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -741,9 +1206,11 @@ window.switchView = function(viewId) {
 
     const inputField = document.getElementById('main-input-field');
     if(viewId === 'oracle') { 
-        inputField.placeholder = "Tanya Oracle V3 / Perintah...";
+        inputField.placeholder = "Chat Oracle / Edit Data...";
         setTimeout(() => { const anc = document.getElementById('chat-anchor'); if(anc) anc.scrollIntoView({behavior:'smooth'}); }, 100);
-    } else { inputField.placeholder = "Ketik/Suara/Foto Transaksi..."; }
+    } else {
+        inputField.placeholder = "Ketik/Suara/Foto Transaksi...";
+    }
     window.reCalculateAll();
 };
 
@@ -753,11 +1220,13 @@ const convertVal = (amt, fromCurr) => {
     if(fromCurr === 'IDR' && window.displayCurrency === 'JPY') return amt / window.exchangeRateIDR;
     return amt;
 };
+
 const formatVal = (amt) => new Intl.NumberFormat(window.displayCurrency==='JPY'?'ja-JP':'id-ID', {style:'currency', currency:window.displayCurrency, maximumFractionDigits:0}).format(amt);
 
 let expItemsState = {};
 window.toggleReceipt = function(id) { expItemsState[id] = !expItemsState[id]; window.reCalculateAll(); };
 
+// PETA KATEGORI CERDAS & PEWARNAAN OTOMATIS
 function getCategoryStyle(cat) {
     const c = (cat || "Lainnya").toLowerCase();
     if (c.includes('makan')) return { icon: 'fa-burger', color: 'text-orange-400', bg: 'bg-orange-400/10' };
@@ -775,16 +1244,23 @@ function getCategoryStyle(cat) {
     if (c.includes('dapat') || c.includes('gaji')) return { icon: 'fa-money-bill-wave', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
     return { icon: 'fa-tag', color: 'text-[var(--text-muted)]', bg: 'bg-white/5' };
 }
-function getCategoryIcon(cat) { return getCategoryStyle(cat).icon; }
 
-// LOGIKA STATISTIK & KALKULATOR V3
+function getCategoryIcon(cat) {
+    return getCategoryStyle(cat).icon;
+}
+
+// LOGIKA STATISTIK & KALKULATOR REALTIME 
 window.reCalculateAll = function() {
     let totBal = 0, cashBal = 0, cashlessBal = 0;
     let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
-    let catSpend = {}, dailySp = {}; let merchantSpend = {};
+    let catSpend = {}, dailySp = {};
     const today = new Date();
     
-    for(let i=6; i>=0; i--) { let d=new Date(today); d.setDate(d.getDate()-i); dailySp[d.toISOString().split('T')[0]] = 0; }
+    // Siapkan wadah bar chart 7 hari terakhir secara realtime
+    for(let i=6; i>=0; i--) { 
+        let d=new Date(today);
+        d.setDate(d.getDate()-i); dailySp[d.toISOString().split('T')[0]] = 0; 
+    }
     let groupedTrx = {};
 
     const txList = window.allTransactions || [];
@@ -792,6 +1268,7 @@ window.reCalculateAll = function() {
         const val = convertVal(trx.nominal, trx.mata_uang);
         const isCash = trx.metode_pembayaran === 'tunai';
         
+        // PENGELOLAAN TANGGAL / TIMESTAMP PINTAR
         const dStrRaw = trx.createdAt || trx.tanggal;
         const dStr = dStrRaw ? dStrRaw.split('T')[0] : '';
         const d = new Date(dStrRaw || trx.tanggal); 
@@ -800,59 +1277,102 @@ window.reCalculateAll = function() {
         if (trx.createdAt) {
             const dObjFull = new Date(trx.createdAt);
             if(!isNaN(dObjFull)) {
-                const yr = dObjFull.getFullYear(); const mo = String(dObjFull.getMonth()+1).padStart(2,'0'); const da = String(dObjFull.getDate()).padStart(2,'0');
-                const hr = String(dObjFull.getHours()).padStart(2,'0'); const mi = String(dObjFull.getMinutes()).padStart(2,'0');
+                const yr = dObjFull.getFullYear();
+                const mo = String(dObjFull.getMonth()+1).padStart(2,'0');
+                const da = String(dObjFull.getDate()).padStart(2,'0');
+                const hr = String(dObjFull.getHours()).padStart(2,'0');
+                const mi = String(dObjFull.getMinutes()).padStart(2,'0');
                 timeFormatted = `${yr}/${mo}/${da} ${hr}:${mi}`;
             }
-        } else { timeFormatted = (trx.tanggal || "---") + " 00:00"; }
+        } else {
+            timeFormatted = (trx.tanggal || "---") + " 00:00"; // Fallback ke transaksi lawas
+        }
         
         if(!groupedTrx[dStr]) groupedTrx[dStr] = { total: 0, items: [] };
 
         if(trx.tipe === 'pemasukan') {
-            totBal += val; if(isCash) cashBal += val; else cashlessBal += val; 
+            totBal += val; 
+            if(isCash) cashBal += val; else cashlessBal += val; 
             groupedTrx[dStr].total += val;
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) thisMthIncome += val;
+        
         } else if (trx.tipe === 'tarik_tunai') {
             let adminFee = Number(trx.admin_fee || 0);
             if (!adminFee && trx.items && Array.isArray(trx.items)) {
                 const adminItem = trx.items.find(i => i.nama_barang.toLowerCase().includes('admin'));
                 if (adminItem) adminFee = Number(adminItem.harga * (adminItem.qty || 1));
             }
-            const feeVal = convertVal(adminFee, trx.mata_uang); const mainVal = convertVal(trx.nominal, trx.mata_uang);
-            totBal -= feeVal; cashBal += mainVal; cashlessBal -= (mainVal + feeVal); 
+            const feeVal = convertVal(adminFee, trx.mata_uang);
+            const mainVal = convertVal(trx.nominal, trx.mata_uang);
+            
+            totBal -= feeVal; // Net worth terpotong hanya biaya admin
+            cashBal += mainVal; // Uang di tangan/dompet bertambah
+            cashlessBal -= (mainVal + feeVal); // Rekening Bank terpotong nilai tarikan + admin
+            
             groupedTrx[dStr].total -= feeVal;
-            if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) { thisMthSpent += feeVal; thisMthCashless += feeVal; catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal; }
+            if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                thisMthSpent += feeVal;
+                thisMthCashless += feeVal;
+                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal;
+            }
+        
         } else if (trx.tipe === 'setor_tunai') {
             let adminFee = Number(trx.admin_fee || 0);
             if (!adminFee && trx.items && Array.isArray(trx.items)) {
                 const adminItem = trx.items.find(i => i.nama_barang.toLowerCase().includes('admin'));
                 if (adminItem) adminFee = Number(adminItem.harga * (adminItem.qty || 1));
             }
-            const feeVal = convertVal(adminFee, trx.mata_uang); const mainVal = convertVal(trx.nominal, trx.mata_uang);
-            totBal -= feeVal; cashBal -= mainVal; cashlessBal += mainVal; cashlessBal -= feeVal; 
+            const feeVal = convertVal(adminFee, trx.mata_uang);
+            const mainVal = convertVal(trx.nominal, trx.mata_uang);
+            
+            totBal -= feeVal; // Net worth terpotong hanya biaya admin
+            cashBal -= mainVal; // Fisik cash berkurang disetor ke bank
+            cashlessBal += mainVal; // Saldo cashless/bank bertambah
+            cashlessBal -= feeVal; // Bank terpotong administrasi jika ada
+            
             groupedTrx[dStr].total -= feeVal;
-            if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) { thisMthSpent += feeVal; thisMthCashless += feeVal; catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal; }
+            if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                thisMthSpent += feeVal;
+                thisMthCashless += feeVal;
+                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal;
+            }
+
         } else {
-            totBal -= val; if(isCash) cashBal -= val; else cashlessBal -= val; 
+            // TIPE PENGELUARAN (BELANJA NORMAL)
+            totBal -= val;
+            if(isCash) cashBal -= val; else cashlessBal -= val; 
             groupedTrx[dStr].total -= val;
             if(trx.sifat === 'impulsif') impulsif++;
+            
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
-                thisMthSpent += val; if(!isCash) thisMthCashless += val;
+                thisMthSpent += val;
+                if(!isCash) thisMthCashless += val;
                 
-                const merc = trx.merchantName || trx.storeName || 'Lainnya';
-                merchantSpend[merc] = (merchantSpend[merc] || 0) + val;
-
+                // MENGHITUNG KATEGORI BERDASARKAN "ITEM", BUKAN GLOBAL TRANSAKSI
                 if (trx.items && Array.isArray(trx.items) && trx.items.length > 0) {
                     let calcItemSum = 0;
                     trx.items.forEach(it => {
-                        const itemCat = it.kategori_barang || 'Lainnya'; const itemVal = convertVal(it.harga * (it.qty || 1), trx.mata_uang);
-                        calcItemSum += itemVal; catSpend[itemCat] = (catSpend[itemCat] || 0) + itemVal;
+                        const itemCat = it.kategori_barang || 'Lainnya';
+                        const itemVal = convertVal(it.harga * (it.qty || 1), trx.mata_uang);
+                        calcItemSum += itemVal;
+                        catSpend[itemCat] = (catSpend[itemCat] || 0) + itemVal;
                     });
-                    if (val > calcItemSum) { const diff = val - calcItemSum; catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + diff; }
-                } else { const c = trx.kategori || 'Lainnya'; catSpend[c] = (catSpend[c]||0) + val; }
+                    
+                    // Alokasi selisih jika user input total lebih besar dari total item (Misal: Pajak/Tips yg tidak terdata)
+                    if (val > calcItemSum) {
+                        const diff = val - calcItemSum;
+                        catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + diff;
+                    }
+                } else {
+                    // Fallback aman untuk transaksi lama yang belum pakai itemize
+                    const c = trx.kategori || 'Lainnya'; 
+                    catSpend[c] = (catSpend[c]||0) + val;
+                }
             }
-            if(dailySp[dStr] !== undefined) dailySp[dStr] += val;
+            if(dailySp[dStr] !== undefined) dailySp[dStr] += val; // Populate Bar Chart 7 Hari
         }
+        
+        // Simpan timeFormatted ke object lokal sementara untuk UI map() di bawah
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     });
@@ -861,193 +1381,126 @@ window.reCalculateAll = function() {
     document.getElementById('dash-cash').innerText = formatVal(cashBal);
     document.getElementById('dash-cashless').innerText = formatVal(cashlessBal);
     
-    const dInc = document.getElementById('dash-income-mth'); if(dInc) dInc.innerText = "+" + formatVal(thisMthIncome);
-    const dExp = document.getElementById('dash-expense-mth'); if(dExp) dExp.innerText = "-" + formatVal(thisMthSpent);
-    
+    const core = document.getElementById('living-core'); 
     const limitVal = convertVal(window.monthlyBudget, 'JPY');
+    
     const burnPct = limitVal > 0 ? (thisMthSpent / limitVal) * 100 : 0;
     const remainingBudget = limitVal - thisMthSpent;
     
     if (window.FirebaseService && window.currentUserUid) {
         clearTimeout(window.budgetUpdateTimer);
-        window.budgetUpdateTimer = setTimeout(() => { window.FirebaseService.updateSettings({ monthlyBudget: { limit: window.monthlyBudget, spent: thisMthSpent, remaining: remainingBudget, percentage: burnPct.toFixed(2) } }); }, 5000);
+        window.budgetUpdateTimer = setTimeout(() => {
+            window.FirebaseService.updateSettings({
+                monthlyBudget: {
+                    limit: window.monthlyBudget,
+                    spent: thisMthSpent,
+                    remaining: remainingBudget,
+                    percentage: burnPct.toFixed(2)
+                }
+            });
+        }, 5000);
     }
 
-    const core = document.getElementById('living-core'); if (core) { core.className = `w-48 h-48 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`; }
-    const bProg = document.getElementById('burn-progress'); if (bProg) { bProg.style.width = `${Math.min(burnPct, 100)}%`; bProg.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; }
+    if (core) { core.className = `w-44 h-44 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`; }
+    const bProg = document.getElementById('burn-progress');
+    if (bProg) { bProg.style.width = `${Math.min(burnPct, 100)}%`; bProg.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; }
     
     const sp = document.getElementById('burn-spent'); if (sp) sp.innerText = `Terpakai: ${formatVal(thisMthSpent)}`;
     const lm = document.getElementById('burn-limit'); if (lm) lm.innerText = `Limit: ${formatVal(limitVal)}`;
 
     const daysInMth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
     const proj = (today.getDate() > 0 ? thisMthSpent / today.getDate() : 0) * daysInMth;
-    
-    const dAvg = document.getElementById('stats-daily-avg'); if (dAvg) dAvg.innerText = formatVal(today.getDate() > 0 ? thisMthSpent / today.getDate() : 0);
-    const dProj = document.getElementById('stats-proj-mth'); if (dProj) dProj.innerText = formatVal(proj);
-    
     const insightBox = document.getElementById('burn-insight-box');
-    if (insightBox) {
-        if(proj > limitVal) { insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Proyeksi akhir bulan mencapai ${formatVal(proj)}! Kurangi laju pengeluaran.`; insightBox.style.borderColor = 'var(--color-expense)'; } 
-        else { insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi akhir bulan: ${formatVal(proj)}.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa Anggaran Harian: ${formatVal(remainingBudget / (daysInMth - today.getDate() + 1))}</span>`; insightBox.style.borderColor = 'var(--border-glass)'; }
-    }
-
-    // STATS V3: KATEGORI & PIE CHART
-    const topCatDiv = document.getElementById('top-categories-list');
-    const pieChart = document.getElementById('category-pie-chart');
-    const pieTotal = document.getElementById('pie-total-label');
-    const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
     
-    if (topCatDiv && pieChart) {
-        let pieCSS = ""; let currentPct = 0;
-        
-        if (catSorted.length === 0) {
-            topCatDiv.innerHTML = '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>';
-            pieChart.style.background = 'conic-gradient(var(--border-glass) 0% 100%)';
-            if(pieTotal) pieTotal.innerText = "0";
-        } else {
-            if(pieTotal) pieTotal.innerText = formatVal(thisMthSpent);
-            topCatDiv.innerHTML = catSorted.map(([c,v]) => {
-                const style = getCategoryStyle(c);
-                const pct = thisMthSpent > 0 ? ((v/thisMthSpent)*100) : 0;
-                
-                // Color mapping untuk pie chart berdasarkan icon style
-                let hexColor = '#94a3b8'; // default
-                if(style.color.includes('orange')) hexColor = '#fb923c';
-                else if(style.color.includes('blue')) hexColor = '#60a5fa';
-                else if(style.color.includes('green')) hexColor = '#4ade80';
-                else if(style.color.includes('yellow')) hexColor = '#facc15';
-                else if(style.color.includes('emerald')) hexColor = '#34d399';
-                else if(style.color.includes('rose')) hexColor = '#fb7185';
-                else if(style.color.includes('purple')) hexColor = '#c084fc';
-                else if(style.color.includes('pink')) hexColor = '#f472b6';
-                else if(style.color.includes('indigo')) hexColor = '#818cf8';
-                else if(style.color.includes('cyan')) hexColor = '#22d3ee';
-                else if(style.color.includes('fuchsia')) hexColor = '#e879f9';
-
-                pieCSS += `${hexColor} ${currentPct}% ${currentPct + pct}%, `;
-                currentPct += pct;
-
-                return `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0 hover:bg-white/5 transition px-2 rounded-xl">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full ${style.bg} flex items-center justify-center border border-[var(--border-glass)] shadow-sm">
-                            <i class="fa-solid ${style.icon} ${style.color}"></i>
-                        </div>
-                        <div>
-                            <p class="font-bold text-[var(--text-main)]">${c}</p>
-                            <div class="w-24 h-1.5 bg-black/40 rounded-full mt-1 overflow-hidden">
-                                <div class="h-full" style="width: ${pct.toFixed(0)}%; background-color: ${hexColor}"></div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-mono text-xs font-bold text-[var(--text-main)]">${formatVal(v)}</p>
-                        <p class="text-[9px] text-[var(--text-muted)] font-bold mt-0.5">${pct.toFixed(1)}%</p>
-                    </div>
-                </div>`;
-            }).join('');
-            
-            pieCSS = pieCSS.slice(0, -2);
-            pieChart.style.background = `conic-gradient(${pieCSS})`;
+    if (insightBox) {
+        if(proj > limitVal) { 
+            insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${formatVal(proj)}!`;
+            insightBox.style.borderColor = 'var(--color-expense)'; 
+        } else { 
+            insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi akhir ${formatVal(proj)}.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa Anggaran: ${formatVal(remainingBudget)}</span>`; 
+            insightBox.style.borderColor = 'var(--border-glass)';
         }
     }
 
-    // TOP MERCHANTS V3
-    const mercDiv = document.getElementById('top-merchants-list');
-    if (mercDiv) {
-        const mercSorted = Object.entries(merchantSpend).sort((a,b)=>b[1]-a[1]).slice(0, 5);
-        mercDiv.innerHTML = mercSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada merchant langganan.</p>' : mercSorted.map(([m, v], i) => `
-            <div class="flex justify-between items-center p-3 bg-white/5 border border-[var(--border-glass)] rounded-xl">
-                <div class="flex items-center gap-3">
-                    <div class="w-6 h-6 rounded-md bg-black/40 border border-[var(--border-glass)] flex items-center justify-center text-[10px] font-black text-[var(--text-muted)]">#${i+1}</div>
-                    <span class="font-bold text-sm truncate max-w-[120px]">${m}</span>
-                </div>
-                <span class="font-mono text-xs font-bold text-orange-400">${formatVal(v)}</span>
-            </div>
-        `).join('');
+    const cashRatio = thisMthSpent > 0 ? (thisMthCashless / thisMthSpent)*100 : 0;
+    const warnBox = document.getElementById('warn-cashless');
+    if (warnBox) {
+        if(cashRatio > 80 && impulsif > 3) { warnBox.classList.remove('hidden'); document.getElementById('warn-cashless-pct').innerText = `${cashRatio.toFixed(0)}%`; } 
+        else { warnBox.classList.add('hidden'); }
     }
 
-    // LOG TRANSAKSI V3
+    // RENDER SEMUA KATEGORI BULAN INI BERDASARKAN ITEM (TANPA LIMIT)
+    const topCatDiv = document.getElementById('top-categories-list');
+    const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
+    if (topCatDiv) {
+        topCatDiv.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.map(([c,v]) => {
+            const style = getCategoryStyle(c);
+            const pct = thisMthSpent > 0 ? ((v/thisMthSpent)*100).toFixed(0) : 0;
+            return `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full ${style.bg} flex items-center justify-center border border-[var(--border-glass)]">
+                        <i class="fa-solid ${style.icon} ${style.color}"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-[var(--text-main)]">${c}</p>
+                        <p class="text-[9px] text-[var(--text-muted)] font-bold">${pct}% dari total belanja</p>
+                    </div>
+                </div>
+                <p class="font-mono text-xs font-bold text-[var(--text-main)]">${formatVal(v)}</p>
+            </div>`;
+        }).join('');
+    }
+
     const trxListContainer = document.getElementById('trx-list-container');
     if (trxListContainer) {
         trxListContainer.innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
-            const g = groupedTrx[dateStr]; const dObj = new Date(dateStr);
-            return `<div class="mb-5"><div class="flex justify-between items-end mb-3 border-b border-[var(--border-glass)] pb-1.5"><div class="flex items-baseline gap-2"><span class="text-2xl font-display font-black leading-none text-white">${!isNaN(dObj)?dObj.getDate().toString().padStart(2,'0'):'--'}</span><span class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj)?dObj.toLocaleDateString('id-ID', {weekday:'short', month:'short'}):'---'}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-[var(--text-main)]'} shadow-sm bg-black/40 px-2 py-0.5 rounded-md border border-[var(--border-glass)]">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-4">${g.items.map(t => {
-                const isExp = expItemsState[t.id]; const hasItems = t.items && Array.isArray(t.items) && t.items.length > 0;
+            const g = groupedTrx[dateStr]; 
+            const dObj = new Date(dateStr);
+            return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${!isNaN(dObj)?dObj.getDate().toString().padStart(2,'0'):'--'}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj)?dObj.toLocaleDateString('id-ID', {weekday:'short'}):'---'}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-[var(--text-main)]'}">${g.total>=0?'+':''}${formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
+                const isExp = expItemsState[t.id]; 
+                const hasItems = t.items && Array.isArray(t.items) && t.items.length > 0;
+                const catIcon = getCategoryIcon(t.kategori || 'Lainnya');
                 
-                const isTarikTunai = t.tipe === 'tarik_tunai'; const isSetorTunai = t.tipe === 'setor_tunai';
-                
-                let typeBadgeBg = "bg-rose-500/20"; let typeBadgeColor = "text-rose-400"; let typeText = "PENGELUARAN"; let signChar = "-";
-                if (t.tipe === 'pemasukan') { typeBadgeBg = "bg-emerald-500/20"; typeBadgeColor = "text-emerald-400"; typeText = "PEMASUKAN"; signChar = "+"; }
-                else if (isTarikTunai) { typeBadgeBg = "bg-sky-500/20"; typeBadgeColor = "text-sky-400"; typeText = "TARIK TUNAI"; signChar = "⇄"; }
-                else if (isSetorTunai) { typeBadgeBg = "bg-sky-500/20"; typeBadgeColor = "text-sky-400"; typeText = "SETOR TUNAI"; signChar = "⇄"; }
-
-                const titleDisp = t.merchantName || t.storeName || t.kategori || "Transaksi";
+                const isTarikTunai = t.tipe === 'tarik_tunai';
+                const isSetorTunai = t.tipe === 'setor_tunai';
+                const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : (isTarikTunai || isSetorTunai) ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
+                const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : (isTarikTunai || isSetorTunai) ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
+                const signChar = t.tipe === 'pemasukan' ? '+' : (isTarikTunai || isSetorTunai) ? '⇄' : '-';
+                const titleDisp = t.merchantName || t.storeName || t.kategori;
                 const descDisp = t.description || t.catatan_ai || "";
-                
-                // Collect unique categories in this trx
-                let catBadges = "";
-                if (hasItems) {
-                    const uniqueCats = [...new Set(t.items.map(it => it.kategori_barang || 'Lainnya'))];
-                    catBadges = uniqueCats.map(cat => {
-                        const style = getCategoryStyle(cat);
-                        return `<span class="inline-flex items-center gap-1 text-[8px] font-bold px-1.5 py-0.5 rounded-md border border-[var(--border-glass)] text-[var(--text-muted)] bg-black/30"><i class="fa-solid ${style.icon} ${style.color}"></i> ${cat}</span>`;
-                    }).join(' ');
-                }
 
-                return `<div class="glass-panel p-4 relative group transition-all duration-300 hover:border-white/20 hover:shadow-[0_0_20px_rgba(255,255,255,0.05)] border-l-4 border-l-[var(--border-glass)]" style="border-left-color: ${t.tipe==='pemasukan'?'var(--color-income)':(isTarikTunai||isSetorTunai)?'#38bdf8':'var(--color-expense)'}">
-                    
-                    <div class="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-[var(--bg-glass)] backdrop-blur-md rounded-lg border border-[var(--border-glass)] p-1 z-10 shadow-xl">
-                        <button onclick="window.openEditTrxModal('${t.id}')" class="w-7 h-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-accent hover:bg-white/10 active:scale-90 transition" title="Edit Transaksi"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="window.confirmDelTrx('${t.id}')" class="w-7 h-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--color-expense)] hover:bg-white/10 active:scale-90 transition" title="Hapus"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="pr-10">
-                            <h4 class="font-bold text-base text-[var(--text-main)] truncate max-w-[200px] leading-tight">${titleDisp}</h4>
-                            <div class="flex flex-wrap gap-1.5 mt-1.5">
-                                <span class="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full ${typeBadgeBg} ${typeBadgeColor}">${typeText}</span>
-                                <span class="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded-full bg-white/10 text-gray-300 border border-white/5"><i class="fa-solid ${t.metode_pembayaran==='tunai'?'fa-money-bill':'fa-credit-card'} mr-0.5"></i> ${t.metode_pembayaran}</span>
-                            </div>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <p class="font-bold text-lg font-mono ${typeBadgeColor}">${signChar}${formatVal(convertVal(t.nominal, t.mata_uang))}</p>
-                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${t.displayTime}</p>
-                        </div>
-                    </div>
-                    
-                    ${descDisp ? `<div class="bg-black/30 p-2.5 rounded-xl text-xs text-[var(--text-main)] leading-relaxed border border-[var(--border-glass)] mb-3 shadow-inner"><i class="fa-solid fa-quote-left text-accent opacity-50 mr-1 text-[10px]"></i> ${descDisp}</div>` : ''}
-                    
-                    ${catBadges ? `<div class="flex flex-wrap gap-1.5 mb-3">${catBadges}</div>` : ''}
-
-                    ${hasItems ? `<div class="pt-2 border-t border-[var(--border-glass)]"><div class="flex justify-between items-center"><button onclick="window.toggleReceipt('${t.id}')" class="flex-1 text-left text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5 flex items-center gap-1.5 hover:text-white transition"><span><i class="fa-solid fa-list-check"></i> ${t.items.length} Item Detail</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 border border-[var(--border-glass)] hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition active:scale-95 shadow-sm">+ ADD ITEM</button></div><div class="${isExp?'block':'hidden'} mt-2.5 space-y-2 relative before:content-[''] before:absolute before:left-3 before:top-0 before:bottom-0 before:w-px before:bg-[var(--border-glass)]">${t.items.map((it) => {
-                        const safeItemId = it.itemId || window.generateItemId();
-                        const stItem = getCategoryStyle(it.kategori_barang);
-                        return `<div class="flex justify-between items-center text-xs bg-black/40 p-2.5 rounded-xl group/it border border-[var(--border-glass)] ml-6 relative"><div class="absolute -left-3 top-1/2 w-3 h-px bg-[var(--border-glass)]"></div><div class="flex-1 truncate"><div class="flex items-center gap-1.5 mb-0.5"><i class="fa-solid ${stItem.icon} ${stItem.color} text-[10px]"></i> <span class="text-[var(--text-main)] font-semibold truncate">${it.nama_barang}</span></div> <div class="flex items-center gap-1.5"><span class="text-[9px] text-[var(--text-muted)] font-mono font-bold bg-white/5 px-1 rounded">${formatVal(convertVal(it.harga, t.mata_uang))} x ${it.qty}</span> ${it.tax_rate ? `<span class="text-[8px] bg-rose-950/40 text-rose-400 px-1 rounded font-mono border border-rose-900 shadow-sm">${it.tax_rate}% Tax</span>` : ''}</div></div><div class="text-right flex flex-col items-end justify-center"><span class="font-mono font-bold text-[var(--text-main)] text-sm mr-1 shadow-sm">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-1 mt-1 opacity-100 md:opacity-0 group-hover/it:opacity-100 transition"><button onclick="window.openEditItem('${t.id}', '${safeItemId}')" class="text-accent bg-accent/10 hover:bg-accent/20 px-2 py-0.5 rounded text-[10px] transition"><i class="fa-solid fa-pen"></i> Edit</button><button onclick="window.confirmDelItem('${t.id}', '${safeItemId}')" class="text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 px-2 py-0.5 rounded text-[10px] transition"><i class="fa-solid fa-xmark"></i></button></div></div></div>`;
-                    }).join('')}</div></div>` : `<div class="pt-2 border-t border-[var(--border-glass)]"><button onclick="window.openAddItemModal('${t.id}')" class="bg-black/40 border border-[var(--border-glass)] w-full py-2 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white hover:bg-white/5 transition shadow-sm border-dashed"><i class="fa-solid fa-plus mr-1"></i> TAMBAH DETAIL ITEM</button></div>`}</div>`
+                return `<div class="glass-panel p-4 relative group">
+                    <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-10 text-[var(--text-muted)] hover:text-accent opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex justify-between items-start mb-2 pr-12"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)] shrink-0">${iconHtml}</div><div class="overflow-hidden"><h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran} • ${t.displayTime}</p></div></div><p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${descDisp ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${descDisp}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><div class="flex justify-between items-center"><button onclick="window.toggleReceipt('${t.id}')" class="flex-1 text-left text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition">+ ITEM</button></div><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it) => {
+                    const safeItemId = it.itemId || window.generateItemId();
+                    return `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span> ${it.tax_rate ? `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : ''}</div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', '${safeItemId}')" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', '${safeItemId}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`;
+                }).join('')}</div></div>` : `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/5 border border-[var(--border-glass)] w-full py-1.5 rounded-md text-[9px] font-bold text-[var(--text-muted)] hover:text-white transition">+ TAMBAH ITEM</button></div>`}</div>`
+            }).join('')}</div></div>`
         }).join('');
     }
 
     const c7d = document.getElementById('chart-7days');
     if (c7d) {
         const maxDSp2 = Math.max(...Object.values(dailySp), 1);
-        c7d.innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative h-full justify-end"><div class="absolute -top-7 bg-black text-white text-[9px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none shadow-lg border border-[var(--border-glass)]">${formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-gradient-to-t from-[var(--bg-base)] to-accent':'bg-white/10'} shadow-[0_0_10px_rgba(56,189,248,0.1)]" style="height: ${v===0?4:(v/maxDSp2)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-2 font-mono font-bold">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
+        c7d.innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp2)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
     }
 
     const gCon = document.getElementById('goals-list-container');
     if (gCon) {
         const glList = window.allGoals || [];
-        gCon.innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)] text-xs">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
+        gCon.innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
             const targetVal = convertVal(g.targetAmount, g.currency);
             const diffDays = Math.ceil((new Date(g.targetDate) - new Date()) / (1000 * 3600 * 24));
             const daily = diffDays > 0 ? targetVal/diffDays : 0;
-            return `<div class="glass-panel p-4 relative overflow-hidden group"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-2 right-2 text-rose-500 hover:text-white p-2 opacity-0 group-hover:opacity-100 transition"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1 text-[var(--accent-primary)]"><i class="fa-solid fa-star mr-1"></i> ${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} • Max: ${g.targetDate}</p><div class="bg-black/50 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)] shadow-inner"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-sm">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Waktu</p><p class="font-bold text-xs text-white">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
+            return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
         }).join('');
     }
 
     const trCon = document.getElementById('trash-list-container');
     if (trCon) {
         const trashList = window.trashTransactions || [];
-        trCon.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)] text-xs mt-10">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-70 hover:opacity-100 transition border border-dashed border-[var(--border-glass)]"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.merchantName || t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)] font-mono">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-2">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2 rounded-lg active:scale-90 transition shadow-lg"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2 rounded-lg active:scale-90 transition shadow-lg"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
+        trCon.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.merchantName || t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Restore"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Hapus Permanen"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
     }
 };
 
@@ -1091,7 +1544,7 @@ window.handleSend = async function() {
 
     if(!txt && !imgData) return;
     
-    txtField.value = ""; txtField.style.height = '48px'; window.removeImage();
+    txtField.value = ""; txtField.style.height = '40px'; window.removeImage();
     if(window.activeView === 'oracle') { await window.processOracleChat(txt, imgData); } 
     else { await window.processTransactionParsing(txt, imgData); }
 };
@@ -1101,38 +1554,11 @@ window.renderOracleChats = function() {
     if(!chatBox) return;
     chatBox.innerHTML = window.oracleChats.map(c => {
         let htmlFormat = c.text.replace(/\n/g, '<br/>');
-        const dObj = new Date(c.timestamp);
-        const timeStr = !isNaN(dObj) ? `${String(dObj.getHours()).padStart(2,'0')}:${String(dObj.getMinutes()).padStart(2,'0')}` : '';
-        const modelBadge = c.model ? `<span class="text-[7px] border border-white/20 px-1 rounded uppercase tracking-wider text-white/50 ml-2">${c.model}</span>` : '';
-        
-        if (c.role === 'user') {
-            return `<div class="flex justify-end group">
-                <div class="flex flex-col items-end max-w-[85%]">
-                    <div class="p-3.5 rounded-2xl rounded-tr-sm text-[13px] bubble-user text-white shadow-lg leading-relaxed relative">${htmlFormat}</div>
-                    <span class="text-[8px] text-[var(--text-muted)] mt-1 font-mono px-1 opacity-0 group-hover:opacity-100 transition">${timeStr}</span>
-                </div>
-            </div>`;
-        } else {
-            return `<div class="flex justify-start group">
-                <div class="flex flex-col items-start max-w-[90%]">
-                    <div class="p-4 rounded-2xl rounded-tl-sm text-[13px] bubble-ai glass-panel markdown-content leading-relaxed shadow-md border-l-2 border-l-accent relative">
-                        ${htmlFormat}
-                        <div class="absolute -right-10 top-0 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition bg-black/40 rounded p-1">
-                            <button onclick="window.copyChatText('${c.text.replace(/'/g, "\\'")}')" class="text-[10px] text-[var(--text-muted)] hover:text-white p-1" title="Salin"><i class="fa-solid fa-copy"></i></button>
-                            <button onclick="window.deleteChatLog('${c.id}')" class="text-[10px] text-rose-500 hover:text-white p-1" title="Hapus"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-1 mt-1 opacity-50 group-hover:opacity-100 transition px-1">
-                        <span class="text-[8px] text-[var(--text-muted)] font-mono">${timeStr}</span>
-                        ${modelBadge}
-                    </div>
-                </div>
-            </div>`;
-        }
+        return `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}"><div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel markdown-content'} leading-relaxed shadow-sm">${htmlFormat}</div></div>`;
     }).join('');
     
     if(window.isProcessing && window.activeView === 'oracle') {
-        chatBox.innerHTML += `<div class="flex justify-start"><div class="bubble-ai glass-panel p-4 rounded-2xl flex gap-1.5 items-center shadow-lg border-l-2 border-l-accent"><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200"></div></div></div>`;
+        chatBox.innerHTML += `<div class="flex justify-start"><div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center"><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200"></div></div></div>`;
     }
     setTimeout(() => { const anc = document.getElementById('chat-anchor'); if(anc) anc.scrollIntoView({behavior:'smooth'}); }, 50);
 };
@@ -1141,10 +1567,10 @@ window.showToast = function(msg, isError = false) {
     const container = document.getElementById('toast-container'); if(!container) return;
     const toast = document.createElement('div');
     const icon = isError ? '<i class="fa-solid fa-triangle-exclamation text-[var(--color-expense)]"></i>' : '<i class="fa-solid fa-check text-accent"></i>';
-    toast.className = `glass-panel p-3.5 flex items-center gap-2.5 text-xs font-bold shadow-2xl animate-[slideUp_0.4s_ease-out] border border-[var(--border-glass)] ${isError ? 'border-b-4 border-b-[var(--color-expense)]' : 'border-b-4 border-b-accent'} bg-black/90 backdrop-blur-3xl`;
+    toast.className = `glass-panel p-3 flex items-center gap-2 text-xs font-bold shadow-lg animate-[slideUp_0.3s_ease-out] ${isError ? 'border-l-4 border-l-[var(--color-expense)]' : 'border-l-4 border-l-accent'}`;
     toast.innerHTML = `${icon} <span>${msg}</span>`;
     container.appendChild(toast);
-    setTimeout(() => { toast.classList.add('opacity-0', 'translate-y-[-10px]'); setTimeout(()=>toast.remove(), 300); }, 3400);
+    setTimeout(() => toast.remove(), 3400);
 };
 
 window.showModal = function(id) { 
@@ -1155,7 +1581,7 @@ window.showModal = function(id) {
 window.openManualTrxModal = function() {
     document.getElementById('manual-trx-amount').value = "";
     document.getElementById('manual-trx-store').value = "";
-    document.getElementById('manual-trx-desc').value = "";
+    document.getElementById('manual-trx-category').value = "";
     window.toggleManualFormFields();
     window.showModal('modal-manual-trx');
 };
@@ -1169,8 +1595,14 @@ window.toggleManualFormFields = function() {
     const tipe = document.getElementById('manual-trx-type').value;
     const storeLabel = document.getElementById('lbl-manual-store');
     const storeInput = document.getElementById('manual-trx-store');
-    if(tipe === 'pemasukan' || tipe === 'setor_tunai') { storeLabel.innerText = "Sumber / Merchant"; storeInput.placeholder = "Contoh: Gaji / Top-Up / ATM"; } 
-    else { storeLabel.innerText = "Nama Toko / Merchant"; storeInput.placeholder = "Contoh: 7-Eleven / Amazon"; }
+    
+    if(tipe === 'pemasukan') {
+        storeLabel.innerText = "Sumber Pemasukan";
+        storeInput.placeholder = "Contoh: Gaji / Top-Up / Refund";
+    } else {
+        storeLabel.innerText = "Nama Toko / Merchant";
+        storeInput.placeholder = "Contoh: 7-Eleven / Amazon";
+    }
 };
 
 window.saveManualTransaction = async function() {
@@ -1178,26 +1610,37 @@ window.saveManualTransaction = async function() {
     const curr = document.getElementById('manual-trx-curr').value;
     const method = document.getElementById('manual-trx-method').value;
     const amount = parseFloat(document.getElementById('manual-trx-amount').value) || 0;
-    const storeName = document.getElementById('manual-trx-store').value.trim() || "Toko/Merchant";
-    const desc = document.getElementById('manual-trx-desc').value.trim() || "Input Manual User";
+    const storeName = document.getElementById('manual-trx-store').value.trim() || (tipe === 'pemasukan' ? "Sumber Dana" : "Toko/Merchant");
+    const category = document.getElementById('manual-trx-category').value.trim() || (tipe === 'pemasukan' ? "Pemasukan Manual" : "Lainnya");
 
     if (amount <= 0) return window.showToast("Nominal harus lebih dari 0!", true);
 
     const timestamp = new Date().toISOString();
     
     const payload = {
-        merchantName: storeName, storeName: storeName,
-        tanggal: timestamp.split('T')[0], nominal: amount, mata_uang: curr,
-        metode_pembayaran: method, kategori: "Lainnya", tipe: tipe,
-        description: desc, catatan_ai: desc, isCustomDescription: true,
-        is_deleted: false, createdAt: timestamp, items: []
+        merchantName: storeName,
+        storeName: storeName,
+        tanggal: timestamp.split('T')[0],
+        nominal: amount,
+        mata_uang: curr,
+        metode_pembayaran: method,
+        kategori: category,
+        tipe: tipe,
+        description: "Input Manual User",
+        catatan_ai: "Input Manual User",
+        isCustomDescription: true,
+        is_deleted: false,
+        createdAt: timestamp,
+        items: []
     };
 
     try {
         await window.FirebaseService.saveTransaction(payload);
         window.closeManualTrxModal();
-        window.showToast("Transaksi Manual Tersimpan!");
-    } catch(e) { window.showToast("Gagal menyimpan transaksi.", true); }
+        window.showToast("Transaksi Manual Berhasil Tersimpan!");
+    } catch(e) {
+        window.showToast("Gagal menyimpan transaksi.", true);
+    }
 };
 
 window.openEditTrxModal = function(id) {
@@ -1210,15 +1653,11 @@ window.openEditTrxModal = function(id) {
     document.getElementById('edit-global-method').value = trx.metode_pembayaran || 'cashless';
     document.getElementById('edit-global-nominal').value = trx.nominal || 0;
     
-    const typeEl = document.getElementById('edit-global-type'); if (typeEl) typeEl.value = trx.tipe || 'pengeluaran';
-    const descEl = document.getElementById('edit-global-desc'); if (descEl) descEl.value = trx.description || trx.catatan_ai || '';
+    const typeEl = document.getElementById('edit-global-type');
+    if (typeEl) typeEl.value = trx.tipe || 'pengeluaran';
     
-    // Set Date & Time
-    const dObj = new Date(trx.createdAt || trx.tanggal);
-    const dateEl = document.getElementById('edit-global-date');
-    const timeEl = document.getElementById('edit-global-time');
-    if(dateEl && !isNaN(dObj)) dateEl.value = dObj.toISOString().split('T')[0];
-    if(timeEl && !isNaN(dObj)) timeEl.value = `${String(dObj.getHours()).padStart(2,'0')}:${String(dObj.getMinutes()).padStart(2,'0')}`;
+    const descEl = document.getElementById('edit-global-desc');
+    if (descEl) descEl.value = trx.description || trx.catatan_ai || '';
 
     window.showModal('modal-edit-trx');
 };
@@ -1237,28 +1676,42 @@ window.saveEditTrx = async function() {
     const curr = document.getElementById('edit-global-curr').value;
     const method = document.getElementById('edit-global-method').value;
     const nominal = parseFloat(document.getElementById('edit-global-nominal').value) || 0;
-    const typeEl = document.getElementById('edit-global-type'); const tipe = typeEl ? typeEl.value : 'pengeluaran';
-    const descEl = document.getElementById('edit-global-desc'); const desc = descEl ? descEl.value.trim() : '';
-    const dateEl = document.getElementById('edit-global-date').value;
-    const timeEl = document.getElementById('edit-global-time').value;
-
-    const updates = { merchantName: storeName, storeName: storeName, mata_uang: curr, metode_pembayaran: method, nominal: nominal, tipe: tipe };
-    if (desc !== "") { updates.description = desc; updates.catatan_ai = desc; updates.isCustomDescription = true; }
     
-    if (dateEl) {
-        const h = timeEl ? timeEl.split(':')[0] : '00'; const m = timeEl ? timeEl.split(':')[1] : '00';
-        const newD = new Date(`${dateEl}T${h}:${m}:00`).toISOString();
-        updates.createdAt = newD; updates.tanggal = dateEl;
+    const typeEl = document.getElementById('edit-global-type');
+    const descEl = document.getElementById('edit-global-desc');
+    
+    const tipe = typeEl ? typeEl.value : 'pengeluaran';
+    const desc = descEl ? descEl.value.trim() : '';
+
+    const updates = {
+        merchantName: storeName,
+        storeName: storeName,
+        mata_uang: curr,
+        metode_pembayaran: method,
+        nominal: nominal,
+        tipe: tipe
+    };
+
+    if (desc !== "") {
+        updates.description = desc;
+        updates.catatan_ai = desc;
+        updates.isCustomDescription = true;
     }
 
-    try { await window.FirebaseService.updateTransaction(trxId, updates); window.closeEditTrxModal(); window.showToast("Perubahan Global Tersimpan!"); } 
-    catch(e) { window.showToast("Gagal mengupdate.", true); }
+    try {
+        await window.FirebaseService.updateTransaction(trxId, updates);
+        window.closeEditTrxModal();
+        window.showToast("Perubahan Transaksi Berhasil Disimpan!");
+    } catch(e) {
+        window.showToast("Gagal mengupdate transaksi.", true);
+    }
 };
 
 window.openAddItemModal = function(trxId) {
     window.addItemTargetTrxId = trxId;
-    document.getElementById('add-item-name').value = ""; document.getElementById('add-item-qty').value = "1"; document.getElementById('add-item-price').value = "";
-    document.getElementById('add-item-cat').value = "Lainnya";
+    document.getElementById('add-item-name').value = "";
+    document.getElementById('add-item-qty').value = "1";
+    document.getElementById('add-item-price').value = "";
     window.showModal('modal-add-item');
 };
 
@@ -1270,22 +1723,41 @@ window.closeAddItemModal = function() {
 
 window.saveAddItem = async function() {
     if(!window.addItemTargetTrxId) return;
-    const trx = window.allTransactions.find(t => t.id === window.addItemTargetTrxId); if(!trx) return;
+    const trx = window.allTransactions.find(t => t.id === window.addItemTargetTrxId);
+    if(!trx) return;
 
     const name = document.getElementById('add-item-name').value.trim() || "Item Baru";
     const qty = parseFloat(document.getElementById('add-item-qty').value) || 1;
     const price = parseFloat(document.getElementById('add-item-price').value) || 0;
-    const cat = document.getElementById('add-item-cat').value || "Lainnya";
 
-    const newItem = { itemId: window.generateItemId(), nama_barang: name, harga: price, qty: qty, kategori_barang: cat, tax_rate: 0, paymentMethod: trx.metode_pembayaran, timestamp: new Date().toISOString() };
-    const currentItems = trx.items || []; const finalItems = currentItems.concat([newItem]);
+    const newItem = {
+        itemId: window.generateItemId(),
+        nama_barang: name,
+        harga: price,
+        qty: qty,
+        kategori_barang: "Lainnya",
+        tax_rate: 0,
+        paymentMethod: trx.metode_pembayaran,
+        timestamp: new Date().toISOString()
+    };
+
+    const currentItems = trx.items || [];
+    const finalItems = currentItems.concat([newItem]);
     const newTotalSum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
 
     const upd = { items: finalItems, nominal: newTotalSum };
-    if (!trx.isCustomDescription) { upd.description = `[Auto-Update] Transaksi diubah. Total terbaru: ${formatVal(newTotalSum)}.`; upd.catatan_ai = upd.description; }
+    if (!trx.isCustomDescription) {
+        upd.description = `[Auto-Update] Transaksi diubah. Total terbaru: ${formatVal(newTotalSum)}.`;
+        upd.catatan_ai = upd.description;
+    }
 
-    try { await window.FirebaseService.updateTransaction(trx.id, upd); window.closeAddItemModal(); window.showToast("Item berhasil ditambahkan!"); } 
-    catch(e) { window.showToast("Gagal menambah item.", true); }
+    try {
+        await window.FirebaseService.updateTransaction(trx.id, upd);
+        window.closeAddItemModal();
+        window.showToast("Item berhasil ditambahkan!");
+    } catch(e) {
+        window.showToast("Gagal menambah item.", true);
+    }
 };
 
 window.confirmDelTrx = function(id) { 
@@ -1296,15 +1768,20 @@ window.confirmDelTrx = function(id) {
 };
 
 window.confirmDelItem = function(trxId, itemId) { 
-    const trx = window.allTransactions.find(t=>t.id === trxId); if(!trx || !trx.items) return;
-    const item = trx.items.find(i => (i.itemId || '') === itemId); if(!item) return;
+    const trx = window.allTransactions.find(t=>t.id === trxId);
+    if(!trx || !trx.items) return;
+
+    const item = trx.items.find(i => (i.itemId || '') === itemId);
+    if(!item) return;
+
     window.deleteTargetData = { type: 'item', id: trxId, name: item.nama_barang, itemId: itemId }; 
     document.getElementById('confirm-msg').innerText = `Hapus "${item.nama_barang}" dari struk ini? Total belanja akan dihitung ulang otomatis.`; 
     window.showModal('modal-confirm'); 
 };
 
 window.confirmDelGoal = function(id) { 
-    const goal = window.allGoals.find(g=>g.id === id); if(!goal) return;
+    const goal = window.allGoals.find(g=>g.id === id);
+    if(!goal) return;
     window.deleteTargetData = { type: 'goal', id, name: goal.name }; 
     document.getElementById('confirm-msg').innerText = `Batalkan misi tabungan "${goal.name}" selamanya?`; 
     window.showModal('modal-confirm'); 
@@ -1317,20 +1794,17 @@ window.closeConfirmModal = function() {
 };
 
 window.openEditItem = function(trxId, itemId) {
-    const trx = window.allTransactions.find(t=>t.id === trxId); if(!trx || !trx.items) return;
-    const item = trx.items.find(i => (i.itemId || '') === itemId); if(!item) return;
+    const trx = window.allTransactions.find(t=>t.id === trxId);
+    if(!trx || !trx.items) return;
+    
+    const item = trx.items.find(i => (i.itemId || '') === itemId);
+    if(!item) return;
 
     window.editItemTargetData = { id: trxId, itemId: itemId, item: item };
     document.getElementById('edit-store-name').value = trx.merchantName || trx.storeName || '';
     document.getElementById('edit-item-name').value = item.nama_barang || '';
     document.getElementById('edit-item-qty').value = item.qty || 1; 
     document.getElementById('edit-item-price').value = item.harga || 0;
-    
-    const catSel = document.getElementById('edit-item-cat');
-    if(catSel) {
-        const cats = ["Makanan", "Minuman", "Bahan Pokok", "Utilitas", "Transportasi", "Kesehatan", "Hiburan", "Belanja Online", "Belanja Offline", "Pendidikan", "Pakaian", "Elektronik", "Lainnya"];
-        catSel.innerHTML = cats.map(c => `<option value="${c}" ${c === (item.kategori_barang||'Lainnya') ? 'selected' : ''}>${c}</option>`).join('');
-    }
     window.showModal('modal-edit-item');
 };
 
@@ -1345,17 +1819,30 @@ window.saveEditItem = async function() {
     const trx = window.allTransactions.find(t=>t.id === window.editItemTargetData.id);
     if(trx && window.FirebaseService?.updateTransaction) {
         const storeNameVal = document.getElementById('edit-store-name').value.trim();
-        const catSelVal = document.getElementById('edit-item-cat').value;
         const nItems = trx.items.map(it => {
             if (it.itemId === window.editItemTargetData.itemId) {
-                return { ...it, nama_barang: document.getElementById('edit-item-name').value, qty: parseFloat(document.getElementById('edit-item-qty').value) || 1, harga: parseFloat(document.getElementById('edit-item-price').value) || 0, kategori_barang: catSelVal };
+                return {
+                    ...it,
+                    nama_barang: document.getElementById('edit-item-name').value, 
+                    qty: parseFloat(document.getElementById('edit-item-qty').value) || 1, 
+                    harga: parseFloat(document.getElementById('edit-item-price').value) || 0 
+                };
             }
             return it;
         });
 
         const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-        const upd = { items: nItems, nominal: sum, merchantName: storeNameVal || trx.merchantName || trx.storeName, storeName: storeNameVal || trx.storeName || trx.kategori };
-        if (!trx.isCustomDescription) { upd.description = `[Auto-Update] Item telah disesuaikan. Total terbaru: ${formatVal(sum)}.`; upd.catatan_ai = upd.description; }
+        const upd = { 
+            items: nItems, 
+            nominal: sum,
+            merchantName: storeNameVal || trx.merchantName || trx.storeName,
+            storeName: storeNameVal || trx.storeName || trx.kategori
+        };
+
+        if (!trx.isCustomDescription) {
+            upd.description = `[Auto-Update] Item telah disesuaikan. Total terbaru: ${formatVal(sum)}.`;
+            upd.catatan_ai = upd.description;
+        }
 
         await window.FirebaseService.updateTransaction(trx.id, upd);
     }
@@ -1364,13 +1851,15 @@ window.saveEditItem = async function() {
 
 window.restoreTransaction = async function(id) {
     if(window.FirebaseService?.updateTransaction) {
-        await window.FirebaseService.updateTransaction(id, { is_deleted: false, deletedAt: null }); window.showToast("Dikembalikan dari sampah.");
+        await window.FirebaseService.updateTransaction(id, { is_deleted: false, deletedAt: null });
+        window.showToast("Transaksi dikembalikan dari sampah.");
     }
 };
 
 window.deleteForever = async function(id) {
     if(window.FirebaseService?.deleteTransactionPermanently) {
-        await window.FirebaseService.deleteTransactionPermanently(id); window.showToast("Dihapus permanen.");
+        await window.FirebaseService.deleteTransactionPermanently(id);
+        window.showToast("Dihapus permanen.");
     }
 };
 
@@ -1378,7 +1867,11 @@ window.promptBudget = function() {
     const amt = prompt("Masukkan Limit Anggaran Bulanan Baru (dalam JPY):", window.monthlyBudget);
     if(amt && !isNaN(amt)) { 
         window.monthlyBudget = parseFloat(amt);
-        if(window.FirebaseService?.updateSettings) { window.FirebaseService.updateSettings({ monthlyBudget: { limit: window.monthlyBudget } }); }
+        if(window.FirebaseService?.updateSettings) {
+            window.FirebaseService.updateSettings({ 
+                monthlyBudget: { limit: window.monthlyBudget } 
+            });
+        }
         window.reCalculateAll(); 
     }
 };
@@ -1386,25 +1879,30 @@ window.promptBudget = function() {
 window.toggleGoalForm = function() { const f = document.getElementById('goal-form'); if(f) f.classList.toggle('hidden'); };
 
 window.saveGoal = async function() {
-    const name = document.getElementById('goal-name').value; const amt = document.getElementById('goal-target').value; const dt = document.getElementById('goal-date').value;
+    const name = document.getElementById('goal-name').value; 
+    const amt = document.getElementById('goal-target').value;
+    const dt = document.getElementById('goal-date').value;
     if(!name || !amt || !dt) return window.showToast("Harap lengkapi semua form!", true);
+
     if(window.FirebaseService?.saveGoal) {
         await window.FirebaseService.saveGoal({ name, targetAmount: parseFloat(amt), targetDate: dt, currency: window.displayCurrency });
         document.getElementById('goal-form').classList.add('hidden');
         document.getElementById('goal-name').value = ""; document.getElementById('goal-target').value = ""; document.getElementById('goal-date').value = "";
-        window.showToast("Misi Tabungan Tersimpan!");
+        window.showToast("Misi Tabungan Berhasil Ditambahkan!");
     }
 };
 
 window.downloadCSV = function() {
     let csv = "Tanggal,Waktu_Dibuat,Store,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Deskripsi\n";
     window.allTransactions.forEach(r => {
-        const d = r.tanggal?.split('T')[0] || ''; const created = r.createdAt || '';
+        const d = r.tanggal?.split('T')[0] || ''; 
+        const created = r.createdAt || '';
         const items = r.items && Array.isArray(r.items) ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga})`).join('|') : '-'; 
         const note = (r.description || r.catatan_ai || '').replace(/,/g, '');
         const store = r.merchantName || r.storeName || r.kategori || 'Toko';
         csv += `${d},${created},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
     });
+
     const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csv); 
     link.download = `AuraFi_Report_${new Date().toISOString().split('T')[0]}.csv`; 
     document.body.appendChild(link); link.click(); link.remove();
@@ -1412,31 +1910,48 @@ window.downloadCSV = function() {
 
 document.getElementById('btn-execute-delete').onclick = async () => {
     if(!window.deleteTargetData) return;
+
     if(window.deleteTargetData.type === 'trx') {
-        if(window.activeView === 'trash') { if(window.FirebaseService?.deleteTransactionPermanently) await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id); } 
-        else { if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(window.deleteTargetData.id); }
+        if(window.activeView === 'trash') {
+            if(window.FirebaseService?.deleteTransactionPermanently) await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id);
+        } else {
+            if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(window.deleteTargetData.id);
+        }
     } else if(window.deleteTargetData.type === 'goal') {
         if(window.FirebaseService?.deleteGoal) await window.FirebaseService.deleteGoal(window.deleteTargetData.id);
     } else if(window.deleteTargetData.type === 'item') {
         const trx = window.allTransactions.find(t=>t.id === window.deleteTargetData.id);
         if(trx && window.FirebaseService?.updateTransaction) {
             const nItems = trx.items.filter(item => item.itemId !== window.deleteTargetData.itemId);
-            if(nItems.length === 0) { if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(trx.id); } 
-            else { 
+            if(nItems.length === 0) {
+                if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(trx.id);
+            } else { 
                 const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
                 const upd = { items: nItems, nominal: sum };
-                if (!trx.isCustomDescription) { upd.description = `[Auto-Update] Item dihapus. Total terbaru: ${formatVal(sum)}.`; upd.catatan_ai = upd.description; }
+                if (!trx.isCustomDescription) {
+                    upd.description = `[Auto-Update] Item dihapus. Total terbaru: ${formatVal(sum)}.`;
+                    upd.catatan_ai = upd.description;
+                }
                 await window.FirebaseService.updateTransaction(trx.id, upd); 
             }
         }
     }
-    window.closeConfirmModal(); window.showToast("Perubahan Berhasil Disinkronkan.");
+    window.closeConfirmModal();
+    window.showToast("Perubahan Berhasil Disinkronkan secara Realtime.");
 };
+
+// ===============================
+// SERVICE WORKER REGISTRATION (PWA)
+// ===============================
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./service-worker.js")
-      .then((registration) => { console.log("Service Worker aktif:", registration.scope); })
-      .catch((error) => { console.log("Service Worker gagal:", error); });
+      .then((registration) => {
+        console.log("Service Worker aktif:", registration.scope);
+      })
+      .catch((error) => {
+        console.log("Service Worker gagal:", error);
+      });
   });
 }
