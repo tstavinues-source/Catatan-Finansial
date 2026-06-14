@@ -198,9 +198,9 @@ window.FinancialSummaryService = {
                 cashlessBal -= (val + adminFee);
             } else if (t.tipe === 'setor_tunai') {
                 let adminFee = Number(t.admin_fee || 0);
-                cashBal -= val; // uang fisik di tangan berkurang disetor ke bank
-                cashlessBal += val; // uang di bank bertambah
-                cashlessBal -= adminFee; // bank terpotong admin jika ada
+                cashBal -= val; 
+                cashlessBal += val; 
+                cashlessBal -= adminFee; 
             } else {
                 if (isCash) cashBal -= val; 
                 else cashlessBal -= val;
@@ -600,7 +600,7 @@ window.checkAndExecuteRecurringPayments = async function() {
                             nama_barang: rp.name,
                             harga: rp.amount,
                             qty: 1,
-                            kategori_barang: 'Tagihan',
+                            kategori_barang: 'Utilitas',
                             tax_rate: 0,
                             paymentMethod: rp.method,
                             timestamp: timestamp
@@ -752,15 +752,14 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const activeCurrency = window.displayCurrency || 'JPY';
         const nickname = window.settingsData?.profile?.nickname || "Bos";
 
-        // MEROMBAK SYSTEM PROMPT UNTUK ATURAN AKUNTANSI, MULTIPLIKASI, DAN KATEGORI CERDAS
         const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang Aktif: ${activeCurrency}.
 Wajib menghasilkan output RAW JSON tanpa markdown backticks (\`\`\`).
 ATURAN UTAMA & AKUNTANSI STRICT:
-1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless akan berkurang 610, tunai bertambah 500, aset terpotong 110).
-2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai akan berkurang 10000, cashless bertambah 10000. Total aset tidak berubah).
+1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless berkurang 610, tunai bertambah 500, aset terpotong 110).
+2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai berkurang 10000, cashless bertambah 10000. Total aset tidak berubah).
 3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis kurangi kas tunai. Jika 'cashless', kurangi kas cashless. Jangan silang.
 4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua kaleng). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total wajib = sum(harga x qty) + admin_fee.
-5. KATEGORI CERDAS: Klasifikasikan 'kategori_barang' ke dalam: "Makanan & Minuman", "Kebutuhan Rumah", "Kesehatan", "Transportasi", "Elektronik", "Tagihan", "Hiburan", atau "Lainnya".
+5. KATEGORI ITEM YANG DIDUKUNG: Setiap item WAJIB diklasifikasikan ke dalam kategori ini: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
 6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Jika tidak ada, isi "Toko/Merchant".
 7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke dalam tax_rate masing-masing item jika ada ketidakcocokan antara item dan total.
 
@@ -829,21 +828,22 @@ window.processOracleChat = async function(text, base64Img = null) {
         return `ID:${t.id} | Toko:${t.storeName || 'Merchant'} | Tipe:${t.tipe} | Kat:${t.kategori} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
     }).join('\n');
 
-    // INJECT PERSONA ORACLE V2 & ATURAN HAPUS ITEM (NO UNDEFINED)
     const systemPrompt = `Kamu adalah AuraFi Oracle V2. Kepribadian: cerdas, manajer keuangan profesional, rendah hati, santai, komunikatif, humoris, sedikit sarkas elegan, dan selalu berorientasi pada solusi. Tidak boleh kaku.
 Nama User Panggilan: ${nickname}.
 
 Konteks Keuangan Ringkas:
 ${summaryString}
+
 Data Transaksi Relevan Terkait:
 ${txString}
 
 ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
-AI DILARANG merusak struktur array. Jangan pernah mengubah index. WAJIB menggunakan UUID "target_item_id".
-Ketika menghapus 1 item, item lain (harga, kuantitas, nama, kategori, dsb) DILARANG berubah menjadi undefined atau terganti.
-1. action="update_transaction": Untuk merubah storeName, metode_pembayaran, atau nominal global dari sebuah ID transaksi. "target_id" wajib.
-2. action="add_item": Menambahkan item spesifik ke "target_id". "new_items" berisi array item baru.
-3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id", dan "new_items" hanya berisi data 1 item baru (nama/harga/qty) yang menimpa id tersebut.
+AI DILARANG merusak struktur array. Jangan pernah mengubah index. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
+Ketika menghapus atau mengedit 1 item, item lain DILARANG berubah menjadi undefined atau terganti.
+KATEGORI ITEM YANG DIDUKUNG: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
+1. action="update_transaction": Merubah storeName, metode_pembayaran, atau nominal global dari ID transaksi.
+2. action="add_item": Menambahkan item ke "target_id". "new_items" berisi array item baru.
+3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id". "new_items" hanya berisi data 1 item yang menimpa id tersebut.
 4. action="delete_item": Menghapus 1 item secara penuh berdasarkan "target_item_id".
 5. action="moveToTrash": Menghapus seluruh transaksi block "target_id".
 
@@ -898,7 +898,6 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     const currentItems = targetTrx.items || [];
                     const newEditData = resJson.new_items[0];
                     const finalItems = currentItems.map(it => {
-                        // Safe Update Map: Hanya merubah item yang match dengan target_item_id
                         if(it.itemId === resJson.target_item_id) {
                             return {
                                 ...it, 
@@ -914,7 +913,6 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     await window.FirebaseService.updateTransaction(targetTrx.id, { items: finalItems, nominal: sum });
                 } else if(resJson.action === 'delete_item' && targetTrx && resJson.target_item_id) {
                     const currentItems = targetTrx.items || [];
-                    // Hapus secara aman dengan Filter membuang itemId yang match (tidak bergantung urutan index)
                     const finalItems = currentItems.filter(it => it.itemId !== resJson.target_item_id);
                     if(finalItems.length === 0) {
                         await window.FirebaseService.moveToTrash(targetTrx.id);
@@ -1059,15 +1057,30 @@ const formatVal = (amt) => new Intl.NumberFormat(window.displayCurrency==='JPY'?
 let expItemsState = {};
 window.toggleReceipt = function(id) { expItemsState[id] = !expItemsState[id]; window.reCalculateAll(); };
 
-function getCategoryIcon(cat) {
-     const icons = {
-        'Pendapatan': 'fa-money-bill-wave', 'Makanan': 'fa-burger', 'Minuman': 'fa-mug-hot',
-        'Tagihan': 'fa-file-invoice-dollar', 'Kesehatan': 'fa-kit-medical', 'Hiburan': 'fa-gamepad', 
-        'Belanja': 'fa-cart-shopping', 'Transportasi': 'fa-train', 'Kebutuhan Rumah': 'fa-house-user'
-    };
-    return icons[cat] || 'fa-tag';
+// Sistem pewarnaan dan pemetaan ikon per Kategori Item
+function getCategoryStyle(cat) {
+    const c = (cat || "Lainnya").toLowerCase();
+    if (c.includes('makan')) return { icon: 'fa-burger', color: 'text-orange-400', bg: 'bg-orange-400/10' };
+    if (c.includes('minum')) return { icon: 'fa-mug-hot', color: 'text-blue-400', bg: 'bg-blue-400/10' };
+    if (c.includes('pokok')) return { icon: 'fa-basket-shopping', color: 'text-green-400', bg: 'bg-green-400/10' };
+    if (c.includes('utilitas') || c.includes('tagihan')) return { icon: 'fa-file-invoice-dollar', color: 'text-yellow-400', bg: 'bg-yellow-400/10' };
+    if (c.includes('transport')) return { icon: 'fa-train', color: 'text-emerald-400', bg: 'bg-emerald-400/10' };
+    if (c.includes('sehat') || c.includes('obat')) return { icon: 'fa-kit-medical', color: 'text-rose-400', bg: 'bg-rose-400/10' };
+    if (c.includes('hibur')) return { icon: 'fa-gamepad', color: 'text-purple-400', bg: 'bg-purple-400/10' };
+    if (c.includes('online')) return { icon: 'fa-box-open', color: 'text-pink-400', bg: 'bg-pink-400/10' };
+    if (c.includes('offline') || c.includes('belanja')) return { icon: 'fa-shop', color: 'text-indigo-400', bg: 'bg-indigo-400/10' };
+    if (c.includes('didik')) return { icon: 'fa-graduation-cap', color: 'text-cyan-400', bg: 'bg-cyan-400/10' };
+    if (c.includes('pakaian') || c.includes('baju')) return { icon: 'fa-shirt', color: 'text-fuchsia-400', bg: 'bg-fuchsia-400/10' };
+    if (c.includes('elektronik')) return { icon: 'fa-laptop', color: 'text-slate-400', bg: 'bg-slate-400/10' };
+    if (c.includes('dapat') || c.includes('gaji')) return { icon: 'fa-money-bill-wave', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
+    return { icon: 'fa-tag', color: 'text-[var(--text-muted)]', bg: 'bg-white/5' };
 }
 
+function getCategoryIcon(cat) {
+    return getCategoryStyle(cat).icon;
+}
+
+// FUNGSI KALKULATOR UTAMA DENGAN REALTIME LISTENER
 window.reCalculateAll = function() {
     let totBal = 0, cashBal = 0, cashlessBal = 0;
     let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
@@ -1112,11 +1125,9 @@ window.reCalculateAll = function() {
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
                 thisMthSpent += feeVal;
                 thisMthCashless += feeVal;
-                const c = 'Tagihan'; 
-                catSpend[c] = (catSpend[c]||0) + feeVal;
+                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal;
             }
         
-        // --- LOGIKA SETOR TUNAI BARU ---
         } else if (trx.tipe === 'setor_tunai') {
             let adminFee = Number(trx.admin_fee || 0);
             if (!adminFee && trx.items && Array.isArray(trx.items)) {
@@ -1135,22 +1146,40 @@ window.reCalculateAll = function() {
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
                 thisMthSpent += feeVal;
                 thisMthCashless += feeVal;
-                const c = 'Tagihan'; 
-                catSpend[c] = (catSpend[c]||0) + feeVal;
+                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal;
             }
 
         } else {
+            // TIPE PENGELUARAN (BELANJA NORMAL)
             totBal -= val;
             if(isCash) cashBal -= val; else cashlessBal -= val; 
             groupedTrx[dStr].total -= val;
             if(trx.sifat === 'impulsif') impulsif++;
+            
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
                 thisMthSpent += val;
                 if(!isCash) thisMthCashless += val;
-                const c = trx.kategori || 'Lainnya'; 
-                catSpend[c] = (catSpend[c]||0) + val;
+                
+                // MENGHITUNG KATEGORI BERDASARKAN "ITEM" (BUKAN GLOBAL TRANSAKSI)
+                if (trx.items && Array.isArray(trx.items) && trx.items.length > 0) {
+                    trx.items.forEach(it => {
+                        const itemCat = it.kategori_barang || 'Lainnya';
+                        const itemVal = convertVal(it.harga * (it.qty || 1), trx.mata_uang);
+                        catSpend[itemCat] = (catSpend[itemCat] || 0) + itemVal;
+                    });
+                    
+                    // Alokasikan selisih dari Total Struk (Nominal) vs Total Item jika terdapat discrepancy / pajak tersembunyi
+                    const itemsTotal = trx.items.reduce((sum, it) => sum + convertVal(it.harga * (it.qty || 1), trx.mata_uang), 0);
+                    if (val > itemsTotal) {
+                        const diff = val - itemsTotal;
+                        catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + diff;
+                    }
+                } else {
+                    const c = trx.kategori || 'Lainnya'; 
+                    catSpend[c] = (catSpend[c]||0) + val;
+                }
             }
-            if(dailySp[dStr] !== undefined) dailySp[dStr] += val;
+            if(dailySp[dStr] !== undefined) dailySp[dStr] += val; // Menggambar Bar Chart Pengeluaran Realtime Harian
         }
         groupedTrx[dStr].items.push(trx);
     });
@@ -1207,10 +1236,26 @@ window.reCalculateAll = function() {
         else { warnBox.classList.add('hidden'); }
     }
 
+    // TAMPILKAN SELURUH KATEGORI BULAN INI (DENGAN PEWARNAAN OTOMATIS)
     const topCatDiv = document.getElementById('top-categories-list');
     const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
     if (topCatDiv) {
-        topCatDiv.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.slice(0,4).map(([c,v]) => `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0"><div><p class="font-bold">${c}</p><p class="text-[9px] text-[var(--text-muted)] font-bold">${((v/thisMthSpent)*100).toFixed(0)}% dari total belanja</p></div><p class="font-mono text-xs font-bold">${formatVal(v)}</p></div>`).join('');
+        topCatDiv.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.map(([c,v]) => {
+            const style = getCategoryStyle(c);
+            const pct = thisMthSpent > 0 ? ((v/thisMthSpent)*100).toFixed(0) : 0;
+            return `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full ${style.bg} flex items-center justify-center border border-[var(--border-glass)]">
+                        <i class="fa-solid ${style.icon} ${style.color}"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-[var(--text-main)]">${c}</p>
+                        <p class="text-[9px] text-[var(--text-muted)] font-bold">${pct}% dari total belanja</p>
+                    </div>
+                </div>
+                <p class="font-mono text-xs font-bold text-[var(--text-main)]">${formatVal(v)}</p>
+            </div>`;
+        }).join('');
     }
 
     const trxListContainer = document.getElementById('trx-list-container');
