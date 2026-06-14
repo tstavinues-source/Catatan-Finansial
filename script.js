@@ -196,6 +196,11 @@ window.FinancialSummaryService = {
                 let adminFee = Number(t.admin_fee || 0);
                 cashBal += val;
                 cashlessBal -= (val + adminFee);
+            } else if (t.tipe === 'setor_tunai') {
+                let adminFee = Number(t.admin_fee || 0);
+                cashBal -= val; // uang fisik di tangan berkurang disetor ke bank
+                cashlessBal += val; // uang di bank bertambah
+                cashlessBal -= adminFee; // bank terpotong admin jika ada
             } else {
                 if (isCash) cashBal -= val; 
                 else cashlessBal -= val;
@@ -211,7 +216,6 @@ window.FinancialSummaryService = {
 
         return `--- PROFIL & RINGKASAN PENGGUNA ---
 Nama: ${fullName} (${nickname})
-Negara: Jepang/Indonesia
 Mata Uang Utama Aktif: ${window.displayCurrency}
 Sisa Tunai (Cash): ${cashBal} ${window.displayCurrency}
 Sisa Cashless: ${cashlessBal} ${window.displayCurrency}
@@ -748,15 +752,19 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const activeCurrency = window.displayCurrency || 'JPY';
         const nickname = window.settingsData?.profile?.nickname || "Bos";
 
-        const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang Aktif Default: ${activeCurrency}.
+        // MEROMBAK SYSTEM PROMPT UNTUK ATURAN AKUNTANSI, MULTIPLIKASI, DAN KATEGORI CERDAS
+        const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang Aktif: ${activeCurrency}.
 Wajib menghasilkan output RAW JSON tanpa markdown backticks (\`\`\`).
-ATURAN UTAMA:
-1. NAMA TOKO (storeName): Wajib cari nama toko/merchant (Cth: Lawson, Amazon, AEON). Jika tidak terdeteksi, isi "Toko/Merchant".
-2. PENARIKAN TUNAI: Jika user berkata "tarik tunai/penarikan 500 admin 110", set tipe="tarik_tunai", nominal=500 (jumlah ditarik), admin_fee=110, metode_pembayaran="cashless". Biaya Admin dimasukkan ke items.
-3. PAJAK JEPANG: Deteksi (税込, 税抜, 内税, 外税, 消費税, 8%, 10%). Makanan/minuman non-alkohol = 8%. Alkohol/restoran/jasa = 10%. 
-Jika total sum(items) != nominal total, distribusikan selisih agar total item tepat sama dengan total struk. Setiap item WAJIB memiliki tax_rate (8 atau 10).
-4. KATEGORI UTAMA: Kategori transaksi & item wajib masuk kelompok: Makanan, Minuman, Transportasi, Tagihan, Hiburan, Kebutuhan Rumah, atau Lainnya.
-Struktur JSON:
+ATURAN UTAMA & AKUNTANSI STRICT:
+1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless akan berkurang 610, tunai bertambah 500, aset terpotong 110).
+2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai akan berkurang 10000, cashless bertambah 10000. Total aset tidak berubah).
+3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis kurangi kas tunai. Jika 'cashless', kurangi kas cashless. Jangan silang.
+4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua kaleng). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total wajib = sum(harga x qty) + admin_fee.
+5. KATEGORI CERDAS: Klasifikasikan 'kategori_barang' ke dalam: "Makanan & Minuman", "Kebutuhan Rumah", "Kesehatan", "Transportasi", "Elektronik", "Tagihan", "Hiburan", atau "Lainnya".
+6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Jika tidak ada, isi "Toko/Merchant".
+7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke dalam tax_rate masing-masing item jika ada ketidakcocokan antara item dan total.
+
+Struktur JSON Wajib:
 {
   "storeName": "string",
   "tanggal": "YYYY-MM-DD",
@@ -764,7 +772,7 @@ Struktur JSON:
   "mata_uang": "string",
   "metode_pembayaran": "tunai/cashless",
   "kategori": "string",
-  "tipe": "pemasukan/pengeluaran/tarik_tunai",
+  "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai",
   "admin_fee": number,
   "sifat": "kebutuhan/impulsif",
   "catatan_ai": "string",
@@ -821,25 +829,30 @@ window.processOracleChat = async function(text, base64Img = null) {
         return `ID:${t.id} | Toko:${t.storeName || 'Merchant'} | Tipe:${t.tipe} | Kat:${t.kategori} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
     }).join('\n');
 
-    const systemPrompt = `Kamu adalah AuraFi Oracle V2. Kepribadian: humble, asyik, jenius, ramah.
+    // INJECT PERSONA ORACLE V2 & ATURAN HAPUS ITEM (NO UNDEFINED)
+    const systemPrompt = `Kamu adalah AuraFi Oracle V2. Kepribadian: cerdas, manajer keuangan profesional, rendah hati, santai, komunikatif, humoris, sedikit sarkas elegan, dan selalu berorientasi pada solusi. Tidak boleh kaku.
 Nama User Panggilan: ${nickname}.
+
 Konteks Keuangan Ringkas:
 ${summaryString}
 Data Transaksi Relevan Terkait:
 ${txString}
 
 ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
-AI DILARANG keras merusak struktur atau menghapus data yang tidak diminta!
-Hanya kembalikan output spesifik berikut.
+AI DILARANG merusak struktur array. Jangan pernah mengubah index. WAJIB menggunakan UUID "target_item_id".
+Ketika menghapus 1 item, item lain (harga, kuantitas, nama, kategori, dsb) DILARANG berubah menjadi undefined atau terganti.
 1. action="update_transaction": Untuk merubah storeName, metode_pembayaran, atau nominal global dari sebuah ID transaksi. "target_id" wajib.
 2. action="add_item": Menambahkan item spesifik ke "target_id". "new_items" berisi array item baru.
-3. action="edit_item": Edit 1 item spesifik. Wajib menyertakan "target_item_id" dari data relevan di atas, dan "new_items" berisi data 1 item baru (nama/harga/qty) yang menimpa.
-4. action="delete_item": Menghapus 1 item berdasarkan "target_item_id".
-5. action="moveToTrash": Menghapus seluruh target_id.
+3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id", dan "new_items" hanya berisi data 1 item baru (nama/harga/qty) yang menimpa id tersebut.
+4. action="delete_item": Menghapus 1 item secara penuh berdasarkan "target_item_id".
+5. action="moveToTrash": Menghapus seluruh transaksi block "target_id".
+
+ATURAN BALASAN (WAJIB):
+Buat jawaban minimal 3-8 kalimat yang berisi penjelasan, alasan, dampak pada saldo, dan solusi/alternatif. Jangan menjawab pendek seperti "Saldo tidak cukup".
 
 Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
 {
-  "reply": "Kalimat balasan kasual ke user",
+  "reply": "Kalimat balasan Oracle V2 yang panjang, elegan, solutif dan sarkas santai",
   "action": "none|moveToTrash|update_transaction|add_item|edit_item|delete_item",
   "target_id": "string",
   "target_item_id": "string",
@@ -885,6 +898,7 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     const currentItems = targetTrx.items || [];
                     const newEditData = resJson.new_items[0];
                     const finalItems = currentItems.map(it => {
+                        // Safe Update Map: Hanya merubah item yang match dengan target_item_id
                         if(it.itemId === resJson.target_item_id) {
                             return {
                                 ...it, 
@@ -900,6 +914,7 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     await window.FirebaseService.updateTransaction(targetTrx.id, { items: finalItems, nominal: sum });
                 } else if(resJson.action === 'delete_item' && targetTrx && resJson.target_item_id) {
                     const currentItems = targetTrx.items || [];
+                    // Hapus secara aman dengan Filter membuang itemId yang match (tidak bergantung urutan index)
                     const finalItems = currentItems.filter(it => it.itemId !== resJson.target_item_id);
                     if(finalItems.length === 0) {
                         await window.FirebaseService.moveToTrash(targetTrx.id);
@@ -1089,9 +1104,9 @@ window.reCalculateAll = function() {
             const feeVal = convertVal(adminFee, trx.mata_uang);
             const mainVal = convertVal(trx.nominal, trx.mata_uang);
             
-            totBal -= feeVal; 
-            cashBal += mainVal; 
-            cashlessBal -= (mainVal + feeVal); 
+            totBal -= feeVal; // Tarik tunai admin fee ngurangi net worth total
+            cashBal += mainVal; // Fisik cash bertambah
+            cashlessBal -= (mainVal + feeVal); // Saldo cashless/bank berkurang sebesar tarikan + admin
             
             groupedTrx[dStr].total -= feeVal;
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
@@ -1100,6 +1115,30 @@ window.reCalculateAll = function() {
                 const c = 'Tagihan'; 
                 catSpend[c] = (catSpend[c]||0) + feeVal;
             }
+        
+        // --- LOGIKA SETOR TUNAI BARU ---
+        } else if (trx.tipe === 'setor_tunai') {
+            let adminFee = Number(trx.admin_fee || 0);
+            if (!adminFee && trx.items && Array.isArray(trx.items)) {
+                const adminItem = trx.items.find(i => i.nama_barang.toLowerCase().includes('admin'));
+                if (adminItem) adminFee = Number(adminItem.harga * (adminItem.qty || 1));
+            }
+            const feeVal = convertVal(adminFee, trx.mata_uang);
+            const mainVal = convertVal(trx.nominal, trx.mata_uang);
+            
+            totBal -= feeVal; // Setor tunai admin fee ngurangi net worth total
+            cashBal -= mainVal; // Fisik cash berkurang disetor ke bank
+            cashlessBal += mainVal; // Saldo cashless/bank bertambah
+            cashlessBal -= feeVal; // Bank terpotong administrasi jika ada
+            
+            groupedTrx[dStr].total -= feeVal;
+            if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
+                thisMthSpent += feeVal;
+                thisMthCashless += feeVal;
+                const c = 'Tagihan'; 
+                catSpend[c] = (catSpend[c]||0) + feeVal;
+            }
+
         } else {
             totBal -= val;
             if(isCash) cashBal -= val; else cashlessBal -= val; 
@@ -1185,9 +1224,10 @@ window.reCalculateAll = function() {
                 const catIcon = getCategoryIcon(t.kategori || 'Lainnya');
                 
                 const isTarikTunai = t.tipe === 'tarik_tunai';
-                const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : isTarikTunai ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
-                const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : isTarikTunai ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
-                const signChar = t.tipe === 'pemasukan' ? '+' : isTarikTunai ? '⇄' : '-';
+                const isSetorTunai = t.tipe === 'setor_tunai';
+                const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : (isTarikTunai || isSetorTunai) ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
+                const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : (isTarikTunai || isSetorTunai) ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
+                const signChar = t.tipe === 'pemasukan' ? '+' : (isTarikTunai || isSetorTunai) ? '⇄' : '-';
                 
                 return `<div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-10 text-[var(--text-muted)] hover:text-accent opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-pen-to-square"></i></button>
