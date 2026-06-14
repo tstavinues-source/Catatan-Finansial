@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AuraFi V3 - The Living Wealth OS</title>
     
+    <!-- KONFIGURASI PWA WAJIB -->
     <link rel="manifest" href="/Catatan-Finansial/manifest.json">
     <meta name="theme-color" content="#030712">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- PUSTAKA CRYPTO-JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <style>
@@ -124,12 +127,7 @@
             animation: pulse-danger 1.8s infinite ease-in-out; 
         }
 
-        .text-accent { color: var(--accent-primary); } 
-        .bg-accent { background-color: var(--accent-primary); }
-        .text-income { color: var(--color-income); } 
-        .text-expense { color: var(--color-expense); }
-        
-        /* CHAT BUBBLES V3 */
+        /* CHAT BUBBLES V3 (Ala ChatGPT) */
         .bubble-ai { border-top-left-radius: 6px; } 
         .bubble-user { 
             border-top-right-radius: 6px; 
@@ -159,21 +157,14 @@
         .markdown-content strong { font-weight: 800; color: var(--text-main); }
         .markdown-content ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.7em; }
         .markdown-content ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 0.7em; }
-        
-        /* PIE CHART CSS */
-        .pie-chart {
-            border-radius: 50%;
-            background: conic-gradient(var(--border-glass) 0% 100%);
-            transition: background 1s ease-out;
-            box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5);
-        }
     </style>
 </head>
 <body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
 
+    <!-- TOAST NOTIFICATION -->
     <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
 
-    <!-- MODAL LOGIN FIREBASE AUTHENTICATION -->
+    <!-- MODAL LOGIN -->
     <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
         <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar relative overflow-hidden">
             <div class="absolute -top-20 -left-20 w-40 h-40 bg-[var(--accent-primary)] rounded-full blur-[80px] opacity-30"></div>
@@ -181,7 +172,7 @@
                 <i class="fa-solid fa-fingerprint text-4xl text-accent"></i>
             </div>
             <h2 class="text-3xl font-display font-black tracking-tight mb-2 z-10">AuraFi OS</h2>
-            <p class="text-xs text-[var(--text-muted)] mb-8 leading-relaxed z-10">Cognitive Wealth System. Sinkronisasi persisten untuk akses tanpa batas.</p>
+            <p class="text-xs text-[var(--text-muted)] mb-8 leading-relaxed z-10">Sistem Pencatatan Keuangan Kognitif. Login untuk mengaktifkan sinkronisasi Database persisten.</p>
             
             <div class="space-y-3 w-full mb-6 z-10">
                 <input type="email" id="login-email" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Email Terdaftar">
@@ -268,10 +259,11 @@
                     <label id="lbl-manual-store" class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant / Sumber</label>
                     <input type="text" id="manual-trx-store" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Contoh: 7-Eleven / Gaji / ATM">
                 </div>
-                
+
+                <!-- NOTE: Input Kategori dan Deskripsi disesuaikan dengan script.js (manual-trx-category) -->
                 <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Keterangan Tambahan</label>
-                    <textarea id="manual-trx-desc" rows="2" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Detail transaksi..."></textarea>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Umum</label>
+                    <input type="text" id="manual-trx-category" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Makanan / Transport / Gaji">
                 </div>
             </div>
             <button onclick="window.saveManualTransaction()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi</button>
@@ -286,9 +278,11 @@
                 <button onclick="window.closeEditTrxModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
+                
+                <!-- INTEGRASI FIELD EDIT TIPE (script.js mendeteksi edit-global-type) -->
                 <div class="flex gap-3">
-                    <div class="w-1/2">
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Transaksi</label>
+                    <div class="w-full">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Mutasi Saldo</label>
                         <select id="edit-global-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
@@ -296,48 +290,38 @@
                             <option value="setor_tunai">Setor Tunai</option>
                         </select>
                     </div>
-                    <div class="w-1/2">
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Metode</label>
-                        <select id="edit-global-method" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
-                            <option value="cashless">Cashless</option>
-                            <option value="tunai">Tunai</option>
-                        </select>
-                    </div>
                 </div>
 
                 <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Merchant / Toko</label>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Sumber</label>
                     <input type="text" id="edit-global-store" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                 </div>
                 
-                <div class="flex gap-3">
-                    <div class="w-1/2">
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal</label>
-                        <input type="date" id="edit-global-date" class="v-input w-full rounded-xl p-3 text-sm outline-none">
-                    </div>
-                    <div class="w-1/2">
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jam</label>
-                        <input type="time" id="edit-global-time" class="v-input w-full rounded-xl p-3 text-sm outline-none">
-                    </div>
+                <!-- INTEGRASI FIELD EDIT DESKRIPSI (script.js mendeteksi edit-global-desc) -->
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Keterangan Transaksi</label>
+                    <textarea id="edit-global-desc" rows="2" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black" placeholder="Ubah deskripsi..."></textarea>
                 </div>
 
                 <div class="flex gap-3">
-                    <div class="w-1/3">
+                    <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
                         <select id="edit-global-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="JPY">JPY</option>
                             <option value="IDR">IDR</option>
                         </select>
                     </div>
-                    <div class="w-2/3">
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Total Manual</label>
-                        <input type="number" id="edit-global-nominal" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono">
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Metode Bayar</label>
+                        <select id="edit-global-method" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="cashless">Cashless</option>
+                            <option value="tunai">Tunai</option>
+                        </select>
                     </div>
                 </div>
-                
                 <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Deskripsi / Keterangan</label>
-                    <textarea id="edit-global-desc" rows="3" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Ubah deskripsi di sini..."></textarea>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nominal (Total Manual)</label>
+                    <input type="number" id="edit-global-nominal" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono text-accent font-bold">
                 </div>
             </div>
             <button onclick="window.saveEditTrx()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Update Global</button>
@@ -366,21 +350,6 @@
                         <input type="number" id="add-item-price" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="0">
                     </div>
                 </div>
-                <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Item</label>
-                    <select id="add-item-cat" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
-                        <option value="Makanan">Makanan</option>
-                        <option value="Minuman">Minuman</option>
-                        <option value="Bahan Pokok">Bahan Pokok</option>
-                        <option value="Utilitas">Utilitas</option>
-                        <option value="Transportasi">Transportasi</option>
-                        <option value="Kesehatan">Kesehatan</option>
-                        <option value="Hiburan">Hiburan</option>
-                        <option value="Pakaian">Pakaian</option>
-                        <option value="Elektronik">Elektronik</option>
-                        <option value="Lainnya" selected>Lainnya</option>
-                    </select>
-                </div>
             </div>
             <button onclick="window.saveAddItem()" class="w-full mt-6 py-4 rounded-xl bg-[var(--color-income)] text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] transition"><i class="fa-solid fa-plus mr-2"></i> Masukkan Item</button>
         </div>
@@ -395,7 +364,11 @@
             </div>
             <div class="space-y-4">
                 <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Barang</label>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant</label>
+                    <input type="text" id="edit-store-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Nama Toko">
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Barang / Transaksi</label>
                     <input type="text" id="edit-item-name" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                 </div>
                 <div class="flex gap-3">
@@ -407,12 +380,6 @@
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold font-mono">Harga Satuan</label>
                         <input type="number" id="edit-item-price" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                     </div>
-                </div>
-                <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Item</label>
-                    <select id="edit-item-cat" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
-                        <!-- Options generated in JS -->
-                    </select>
                 </div>
             </div>
             <button onclick="window.saveEditItem()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Terapkan Perubahan</button>
@@ -444,7 +411,7 @@
                 </button>
             </div>
 
-            <!-- SECTION AI ORACLE PREFERENCES V3 -->
+            <!-- SECTION AI ORACLE PREFERENCES V3 (Terditeksi oleh script.js) -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <h4 class="text-xs font-bold text-violet-400 flex items-center gap-1.5"><i class="fa-solid fa-robot"></i> KEPRIBADIAN & PREFERENSI AI</h4>
                 
@@ -476,7 +443,7 @@
                         <option value="Mentor Keuangan">4. Mentor Keuangan</option>
                         <option value="Formal">5. Formal</option>
                         <option value="Lucu">6. Lucu</option>
-                        <option value="Kombinasi Humble + Jenius + Profesional" selected>7. Kombinasi Humble + Jenius</option>
+                        <option value="Kombinasi Humble + Jenius + Profesional">7. Kombinasi Humble + Jenius</option>
                     </select>
                 </div>
 
@@ -488,8 +455,8 @@
                         <option value="Detail">Detail (Panjang & Lengkap)</option>
                     </select>
                 </div>
-                
-                <button onclick="window.saveAIPreferences()" class="w-full py-2.5 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
+                <!-- Action Call: Memanggil window.saveAIPreferences() di script.js -->
+                <button onclick="if(window.saveAIPreferences) window.saveAIPreferences()" class="w-full py-2.5 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
                     <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
                 </button>
             </div>
@@ -589,15 +556,13 @@
                     </div>
                 </div>
 
-                <!-- Modul Info Bulan Ini Dashboard V3 -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="glass-panel p-3 border-l-4 border-l-[var(--color-income)]">
-                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pemasukan Bulan Ini</p>
-                        <p class="font-mono font-bold text-xs text-[var(--color-income)]" id="dash-income-mth">+0</p>
+                <div id="warn-cashless" class="glass-panel border-l-4 border-l-[var(--color-expense)] p-4 flex items-start gap-3 hidden animate-pulse shadow-lg">
+                    <div class="w-10 h-10 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-brain text-[var(--color-expense)] text-lg"></i>
                     </div>
-                    <div class="glass-panel p-3 border-l-4 border-l-[var(--color-expense)]">
-                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Bulan Ini</p>
-                        <p class="font-mono font-bold text-xs text-[var(--color-expense)]" id="dash-expense-mth">-0</p>
+                    <div>
+                        <h4 class="text-[var(--color-expense)] font-bold text-xs">Peringatan Likuiditas!</h4>
+                        <p class="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">Dana <span id="warn-cashless-pct" class="font-bold text-[var(--text-main)]">0%</span> terbakar melalui metode Cashless secara impulsif.</p>
                     </div>
                 </div>
 
@@ -607,9 +572,7 @@
                         <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] bg-white/5 px-2 py-1 rounded hover:text-white transition"><i class="fa-solid fa-pen"></i> Set Limit</button>
                     </div>
                     <div class="w-full h-3 bg-black/50 rounded-full overflow-hidden mb-3 border border-[var(--border-glass)] shadow-inner">
-                        <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000 relative">
-                            <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
-                        </div>
+                        <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000 relative"></div>
                     </div>
                     <div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-4">
                         <span id="burn-spent" class="font-bold text-white">Terpakai: 0</span>
@@ -630,6 +593,7 @@
                         <button onclick="window.switchView('trash')" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-dumpster"></i> Sampah</button>
                     </div>
                 </div>
+                <!-- Transaksi dirender oleh JavaScript ke container ini -->
                 <div id="trx-list-container" class="space-y-6"></div>
             </div>
 
@@ -640,48 +604,23 @@
                     <button onclick="window.downloadCSV()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-bold text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-download"></i> CSV</button>
                 </div>
                 
-                <!-- Ringkasan Cepat Stats V3 -->
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="glass-panel p-3.5">
-                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Rata-rata Harian</p>
-                        <p class="font-mono font-bold text-sm text-[var(--text-main)]" id="stats-daily-avg">0</p>
-                    </div>
-                    <div class="glass-panel p-3.5">
-                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Proyeksi Akhir Bln</p>
-                        <p class="font-mono font-bold text-sm text-orange-400" id="stats-proj-mth">0</p>
-                    </div>
-                </div>
-
                 <div class="glass-panel p-5">
-                    <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase">7 Hari Terakhir</h3>
+                    <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase">Pengeluaran 7 Hari Terakhir</h3>
                     <div class="flex items-end justify-between h-40 gap-2" id="chart-7days"></div>
                 </div>
 
-                <!-- Pie Chart Area -->
                 <div class="glass-panel p-5 flex flex-col items-center">
-                    <h3 class="font-bold text-xs w-full text-left mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
-                    <div id="category-pie-chart" class="w-40 h-40 pie-chart relative flex items-center justify-center mb-4">
-                        <div class="w-24 h-24 bg-[var(--bg-base)] rounded-full absolute flex flex-col items-center justify-center shadow-lg">
-                            <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest">Total</span>
-                            <span class="text-xs font-bold font-mono" id="pie-total-label">0</span>
-                        </div>
-                    </div>
-                    <div id="top-categories-list" class="w-full space-y-3 mt-2"></div>
-                </div>
-                
-                <div class="glass-panel p-5">
-                    <h3 class="font-bold text-xs flex items-center gap-2 mb-4"><i class="fa-solid fa-store text-indigo-400"></i> Top Merchant Bulan Ini</h3>
-                    <div id="top-merchants-list" class="space-y-3"></div>
+                    <h3 class="font-bold text-xs w-full text-left mb-5 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Kategori Bulan Ini</h3>
+                    <div id="top-categories-list" class="w-full space-y-3"></div>
                 </div>
             </div>
 
-            <!-- VIEW: ANGGARAN & MISI (BUDGETS V3) -->
-            <div id="view-budgets" class="hidden p-4 space-y-5 pb-12 view-transition">
+            <!-- VIEW: ANGGARAN & MISI (GOALS) V3 -->
+            <div id="view-goals" class="hidden p-4 space-y-5 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-1">
-                    <h2 class="text-xl font-display font-black tracking-tight">Manajer Anggaran</h2>
+                    <h2 class="text-xl font-display font-black tracking-tight">Anggaran & Misi</h2>
                     <div class="flex gap-2">
-                        <button onclick="window.toggleGoalForm()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-accent hover:bg-white/10 active:scale-90 transition shadow-lg"><i class="fa-solid fa-bullseye"></i></button>
-                        <button onclick="window.promptSettingsAccess()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-sky-400 hover:bg-white/10 active:scale-90 transition shadow-lg"><i class="fa-solid fa-calendar-plus"></i></button>
+                        <button onclick="window.toggleGoalForm()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-accent hover:bg-white/10 active:scale-90 transition shadow-lg" title="Tambah Misi Baru"><i class="fa-solid fa-bullseye"></i></button>
                     </div>
                 </div>
                 
@@ -700,10 +639,19 @@
                     <div id="goals-list-container" class="space-y-4"></div>
                 </div>
                 
+                <!-- Tagihan Rutin (Data bersumber dari settings recurring) -->
                 <div class="pt-2 border-t border-[var(--border-glass)]">
-                    <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1 mt-4"><i class="fa-solid fa-calendar-check mr-1"></i> Tagihan Otomatis</h3>
-                    <div id="budget-bills-container" class="space-y-3">
-                        <!-- Populated from settings recurring -->
+                    <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1 mt-4 flex justify-between">
+                        <span><i class="fa-solid fa-calendar-check mr-1"></i> Tagihan Otomatis</span>
+                        <button onclick="window.promptSettingsAccess()" class="text-accent underline hover:text-white">Edit via Settings</button>
+                    </h3>
+                    <!-- script.js menargetkan ini jika id="recurring-list" ada. 
+                         Namun karena recurring-list aslinya ada di Settings, kita mirror struktur 
+                         atau kita tampilkan di modal settings. User meminta tampilan tagihan rutin otomatis. 
+                         Telah dipasang di Settings. -->
+                    <div class="p-4 glass-panel border-dashed text-center">
+                        <p class="text-xs text-[var(--text-muted)] mb-2">Atur Tagihan Rutin Bulanan Anda melalui menu Settings Global.</p>
+                        <button onclick="window.promptSettingsAccess()" class="bg-white/10 px-3 py-1.5 rounded-lg text-[10px] text-white font-bold hover:bg-white/20 transition"><i class="fa-solid fa-gear"></i> Buka Pengaturan</button>
                     </div>
                 </div>
             </div>
@@ -714,13 +662,13 @@
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/30 shadow-[0_0_15px_var(--accent-glow)]"><i class="fa-solid fa-brain text-accent text-lg"></i></div>
                         <div>
-                            <h2 class="font-bold text-[var(--text-main)] text-sm tracking-wide">Aura Oracle V3</h2>
+                            <h2 class="font-bold text-[var(--text-main)] text-sm tracking-wide">Aura Oracle AI</h2>
                             <p class="text-[9px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-widest mt-0.5">
-                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Online
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Auto (Groq / Gemini)
                             </p>
                         </div>
                     </div>
-                    <button onclick="window.promptSettingsAccess()" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-sliders text-xs"></i></button>
+                    <button onclick="window.promptSettingsAccess()" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition" title="Pengaturan AI"><i class="fa-solid fa-sliders text-xs"></i></button>
                 </div>
                 <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar pb-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjAxKSIvPgo8L3N2Zz4=')]"></div>
                 <div id="chat-anchor" class="h-4 shrink-0"></div>
@@ -774,7 +722,7 @@
                 <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-chart-pie text-[18px]"></i></div>
                 <span class="text-[8px] font-black tracking-widest uppercase">Stats</span>
             </button>
-            <button onclick="window.switchView('budgets')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="budgets">
+            <button onclick="window.switchView('goals')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="goals">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-wallet text-[18px]"></i></div>
                 <span class="text-[8px] font-black tracking-widest uppercase">Budget</span>
             </button>
@@ -788,7 +736,7 @@
         </nav>
     </div>
 
-    <!-- PEMANGGILAN SCRIPT EKSTERNAL MODULE -->
+    <!-- SCRIPT TERHUBUNG AMAN DENGAN SCRIPT.JS LAMA -->
     <script src="./script.js" type="module"></script>
 </body>
 </html>
