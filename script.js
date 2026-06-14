@@ -46,6 +46,28 @@ window.sanitizeItems = function(items, defaultPayment, timestamp) {
     });
 };
 
+// Helper: Builder Prompt Dinamis AI Berdasarkan Preferensi User
+window.getOraclePromptConfigs = function() {
+    const prefs = window.settingsData?.aiPreferences || {
+        persona: 'Kombinasi Humble + Jenius + Profesional',
+        style: 'Normal'
+    };
+    
+    let personaStr = "kombinasi humble, jenius, dan profesional";
+    if (prefs.persona === "Humble Profesional") personaStr = "humble dan profesional";
+    else if (prefs.persona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
+    else if (prefs.persona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
+    else if (prefs.persona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
+    else if (prefs.persona === "Formal") personaStr = "sangat formal, baku, dan analitis";
+    else if (prefs.persona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
+
+    let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
+    if (prefs.style === "Singkat") styleStr = "Jawab SINGKAT, padat, dan jelas. Maksimal 2 paragraf saja.";
+    else if (prefs.style === "Detail") styleStr = "Jawab dengan SANGAT DETAIL, komprehensif, dan panjang lebar.";
+
+    return { personaStr, styleStr };
+};
+
 // ==========================================
 // AUTHENTICATION LOGIC (PERSISTENT & MULTI-METHOD)
 // ==========================================
@@ -161,9 +183,10 @@ window.MemoryService = {
         
         let matched = window.allTransactions.filter(t => {
             const matchCategory = (t.kategori || "").toLowerCase().includes(keyword);
-            const matchStore = (t.storeName || "").toLowerCase().includes(keyword);
+            const matchStore = (t.merchantName || t.storeName || "").toLowerCase().includes(keyword);
+            const matchDesc = (t.description || t.catatan_ai || "").toLowerCase().includes(keyword);
             const matchItems = t.items && t.items.some(it => (it.nama_barang || "").toLowerCase().includes(keyword));
-            return matchCategory || matchStore || matchItems;
+            return matchCategory || matchStore || matchItems || matchDesc;
         });
 
         if (matched.length > 0) {
@@ -392,7 +415,7 @@ function loadRealtimeDatabaseData() {
         
         window.checkAndExecuteRecurringPayments();
 
-        if(window.reCalculateAll) window.reCalculateAll(); // Kalkulasi akan refresh grafik realtime
+        if(window.reCalculateAll) window.reCalculateAll();
     });
 
     onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), (snapshot) => {
@@ -417,6 +440,14 @@ function loadRealtimeDatabaseData() {
             if(d.profile) {
                 document.getElementById('user-fullname').value = d.profile.fullName || '';
                 document.getElementById('user-nickname').value = d.profile.nickname || '';
+            }
+            
+            // Populasikan Dropdown Setting AI jika elemennya sudah di-inject
+            if (d.aiPreferences) {
+                const elC = document.getElementById('setting-ai-chat'); if(elC) elC.value = d.aiPreferences.modelChat;
+                const elV = document.getElementById('setting-ai-vision'); if(elV) elV.value = d.aiPreferences.modelVision;
+                const elP = document.getElementById('setting-ai-persona'); if(elP) elP.value = d.aiPreferences.persona;
+                const elS = document.getElementById('setting-ai-style'); if(elS) elS.value = d.aiPreferences.style;
             }
             window.renderRecurringUI();
         }
@@ -503,6 +534,22 @@ window.saveUserProfile = async function() {
     }
 };
 
+window.saveAIPreferences = async function() {
+    const chatM = document.getElementById('setting-ai-chat').value;
+    const visM = document.getElementById('setting-ai-vision').value;
+    const pers = document.getElementById('setting-ai-persona').value;
+    const style = document.getElementById('setting-ai-style').value;
+    
+    try {
+        await window.FirebaseService.updateSettings({
+            aiPreferences: { modelChat: chatM, modelVision: visM, persona: pers, style: style }
+        });
+        window.showToast("Setelan Oracle AI berhasil disimpan!");
+    } catch(e) { 
+        window.showToast("Gagal menyimpan setelan AI.", true); 
+    }
+};
+
 window.addRecurringPayment = async function() {
     const name = document.getElementById('new-rec-name').value.trim();
     const amount = parseFloat(document.getElementById('new-rec-amt').value);
@@ -583,17 +630,18 @@ window.checkAndExecuteRecurringPayments = async function() {
                 const itemUnikId = window.generateItemId();
                 const tagihanData = {
                     tanggal: today.toISOString().split('T')[0],
+                    createdAt: timestamp,
                     nominal: rp.amount,
                     mata_uang: window.displayCurrency,
                     metode_pembayaran: rp.method,
                     kategori: 'Tagihan',
                     tipe: 'pengeluaran',
                     sifat: 'kebutuhan',
-                    catatan_ai: `Sistem Otomatis: Pembayaran berkala "${rp.name}" jatuh tempo.`,
-                    storeName: rp.name,
+                    merchantName: rp.name,
+                    description: `Pembayaran otomatis: ${rp.name}`,
+                    isCustomDescription: true,
                     recurring_id: id,
                     is_deleted: false,
-                    createdAt: timestamp,
                     items: [
                         {
                             itemId: itemUnikId,
@@ -618,44 +666,135 @@ window.checkAndExecuteRecurringPayments = async function() {
     }
 };
 
+window.syncGeminiEngine = async function(silent = false) {
+    const pinInput = document.getElementById('gemini-pin-input')?.value.trim();
+    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
+    
+    if (!pin) { 
+        if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true);
+        return; 
+    }
+
+    const gBadge = document.getElementById('gemini-status-badge');
+    if(gBadge) {
+        gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono animate-pulse";
+        gBadge.innerText = "DECRYPTING...";
+    }
+    
+    try {
+        const geminiEngine = new window.GeminiFailoverEngine(pin);
+        const gCount = await geminiEngine.init();
+        if(gCount > 0) {
+            window.failoverEngineInstance = geminiEngine;
+            localStorage.setItem('aurafi_gemini_pin', pin);
+            
+            if(gBadge) {
+                gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+                gBadge.innerText = `ACTIVE (${gCount})`;
+            }
+            if(!silent) window.showToast("Gemini Vision Berhasil Di-Unlock.");
+        } else { throw new Error(); }
+    } catch(e) {
+        if(gBadge) {
+            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+            gBadge.innerText = "FAIL / LOCKED";
+        }
+        if(!silent) window.showToast("Dekripsi Gagal: PIN Salah.", true);
+    }
+};
+
+window.addGroqKey = async function() {
+    const keyInput = document.getElementById('new-groq-key').value.trim();
+    if(!keyInput.startsWith('gsk_')) return window.showToast("Format API Key Groq salah (harus diawali gsk_).", true);
+    
+    if(!window.EncryptionService.validate(keyInput, window.GroqService.secret)) return window.showToast("Kesalahan Enkripsi Fatal.", true);
+    
+    const enc = window.EncryptionService.encryptApiKey(keyInput, window.GroqService.secret);
+    await window.FirebaseService.saveGroqKey(enc);
+    
+    document.getElementById('new-groq-key').value = "";
+    window.showToast("Kunci Groq berhasil disimpan.");
+};
+
+window.removeGroqKey = async function(id) {
+    if(confirm("Hapus kunci Groq ini dari Database?")) {
+        await window.FirebaseService.deleteGroqKey(id);
+    }
+};
+
+window.renderGroqKeysUI = function() {
+    const container = document.getElementById('groq-keys-container');
+    if(!container) return;
+
+    const keys = window.rawGroqKeysData || [];
+    if(keys.length === 0) {
+        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada API Key Groq yang tersimpan.</p>';
+        return;
+    }
+
+    container.innerHTML = keys.map((k, index) => {
+        const dec = window.EncryptionService.decryptApiKey(k.encryptedKey, window.GroqService.secret);
+        const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Rusak/Corrupt)`;
+        const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
+        
+        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
+            <div class="flex flex-col">
+                <span class="font-mono text-xs ${statusColor}">${display}</span>
+                <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Groq Key #${index + 1}</span>
+            </div>
+            <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+        </div>`;
+    }).join('');
+};
+
 // ==========================================
 // UNIFIED CALL ENGINE DENGAN FALLBACK OTOMATIS (GROQ -> GEMINI)
 // ==========================================
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
+    const prefs = window.settingsData?.aiPreferences || {};
+    const chatModel = prefs.modelChat || 'Auto';
+    const visionModel = prefs.modelVision || 'Auto';
+    
+    let useGroq = false;
+    let useGemini = false;
+
+    if (base64Image) {
+        if (visionModel === 'Gemini' || visionModel === 'Auto') useGemini = true;
+        else if (visionModel === 'Groq Vision') useGroq = true; 
+    } else {
+        if (chatModel === 'Groq') useGroq = true;
+        else if (chatModel === 'Gemini') useGemini = true;
+        else { useGroq = true; useGemini = true; } // Auto mode
+    }
+
     let lastError = null;
 
-    if (!base64Image && window.rawGroqKeysData && window.rawGroqKeysData.length > 0) {
+    if (useGroq && window.rawGroqKeysData && window.rawGroqKeysData.length > 0) {
         try {
             console.log("[AuraFi Engine] Mencoba Groq API...");
-            const resStr = await window.GroqService.fetch(messages, requireJson);
-            return resStr;
+            return await window.GroqService.fetch(messages, requireJson);
         } catch(e) {
-            console.warn("[AuraFi Engine] Groq API Gagal/Quota Limit. Mengalihkan ke Gemini Fallback...", e);
+            console.warn("[AuraFi Engine] Groq API Gagal/Quota Limit...", e);
             lastError = e;
+            if (!useGemini) throw e; 
         }
     }
 
-    if (window.failoverEngineInstance && window.failoverEngineInstance.keysPool.length > 0) {
+    if (useGemini && window.failoverEngineInstance && window.failoverEngineInstance.keysPool.length > 0) {
         try {
             console.log("[AuraFi Engine] Mencoba Gemini API...");
             const userPrompt = messages[messages.length - 1].content;
             
             const geminiPayload = {
-                contents: [{
-                    role: "user",
-                    parts: [{ text: userPrompt }]
-                }],
+                contents: [{ role: "user", parts: [{ text: userPrompt }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] }
             };
 
             if (requireJson) {
-                geminiPayload.generationConfig = {
-                    responseMimeType: "application/json",
-                };
+                geminiPayload.generationConfig = { responseMimeType: "application/json" };
             }
 
-            const resStr = await window.failoverEngineInstance.fetch(geminiPayload, base64Image);
-            return resStr;
+            return await window.failoverEngineInstance.fetch(geminiPayload, base64Image);
         } catch(e) {
             console.error("[AuraFi Engine] Gemini API juga gagal.", e);
             lastError = e;
@@ -674,6 +813,7 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const activeCurrency = window.displayCurrency || 'JPY';
         const nickname = window.settingsData?.profile?.nickname || "Bos";
 
+        // MEROMBAK SYSTEM PROMPT UNTUK ATURAN AKUNTANSI, MULTIPLIKASI, NAMA TOKO, DAN KATEGORI CERDAS
         const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang Aktif: ${activeCurrency}.
 Wajib menghasilkan output RAW JSON tanpa markdown backticks (\`\`\`).
 ATURAN UTAMA & AKUNTANSI STRICT:
@@ -682,12 +822,13 @@ ATURAN UTAMA & AKUNTANSI STRICT:
 3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis mengurangi saldo tunai. Jika 'cashless', mengurangi saldo cashless. JANGAN SILANG.
 4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua bungkus). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total block wajib = sum(harga x qty) + admin_fee.
 5. KATEGORI ITEM YANG DIDUKUNG: Setiap item WAJIB diklasifikasikan HANYA ke dalam kategori baku ini: "Makanan", "Minuman", "Bahan Pokok", "Utilitas", "Transportasi", "Kesehatan", "Hiburan", "Belanja Online", "Belanja Offline", "Pendidikan", "Pakaian", "Elektronik", "Lainnya".
-6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Jika tidak ada, isi "Toko/Merchant".
+6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Simpan ke field "merchantName". Jika tidak ada, isi "Toko/Merchant".
 7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke tax_rate masing-masing item jika total tidak cocok.
+8. DESKRIPSI (DESCRIPTION): Berikan catatan pendek mengenai transaksi ini ke field "description" untuk disimpan.
 
 Struktur JSON Wajib:
 {
-  "storeName": "string",
+  "merchantName": "string",
   "tanggal": "YYYY-MM-DD",
   "nominal": number,
   "mata_uang": "string",
@@ -696,7 +837,7 @@ Struktur JSON Wajib:
   "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai",
   "admin_fee": number,
   "sifat": "kebutuhan/impulsif",
-  "catatan_ai": "string",
+  "description": "string",
   "is_receipt": boolean,
   "items": [{"nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string", "tax_rate": number}]
 }`;
@@ -714,7 +855,7 @@ Struktur JSON Wajib:
         const timestamp = new Date().toISOString();
         jsonResult.items = window.sanitizeItems(jsonResult.items, jsonResult.metode_pembayaran, timestamp);
 
-        if(!jsonResult.storeName) jsonResult.storeName = jsonResult.kategori || "Toko/Merchant";
+        if(!jsonResult.merchantName) jsonResult.merchantName = jsonResult.storeName || jsonResult.kategori || "Toko/Merchant";
         if(!jsonResult.mata_uang) jsonResult.mata_uang = activeCurrency;
         
         await window.FirebaseService.saveTransaction({ 
@@ -747,10 +888,13 @@ window.processOracleChat = async function(text, base64Img = null) {
 
     const txString = relevantTx.map(t => {
         let it = t.items && Array.isArray(t.items) ? `| Items:[${t.items.map(i=>`{itemId:"${i.itemId}", nama:"${i.nama_barang}", harga:${i.harga}, qty:${i.qty}}`).join(', ')}]` : ''; 
-        return `ID:${t.id} | Toko:${t.storeName || 'Merchant'} | Tipe:${t.tipe} | Kat:${t.kategori} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
+        return `ID:${t.id} | Toko:${t.merchantName || t.storeName || 'Merchant'} | Tipe:${t.tipe} | Ket:${t.description || t.catatan_ai} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
     }).join('\n');
 
-    const systemPrompt = `Kamu adalah AuraFi Oracle V2. Kepribadian: cerdas, manajer keuangan profesional, rendah hati, santai, komunikatif, humoris, sedikit sarkas elegan, dan selalu berorientasi pada solusi. Tidak boleh kaku.
+    // INJECT PERSONA & RESPONSE STYLE SECARA DINAMIS
+    const { personaStr, styleStr } = window.getOraclePromptConfigs();
+
+    const systemPrompt = `Kamu adalah AuraFi Oracle V2. Kepribadian: ${personaStr}.
 Nama User Panggilan: ${nickname}.
 
 Konteks Keuangan Ringkas:
@@ -763,22 +907,22 @@ ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
 AI DILARANG merusak struktur array. Jangan pernah menggunakan index. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
 Ketika menghapus atau mengedit 1 item, data item lain dalam struk tersebut DILARANG berubah menjadi undefined atau terganti.
 KATEGORI ITEM YANG DIDUKUNG: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
-1. action="update_transaction": Merubah storeName, metode_pembayaran, atau nominal global dari ID transaksi.
+1. action="update_transaction": Merubah merchantName, metode_pembayaran, tipe (pemasukan/pengeluaran), atau nominal global dari ID transaksi.
 2. action="add_item": Menambahkan item ke "target_id". "new_items" berisi array item baru.
-3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id". "new_items" hanya berisi data 1 item yang menimpa id tersebut (pastikan harga dan qty sesuai).
+3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id". "new_items" hanya berisi data 1 item yang menimpa id tersebut (pastikan harga dan qty sesuai instruksi).
 4. action="delete_item": Menghapus 1 item secara penuh berdasarkan "target_item_id".
 5. action="moveToTrash": Menghapus seluruh transaksi block "target_id".
 
 ATURAN BALASAN (WAJIB):
-Buat jawaban minimal 3-8 kalimat yang berisi penjelasan, alasan, dampak pada saldo, dan solusi/alternatif. Jangan menjawab pendek seperti "Saldo tidak cukup".
+${styleStr} Jangan menjawab kelewat ringkas seperti "Saldo tidak cukup", berikan alasan, dampak, dan alternatif.
 
 Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
 {
-  "reply": "Kalimat balasan Oracle V2 yang panjang, elegan, solutif dan sarkas santai",
+  "reply": "Kalimat balasan Oracle V2 sesuai gaya dan kepribadian",
   "action": "none|moveToTrash|update_transaction|add_item|edit_item|delete_item",
   "target_id": "string",
   "target_item_id": "string",
-  "update_fields": {"storeName": "string", "metode_pembayaran": "tunai/cashless", "nominal": number},
+  "update_fields": {"merchantName": "string", "metode_pembayaran": "tunai/cashless", "tipe": "pemasukan/pengeluaran", "nominal": number},
   "new_items": [{"nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string"}]
 }`;
 
@@ -805,8 +949,9 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                 } else if(resJson.action === 'update_transaction' && targetTrx) {
                     const updates = {};
                     if(resJson.update_fields) {
-                        if(resJson.update_fields.storeName) updates.storeName = resJson.update_fields.storeName;
+                        if(resJson.update_fields.merchantName) updates.merchantName = resJson.update_fields.merchantName;
                         if(resJson.update_fields.metode_pembayaran) updates.metode_pembayaran = resJson.update_fields.metode_pembayaran;
+                        if(resJson.update_fields.tipe) updates.tipe = resJson.update_fields.tipe;
                         if(resJson.update_fields.nominal !== undefined) updates.nominal = resJson.update_fields.nominal;
                     }
                     await window.FirebaseService.updateTransaction(targetTrx.id, updates);
@@ -815,7 +960,11 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     const sanitizedNew = window.sanitizeItems(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString());
                     const finalItems = currentItems.concat(sanitizedNew);
                     const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    await window.FirebaseService.updateTransaction(targetTrx.id, { items: finalItems, nominal: sum });
+                    
+                    const upd = { items: finalItems, nominal: sum };
+                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah. Total akhir: ¥${sum}`;
+                    
+                    await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                 } else if(resJson.action === 'edit_item' && targetTrx && resJson.target_item_id && resJson.new_items && resJson.new_items.length > 0) {
                     const currentItems = targetTrx.items || [];
                     const newEditData = resJson.new_items[0];
@@ -832,7 +981,11 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                         return it;
                     });
                     const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    await window.FirebaseService.updateTransaction(targetTrx.id, { items: finalItems, nominal: sum });
+                    
+                    const upd = { items: finalItems, nominal: sum };
+                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item disesuaikan. Total akhir: ¥${sum}`;
+                    
+                    await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                 } else if(resJson.action === 'delete_item' && targetTrx && resJson.target_item_id) {
                     const currentItems = targetTrx.items || [];
                     const finalItems = currentItems.filter(it => it.itemId !== resJson.target_item_id);
@@ -840,7 +993,9 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                         await window.FirebaseService.moveToTrash(targetTrx.id);
                     } else {
                         const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                        await window.FirebaseService.updateTransaction(targetTrx.id, { items: finalItems, nominal: sum });
+                        const upd = { items: finalItems, nominal: sum };
+                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus. Total akhir: ¥${sum}`;
+                        await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                     }
                 }
             } catch(e) {
@@ -896,6 +1051,98 @@ window.onload = () => {
             this.style.height = (this.scrollHeight) + 'px';
         });
     }
+
+    // --- DOM INJECTION UNTUK UI BARU (TANPA MENGUBAH HTML) ---
+    setTimeout(() => {
+        // 1. Ekstensi Modal Edit Transaksi (Tipe & Deskripsi Kustom)
+        const editTrxSpace = document.querySelector('#modal-edit-trx .space-y-4');
+        if (editTrxSpace && !document.getElementById('edit-global-type')) {
+            editTrxSpace.insertAdjacentHTML('afterbegin', `
+                <div class="flex gap-3 mb-3">
+                    <div class="w-full">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Mutasi Saldo</label>
+                        <select id="edit-global-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="pengeluaran">Pengeluaran (Expense / -)</option>
+                            <option value="pemasukan">Pemasukan (Income / +)</option>
+                        </select>
+                    </div>
+                </div>
+            `);
+            editTrxSpace.insertAdjacentHTML('beforeend', `
+                <div class="mt-3">
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Keterangan Transaksi</label>
+                    <textarea id="edit-global-desc" rows="2" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black" placeholder="Cth: Belanja mingguan bersama keluarga..."></textarea>
+                </div>
+            `);
+        }
+
+        // 2. Ekstensi Modal Pengaturan (Menu AI Oracle)
+        const settingsBody = document.querySelector('#modal-settings .glass-panel');
+        if (settingsBody && !document.getElementById('ai-preferences-section')) {
+            const logoutSection = settingsBody.querySelector('.mt-6.pt-5.border-t');
+            const newSection = document.createElement('div');
+            newSection.id = 'ai-preferences-section';
+            newSection.className = 'space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]';
+            newSection.innerHTML = `
+                <h4 class="text-xs font-bold text-violet-400 flex items-center gap-1.5"><i class="fa-solid fa-robot"></i> KEPRIBADIAN & PREFERENSI AI</h4>
+                
+                <div class="flex gap-2">
+                    <div class="w-1/2">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Chat</label>
+                        <select id="setting-ai-chat" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                            <option value="Auto">Auto (Groq->Gemini)</option>
+                            <option value="Groq">Groq</option>
+                            <option value="Gemini">Gemini</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Vision</label>
+                        <select id="setting-ai-vision" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                            <option value="Auto">Auto / Gemini</option>
+                            <option value="Gemini">Gemini</option>
+                            <option value="Groq Vision">Groq Vision</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kepribadian Oracle (Personality)</label>
+                    <select id="setting-ai-persona" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                        <option value="Humble Profesional">1. Humble Profesional</option>
+                        <option value="Santai dan Asyik">2. Santai dan Asyik</option>
+                        <option value="Sarkas Cerdas">3. Sarkas Cerdas</option>
+                        <option value="Mentor Keuangan">4. Mentor Keuangan</option>
+                        <option value="Formal">5. Formal</option>
+                        <option value="Lucu">6. Lucu</option>
+                        <option value="Kombinasi Humble + Jenius + Profesional">7. Kombinasi Humble + Jenius</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Gaya Jawaban AI</label>
+                    <select id="setting-ai-style" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                        <option value="Normal">Normal (Sedang)</option>
+                        <option value="Singkat">Singkat (Max 2 Paragraf)</option>
+                        <option value="Detail">Detail (Panjang & Lengkap)</option>
+                    </select>
+                </div>
+                
+                <button onclick="window.saveAIPreferences()" class="w-full py-2.5 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
+                </button>
+            `;
+            if(logoutSection) settingsBody.insertBefore(newSection, logoutSection);
+            else settingsBody.appendChild(newSection);
+            
+            // Populasikan nilai lama jika ada
+            if (window.settingsData && window.settingsData.aiPreferences) {
+                document.getElementById('setting-ai-chat').value = window.settingsData.aiPreferences.modelChat || 'Auto';
+                document.getElementById('setting-ai-vision').value = window.settingsData.aiPreferences.modelVision || 'Auto';
+                document.getElementById('setting-ai-persona').value = window.settingsData.aiPreferences.persona || 'Kombinasi Humble + Jenius + Profesional';
+                document.getElementById('setting-ai-style').value = window.settingsData.aiPreferences.style || 'Normal';
+            }
+        }
+    }, 800);
 };
 
 window.fetchExchangeRate = async function() {
@@ -1020,8 +1267,26 @@ window.reCalculateAll = function() {
     txList.forEach(trx => {
         const val = convertVal(trx.nominal, trx.mata_uang);
         const isCash = trx.metode_pembayaran === 'tunai';
-        const dStr = trx.tanggal ? trx.tanggal.split('T')[0] : '';
-        const d = new Date(dStr || trx.tanggal); 
+        
+        // PENGELOLAAN TANGGAL / TIMESTAMP PINTAR
+        const dStrRaw = trx.createdAt || trx.tanggal;
+        const dStr = dStrRaw ? dStrRaw.split('T')[0] : '';
+        const d = new Date(dStrRaw || trx.tanggal); 
+        
+        let timeFormatted = "";
+        if (trx.createdAt) {
+            const dObjFull = new Date(trx.createdAt);
+            if(!isNaN(dObjFull)) {
+                const yr = dObjFull.getFullYear();
+                const mo = String(dObjFull.getMonth()+1).padStart(2,'0');
+                const da = String(dObjFull.getDate()).padStart(2,'0');
+                const hr = String(dObjFull.getHours()).padStart(2,'0');
+                const mi = String(dObjFull.getMinutes()).padStart(2,'0');
+                timeFormatted = `${yr}/${mo}/${da} ${hr}:${mi}`;
+            }
+        } else {
+            timeFormatted = (trx.tanggal || "---") + " 00:00"; // Fallback ke transaksi lawas
+        }
         
         if(!groupedTrx[dStr]) groupedTrx[dStr] = { total: 0, items: [] };
 
@@ -1061,9 +1326,9 @@ window.reCalculateAll = function() {
             const mainVal = convertVal(trx.nominal, trx.mata_uang);
             
             totBal -= feeVal; // Net worth terpotong hanya biaya admin
-            cashBal -= mainVal; // Uang di tangan disetor (berkurang)
-            cashlessBal += mainVal; // Rekening bertambah
-            cashlessBal -= feeVal; // Bank terpotong admin jika ada
+            cashBal -= mainVal; // Fisik cash berkurang disetor ke bank
+            cashlessBal += mainVal; // Saldo cashless/bank bertambah
+            cashlessBal -= feeVal; // Bank terpotong administrasi jika ada
             
             groupedTrx[dStr].total -= feeVal;
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
@@ -1073,7 +1338,7 @@ window.reCalculateAll = function() {
             }
 
         } else {
-            // TIPE PENGELUARAN (BELANJA)
+            // TIPE PENGELUARAN (BELANJA NORMAL)
             totBal -= val;
             if(isCash) cashBal -= val; else cashlessBal -= val; 
             groupedTrx[dStr].total -= val;
@@ -1099,13 +1364,16 @@ window.reCalculateAll = function() {
                         catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + diff;
                     }
                 } else {
-                    // Fallback aman untuk transaksi lama yang belum pakai itemize (OCR model lama)
+                    // Fallback aman untuk transaksi lama yang belum pakai itemize
                     const c = trx.kategori || 'Lainnya'; 
                     catSpend[c] = (catSpend[c]||0) + val;
                 }
             }
             if(dailySp[dStr] !== undefined) dailySp[dStr] += val; // Populate Bar Chart 7 Hari
         }
+        
+        // Simpan timeFormatted ke object lokal sementara untuk UI map() di bawah
+        trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     });
 
@@ -1198,11 +1466,13 @@ window.reCalculateAll = function() {
                 const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : (isTarikTunai || isSetorTunai) ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
                 const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : (isTarikTunai || isSetorTunai) ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
                 const signChar = t.tipe === 'pemasukan' ? '+' : (isTarikTunai || isSetorTunai) ? '⇄' : '-';
-                
+                const titleDisp = t.merchantName || t.storeName || t.kategori;
+                const descDisp = t.description || t.catatan_ai || "";
+
                 return `<div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-10 text-[var(--text-muted)] hover:text-accent opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button>
-                    <div class="flex justify-between items-start mb-2 pr-12"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)] shrink-0">${iconHtml}</div><div class="overflow-hidden"><h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${t.storeName || t.kategori}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran}</p></div></div><p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${t.catatan_ai ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${t.catatan_ai}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><div class="flex justify-between items-center"><button onclick="window.toggleReceipt('${t.id}')" class="flex-1 text-left text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition">+ ITEM</button></div><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it) => {
+                    <div class="flex justify-between items-start mb-2 pr-12"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)] shrink-0">${iconHtml}</div><div class="overflow-hidden"><h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran} • ${t.displayTime}</p></div></div><p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${formatVal(convertVal(t.nominal, t.mata_uang))}</p></div>${descDisp ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${descDisp}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><div class="flex justify-between items-center"><button onclick="window.toggleReceipt('${t.id}')" class="flex-1 text-left text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition">+ ITEM</button></div><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it) => {
                     const safeItemId = it.itemId || window.generateItemId();
                     return `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span> ${it.tax_rate ? `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : ''}</div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${formatVal(convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', '${safeItemId}')" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', '${safeItemId}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`;
                 }).join('')}</div></div>` : `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/5 border border-[var(--border-glass)] w-full py-1.5 rounded-md text-[9px] font-bold text-[var(--text-muted)] hover:text-white transition">+ TAMBAH ITEM</button></div>`}</div>`
@@ -1230,7 +1500,7 @@ window.reCalculateAll = function() {
     const trCon = document.getElementById('trash-list-container');
     if (trCon) {
         const trashList = window.trashTransactions || [];
-        trCon.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Restore"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Hapus Permanen"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
+        trCon.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.merchantName || t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${formatVal(convertVal(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Restore"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Hapus Permanen"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
     }
 };
 
@@ -1348,6 +1618,7 @@ window.saveManualTransaction = async function() {
     const timestamp = new Date().toISOString();
     
     const payload = {
+        merchantName: storeName,
         storeName: storeName,
         tanggal: timestamp.split('T')[0],
         nominal: amount,
@@ -1355,7 +1626,9 @@ window.saveManualTransaction = async function() {
         metode_pembayaran: method,
         kategori: category,
         tipe: tipe,
+        description: "Input Manual User",
         catatan_ai: "Input Manual User",
+        isCustomDescription: true,
         is_deleted: false,
         createdAt: timestamp,
         items: []
@@ -1374,10 +1647,18 @@ window.openEditTrxModal = function(id) {
     const trx = window.allTransactions.find(t => t.id === id);
     if(!trx) return;
     window.editTrxTargetData = id;
-    document.getElementById('edit-global-store').value = trx.storeName || trx.kategori || '';
+    
+    document.getElementById('edit-global-store').value = trx.merchantName || trx.storeName || trx.kategori || '';
     document.getElementById('edit-global-curr').value = trx.mata_uang || 'JPY';
     document.getElementById('edit-global-method').value = trx.metode_pembayaran || 'cashless';
     document.getElementById('edit-global-nominal').value = trx.nominal || 0;
+    
+    const typeEl = document.getElementById('edit-global-type');
+    if (typeEl) typeEl.value = trx.tipe || 'pengeluaran';
+    
+    const descEl = document.getElementById('edit-global-desc');
+    if (descEl) descEl.value = trx.description || trx.catatan_ai || '';
+
     window.showModal('modal-edit-trx');
 };
 
@@ -1395,16 +1676,32 @@ window.saveEditTrx = async function() {
     const curr = document.getElementById('edit-global-curr').value;
     const method = document.getElementById('edit-global-method').value;
     const nominal = parseFloat(document.getElementById('edit-global-nominal').value) || 0;
+    
+    const typeEl = document.getElementById('edit-global-type');
+    const descEl = document.getElementById('edit-global-desc');
+    
+    const tipe = typeEl ? typeEl.value : 'pengeluaran';
+    const desc = descEl ? descEl.value.trim() : '';
+
+    const updates = {
+        merchantName: storeName,
+        storeName: storeName,
+        mata_uang: curr,
+        metode_pembayaran: method,
+        nominal: nominal,
+        tipe: tipe
+    };
+
+    if (desc !== "") {
+        updates.description = desc;
+        updates.catatan_ai = desc;
+        updates.isCustomDescription = true;
+    }
 
     try {
-        await window.FirebaseService.updateTransaction(trxId, {
-            storeName: storeName,
-            mata_uang: curr,
-            metode_pembayaran: method,
-            nominal: nominal
-        });
+        await window.FirebaseService.updateTransaction(trxId, updates);
         window.closeEditTrxModal();
-        window.showToast("Perubahan Global Transaksi Tersimpan!");
+        window.showToast("Perubahan Transaksi Berhasil Disimpan!");
     } catch(e) {
         window.showToast("Gagal mengupdate transaksi.", true);
     }
@@ -1448,13 +1745,16 @@ window.saveAddItem = async function() {
     const finalItems = currentItems.concat([newItem]);
     const newTotalSum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
 
+    const upd = { items: finalItems, nominal: newTotalSum };
+    if (!trx.isCustomDescription) {
+        upd.description = `[Auto-Update] Transaksi diubah. Total terbaru: ${formatVal(newTotalSum)}.`;
+        upd.catatan_ai = upd.description;
+    }
+
     try {
-        await window.FirebaseService.updateTransaction(trx.id, {
-            items: finalItems,
-            nominal: newTotalSum
-        });
+        await window.FirebaseService.updateTransaction(trx.id, upd);
         window.closeAddItemModal();
-        window.showToast("Item berhasil ditambahkan ke Struk!");
+        window.showToast("Item berhasil ditambahkan!");
     } catch(e) {
         window.showToast("Gagal menambah item.", true);
     }
@@ -1463,7 +1763,7 @@ window.saveAddItem = async function() {
 window.confirmDelTrx = function(id) { 
     const trx = window.allTransactions.find(t=>t.id === id); if(!trx) return;
     window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; 
-    document.getElementById('confirm-msg').innerText = `Pindahkan transaksi "${trx.storeName || trx.kategori}" ke tempat sampah?`; 
+    document.getElementById('confirm-msg').innerText = `Pindahkan transaksi "${trx.merchantName || trx.storeName || trx.kategori}" ke tempat sampah?`; 
     window.showModal('modal-confirm');
 };
 
@@ -1501,7 +1801,7 @@ window.openEditItem = function(trxId, itemId) {
     if(!item) return;
 
     window.editItemTargetData = { id: trxId, itemId: itemId, item: item };
-    document.getElementById('edit-store-name').value = trx.storeName || '';
+    document.getElementById('edit-store-name').value = trx.merchantName || trx.storeName || '';
     document.getElementById('edit-item-name').value = item.nama_barang || '';
     document.getElementById('edit-item-qty').value = item.qty || 1; 
     document.getElementById('edit-item-price').value = item.harga || 0;
@@ -1532,11 +1832,19 @@ window.saveEditItem = async function() {
         });
 
         const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-        await window.FirebaseService.updateTransaction(trx.id, { 
+        const upd = { 
             items: nItems, 
             nominal: sum,
+            merchantName: storeNameVal || trx.merchantName || trx.storeName,
             storeName: storeNameVal || trx.storeName || trx.kategori
-        });
+        };
+
+        if (!trx.isCustomDescription) {
+            upd.description = `[Auto-Update] Item telah disesuaikan. Total terbaru: ${formatVal(sum)}.`;
+            upd.catatan_ai = upd.description;
+        }
+
+        await window.FirebaseService.updateTransaction(trx.id, upd);
     }
     window.closeEditModal();
 };
@@ -1585,13 +1893,14 @@ window.saveGoal = async function() {
 };
 
 window.downloadCSV = function() {
-    let csv = "Tanggal,Store,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Catatan_AI\n";
+    let csv = "Tanggal,Waktu_Dibuat,Store,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Deskripsi\n";
     window.allTransactions.forEach(r => {
         const d = r.tanggal?.split('T')[0] || ''; 
+        const created = r.createdAt || '';
         const items = r.items && Array.isArray(r.items) ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga})`).join('|') : '-'; 
-        const note = r.catatan_ai ? r.catatan_ai.replace(/,/g, '') : '';
-        const store = r.storeName || r.kategori || 'Toko';
-        csv += `${d},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
+        const note = (r.description || r.catatan_ai || '').replace(/,/g, '');
+        const store = r.merchantName || r.storeName || r.kategori || 'Toko';
+        csv += `${d},${created},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
     });
 
     const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csv); 
@@ -1618,7 +1927,12 @@ document.getElementById('btn-execute-delete').onclick = async () => {
                 if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(trx.id);
             } else { 
                 const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                await window.FirebaseService.updateTransaction(trx.id, { items: nItems, nominal: sum }); 
+                const upd = { items: nItems, nominal: sum };
+                if (!trx.isCustomDescription) {
+                    upd.description = `[Auto-Update] Item dihapus. Total terbaru: ${formatVal(sum)}.`;
+                    upd.catatan_ai = upd.description;
+                }
+                await window.FirebaseService.updateTransaction(trx.id, upd); 
             }
         }
     }
