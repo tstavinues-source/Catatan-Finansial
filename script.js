@@ -152,7 +152,7 @@ window.FirebaseService = {
 };
 
 // ==========================================
-// 3. SERVICES / MEMORY RETRIEVAL (MENGHEMAT TOKEN)
+// 3. SERVICES / MEMORY RETRIEVAL
 // ==========================================
 window.MemoryService = {
     getRelevantTransactions(query) {
@@ -178,7 +178,7 @@ window.MemoryService = {
 };
 
 // ==========================================
-// 4. FINANCIAL SUMMARY SERVICE (MENGIRIMKAN RESUME SAJA KE AI)
+// 4. FINANCIAL SUMMARY SERVICE
 // ==========================================
 window.FinancialSummaryService = {
     getSummaryString() {
@@ -226,7 +226,7 @@ Sisa Limit Anggaran Bulanan: ${window.monthlyBudget - totSpent} ${window.display
 };
 
 // ==========================================
-// 5. SERVICES / GROQ_SERVICE (HANYA UNTUK TEKS/NLP)
+// 5. SERVICES / GROQ_SERVICE
 // ==========================================
 let groqSecretKey = localStorage.getItem('aurafi_groq_secret');
 if(!groqSecretKey) {
@@ -392,7 +392,7 @@ function loadRealtimeDatabaseData() {
         
         window.checkAndExecuteRecurringPayments();
 
-        if(window.reCalculateAll) window.reCalculateAll();
+        if(window.reCalculateAll) window.reCalculateAll(); // Kalkulasi akan refresh grafik realtime
     });
 
     onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), (snapshot) => {
@@ -618,87 +618,9 @@ window.checkAndExecuteRecurringPayments = async function() {
     }
 };
 
-window.syncGeminiEngine = async function(silent = false) {
-    const pinInput = document.getElementById('gemini-pin-input')?.value.trim();
-    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
-    
-    if (!pin) { 
-        if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true);
-        return; 
-    }
-
-    const gBadge = document.getElementById('gemini-status-badge');
-    if(gBadge) {
-        gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono animate-pulse";
-        gBadge.innerText = "DECRYPTING...";
-    }
-    
-    try {
-        const geminiEngine = new window.GeminiFailoverEngine(pin);
-        const gCount = await geminiEngine.init();
-        if(gCount > 0) {
-            window.failoverEngineInstance = geminiEngine;
-            localStorage.setItem('aurafi_gemini_pin', pin);
-            
-            if(gBadge) {
-                gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-                gBadge.innerText = `ACTIVE (${gCount})`;
-            }
-            if(!silent) window.showToast("Gemini Vision Berhasil Di-Unlock.");
-        } else { throw new Error(); }
-    } catch(e) {
-        if(gBadge) {
-            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-            gBadge.innerText = "FAIL / LOCKED";
-        }
-        if(!silent) window.showToast("Dekripsi Gagal: PIN Salah.", true);
-    }
-};
-
-window.addGroqKey = async function() {
-    const keyInput = document.getElementById('new-groq-key').value.trim();
-    if(!keyInput.startsWith('gsk_')) return window.showToast("Format API Key Groq salah (harus diawali gsk_).", true);
-    
-    if(!window.EncryptionService.validate(keyInput, window.GroqService.secret)) return window.showToast("Kesalahan Enkripsi Fatal.", true);
-    
-    const enc = window.EncryptionService.encryptApiKey(keyInput, window.GroqService.secret);
-    await window.FirebaseService.saveGroqKey(enc);
-    
-    document.getElementById('new-groq-key').value = "";
-    window.showToast("Kunci Groq berhasil disimpan.");
-};
-
-window.removeGroqKey = async function(id) {
-    if(confirm("Hapus kunci Groq ini dari Database?")) {
-        await window.FirebaseService.deleteGroqKey(id);
-    }
-};
-
-window.renderGroqKeysUI = function() {
-    const container = document.getElementById('groq-keys-container');
-    if(!container) return;
-
-    const keys = window.rawGroqKeysData || [];
-    if(keys.length === 0) {
-        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada API Key Groq yang tersimpan.</p>';
-        return;
-    }
-
-    container.innerHTML = keys.map((k, index) => {
-        const dec = window.EncryptionService.decryptApiKey(k.encryptedKey, window.GroqService.secret);
-        const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Rusak/Corrupt)`;
-        const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
-        
-        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-            <div class="flex flex-col">
-                <span class="font-mono text-xs ${statusColor}">${display}</span>
-                <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Groq Key #${index + 1}</span>
-            </div>
-            <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-        </div>`;
-    }).join('');
-};
-
+// ==========================================
+// UNIFIED CALL ENGINE DENGAN FALLBACK OTOMATIS (GROQ -> GEMINI)
+// ==========================================
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     let lastError = null;
 
@@ -756,12 +678,12 @@ window.processTransactionParsing = async function(text, imgData = null) {
 Wajib menghasilkan output RAW JSON tanpa markdown backticks (\`\`\`).
 ATURAN UTAMA & AKUNTANSI STRICT:
 1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless berkurang 610, tunai bertambah 500, aset terpotong 110).
-2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai berkurang 10000, cashless bertambah 10000. Total aset tidak berubah).
-3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis kurangi kas tunai. Jika 'cashless', kurangi kas cashless. Jangan silang.
-4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua kaleng). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total wajib = sum(harga x qty) + admin_fee.
-5. KATEGORI ITEM YANG DIDUKUNG: Setiap item WAJIB diklasifikasikan ke dalam kategori ini: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
+2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai berkurang 10000, cashless bertambah 10000. Total aset statis).
+3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis mengurangi saldo tunai. Jika 'cashless', mengurangi saldo cashless. JANGAN SILANG.
+4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua bungkus). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total block wajib = sum(harga x qty) + admin_fee.
+5. KATEGORI ITEM YANG DIDUKUNG: Setiap item WAJIB diklasifikasikan HANYA ke dalam kategori baku ini: "Makanan", "Minuman", "Bahan Pokok", "Utilitas", "Transportasi", "Kesehatan", "Hiburan", "Belanja Online", "Belanja Offline", "Pendidikan", "Pakaian", "Elektronik", "Lainnya".
 6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Jika tidak ada, isi "Toko/Merchant".
-7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke dalam tax_rate masing-masing item jika ada ketidakcocokan antara item dan total.
+7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke tax_rate masing-masing item jika total tidak cocok.
 
 Struktur JSON Wajib:
 {
@@ -838,12 +760,12 @@ Data Transaksi Relevan Terkait:
 ${txString}
 
 ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
-AI DILARANG merusak struktur array. Jangan pernah mengubah index. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
-Ketika menghapus atau mengedit 1 item, item lain DILARANG berubah menjadi undefined atau terganti.
+AI DILARANG merusak struktur array. Jangan pernah menggunakan index. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
+Ketika menghapus atau mengedit 1 item, data item lain dalam struk tersebut DILARANG berubah menjadi undefined atau terganti.
 KATEGORI ITEM YANG DIDUKUNG: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
 1. action="update_transaction": Merubah storeName, metode_pembayaran, atau nominal global dari ID transaksi.
 2. action="add_item": Menambahkan item ke "target_id". "new_items" berisi array item baru.
-3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id". "new_items" hanya berisi data 1 item yang menimpa id tersebut.
+3. action="edit_item": Edit 1 item spesifik. WAJIB menyertakan "target_item_id". "new_items" hanya berisi data 1 item yang menimpa id tersebut (pastikan harga dan qty sesuai).
 4. action="delete_item": Menghapus 1 item secara penuh berdasarkan "target_item_id".
 5. action="moveToTrash": Menghapus seluruh transaksi block "target_id".
 
@@ -922,7 +844,7 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     }
                 }
             } catch(e) {
-                resJson.reply += " (Gagal memproses sinkronisasi AI. Cek log!)";
+                resJson.reply += " (Gagal memproses sinkronisasi AI ke database. Cek log!)";
                 console.error("AI Safe Sync Error:", e);
             }
         }
@@ -930,7 +852,7 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
         await window.FirebaseService.pushOracleChat({role: 'ai', text: resJson.reply, timestamp: new Date().toISOString()});
 
     } catch(e) { 
-        await window.FirebaseService.pushOracleChat({role: 'ai', text: `Gangguan transmisi: ${e.message}`, timestamp: new Date().toISOString()});
+        await window.FirebaseService.pushOracleChat({role: 'ai', text: `Gangguan transmisi sistem: ${e.message}`, timestamp: new Date().toISOString()});
     } finally { 
         window.setProcessingStatus(false); 
     }
@@ -1057,19 +979,19 @@ const formatVal = (amt) => new Intl.NumberFormat(window.displayCurrency==='JPY'?
 let expItemsState = {};
 window.toggleReceipt = function(id) { expItemsState[id] = !expItemsState[id]; window.reCalculateAll(); };
 
-// Sistem pewarnaan dan pemetaan ikon per Kategori Item
+// PETA KATEGORI CERDAS & PEWARNAAN OTOMATIS
 function getCategoryStyle(cat) {
     const c = (cat || "Lainnya").toLowerCase();
     if (c.includes('makan')) return { icon: 'fa-burger', color: 'text-orange-400', bg: 'bg-orange-400/10' };
     if (c.includes('minum')) return { icon: 'fa-mug-hot', color: 'text-blue-400', bg: 'bg-blue-400/10' };
-    if (c.includes('pokok')) return { icon: 'fa-basket-shopping', color: 'text-green-400', bg: 'bg-green-400/10' };
+    if (c.includes('pokok') || c.includes('bahan')) return { icon: 'fa-basket-shopping', color: 'text-green-400', bg: 'bg-green-400/10' };
     if (c.includes('utilitas') || c.includes('tagihan')) return { icon: 'fa-file-invoice-dollar', color: 'text-yellow-400', bg: 'bg-yellow-400/10' };
     if (c.includes('transport')) return { icon: 'fa-train', color: 'text-emerald-400', bg: 'bg-emerald-400/10' };
     if (c.includes('sehat') || c.includes('obat')) return { icon: 'fa-kit-medical', color: 'text-rose-400', bg: 'bg-rose-400/10' };
     if (c.includes('hibur')) return { icon: 'fa-gamepad', color: 'text-purple-400', bg: 'bg-purple-400/10' };
     if (c.includes('online')) return { icon: 'fa-box-open', color: 'text-pink-400', bg: 'bg-pink-400/10' };
     if (c.includes('offline') || c.includes('belanja')) return { icon: 'fa-shop', color: 'text-indigo-400', bg: 'bg-indigo-400/10' };
-    if (c.includes('didik')) return { icon: 'fa-graduation-cap', color: 'text-cyan-400', bg: 'bg-cyan-400/10' };
+    if (c.includes('didik') || c.includes('pendidikan')) return { icon: 'fa-graduation-cap', color: 'text-cyan-400', bg: 'bg-cyan-400/10' };
     if (c.includes('pakaian') || c.includes('baju')) return { icon: 'fa-shirt', color: 'text-fuchsia-400', bg: 'bg-fuchsia-400/10' };
     if (c.includes('elektronik')) return { icon: 'fa-laptop', color: 'text-slate-400', bg: 'bg-slate-400/10' };
     if (c.includes('dapat') || c.includes('gaji')) return { icon: 'fa-money-bill-wave', color: 'text-emerald-500', bg: 'bg-emerald-500/10' };
@@ -1080,13 +1002,14 @@ function getCategoryIcon(cat) {
     return getCategoryStyle(cat).icon;
 }
 
-// FUNGSI KALKULATOR UTAMA DENGAN REALTIME LISTENER
+// LOGIKA STATISTIK & KALKULATOR REALTIME 
 window.reCalculateAll = function() {
     let totBal = 0, cashBal = 0, cashlessBal = 0;
     let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
     let catSpend = {}, dailySp = {};
     const today = new Date();
     
+    // Siapkan wadah bar chart 7 hari terakhir secara realtime
     for(let i=6; i>=0; i--) { 
         let d=new Date(today);
         d.setDate(d.getDate()-i); dailySp[d.toISOString().split('T')[0]] = 0; 
@@ -1117,9 +1040,9 @@ window.reCalculateAll = function() {
             const feeVal = convertVal(adminFee, trx.mata_uang);
             const mainVal = convertVal(trx.nominal, trx.mata_uang);
             
-            totBal -= feeVal; // Tarik tunai admin fee ngurangi net worth total
-            cashBal += mainVal; // Fisik cash bertambah
-            cashlessBal -= (mainVal + feeVal); // Saldo cashless/bank berkurang sebesar tarikan + admin
+            totBal -= feeVal; // Net worth terpotong hanya biaya admin
+            cashBal += mainVal; // Uang di tangan/dompet bertambah
+            cashlessBal -= (mainVal + feeVal); // Rekening Bank terpotong nilai tarikan + admin
             
             groupedTrx[dStr].total -= feeVal;
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
@@ -1137,10 +1060,10 @@ window.reCalculateAll = function() {
             const feeVal = convertVal(adminFee, trx.mata_uang);
             const mainVal = convertVal(trx.nominal, trx.mata_uang);
             
-            totBal -= feeVal; // Setor tunai admin fee ngurangi net worth total
-            cashBal -= mainVal; // Fisik cash berkurang disetor ke bank
-            cashlessBal += mainVal; // Saldo cashless/bank bertambah
-            cashlessBal -= feeVal; // Bank terpotong administrasi jika ada
+            totBal -= feeVal; // Net worth terpotong hanya biaya admin
+            cashBal -= mainVal; // Uang di tangan disetor (berkurang)
+            cashlessBal += mainVal; // Rekening bertambah
+            cashlessBal -= feeVal; // Bank terpotong admin jika ada
             
             groupedTrx[dStr].total -= feeVal;
             if(!isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear()) {
@@ -1150,7 +1073,7 @@ window.reCalculateAll = function() {
             }
 
         } else {
-            // TIPE PENGELUARAN (BELANJA NORMAL)
+            // TIPE PENGELUARAN (BELANJA)
             totBal -= val;
             if(isCash) cashBal -= val; else cashlessBal -= val; 
             groupedTrx[dStr].total -= val;
@@ -1160,26 +1083,28 @@ window.reCalculateAll = function() {
                 thisMthSpent += val;
                 if(!isCash) thisMthCashless += val;
                 
-                // MENGHITUNG KATEGORI BERDASARKAN "ITEM" (BUKAN GLOBAL TRANSAKSI)
+                // MENGHITUNG KATEGORI BERDASARKAN "ITEM", BUKAN GLOBAL TRANSAKSI
                 if (trx.items && Array.isArray(trx.items) && trx.items.length > 0) {
+                    let calcItemSum = 0;
                     trx.items.forEach(it => {
                         const itemCat = it.kategori_barang || 'Lainnya';
                         const itemVal = convertVal(it.harga * (it.qty || 1), trx.mata_uang);
+                        calcItemSum += itemVal;
                         catSpend[itemCat] = (catSpend[itemCat] || 0) + itemVal;
                     });
                     
-                    // Alokasikan selisih dari Total Struk (Nominal) vs Total Item jika terdapat discrepancy / pajak tersembunyi
-                    const itemsTotal = trx.items.reduce((sum, it) => sum + convertVal(it.harga * (it.qty || 1), trx.mata_uang), 0);
-                    if (val > itemsTotal) {
-                        const diff = val - itemsTotal;
+                    // Alokasi selisih jika user input total lebih besar dari total item (Misal: Pajak/Tips yg tidak terdata)
+                    if (val > calcItemSum) {
+                        const diff = val - calcItemSum;
                         catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + diff;
                     }
                 } else {
+                    // Fallback aman untuk transaksi lama yang belum pakai itemize (OCR model lama)
                     const c = trx.kategori || 'Lainnya'; 
                     catSpend[c] = (catSpend[c]||0) + val;
                 }
             }
-            if(dailySp[dStr] !== undefined) dailySp[dStr] += val; // Menggambar Bar Chart Pengeluaran Realtime Harian
+            if(dailySp[dStr] !== undefined) dailySp[dStr] += val; // Populate Bar Chart 7 Hari
         }
         groupedTrx[dStr].items.push(trx);
     });
@@ -1236,7 +1161,7 @@ window.reCalculateAll = function() {
         else { warnBox.classList.add('hidden'); }
     }
 
-    // TAMPILKAN SELURUH KATEGORI BULAN INI (DENGAN PEWARNAAN OTOMATIS)
+    // RENDER SEMUA KATEGORI BULAN INI BERDASARKAN ITEM (TANPA LIMIT)
     const topCatDiv = document.getElementById('top-categories-list');
     const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
     if (topCatDiv) {
