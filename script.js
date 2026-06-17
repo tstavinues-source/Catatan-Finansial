@@ -1,12 +1,27 @@
 /**
- * ============================================================================
- * AURAFI OS V3 - THE LIVING WEALTH OS (CORE LOGIC ENGINE)
- * ============================================================================
- * @version 3.0.0
- * @description Modul utama pengelola logika bisnis, sinkronisasi Firebase, 
- * komputasi AI (Groq & Gemini), dan manipulasi DOM realtime.
+ * =========================================================================================
+ * █████╗ ██╗   ██╗██████╗  █████╗ ███████╗██╗    ██╗   ██╗██████╗ 
+ * ██╔══██╗██║   ██║██╔══██╗██╔══██╗██╔════╝██║    ██║   ██║╚════██╗
+ * ███████║██║   ██║██████╔╝███████║█████╗  ██║    ██║   ██║ █████╔╝
+ * ██╔══██║██║   ██║██╔══██╗██╔══██║██╔══╝  ██║    ╚██╗ ██╔╝ ╚═══██╗
+ * ██║  ██║╚██████╔╝██║  ██║██║  ██║██║     ██║     ╚████╔╝ ██████╔╝
+ * ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝      ╚═══╝  ╚═════╝ 
+ * =========================================================================================
+ * AURAFI OS V3.2.0 - THE LIVING WEALTH OS (KAS APATO EDITION - STABLE)
+ * =========================================================================================
+ * @version 3.2.0 (Enterprise Build - Final)
+ * @description Modul utama pengelola logika bisnis, sinkronisasi Firebase Realtime Database, 
+ * komputasi AI Failover (Groq & Gemini), dan State Management DOM yang aman.
+ * Menghadirkan fitur unggulan Kas Apato: 
+ * - AI Staging Area (Review sebelum simpan)
+ * - Siklus Akuntansi 16-15
+ * - Cumulative Balance (Aset Sepanjang Masa)
+ * - Multi-Dimensional Filter
+ * - Staples Tracker (Beras, Minyak, Sabun)
+ * - Canvas Trend Chart & Audit Trail Logging
+ * [FIXED]: Semua UI Renderers (Chat, Keys, Recurring) dan Modals telah terintegrasi 100%.
  * @author Senior Full-Stack Engineer
- * ============================================================================
+ * =========================================================================================
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -18,11 +33,12 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 /**
- * ----------------------------------------------------------------------------
- * 1. FIREBASE CONFIGURATION & INITIALIZATION
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [1] SYSTEM CONFIGURATION & CONSTANTS
+ * ============================================================================
  */
-const firebaseConfig = {
+
+const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
     authDomain: "agrivision-574be.firebaseapp.com",
     databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com",
@@ -32,279 +48,342 @@ const firebaseConfig = {
     appId: "1:732120986243:web:d025c9a2908b1ca892a1b6"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-const ledgerNode = 'aurafi_ledger'; 
+const APP_CONFIG = {
+    LEDGER_NODE: 'aurafi_ledger',
+    VERSION: '3.2.0',
+    DEFAULT_CURRENCY: 'JPY',
+    DEFAULT_THEME: 'midnight',
+    THROTTLE_MS: 8000,
+    MAX_RETRY_AI: 3
+};
 
-/**
- * ----------------------------------------------------------------------------
- * 2. GLOBAL STATE & CONSTANTS (AURAFI SYSTEM REGISTRY)
- * ----------------------------------------------------------------------------
- */
-window.currentUserUid = null;
-window.currentTheme = 'midnight';
-window.displayCurrency = 'JPY'; 
-window.exchangeRateIDR = 105;
-window.isRatesLoaded = false;
-window.allTransactions = []; 
-window.trashTransactions = []; 
-window.allGoals = []; 
-window.monthlyBudget = 100000;
-window.activeView = 'dashboard';
-window.base64Upload = ""; 
-window.oracleChats = []; 
-window.deleteTargetData = null; 
-window.editItemTargetData = null;
-window.editTrxTargetData = null;
-window.addItemTargetTrxId = null;
-window.isProcessing = false;
-window.failoverEngineInstance = null;
-window.settingsData = {};
-window.rawGroqKeysData = [];
-
-// Cleanup legacy data
-localStorage.removeItem('aurafi_device_id'); 
-
-/**
- * System Categories and Hex Color Mapping for UI rendering
- */
-const SYSTEM_CATEGORIES = {
-    "Makanan": { icon: 'fa-burger', colorClass: 'text-orange-400', bgClass: 'bg-orange-400/10', hex: '#fb923c' },
-    "Minuman": { icon: 'fa-mug-hot', colorClass: 'text-blue-400', bgClass: 'bg-blue-400/10', hex: '#60a5fa' },
-    "Bahan Pokok": { icon: 'fa-basket-shopping', colorClass: 'text-green-400', bgClass: 'bg-green-400/10', hex: '#4ade80' },
-    "Utilitas": { icon: 'fa-file-invoice-dollar', colorClass: 'text-yellow-400', bgClass: 'bg-yellow-400/10', hex: '#facc15' },
-    "Transportasi": { icon: 'fa-train', colorClass: 'text-emerald-400', bgClass: 'bg-emerald-400/10', hex: '#34d399' },
-    "Kesehatan": { icon: 'fa-kit-medical', colorClass: 'text-rose-400', bgClass: 'bg-rose-400/10', hex: '#fb7185' },
-    "Hiburan": { icon: 'fa-gamepad', colorClass: 'text-purple-400', bgClass: 'bg-purple-400/10', hex: '#c084fc' },
-    "Belanja Online": { icon: 'fa-box-open', colorClass: 'text-pink-400', bgClass: 'bg-pink-400/10', hex: '#f472b6' },
-    "Belanja Offline": { icon: 'fa-shop', colorClass: 'text-indigo-400', bgClass: 'bg-indigo-400/10', hex: '#818cf8' },
-    "Pendidikan": { icon: 'fa-graduation-cap', colorClass: 'text-cyan-400', bgClass: 'bg-cyan-400/10', hex: '#22d3ee' },
-    "Pakaian": { icon: 'fa-shirt', colorClass: 'text-fuchsia-400', bgClass: 'bg-fuchsia-400/10', hex: '#e879f9' },
-    "Elektronik": { icon: 'fa-laptop', colorClass: 'text-slate-400', bgClass: 'bg-slate-400/10', hex: '#94a3b8' },
-    "Pemasukan": { icon: 'fa-money-bill-wave', colorClass: 'text-emerald-500', bgClass: 'bg-emerald-500/10', hex: '#10b981' },
-    "Lainnya": { icon: 'fa-tag', colorClass: 'text-[var(--text-muted)]', bgClass: 'bg-white/5', hex: '#52525b' }
+const DEFAULT_SYSTEM_CATEGORIES = {
+    "cat_sys_1": { name: "Makanan", icon: "fa-burger", color: "#fb923c", type: "expense", isSystem: true },
+    "cat_sys_2": { name: "Minuman", icon: "fa-mug-hot", color: "#60a5fa", type: "expense", isSystem: true },
+    "cat_sys_3": { name: "Bahan Pokok", icon: "fa-basket-shopping", color: "#4ade80", type: "expense", isSystem: true },
+    "cat_sys_4": { name: "Utilitas", icon: "fa-file-invoice-dollar", color: "#facc15", type: "expense", isSystem: true },
+    "cat_sys_5": { name: "Transportasi", icon: "fa-train", color: "#34d399", type: "expense", isSystem: true },
+    "cat_sys_6": { name: "Kesehatan", icon: "fa-kit-medical", color: "#fb7185", type: "expense", isSystem: true },
+    "cat_sys_7": { name: "Hiburan", icon: "fa-gamepad", color: "#c084fc", type: "expense", isSystem: true },
+    "cat_sys_8": { name: "Belanja Online", icon: "fa-box-open", color: "#f472b6", type: "expense", isSystem: true },
+    "cat_sys_9": { name: "Belanja Offline", icon: "fa-shop", color: "#818cf8", type: "expense", isSystem: true },
+    "cat_sys_10":{ name: "Pendidikan", icon: "fa-graduation-cap", color: "#22d3ee", type: "expense", isSystem: true },
+    "cat_sys_11":{ name: "Pakaian", icon: "fa-shirt", color: "#e879f9", type: "expense", isSystem: true },
+    "cat_sys_12":{ name: "Elektronik", icon: "fa-laptop", color: "#94a3b8", type: "expense", isSystem: true },
+    "cat_sys_13":{ name: "Pemasukan", icon: "fa-money-bill-wave", color: "#10b981", type: "income", isSystem: true },
+    "cat_sys_14":{ name: "Lainnya", icon: "fa-tag", color: "#52525b", type: "both", isSystem: true }
 };
 
 /**
- * ----------------------------------------------------------------------------
- * 3. CORE UTILITY SYSTEM
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [2] GLOBAL STATE MANAGEMENT (AURA STATE)
+ * ============================================================================
  */
 
-/**
- * Logger Utility untuk debugging yang rapi
- */
-window.AuraFiLogger = {
-    info: (msg, data = '') => console.log(`[AuraFi INFO] ${msg}`, data),
-    warn: (msg, data = '') => console.warn(`[AuraFi WARN] ${msg}`, data),
-    error: (msg, err) => console.error(`[AuraFi ERROR] ${msg}`, err),
+window.AuraState = {
+    user: { uid: null, profile: {}, isAnonymous: false },
+    system: {
+        theme: APP_CONFIG.DEFAULT_THEME,
+        activeView: 'dashboard',
+        isProcessing: false,
+        exchangeRateIDR: 105,
+        displayCurrency: APP_CONFIG.DEFAULT_CURRENCY,
+        base64Upload: "",
+        isRatesLoaded: false
+    },
+    filters: {
+        search: '',
+        category: 'ALL',
+        user: 'ALL',
+        periodMode: 'month' // 'period' (16-15), 'month' (1-31), 'all'
+    },
+    data: {
+        transactions: [],
+        trash: [],
+        goals: [],
+        groqKeys: [],
+        oracleChats: [],
+        settings: {},
+        monthlyBudget: 100000
+    },
+    temp: {
+        deleteTarget: null, editItemTarget: null, editTrxTarget: null,
+        addItemTargetTrxId: null, expandedReceipts: {}, budgetUpdateTimer: null,
+        aiStaging: null 
+    },
+    instances: { firebaseApp: null, db: null, auth: null, geminiEngine: null }
 };
 
-/**
- * Menghasilkan ID unik untuk item secara lokal
- * @returns {string} ID unik berbasis timestamp dan random string
- */
-window.generateItemId = function() {
-    return 'itm_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 9);
-};
+// Expose legacy bindings (Backward Compatibility for inline HTML events)
+window.allTransactions = []; window.trashTransactions = []; window.allGoals = []; window.monthlyBudget = 100000;
+window.settingsData = {}; window.rawGroqKeysData = []; window.oracleChats = [];
+window.currentTheme = APP_CONFIG.DEFAULT_THEME; window.activeView = 'dashboard';
+window.displayCurrency = APP_CONFIG.DEFAULT_CURRENCY; window.exchangeRateIDR = 105;
+window.isRatesLoaded = false; window.isProcessing = false; window.base64Upload = "";
+window.deleteTargetData = null; window.editItemTargetData = null; window.editTrxTargetData = null;
+window.addItemTargetTrxId = null; window.failoverEngineInstance = null;
+window.aiStaging = null;
 
 /**
- * Konversi kategori ke style object (Icon, Color, BG)
- * @param {string} cat - Nama kategori
- * @returns {Object} Object konfigurasi style
+ * ============================================================================
+ * [3] ENTERPRISE LOGGER SYSTEM (AUDIT TRAIL BASE)
+ * ============================================================================
  */
-window.getCategoryStyle = function(cat) {
-    const defaultStyle = SYSTEM_CATEGORIES["Lainnya"];
-    if (!cat) return defaultStyle;
-    
-    const c = cat.toLowerCase();
-    for (const [key, val] of Object.entries(SYSTEM_CATEGORIES)) {
-        if (c.includes(key.toLowerCase().split(' ')[0])) {
-            return val;
+window.AuraLogger = {
+    ENABLE_DEBUG: true,
+    _formatTime() {
+        const d = new Date();
+        return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}.${d.getMilliseconds().toString().padStart(3,'0')}`;
+    },
+    info(module, message, data = null) {
+        if (!this.ENABLE_DEBUG) return;
+        console.log(`%c[INFO | ${this._formatTime()}] [${module}]`, 'color: #38bdf8; font-weight: bold;', message, data !== null ? data : '');
+    },
+    success(module, message, data = null) {
+        if (!this.ENABLE_DEBUG) return;
+        console.log(`%c[SUCCESS | ${this._formatTime()}] [${module}]`, 'color: #10b981; font-weight: bold;', message, data !== null ? data : '');
+    },
+    warn(module, message, data = null) {
+        if (!this.ENABLE_DEBUG) return;
+        console.warn(`%c[WARN | ${this._formatTime()}] [${module}]`, 'color: #facc15; font-weight: bold;', message, data !== null ? data : '');
+    },
+    error(module, message, error = null) {
+        console.error(`%c[ERROR | ${this._formatTime()}] [${module}]`, 'color: #f43f5e; font-weight: bold;', message);
+        if (error) console.error(error);
+    }
+};
+const Logger = window.AuraLogger;
+
+/**
+ * ============================================================================
+ * [4] FIREBASE INITIALIZATION & CONNECTION
+ * ============================================================================
+ */
+Logger.info('Core', 'Initializing Firebase SDK Environment...');
+try {
+    window.AuraState.instances.firebaseApp = initializeApp(FIREBASE_CONFIG);
+    window.AuraState.instances.db = getDatabase(window.AuraState.instances.firebaseApp);
+    window.AuraState.instances.auth = getAuth(window.AuraState.instances.firebaseApp);
+    const provider = new GoogleAuthProvider();
+    window.googleAuthProvider = provider;
+    Logger.success('Core', 'Firebase Core Modules connected successfully.');
+} catch (error) {
+    Logger.error('Core', 'FATAL: Firebase initialization failed.', error);
+}
+
+const db = window.AuraState.instances.db;
+const auth = window.AuraState.instances.auth;
+
+/**
+ * ============================================================================
+ * [5] UTILITY & DATA NORMALIZATION FUNCTIONS
+ * ============================================================================
+ */
+window.AuraUtils = {
+    generateId(prefix = 'id') {
+        const time = Date.now().toString(36);
+        const random = Math.random().toString(36).substring(2, 10);
+        return `${prefix}_${time}_${random}`;
+    },
+    parseCleanJSON(text) {
+        try {
+            if (!text) throw new Error("Output dari AI kosong.");
+            const cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+            return JSON.parse(cleanedText);
+        } catch (e) {
+            Logger.error('Utility', 'Gagal memparsing JSON hasil ekstraksi AI.', text);
+            throw new Error("Gagal mengurai respons AI. Terdapat kerusakan format output.");
         }
-    }
-    // Fallback specific checks
-    if (c.includes('makan')) return SYSTEM_CATEGORIES["Makanan"];
-    if (c.includes('minum')) return SYSTEM_CATEGORIES["Minuman"];
-    if (c.includes('obat') || c.includes('sehat')) return SYSTEM_CATEGORIES["Kesehatan"];
-    if (c.includes('baju')) return SYSTEM_CATEGORIES["Pakaian"];
-    if (c.includes('gaji') || c.includes('dapat')) return SYSTEM_CATEGORIES["Pemasukan"];
-    if (c.includes('tagihan')) return SYSTEM_CATEGORIES["Utilitas"];
-    
-    return defaultStyle;
-};
-
-/**
- * Konversi nama kategori ke kode warna Hex untuk Chart
- */
-window.getCategoryHexColor = function(cat) {
-    return window.getCategoryStyle(cat).hex;
-};
-
-/**
- * Membersihkan format JSON dari markdown block (biasanya dari AI)
- */
-window.parseCleanJSON = function(text) {
-    try { 
-        return JSON.parse(text.replace(/```json/gi, '').replace(/```/g, '').trim()); 
-    } catch (e) { 
-        window.AuraFiLogger.error("Failed to parse JSON string", text);
-        throw new Error("Format JSON respon tidak valid."); 
-    }
-};
-
-/**
- * Format nilai ke string mata uang
- */
-window.formatVal = function(amt) {
-    return new Intl.NumberFormat(window.displayCurrency === 'JPY' ? 'ja-JP' : 'id-ID', {
-        style: 'currency', 
-        currency: window.displayCurrency, 
-        maximumFractionDigits: 0
-    }).format(amt);
-};
-
-/**
- * Konversi mata uang secara realtime (JPY <-> IDR)
- */
-window.convertVal = function(amt, fromCurr) {
-    if(fromCurr === window.displayCurrency) return amt;
-    if(fromCurr === 'JPY' && window.displayCurrency === 'IDR') return amt * window.exchangeRateIDR;
-    if(fromCurr === 'IDR' && window.displayCurrency === 'JPY') return amt / window.exchangeRateIDR;
-    return amt;
-};
-
-/**
- * Sanitasi data item dari AI agar sesuai dengan schema
- */
-window.sanitizeItems = function(items, defaultPayment, timestamp) {
-    return (items || []).map(item => {
-        return {
-            itemId: item.itemId || window.generateItemId(),
-            nama_barang: item.nama_barang || item.name || "Item Unik",
+    },
+    formatCurrency(amount) {
+        try {
+            return new Intl.NumberFormat(window.displayCurrency === 'JPY' ? 'ja-JP' : 'id-ID', {
+                style: 'currency', currency: window.displayCurrency, maximumFractionDigits: 0
+            }).format(amount);
+        } catch (e) { return `${window.displayCurrency} ${amount}`; }
+    },
+    convertCurrency(amount, fromCurrency) {
+        const numAmount = Number(amount) || 0;
+        if (fromCurrency === window.displayCurrency) return numAmount;
+        if (fromCurrency === 'JPY' && window.displayCurrency === 'IDR') return numAmount * window.exchangeRateIDR;
+        if (fromCurrency === 'IDR' && window.displayCurrency === 'JPY') return numAmount / window.exchangeRateIDR;
+        return numAmount; 
+    },
+    safeDOM(id, callback) {
+        const el = document.getElementById(id);
+        if (el && typeof callback === 'function') callback(el);
+        return el;
+    },
+    sanitizeItemsArray(items, defaultPaymentMethod, defaultTimestamp) {
+        if (!items || !Array.isArray(items)) return [];
+        return items.map(item => ({
+            itemId: item.itemId || this.generateId('itm'),
+            nama_barang: item.nama_barang || item.name || "Item Abstrak",
             harga: Number(item.harga !== undefined ? item.harga : (item.price || 0)),
             qty: Number(item.qty !== undefined ? item.qty : 1),
             kategori_barang: item.kategori_barang || item.category || "Lainnya",
             tax_rate: Number(item.tax_rate !== undefined ? item.tax_rate : 0),
-            paymentMethod: item.paymentMethod || defaultPayment || "cashless",
-            timestamp: item.timestamp || timestamp || new Date().toISOString()
-        };
-    });
+            paymentMethod: item.paymentMethod || defaultPaymentMethod || "cashless",
+            timestamp: item.timestamp || defaultTimestamp || new Date().toISOString()
+        }));
+    },
+    formatDateToReadable(isoString) {
+        try {
+            const d = new Date(isoString);
+            if (isNaN(d)) return "---";
+            const yr = d.getFullYear(); const mo = String(d.getMonth() + 1).padStart(2, '0');
+            const da = String(d.getDate()).padStart(2, '0'); const hr = String(d.getHours()).padStart(2, '0');
+            const mi = String(d.getMinutes()).padStart(2, '0');
+            return `${yr}/${mo}/${da} ${hr}:${mi}`;
+        } catch (e) { return "---"; }
+    },
+
+    getPeriodRange() {
+        const now = new Date();
+        const mode = window.AuraState.filters.periodMode;
+        let start, end;
+        
+        if (mode === 'period') {
+            if (now.getDate() >= 16) {
+                start = new Date(now.getFullYear(), now.getMonth(), 16, 0, 0, 0);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, 15, 23, 59, 59);
+            } else {
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 16, 0, 0, 0);
+                end = new Date(now.getFullYear(), now.getMonth(), 15, 23, 59, 59);
+            }
+        } else if (mode === 'month') {
+            start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        } else {
+            start = new Date(1970, 0, 1);
+            end = new Date(2100, 0, 1);
+        }
+        return { start: start.getTime(), end: end.getTime(), startObj: start, endObj: end };
+    }
 };
 
+window.generateItemId = () => window.AuraUtils.generateId('itm');
+window.parseCleanJSON = window.AuraUtils.parseCleanJSON;
+window.formatVal = window.AuraUtils.formatCurrency;
+window.convertVal = window.AuraUtils.convertCurrency;
+window.sanitizeItems = window.AuraUtils.sanitizeItemsArray;
+
 /**
- * Generator Prompt Konfigurasi Dinamis AI
+ * ============================================================================
+ * [6] DYNAMIC CATEGORY ENGINE (MONEY LOVER STYLE)
+ * ============================================================================
  */
-window.getOraclePromptConfigs = function() {
-    const prefs = window.settingsData?.aiPreferences || {
-        persona: 'Kombinasi Humble + Jenius + Profesional',
-        style: 'Normal'
-    };
-    
-    let personaStr = "kombinasi humble, jenius, dan profesional";
-    if (prefs.persona === "Humble Profesional") personaStr = "humble dan profesional";
-    else if (prefs.persona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
-    else if (prefs.persona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
-    else if (prefs.persona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
-    else if (prefs.persona === "Formal") personaStr = "sangat formal, baku, dan analitis";
-    else if (prefs.persona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
+window.CategoryManager = {
+    getAllCategories() {
+        const customCats = window.settingsData?.categories || {};
+        return { ...DEFAULT_SYSTEM_CATEGORIES, ...customCats };
+    },
+    resolveStyle(catName) {
+        const allCats = this.getAllCategories();
+        const safeName = (catName || "Lainnya").toLowerCase().trim();
+        
+        const exactMatch = Object.values(allCats).find(c => c.name.toLowerCase() === safeName);
+        if (exactMatch) return { icon: exactMatch.icon || 'fa-tag', hex: exactMatch.color || '#52525b', name: exactMatch.name };
 
-    let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
-    if (prefs.style === "Singkat") styleStr = "Jawab SINGKAT, padat, dan jelas. Maksimal 2 paragraf saja.";
-    else if (prefs.style === "Detail") styleStr = "Jawab dengan SANGAT DETAIL, komprehensif, dan panjang lebar.";
-
-    return { personaStr, styleStr };
+        // Fuzzy Logic
+        if (safeName.includes('makan')) return { icon: 'fa-burger', hex: '#fb923c', name: 'Makanan' };
+        if (safeName.includes('minum')) return { icon: 'fa-mug-hot', hex: '#60a5fa', name: 'Minuman' };
+        if (safeName.includes('tagihan') || safeName.includes('utilitas')) return { icon: 'fa-file-invoice-dollar', hex: '#facc15', name: 'Utilitas' };
+        if (safeName.includes('gaji') || safeName.includes('masuk')) return { icon: 'fa-money-bill-wave', hex: '#10b981', name: 'Pemasukan' };
+        if (safeName.includes('obat') || safeName.includes('sehat')) return { icon: 'fa-kit-medical', hex: '#fb7185', name: 'Kesehatan' };
+        if (safeName.includes('baju') || safeName.includes('pakaian')) return { icon: 'fa-shirt', hex: '#e879f9', name: 'Pakaian' };
+        if (safeName.includes('hibur') || safeName.includes('main')) return { icon: 'fa-gamepad', hex: '#c084fc', name: 'Hiburan' };
+        
+        return { icon: 'fa-tag', hex: '#52525b', name: 'Lainnya' };
+    },
+    getCategoryStringList() { return Object.values(this.getAllCategories()).map(c => c.name).join(', '); },
+    renderDropdowns() {
+        const allCats = this.getAllCategories();
+        let optionsHtml = '';
+        Object.values(allCats).forEach(c => { optionsHtml += `<option value="${c.name}">${c.name}</option>`; });
+        
+        const targetIds = ['manual-trx-category', 'add-item-cat', 'edit-item-cat', 'filter-category', 'staging-trx-cat'];
+        targetIds.forEach(id => {
+            window.AuraUtils.safeDOM(id, (el) => {
+                const currentVal = el.value; 
+                el.innerHTML = (id === 'filter-category' ? `<option value="ALL">SEMUA KATEGORI</option>` : `<option value="Lainnya">Pilih Kategori...</option>`) + optionsHtml;
+                if (currentVal) { const exists = Array.from(el.options).some(opt => opt.value === currentVal); if (exists) el.value = currentVal; }
+            });
+        });
+    }
 };
 
+window.getAllCategories = () => window.CategoryManager.getAllCategories();
+window.getCategoryStyle = (name) => window.CategoryManager.resolveStyle(name);
+window.getCategoryHexColor = (name) => window.CategoryManager.resolveStyle(name).hex;
+window.renderCategoryDropdowns = () => window.CategoryManager.renderDropdowns();
+
 /**
- * ----------------------------------------------------------------------------
- * 4. ENCRYPTION SERVICE
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [7] ENCRYPTION & SECURITY SERVICE
+ * ============================================================================
  */
 window.EncryptionService = {
-    encryptApiKey(apiKey, secretKey) {
-        if(!secretKey) return null;
-        return CryptoJS.AES.encrypt(apiKey, secretKey).toString();
-    },
-    decryptApiKey(cipherText, secretKey) {
-        try {
-            const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
-            const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-            return decrypted || null;
-        } catch(e) { 
-            window.AuraFiLogger.warn("Decryption failed for an API key");
-            return null; 
-        }
-    },
-    validate(apiKey, secretKey) {
-        const encrypted = this.encryptApiKey(apiKey, secretKey);
-        const decrypted = this.decryptApiKey(encrypted, secretKey);
-        return decrypted === apiKey;
-    }
+    encryptApiKey(apiKey, secretKey) { if(!secretKey) return null; try { return CryptoJS.AES.encrypt(apiKey, secretKey).toString(); } catch (e) { return null; } },
+    decryptApiKey(cipherText, secretKey) { try { const bytes = CryptoJS.AES.decrypt(cipherText, secretKey); return bytes.toString(CryptoJS.enc.Utf8) || null; } catch(e) { return null; } },
+    validate(apiKey, secretKey) { const encrypted = this.encryptApiKey(apiKey, secretKey); const decrypted = this.decryptApiKey(encrypted, secretKey); return decrypted === apiKey; }
 };
 
 /**
- * ----------------------------------------------------------------------------
- * 5. FIREBASE CRUD SERVICES
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [8] FIREBASE CRUD & AUDIT LOGGING SYSTEM (KAS APATO)
+ * ============================================================================
  */
 window.FirebaseService = {
-    async saveTransaction(data) { 
-        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), data);
-        window.AuraFiLogger.info("Transaction saved");
+    async saveAuditLog(action, detail) {
+        try {
+            const profile = window.settingsData?.profile || {};
+            const userName = profile.fullName || profile.nickname || "System_User";
+            await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/audit_logs`), {
+                action: action, detail: detail, user: userName, ts: Date.now()
+            });
+            Logger.info('AuditLog', `Recorded: [${action}] ${detail}`);
+        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log aktivitas.', e); }
+    },
+    async saveTransaction(data, isFromAI = false) { 
+        try {
+            data.user_id = window.settingsData?.profile?.nickname || "Amry Galih N";
+            await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions`), data);
+            await this.saveAuditLog(isFromAI ? "AI_EXTRACT" : "MANUAL_ADD", `Transaksi: ${data.merchantName} (${window.AuraUtils.formatCurrency(data.nominal)})`);
+            Logger.success('Firebase', 'Transaksi baru dibuat.');
+        } catch (e) { throw e; }
     },
     async updateTransaction(id, data) { 
-        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), data);
-        window.AuraFiLogger.info(`Transaction ${id} updated`);
+        try {
+            await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`), data);
+            await this.saveAuditLog("SYS.EDIT", `Update ID: ${id}`);
+        } catch (e) { throw e; }
     },
     async moveToTrash(id) { 
-        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`), { 
-            is_deleted: true, 
-            deletedAt: new Date().toISOString() 
-        });
-        window.AuraFiLogger.info(`Transaction ${id} moved to trash`);
+        await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() });
+        await this.saveAuditLog("SYS.DELETE", `Pindah ke sampah ID: ${id}`);
     },
     async deleteTransactionPermanently(id) { 
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions/${id}`));
-        window.AuraFiLogger.info(`Transaction ${id} deleted permanently`);
+        await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`));
+        await this.saveAuditLog("SYS.PERMA_DELETE", `Hapus permanen ID: ${id}`);
     },
-    async saveGoal(data) { 
-        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), data);
-    },
-    async deleteGoal(id) { 
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/goals/${id}`));
-    },
-    async updateSettings(data) { 
-        await update(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), data);
-    },
-    async saveGroqKey(encryptedKey) {
-        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys`), {
-            encryptedKey: encryptedKey, 
-            createdAt: new Date().toISOString(), 
-            active: true, 
-            usageCount: 0
-        });
-    },
-    async deleteGroqKey(keyId) { 
-        await remove(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys/${keyId}`));
-    },
-    async pushOracleChat(chatObj) { 
-        await push(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), chatObj); 
-    }
+    async saveGoal(data) { await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals`), data); },
+    async deleteGoal(id) { await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals/${id}`)); },
+    async updateSettings(data) { await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings`), data); },
+    async saveGroqKey(encryptedKey) { await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys`), { encryptedKey: encryptedKey, createdAt: new Date().toISOString(), active: true, usageCount: 0 }); },
+    async deleteGroqKey(keyId) { await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys/${keyId}`)); },
+    async pushOracleChat(chatObj) { await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/oracleChats`), chatObj); }
 };
 
 /**
- * ----------------------------------------------------------------------------
- * 6. MEMORY & RETRIEVAL SERVICE
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [9] MEMORY & CONTEXT RETRIEVAL SERVICE
+ * ============================================================================
  */
 window.MemoryService = {
     getRelevantTransactions(query) {
         if (!window.allTransactions || window.allTransactions.length === 0) return [];
         const keyword = (query || "").toLowerCase().trim();
-        
         let matched = window.allTransactions.filter(t => {
             const matchCategory = (t.kategori || "").toLowerCase().includes(keyword);
             const matchStore = (t.merchantName || t.storeName || "").toLowerCase().includes(keyword);
@@ -312,773 +391,169 @@ window.MemoryService = {
             const matchItems = t.items && t.items.some(it => (it.nama_barang || "").toLowerCase().includes(keyword));
             return matchCategory || matchStore || matchItems || matchDesc;
         });
-
         return matched.length > 0 ? matched.slice(0, 5) : window.allTransactions.slice(0, 5);
     },
-    getRelevantChats() {
-        return window.oracleChats ? window.oracleChats.slice(-8) : [];
-    }
+    getRelevantChats() { return window.oracleChats ? window.oracleChats.slice(-8) : []; }
 };
 
 /**
- * ----------------------------------------------------------------------------
- * 7. FINANCIAL SUMMARY SERVICE
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [10] FINANCIAL SUMMARY SERVICE
+ * ============================================================================
  */
 window.FinancialSummaryService = {
     getSummaryString() {
         let cashBal = 0, cashlessBal = 0, totSpent = 0;
         const today = new Date();
-        
         const txList = window.allTransactions || [];
+        
         txList.forEach(t => {
             const val = Number(t.nominal || 0);
             const isCash = t.metode_pembayaran === 'tunai';
-            
-            if (t.tipe === 'pemasukan') {
-                if (isCash) cashBal += val; else cashlessBal += val;
-            } else if (t.tipe === 'tarik_tunai') {
-                let adminFee = Number(t.admin_fee || 0);
-                cashBal += val;
-                cashlessBal -= (val + adminFee);
-            } else if (t.tipe === 'setor_tunai') {
-                let adminFee = Number(t.admin_fee || 0);
-                cashBal -= val; 
-                cashlessBal += val; 
-                cashlessBal -= adminFee; 
-            } else {
-                if (isCash) cashBal -= val; 
-                else cashlessBal -= val;
-                
+            if (t.tipe === 'pemasukan') { if (isCash) cashBal += val; else cashlessBal += val; } 
+            else if (t.tipe === 'tarik_tunai') { let adminFee = Number(t.admin_fee || 0); cashBal += val; cashlessBal -= (val + adminFee); } 
+            else if (t.tipe === 'setor_tunai') { let adminFee = Number(t.admin_fee || 0); cashBal -= val; cashlessBal += val; cashlessBal -= adminFee; } 
+            else {
+                if (isCash) cashBal -= val; else cashlessBal -= val;
                 const tDate = new Date(t.tanggal);
-                if (!isNaN(tDate) && tDate.getMonth() === today.getMonth() && tDate.getFullYear() === today.getFullYear()) {
-                    totSpent += val;
-                }
+                if (!isNaN(tDate) && tDate.getMonth() === today.getMonth() && tDate.getFullYear() === today.getFullYear()) { totSpent += val; }
             }
         });
-
         const profile = window.settingsData?.profile || {};
-        const nickname = profile.nickname || "User";
-        const fullName = profile.fullName || "User AuraFi";
-
-        return `--- PROFIL & RINGKASAN PENGGUNA ---
-Nama: ${fullName} (${nickname})
-Mata Uang Utama Aktif: ${window.displayCurrency}
-Sisa Tunai (Cash): ${cashBal} ${window.displayCurrency}
-Sisa Cashless: ${cashlessBal} ${window.displayCurrency}
-Total Aset Net Worth: ${cashBal + cashlessBal} ${window.displayCurrency}
-Pengeluaran Bulan Ini: ${totSpent} ${window.displayCurrency}
-Sisa Limit Anggaran Bulanan: ${window.monthlyBudget - totSpent} ${window.displayCurrency}`;
+        return `--- PROFIL & RINGKASAN PENGGUNA ---\nNama: ${profile.fullName||"User AuraFi"} (${profile.nickname||"User"})\nMata Uang: ${window.displayCurrency}\nSisa Tunai: ${cashBal} ${window.displayCurrency}\nSisa Cashless: ${cashlessBal} ${window.displayCurrency}\nNet Worth: ${cashBal + cashlessBal} ${window.displayCurrency}\nPengeluaran Bulan Ini: ${totSpent} ${window.displayCurrency}`;
     }
 };
 
 /**
- * ----------------------------------------------------------------------------
- * 8. GROQ API ENGINE (TEXT/NLP)
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [11] AI ENGINES: GROQ (NLP) & GEMINI (VISION) FAILOVER SYSTEM
+ * ============================================================================
  */
 let groqSecretKey = localStorage.getItem('aurafi_groq_secret');
-if(!groqSecretKey) {
-    groqSecretKey = CryptoJS.lib.WordArray.random(128/8).toString();
-    localStorage.setItem('aurafi_groq_secret', groqSecretKey);
-}
+if(!groqSecretKey) { groqSecretKey = CryptoJS.lib.WordArray.random(128/8).toString(); localStorage.setItem('aurafi_groq_secret', groqSecretKey); }
 
 window.GroqService = {
-    keysPool: [],
-    currentIndex: 0,
-    model: "llama-3.3-70b-versatile", 
-    secret: groqSecretKey,
-
+    keysPool: [], currentIndex: 0, model: "llama-3.3-70b-versatile", secret: groqSecretKey,
     init(rawKeysArray) {
         this.keysPool = [];
         for(let item of rawKeysArray) {
             if(item.active) {
                 const decrypted = window.EncryptionService.decryptApiKey(item.encryptedKey, this.secret);
-                if(decrypted && decrypted.startsWith('gsk_')) {
-                    this.keysPool.push({ id: item.id, value: decrypted });
-                }
+                if(decrypted && decrypted.startsWith('gsk_')) { this.keysPool.push({ id: item.id, value: decrypted }); }
             }
         }
-        this.currentIndex = 0;
-        return this.keysPool.length;
+        this.currentIndex = 0; return this.keysPool.length;
     },
-
-    getCurrentApiKey() {
-        if(this.keysPool.length === 0) return null;
-        return this.keysPool[this.currentIndex].value;
-    },
-
-    switchToNextApiKey() {
-        if(this.keysPool.length <= 1) return false;
-        this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
-        window.AuraFiLogger.info(`[GROQ FAILOVER] Rotasi Kunci ke Index: ${this.currentIndex}`);
-        return true;
-    },
-
+    getCurrentApiKey() { return this.keysPool.length === 0 ? null : this.keysPool[this.currentIndex].value; },
+    switchToNextApiKey() { if(this.keysPool.length <= 1) return false; this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; return true; },
     async fetch(messages, requireJson = false) {
         if(this.keysPool.length === 0) throw new Error("API Key Groq Kosong.");
-        
-        let attempt = 0;
-        const totalKeys = this.keysPool.length;
-
+        let attempt = 0; const totalKeys = this.keysPool.length;
         while (attempt < totalKeys) {
             const apiKey = this.getCurrentApiKey();
             try {
-                const payload = { 
-                    model: this.model, 
-                    messages: messages, 
-                    temperature: requireJson ? 0.1 : 0.7 
-                };
+                const payload = { model: this.model, messages: messages, temperature: requireJson ? 0.1 : 0.7 };
                 if(requireJson) payload.response_format = { type: "json_object" };
-
                 const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
                 });
-
-                if(response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503) {
-                    window.AuraFiLogger.warn(`[GROQ] HTTP ${response.status}. Limit Exceeded. Merotasi Kunci...`);
-                    this.switchToNextApiKey(); 
-                    attempt++; 
-                    continue;
-                }
-                
-                if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error?.message || "Groq Error");
-                }
-
-                const data = await response.json();
-                return data.choices[0].message.content;
-                
-            } catch (err) {
-                window.AuraFiLogger.error(`[GROQ ERROR] Attempt ${attempt+1}`, err.message);
-                this.switchToNextApiKey(); 
-                attempt++;
-            }
+                if(response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503) { this.switchToNextApiKey(); attempt++; continue; }
+                if (!response.ok) { const err = await response.json(); throw new Error(err.error?.message || "Groq Error"); }
+                const data = await response.json(); return data.choices[0].message.content;
+            } catch (err) { this.switchToNextApiKey(); attempt++; }
         }
-        throw new Error("Semua API Key Groq gagal merespon atau limit habis.");
+        throw new Error("Semua API Key Groq gagal.");
     }
 };
 
-/**
- * ----------------------------------------------------------------------------
- * 9. GEMINI VISION API ENGINE (OCR & FAILOVER)
- * ----------------------------------------------------------------------------
- */
 window.GeminiFailoverEngine = class GeminiFailoverEngine {
-    constructor(pinCode) { 
-        this.pin = pinCode; 
-        this.keysPool = []; 
-        this.currentIndex = 0; 
-    }
-
+    constructor(pinCode) { this.pin = pinCode; this.keysPool = []; this.currentIndex = 0; }
     async init() {
-        this.keysPool = [];
-        const snapshot = await get(ref(db, 'nexus_api_vault'));
-        
+        this.keysPool = []; const snapshot = await get(ref(db, 'nexus_api_vault'));
         if (snapshot.exists()) {
             const vaultData = snapshot.val();
             for (const id in vaultData) {
                 const item = vaultData[id];
                 let decrypted = window.EncryptionService.decryptApiKey(item.value, this.pin);
-                if (!decrypted) {
-                    // Legacy XOR decryption fallback
-                    try {
-                        let text = atob(item.value);
-                        let result = '';
-                        for (let i = 0; i < text.length; i++) { 
-                            result += String.fromCharCode(text.charCodeAt(i) ^ this.pin.charCodeAt(i % this.pin.length)); 
-                        }
-                        decrypted = result;
-                    } catch(e) {}
-                }
-                if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) {
-                    this.keysPool.push({ id: item.name, value: decrypted.trim() });
-                }
+                if (!decrypted) { try { let text = atob(item.value); let result = ''; for (let i = 0; i < text.length; i++) { result += String.fromCharCode(text.charCodeAt(i) ^ this.pin.charCodeAt(i % this.pin.length)); } decrypted = result; } catch(e) {} }
+                if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) { this.keysPool.push({ id: item.name, value: decrypted.trim() }); }
             }
         }
         return this.keysPool.length;
     }
-
     async fetch(payload, base64Image) {
         if (this.keysPool.length === 0) throw new Error("Kunci Gemini Kosong / PIN Salah.");
-        
-        let attempt = 0; 
-        const totalKeys = this.keysPool.length;
-
+        let attempt = 0; const totalKeys = this.keysPool.length;
         while (attempt < totalKeys) {
             const activeKeyObj = this.keysPool[this.currentIndex];
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKeyObj.value}`;
-            
             const requestPayload = JSON.parse(JSON.stringify(payload));
-            
             if (base64Image) {
                 const base64Data = base64Image.split(',')[1] || base64Image;
                 if (!requestPayload.contents) requestPayload.contents = [{ role: "user", parts: [] }];
                 if (!requestPayload.contents[0].parts) requestPayload.contents[0].parts = [];
                 requestPayload.contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: base64Data } });
             }
-
             try {
-                const response = await fetch(url, {
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(requestPayload)
-                });
-
-                if (response.status === 429 || response.status === 400 || response.status === 401) {
-                    this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
-                    attempt++; 
-                    continue; 
-                }
-                
+                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestPayload) });
+                if (response.status === 429 || response.status === 400 || response.status === 401) { this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; continue; }
                 if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
-
-                const result = await response.json();
-                const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
-                if (!textResponse) throw new Error("Format respons API tidak sesuai");
-                
-                return textResponse;
-            } catch (err) {
-                this.currentIndex = (this.currentIndex + 1) % this.keysPool.length;
-                attempt++;
-            }
+                const result = await response.json(); const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!textResponse) throw new Error("Format respons API tidak sesuai"); return textResponse;
+            } catch (err) { this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; }
         }
-        throw new Error("SEMUA KUNCI GEMINI TERKENA LIMIT ATAU GAGAL!");
+        throw new Error("SEMUA KUNCI GEMINI TERKENA LIMIT!");
     }
 };
 
 /**
- * ----------------------------------------------------------------------------
- * 10. AUTHENTICATION & LOGIN LOGIC
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [12] AI ORCHESTRATOR
+ * ============================================================================
  */
-window.loginWithGoogle = async function() {
-    try {
-        await setPersistence(auth, browserLocalPersistence);
-        await signInWithPopup(auth, provider).catch(async (e) => {
-            window.AuraFiLogger.warn("Popup blocked/failed, trying redirect", e);
-            await signInWithRedirect(auth, provider);
-        });
-    } catch (error) {
-        window.AuraFiLogger.error("Login failed", error);
-        window.showToast("Login gagal atau dibatalkan.", true);
-    }
+window.getOraclePromptConfigs = function() {
+    const prefs = window.settingsData?.aiPreferences || { persona: 'Kombinasi Humble + Jenius + Profesional', style: 'Normal' };
+    let personaStr = "kombinasi humble, jenius, dan profesional";
+    if (prefs.persona === "Humble Profesional") personaStr = "humble dan profesional";
+    else if (prefs.persona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
+    else if (prefs.persona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
+    else if (prefs.persona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
+    else if (prefs.persona === "Formal") personaStr = "sangat formal, baku, dan analitis";
+    else if (prefs.persona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
+    let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
+    if (prefs.style === "Singkat") styleStr = "Jawab SINGKAT, padat, dan jelas. Maksimal 2 paragraf saja.";
+    else if (prefs.style === "Detail") styleStr = "Jawab dengan SANGAT DETAIL, komprehensif, dan panjang lebar.";
+    return { personaStr, styleStr };
 };
 
-window.loginWithEmail = async function() {
-    const email = document.getElementById('login-email').value.trim();
-    const pass = document.getElementById('login-pass').value.trim();
-    if(!email || !pass) return window.showToast("Harap isi email & password!", true);
-    
-    try {
-        await setPersistence(auth, browserLocalPersistence);
-        await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error) {
-        window.showToast("Login gagal: " + error.message, true);
-    }
-};
-
-window.loginAnonymously = async function() {
-    try {
-        await setPersistence(auth, browserLocalPersistence);
-        await signInAnonymously(auth);
-    } catch (error) {
-        window.showToast("Mode Tamu Gagal: " + error.message, true);
-    }
-};
-
-window.logoutAccount = async function() {
-    await signOut(auth);
-    window.oracleChats = [];
-    window.allTransactions = [];
-    window.trashTransactions = [];
-    window.location.reload();
-};
-
-/**
- * ----------------------------------------------------------------------------
- * 11. FIREBASE REALTIME LISTENERS
- * ----------------------------------------------------------------------------
- */
-function loadRealtimeDatabaseData() {
-    if (!window.currentUserUid) return;
-
-    // Listener: Transactions
-    onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/transactions`), (snapshot) => {
-        const all = [];
-        const data = snapshot.val();
-        if (data) {
-            Object.entries(data).forEach(([key, val]) => all.push({ id: key, ...val }));
-        }
-        
-        window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
-        window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
-        
-        window.checkAndExecuteRecurringPayments();
-        if(window.reCalculateAll) window.reCalculateAll();
-    });
-
-    // Listener: Goals
-    onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/goals`), (snapshot) => {
-        const goals = [];
-        const data = snapshot.val();
-        if (data) {
-            Object.entries(data).forEach(([key, val]) => goals.push({ id: key, ...val }));
-        }
-        window.allGoals = goals;
-        if(window.reCalculateAll) window.reCalculateAll();
-    });
-
-    // Listener: Settings
-    onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/settings`), (snapshot) => {
-        const d = snapshot.val();
-        window.settingsData = d || {};
-        
-        if (d) {
-            if(d.monthlyBudget && d.monthlyBudget.limit) {
-                window.monthlyBudget = d.monthlyBudget.limit;
-            }
-            if(d.theme && d.theme !== window.currentTheme) {
-                window.currentTheme = d.theme;
-                if(window.applyTheme) window.applyTheme();
-            }
-            if(d.profile) {
-                const fnInput = document.getElementById('user-fullname');
-                const nnInput = document.getElementById('user-nickname');
-                if(fnInput) fnInput.value = d.profile.fullName || '';
-                if(nnInput) nnInput.value = d.profile.nickname || '';
-            }
-            
-            // Populate Dropdown Settings AI (Bug Fix: Safe DOM manipulation)
-            if (d.aiPreferences) {
-                const elC = document.getElementById('setting-ai-chat'); if(elC) elC.value = d.aiPreferences.modelChat;
-                const elV = document.getElementById('setting-ai-vision'); if(elV) elV.value = d.aiPreferences.modelVision;
-                const elP = document.getElementById('setting-ai-persona'); if(elP) elP.value = d.aiPreferences.persona;
-                const elS = document.getElementById('setting-ai-style'); if(elS) elS.value = d.aiPreferences.style;
-            }
-        }
-        
-        // Render recurring di settings
-        if(window.renderRecurringUI) window.renderRecurringUI();
-        // Render recurring di budget (Bug Fix)
-        if(window.renderRecurringUIForBudget) window.renderRecurringUIForBudget();
-        
-        if(window.reCalculateAll) window.reCalculateAll();
-    });
-
-    // Listener: Groq API Keys
-    onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/groqApiKeys`), (snapshot) => {
-        window.rawGroqKeysData = [];
-        const data = snapshot.val();
-        if (data) {
-            Object.entries(data).forEach(([key, val]) => window.rawGroqKeysData.push({ id: key, ...val }));
-        }
-        const activeCount = window.GroqService.init(window.rawGroqKeysData);
-        
-        const grBadge = document.getElementById('groq-status-badge');
-        if(grBadge) {
-            if(activeCount > 0) {
-                grBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-                grBadge.innerText = `ACTIVE (${activeCount})`;
-            } else {
-                grBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-                grBadge.innerText = "OFFLINE";
-            }
-        }
-        if(window.renderGroqKeysUI) window.renderGroqKeysUI();
-    });
-
-    // Listener: Oracle Chat History
-    onValue(ref(db, `${ledgerNode}/${window.currentUserUid}/oracleChats`), (snapshot) => {
-        const chats = [];
-        const data = snapshot.val();
-        if (data) {
-            Object.entries(data).forEach(([key, val]) => chats.push({ id: key, ...val }));
-            chats.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
-        }
-        
-        const nickname = window.settingsData?.profile?.nickname || "Bos";
-        if(chats.length === 0) {
-            window.oracleChats = [{
-                role: 'ai', 
-                text: `Halo ${nickname}! Aku Aura Oracle V3. Aku siap jadi penasihat keuangan handalmu dengan logika presisi. Mau mencatat belanja atau ngobrol hari ini? 😎`, 
-                timestamp: new Date().toISOString()
-            }];
-        } else {
-            window.oracleChats = chats;
-        }
-        if(window.renderOracleChats) window.renderOracleChats();
-    });
-}
-
-// Subscribe Auth State
-onAuthStateChanged(auth, (user) => {
-    const modalLogin = document.getElementById('modal-login');
-    if (user) {
-        window.currentUserUid = user.uid;
-        if(modalLogin) modalLogin.classList.add('hidden');
-        
-        loadRealtimeDatabaseData();
-
-        // Auto unlock gemini if pin exists
-        const savedGeminiPin = localStorage.getItem('aurafi_gemini_pin');
-        if (savedGeminiPin && window.syncGeminiEngine) {
-            setTimeout(() => window.syncGeminiEngine(true), 800); 
-        }
-    } else {
-        window.currentUserUid = null;
-        if(modalLogin) modalLogin.classList.remove('hidden');
-    }
-});
-
-/**
- * ----------------------------------------------------------------------------
- * 12. CONFIGURATION & SETTINGS MANIPULATION
- * ----------------------------------------------------------------------------
- */
-window.saveUserProfile = async function() {
-    const fn = document.getElementById('user-fullname').value.trim();
-    const nn = document.getElementById('user-nickname').value.trim();
-    if(!fn || !nn) return window.showToast("Lengkapi form nama profil!", true);
-
-    try {
-        await window.FirebaseService.updateSettings({
-            profile: { fullName: fn, nickname: nn }
-        });
-        window.showToast("Profil pengguna berhasil disimpan!");
-    } catch(e) {
-        window.showToast("Gagal menyimpan profil: " + e.message, true);
-    }
-};
-
-window.saveAIPreferences = async function() {
-    const chatM = document.getElementById('setting-ai-chat').value;
-    const visM = document.getElementById('setting-ai-vision').value;
-    const pers = document.getElementById('setting-ai-persona').value;
-    const style = document.getElementById('setting-ai-style').value;
-    
-    try {
-        await window.FirebaseService.updateSettings({
-            aiPreferences: { modelChat: chatM, modelVision: visM, persona: pers, style: style }
-        });
-        window.showToast("Setelan Oracle AI berhasil disimpan!");
-    } catch(e) { 
-        window.showToast("Gagal menyimpan setelan AI.", true); 
-    }
-};
-
-/**
- * RECURRING PAYMENTS MANAGEMENT (TAGIHAN RUTIN)
- */
-window.addRecurringPayment = async function() {
-    const nameInput = document.getElementById('new-rec-name');
-    const amtInput = document.getElementById('new-rec-amt');
-    const dateInput = document.getElementById('new-rec-date');
-    const methodInput = document.getElementById('new-rec-method');
-
-    if (!nameInput || !amtInput || !dateInput || !methodInput) return;
-
-    const name = nameInput.value.trim();
-    const amount = parseFloat(amtInput.value);
-    const date = parseInt(dateInput.value);
-    const method = methodInput.value;
-
-    if(!name || isNaN(amount) || isNaN(date) || date < 1 || date > 31) {
-        return window.showToast("Lengkapi form tagihan dengan benar (Tanggal 1-31)!", true);
-    }
-
-    const recId = 'rec_' + Date.now();
-    const updates = {};
-    updates[`recurringPayments/${recId}`] = {
-        name, amount, date, method, active: true
-    };
-
-    try {
-        await window.FirebaseService.updateSettings(updates);
-        nameInput.value = "";
-        amtInput.value = "";
-        dateInput.value = "";
-        window.showToast("Tagihan bulanan berhasil dikonfigurasi!");
-    } catch(e) {
-        window.showToast("Gagal menambahkan tagihan: " + e.message, true);
-    }
-};
-
-window.removeRecurringPayment = async function(recId) {
-    if(confirm("Hapus tagihan bulanan ini?")) {
-        const dbRef = ref(db, `${ledgerNode}/${window.currentUserUid}/settings/recurringPayments/${recId}`);
-        await remove(dbRef);
-        window.showToast("Tagihan bulanan berhasil dihapus!");
-    }
-};
-
-window.renderRecurringUI = function() {
-    const container = document.getElementById('recurring-list');
-    if(!container) return;
-
-    const rPayments = window.settingsData?.recurringPayments || {};
-    const entries = Object.entries(rPayments);
-
-    if(entries.length === 0) {
-        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada tagihan rutin bulanan.</p>';
-        return;
-    }
-
-    container.innerHTML = entries.map(([id, rp]) => {
-        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-            <div class="flex flex-col">
-                <span class="font-bold text-xs text-sky-400">${rp.name}</span>
-                <span class="text-[9px] text-[var(--text-muted)] font-mono">Tgl ${rp.date} | ${rp.amount.toLocaleString()} ${window.displayCurrency} (${rp.method})</span>
-            </div>
-            <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
-                <i class="fa-solid fa-trash-can text-xs"></i>
-            </button>
-        </div>`;
-    }).join('');
-};
-
-/**
- * BUG FIX: Render UI tagihan rutin khusus untuk halaman Budget
- */
-window.renderRecurringUIForBudget = function() {
-    const container = document.getElementById('budget-bills-container');
-    if(!container) return;
-    
-    const rPayments = window.settingsData?.recurringPayments || {};
-    const entries = Object.entries(rPayments);
-    
-    if(entries.length === 0) {
-        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Belum ada tagihan rutin terkonfigurasi. Tambahkan di atas.</p>';
-        return;
-    }
-
-    container.innerHTML = entries.map(([id, rp]) => {
-        return `<div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
-            <div>
-                <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
-                    ${rp.name} 
-                    <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                </h4>
-                <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">Tgl ${rp.date} setiap bulan • ${rp.method}</p>
-            </div>
-            <p class="font-bold text-sm font-mono text-[var(--text-main)]">${window.formatVal(rp.amount)}</p>
-        </div>`;
-    }).join('');
-};
-
-window.checkAndExecuteRecurringPayments = async function() {
-    const rPayments = window.settingsData?.recurringPayments || {};
-    const txList = window.allTransactions || [];
-    const today = new Date();
-    const curDate = today.getDate();
-    const curMonthYearStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2, '0')}`;
-
-    for (const [id, rp] of Object.entries(rPayments)) {
-        if (curDate >= rp.date) {
-            // Cek apakah tagihan ini sudah dibayar bulan ini
-            const alreadyPaid = txList.some(t => {
-                const sameRecurringId = t.recurring_id === id;
-                const sameMonthYear = t.tanggal && t.tanggal.startsWith(curMonthYearStr);
-                return sameRecurringId && sameMonthYear;
-            });
-
-            if (!alreadyPaid) {
-                const timestamp = today.toISOString();
-                const itemUnikId = window.generateItemId();
-                const tagihanData = {
-                    tanggal: today.toISOString().split('T')[0],
-                    createdAt: timestamp,
-                    nominal: rp.amount,
-                    mata_uang: window.displayCurrency,
-                    metode_pembayaran: rp.method,
-                    kategori: 'Utilitas',
-                    tipe: 'pengeluaran',
-                    sifat: 'kebutuhan',
-                    merchantName: rp.name,
-                    description: `Pembayaran otomatis: ${rp.name}`,
-                    isCustomDescription: true,
-                    recurring_id: id,
-                    is_deleted: false,
-                    items: [
-                        {
-                            itemId: itemUnikId,
-                            nama_barang: rp.name,
-                            harga: rp.amount,
-                            qty: 1,
-                            kategori_barang: 'Utilitas',
-                            tax_rate: 0,
-                            paymentMethod: rp.method,
-                            timestamp: timestamp
-                        }
-                    ]
-                };
-                try {
-                    await window.FirebaseService.saveTransaction(tagihanData);
-                    window.showToast(`Tagihan otomatis "${rp.name}" berhasil dibayarkan!`);
-                } catch(e) {
-                    window.AuraFiLogger.error("Gagal menjalankan tagihan otomatis", e);
-                }
-            }
-        }
-    }
-};
-
-/**
- * GEMINI AND GROQ KEY SETUP
- */
-window.syncGeminiEngine = async function(silent = false) {
-    const pinInput = document.getElementById('gemini-pin-input')?.value.trim();
-    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
-    
-    if (!pin) { 
-        if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true);
-        return; 
-    }
-
-    const gBadge = document.getElementById('gemini-status-badge');
-    if(gBadge) {
-        gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono animate-pulse";
-        gBadge.innerText = "DECRYPTING...";
-    }
-    
-    try {
-        const geminiEngine = new window.GeminiFailoverEngine(pin);
-        const gCount = await geminiEngine.init();
-        if(gCount > 0) {
-            window.failoverEngineInstance = geminiEngine;
-            localStorage.setItem('aurafi_gemini_pin', pin);
-            
-            if(gBadge) {
-                gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-                gBadge.innerText = `ACTIVE (${gCount})`;
-            }
-            if(!silent) window.showToast("Gemini Vision Berhasil Di-Unlock.");
-        } else { 
-            throw new Error("GCount 0"); 
-        }
-    } catch(e) {
-        if(gBadge) {
-            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-            gBadge.innerText = "FAIL / LOCKED";
-        }
-        if(!silent) window.showToast("Dekripsi Gagal: PIN Salah.", true);
-    }
-};
-
-window.addGroqKey = async function() {
-    const keyInput = document.getElementById('new-groq-key').value.trim();
-    if(!keyInput.startsWith('gsk_')) return window.showToast("Format API Key Groq salah (harus diawali gsk_).", true);
-    
-    if(!window.EncryptionService.validate(keyInput, window.GroqService.secret)) {
-        return window.showToast("Kesalahan Enkripsi Fatal.", true);
-    }
-    
-    const enc = window.EncryptionService.encryptApiKey(keyInput, window.GroqService.secret);
-    await window.FirebaseService.saveGroqKey(enc);
-    
-    document.getElementById('new-groq-key').value = "";
-    window.showToast("Kunci Groq berhasil disimpan.");
-};
-
-window.removeGroqKey = async function(id) {
-    if(confirm("Hapus kunci Groq ini dari Database?")) {
-        await window.FirebaseService.deleteGroqKey(id);
-    }
-};
-
-window.renderGroqKeysUI = function() {
-    const container = document.getElementById('groq-keys-container');
-    if(!container) return;
-
-    const keys = window.rawGroqKeysData || [];
-    if(keys.length === 0) {
-        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada API Key Groq yang tersimpan.</p>';
-        return;
-    }
-
-    container.innerHTML = keys.map((k, index) => {
-        const dec = window.EncryptionService.decryptApiKey(k.encryptedKey, window.GroqService.secret);
-        const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Rusak/Corrupt)`;
-        const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
-        
-        return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-            <div class="flex flex-col">
-                <span class="font-mono text-xs ${statusColor}">${display}</span>
-                <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Groq Key #${index + 1}</span>
-            </div>
-            <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-        </div>`;
-    }).join('');
-};
-
-/**
- * ----------------------------------------------------------------------------
- * 13. CORE AI FALLBACK ENGINE & PARSER
- * ----------------------------------------------------------------------------
- */
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     const prefs = window.settingsData?.aiPreferences || {};
-    const chatModel = prefs.modelChat || 'Auto';
-    const visionModel = prefs.modelVision || 'Auto';
+    const chatModel = prefs.modelChat || 'Auto'; const visionModel = prefs.modelVision || 'Auto';
+    let useGroq = false; let useGemini = false;
     
-    let useGroq = false;
-    let useGemini = false;
-
-    if (base64Image) {
-        // OCR / Image Processing
-        if (visionModel === 'Gemini' || visionModel === 'Auto') useGemini = true;
-        else if (visionModel === 'Groq Vision') useGroq = true; 
-    } else {
-        // Text Processing
-        if (chatModel === 'Groq') useGroq = true;
-        else if (chatModel === 'Gemini') useGemini = true;
-        else { useGroq = true; useGemini = true; } // Auto failover mode
-    }
-
+    if (base64Image) { if (visionModel === 'Gemini' || visionModel === 'Auto') useGemini = true; else if (visionModel === 'Groq Vision') useGroq = true; } 
+    else { if (chatModel === 'Groq') useGroq = true; else if (chatModel === 'Gemini') useGemini = true; else { useGroq = true; useGemini = true; } }
+    
     let lastError = null;
-
-    // GROQ FIRST
+    
     if (useGroq && window.rawGroqKeysData && window.rawGroqKeysData.length > 0) {
-        try {
-            window.AuraFiLogger.info("Mencoba Groq API...");
-            return await window.GroqService.fetch(messages, requireJson);
-        } catch(e) {
-            window.AuraFiLogger.warn("Groq API Gagal/Quota Limit...", e);
-            lastError = e;
-            if (!useGemini) throw e; 
-        }
+        try { return await window.GroqService.fetch(messages, requireJson); } catch(e) { lastError = e; if (!useGemini) throw e; }
     }
-
-    // GEMINI FAILOVER / VISION
     if (useGemini && window.failoverEngineInstance && window.failoverEngineInstance.keysPool.length > 0) {
         try {
-            window.AuraFiLogger.info("Mencoba Gemini API...");
             const userPrompt = messages[messages.length - 1].content;
-            
-            const geminiPayload = {
-                contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] }
-            };
-
-            if (requireJson) {
-                geminiPayload.generationConfig = { responseMimeType: "application/json" };
-            }
-
+            const geminiPayload = { contents: [{ role: "user", parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
+            if (requireJson) { geminiPayload.generationConfig = { responseMimeType: "application/json" }; }
             return await window.failoverEngineInstance.fetch(geminiPayload, base64Image);
-        } catch(e) {
-            window.AuraFiLogger.error("Gemini API juga gagal.", e);
-            lastError = e;
-        }
+        } catch(e) { lastError = e; }
     }
-
-    throw new Error(lastError ? lastError.message : "Sistem AI offline. Konfigurasikan PIN Gemini atau API Key Groq di Setelan.");
+    throw new Error(lastError ? lastError.message : "Sistem AI offline.");
 };
 
 /**
- * Memproses parsing transaksi (Text / Image)
+ * ============================================================================
+ * [13] AI STAGING AREA (KAS APATO FEATURE)
+ * ============================================================================
  */
 window.processTransactionParsing = async function(text, imgData = null) {
     if (!window.currentUserUid) return;
@@ -1086,115 +561,248 @@ window.processTransactionParsing = async function(text, imgData = null) {
     
     try {
         let jsonResult;
-        const activeCurrency = window.displayCurrency || 'JPY';
+        const activeCurrency = window.AuraState.system.displayCurrency || 'JPY';
         const nickname = window.settingsData?.profile?.nickname || "Bos";
+        const categoryListStr = window.CategoryManager.getCategoryStringList();
 
         const systemPrompt = `Kamu AuraFi OS. User: ${nickname}. Mata Uang Aktif: ${activeCurrency}.
-Wajib menghasilkan output RAW JSON tanpa markdown backticks (\`\`\`).
+Wajib menghasilkan output RAW JSON murni tanpa markdown.
 ATURAN UTAMA & AKUNTANSI STRICT:
-1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai". nominal=500, admin_fee=110. (Saldo cashless berkurang 610, tunai bertambah 500, aset terpotong 110).
-2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai". nominal=10000, admin_fee=0. (Saldo tunai berkurang 10000, cashless bertambah 10000. Total aset statis).
-3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', otomatis mengurangi saldo tunai. Jika 'cashless', mengurangi saldo cashless. JANGAN SILANG.
-4. PERKALIAN ITEM (QTY x HARGA): Pahami jumlah item (x2, 2x, 2 cup, isi 2, dua bungkus). "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty. 'nominal' total block wajib = sum(harga x qty) + admin_fee.
-5. KATEGORI ITEM YANG DIDUKUNG: Setiap item WAJIB diklasifikasikan HANYA ke dalam kategori baku ini: "Makanan", "Minuman", "Bahan Pokok", "Utilitas", "Transportasi", "Kesehatan", "Hiburan", "Belanja Online", "Belanja Offline", "Pendidikan", "Pakaian", "Elektronik", "Lainnya".
-6. NAMA TOKO: Ekstrak secara wajib nama toko/merchant (Misal: Lawson, Amazon). Simpan ke field "merchantName". Jika tidak ada, isi "Toko/Merchant".
-7. PAJAK JEPANG: Hitung subtotal dan distribusikan selisih tax (8% pangan non-alkohol, 10% lainnya) ke tax_rate masing-masing item jika total tidak cocok.
-8. DESKRIPSI (DESCRIPTION): Berikan catatan pendek mengenai transaksi ini ke field "description" untuk disimpan.
+1. PENARIKAN (TARIK TUNAI): "Tarik tunai 500 admin 110". Tipe="tarik_tunai".
+2. PENYETORAN (SETOR TUNAI): "Setor tunai 10000 admin 0". Tipe="setor_tunai".
+3. PEMBAYARAN BELANJA: Tipe="pengeluaran". Jika bayar pakai 'tunai', kurangi saldo tunai. Jika 'cashless', kurangi saldo cashless.
+4. PERKALIAN ITEM (QTY x HARGA): "Beli kopi 150 2 cup" -> harga=150, qty=2. Subtotal setiap item = harga x qty.
+5. KATEGORI ITEM: WAJIB pilih dari daftar ini SAJA: "${categoryListStr}".
+6. NAMA TOKO: Ekstrak wajib nama toko/merchant (Misal: Lawson, Amazon). Simpan ke field "merchantName".
+7. PAJAK: Hitung subtotal dan distribusikan selisih tax ke tax_rate masing-masing item jika total tidak cocok.
+8. DESKRIPSI (DESCRIPTION): Berikan catatan pendek mengenai transaksi ini.
 
 Struktur JSON Wajib:
 {
   "merchantName": "string",
   "tanggal": "YYYY-MM-DD",
-  "nominal": number,
   "mata_uang": "string",
   "metode_pembayaran": "tunai/cashless",
-  "kategori": "string",
   "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai",
   "admin_fee": number,
-  "sifat": "kebutuhan/impulsif",
   "description": "string",
-  "is_receipt": boolean,
   "items": [{"nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string", "tax_rate": number}]
 }`;
 
-        const userContent = `Catat transaksi ini: "${text || "Ekstrak struk Jepang"}" di mata uang ${activeCurrency}.`;
-
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent }
-        ];
+        const userContent = `Catat transaksi ini: "${text || "Ekstrak struk Jepang terlampir"}" di mata uang ${activeCurrency}.`;
+        const messages = [ { role: "system", content: systemPrompt }, { role: "user", content: userContent } ];
 
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, imgData);
-        jsonResult = window.parseCleanJSON(aiOutput);
+        jsonResult = window.AuraUtils.parseCleanJSON(aiOutput);
 
         const timestamp = new Date().toISOString();
-        jsonResult.items = window.sanitizeItems(jsonResult.items, jsonResult.metode_pembayaran, timestamp);
+        
+        window.aiStaging = {
+            items: window.AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, timestamp),
+            merchantName: jsonResult.merchantName || jsonResult.storeName || jsonResult.kategori || "Toko/Merchant",
+            tanggal: jsonResult.tanggal || timestamp.split('T')[0],
+            mata_uang: jsonResult.mata_uang || activeCurrency,
+            metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
+            tipe: jsonResult.tipe || 'pengeluaran',
+            admin_fee: jsonResult.admin_fee || 0,
+            description: jsonResult.description || 'Ekstraksi AI Staging',
+            isCustomDescription: true
+        };
 
-        if(!jsonResult.merchantName) jsonResult.merchantName = jsonResult.storeName || jsonResult.kategori || "Toko/Merchant";
-        if(!jsonResult.mata_uang) jsonResult.mata_uang = activeCurrency;
-        
-        await window.FirebaseService.saveTransaction({ 
-            ...jsonResult, 
-            is_deleted: false, 
-            createdAt: timestamp 
-        });
-        
-        window.switchView('transactions');
-        window.showToast("Transaksi berhasil dianalisis & disimpan secara aman!");
+        window.renderStagingUI();
+        window.showModal('modal-ai-staging');
+        window.showToast("Ekstraksi Selesai! Silakan verifikasi di Staging Area.");
 
     } catch(e) { 
-        window.AuraFiLogger.error("Failed to process transaction", e);
-        window.showToast(e.message || "AI gagal memproses data.", true); 
+        Logger.error('TransactionParser', 'Gagal memproses payload OCR AI.', e);
+        window.showToast(e.message || "Sistem AI gagal memproses data.", true); 
     } finally { 
         window.setProcessingStatus(false); 
     }
 };
 
+window.renderStagingUI = function() {
+    if (!window.aiStaging) return;
+    
+    let stagingModal = document.getElementById('modal-ai-staging');
+    if (!stagingModal) {
+        const modalHtml = `
+        <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
+            <div class="glass-panel w-full max-w-lg h-[90vh] flex flex-col shadow-2xl border-t-4 border-t-accent overflow-hidden">
+                <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-glass)]">
+                    <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-microscope"></i> AI Staging Area</h3>
+                    <button onclick="window.closeModal('modal-ai-staging')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Toko / Merchant</label>
+                            <input type="text" id="staging-trx-store" class="v-input w-full rounded-xl p-3 text-sm outline-none">
+                        </div>
+                        <div class="w-1/3">
+                            <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Aliran Dana</label>
+                            <select id="staging-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                                <option value="pengeluaran">Pengeluaran (-)</option>
+                                <option value="pemasukan">Pemasukan (+)</option>
+                                <option value="tarik_tunai">Tarik Tunai</option>
+                                <option value="setor_tunai">Setor Tunai</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-between items-center mt-4 mb-2">
+                        <h4 class="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]"><i class="fa-solid fa-list-check"></i> Keranjang Item</h4>
+                        <button onclick="window.addStagingItem()" class="text-[10px] text-accent font-bold hover:text-white bg-white/5 px-2 py-1 rounded"><i class="fa-solid fa-plus"></i> Manual</button>
+                    </div>
+                    
+                    <div id="staging-items-container" class="space-y-3">
+                        <!-- Keranjang dirender di sini -->
+                    </div>
+                </div>
+                
+                <div class="p-4 border-t border-[var(--border-glass)] bg-[var(--bg-base)] shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-10">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Total Kalkulasi</span>
+                        <span class="text-xl font-bold font-mono text-accent" id="staging-total-display">0</span>
+                    </div>
+                    <button onclick="window.saveStagingToDatabase()" class="w-full py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2 text-sm"><i class="fa-solid fa-cloud-arrow-up"></i> Konfirmasi & Simpan Permanen</button>
+                </div>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    const data = window.aiStaging;
+    window.AuraUtils.safeDOM('staging-trx-store', el => el.value = data.merchantName);
+    window.AuraUtils.safeDOM('staging-trx-type', el => el.value = data.tipe);
+    
+    const allCats = window.CategoryManager.getAllCategories();
+    let catOptionsHtml = Object.values(allCats).map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+
+    const itemsContainer = document.getElementById('staging-items-container');
+    let totalNominal = 0;
+    
+    if (itemsContainer) {
+        itemsContainer.innerHTML = data.items.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center italic my-4">Keranjang kosong. Tambahkan item manual.</p>' : data.items.map((it, idx) => {
+            const subtotal = (it.harga * (it.qty || 1));
+            totalNominal += subtotal;
+            return `
+            <div class="glass-panel p-3 relative group border-l-2 border-l-accent">
+                <button onclick="window.removeStagingItem(${idx})" class="absolute top-2 right-2 text-[var(--color-expense)] hover:text-rose-400 p-1 bg-black/40 rounded-full w-6 h-6 flex items-center justify-center z-10"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                <div class="pr-6 space-y-2">
+                    <input type="text" value="${it.nama_barang}" onchange="window.updateStagingItem(${idx}, 'nama_barang', this.value)" class="bg-transparent border-b border-[var(--border-glass)] w-full text-sm outline-none text-white pb-1 font-medium focus:border-accent">
+                    <div class="flex gap-2">
+                        <div class="w-1/4">
+                            <span class="text-[8px] text-[var(--text-muted)] block mb-0.5 uppercase tracking-widest font-bold">Qty</span>
+                            <input type="number" value="${it.qty}" onchange="window.updateStagingItem(${idx}, 'qty', this.value)" class="bg-black/30 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] text-center font-mono">
+                        </div>
+                        <div class="w-2/4">
+                            <span class="text-[8px] text-[var(--text-muted)] block mb-0.5 uppercase tracking-widest font-bold">Harga Satuan</span>
+                            <input type="number" value="${it.harga}" onchange="window.updateStagingItem(${idx}, 'harga', this.value)" class="bg-black/30 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] font-mono">
+                        </div>
+                        <div class="flex-1">
+                            <span class="text-[8px] text-[var(--text-muted)] block mb-0.5 uppercase tracking-widest font-bold">Kategori</span>
+                            <select onchange="window.updateStagingItem(${idx}, 'kategori_barang', this.value)" class="bg-black/30 rounded-lg p-2 w-full text-[10px] outline-none border border-[var(--border-glass)]">
+                                <option value="${it.kategori_barang}" selected>${it.kategori_barang}</option>
+                                ${catOptionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+    
+    totalNominal += Number(data.admin_fee || 0);
+    window.AuraUtils.safeDOM('staging-total-display', el => el.innerText = window.AuraUtils.formatCurrency(totalNominal));
+};
+
+window.updateStagingItem = function(index, field, value) {
+    if(!window.aiStaging || !window.aiStaging.items[index]) return;
+    if(field === 'harga' || field === 'qty') window.aiStaging.items[index][field] = Number(value);
+    else window.aiStaging.items[index][field] = value;
+    window.renderStagingUI(); 
+};
+
+window.removeStagingItem = function(index) {
+    if(!window.aiStaging) return;
+    window.aiStaging.items.splice(index, 1);
+    window.renderStagingUI();
+};
+
+window.addStagingItem = function() {
+    if(!window.aiStaging) return;
+    window.aiStaging.items.push({
+        itemId: window.AuraUtils.generateId('itm'),
+        nama_barang: "Item Tambahan", harga: 0, qty: 1,
+        kategori_barang: "Lainnya", tax_rate: 0, paymentMethod: window.aiStaging.metode_pembayaran, timestamp: new Date().toISOString()
+    });
+    window.renderStagingUI();
+};
+
+window.saveStagingToDatabase = async function() {
+    if(!window.aiStaging) return;
+    
+    window.aiStaging.merchantName = document.getElementById('staging-trx-store').value.trim() || 'Toko/Merchant';
+    window.aiStaging.tipe = document.getElementById('staging-trx-type').value;
+    const finalSum = window.aiStaging.items.reduce((acc, it) => acc + (it.harga * (it.qty || 1)), 0);
+    window.aiStaging.nominal = finalSum + Number(window.aiStaging.admin_fee || 0);
+    window.aiStaging.createdAt = new Date().toISOString();
+    window.aiStaging.is_deleted = false;
+
+    try {
+        await window.FirebaseService.saveTransaction(window.aiStaging, true); 
+        window.closeModal('modal-ai-staging');
+        window.aiStaging = null;
+        window.showToast("Data Staging berhasil disinkronisasi ke Cloud!");
+    } catch(e) { window.showToast("Gagal menyimpan data staging.", true); }
+};
+
 /**
- * Memproses obrolan natural AI (Oracle Assistant)
+ * ============================================================================
+ * [14] ORACLE CHAT LOGIC
+ * ============================================================================
  */
 window.processOracleChat = async function(text, base64Img = null) {
     if (!window.currentUserUid) return;
-    const uiText = text || (base64Img ? "[Menganalisis Gambar Terlampir...]" : "");
     
+    const uiText = text || (base64Img ? "[Menganalisis Gambar Terlampir...]" : "");
     await window.FirebaseService.pushOracleChat({role: 'user', text: uiText, timestamp: new Date().toISOString()});
     window.setProcessingStatus(true); 
 
-    const summaryString = window.FinancialSummaryService.getSummaryString();
-    const relevantTx = window.MemoryService.getRelevantTransactions(text);
-    const nickname = window.settingsData?.profile?.nickname || "Bos";
+    try {
+        const summaryString = window.FinancialSummaryService.getSummaryString();
+        const relevantTx = window.MemoryService.getRelevantTransactions(text);
+        const nickname = window.settingsData?.profile?.nickname || "Bos";
 
-    const txString = relevantTx.map(t => {
-        let it = t.items && Array.isArray(t.items) ? `| Items:[${t.items.map(i=>`{itemId:"${i.itemId}", nama:"${i.nama_barang}", harga:${i.harga}, qty:${i.qty}}`).join(', ')}]` : ''; 
-        return `ID:${t.id} | Toko:${t.merchantName || t.storeName || 'Merchant'} | Tipe:${t.tipe} | Ket:${t.description || t.catatan_ai} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
-    }).join('\n');
+        const txString = relevantTx.map(t => {
+            let it = t.items && Array.isArray(t.items) ? `| Items:[${t.items.map(i=>`{itemId:"${i.itemId}", nama:"${i.nama_barang}", harga:${i.harga}, qty:${i.qty}}`).join(', ')}]` : ''; 
+            return `ID:${t.id} | Toko:${t.merchantName || t.storeName || 'Merchant'} | Tipe:${t.tipe} | Ket:${t.description || t.catatan_ai} | Metode:${t.metode_pembayaran} | Nom:${t.nominal} ${t.mata_uang} ${it}`;
+        }).join('\n');
 
-    const { personaStr, styleStr } = window.getOraclePromptConfigs();
+        const { personaStr, styleStr } = window.getOraclePromptConfigs();
+        const categoryListStr = window.CategoryManager.getCategoryStringList();
 
-    const systemPrompt = `Kamu adalah AuraFi Oracle V3. Kepribadian: ${personaStr}.
-Nama User Panggilan: ${nickname}.
-
-Konteks Keuangan Ringkas:
+        const systemPrompt = `Kamu adalah AuraFi Oracle V3. Kepribadian: ${personaStr}. Nama User: ${nickname}.
+Konteks Keuangan:
 ${summaryString}
-
 Data Transaksi Relevan Terkait:
 ${txString}
 
 ATURAN UPDATE & HAPUS UTAMA (SAFE UPDATE CONTRACT):
-AI DILARANG merusak struktur array. Jangan pernah menggunakan index. WAJIB menggunakan "target_item_id" dari data transaksi di atas.
-KATEGORI ITEM YANG DIDUKUNG: Makanan, Minuman, Bahan Pokok, Utilitas, Transportasi, Kesehatan, Hiburan, Belanja Online, Belanja Offline, Pendidikan, Pakaian, Elektronik, Lainnya.
-1. action="update_transaction": Merubah atribut dari sebuah ID.
+AI DILARANG merusak array. WAJIB menggunakan "target_item_id".
+KATEGORI ITEM: "${categoryListStr}".
+1. action="update_transaction": Merubah atribut global ID.
 2. action="add_item": Menambahkan item ke "target_id".
-3. action="edit_item": Edit 1 item spesifik menggunakan "target_item_id".
+3. action="edit_item": Edit 1 item spesifik WAJIB menyertakan "target_item_id".
 4. action="delete_item": Menghapus 1 item secara penuh berdasarkan "target_item_id".
 5. action="moveToTrash": Menghapus seluruh transaksi block "target_id".
 
-ATURAN BALASAN:
-${styleStr} Jangan menjawab terlalu ringkas jika itu membutuhkan penjelasan finansial yang detail.
-
-Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
+ATURAN BALASAN: ${styleStr}
+Kembalikan respon format RAW JSON STRICT (TANPA markdown):
 {
-  "reply": "Kalimat balasan Oracle V3 sesuai gaya dan kepribadian",
+  "reply": "Kalimat balasan Oracle V3 sesuai gaya",
   "action": "none|moveToTrash|update_transaction|add_item|edit_item|delete_item",
   "target_id": "string",
   "target_item_id": "string",
@@ -1202,21 +810,16 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
   "new_items": [{"nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string"}]
 }`;
 
-    try {
         let resJson;
         const messages = [{ role: "system", content: systemPrompt }];
 
         const history = window.MemoryService.getRelevantChats();
-        history.forEach(h => {
-            if(h.text === uiText) return; 
-            messages.push({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.text });
-        });
+        history.forEach(h => { if(h.text !== uiText) messages.push({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.text }); });
         messages.push({ role: "user", content: text || "Analisis data keuangan" });
 
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, base64Img);
-        resJson = window.parseCleanJSON(aiOutput);
+        resJson = window.AuraUtils.parseCleanJSON(aiOutput);
 
-        // Process Action Engine (AI Self-Correction / Safe Update Sync)
         if(resJson.action !== 'none' && resJson.target_id) { 
             try {
                 const targetTrx = window.allTransactions.find(t => t.id === resJson.target_id);
@@ -1233,324 +836,328 @@ Kembalikan respon format RAW JSON STRICT (TANPA backticks markdown):
                     }
                     await window.FirebaseService.updateTransaction(targetTrx.id, updates);
                 } else if(resJson.action === 'add_item' && targetTrx && resJson.new_items) {
-                    const currentItems = targetTrx.items || [];
-                    const sanitizedNew = window.sanitizeItems(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString());
-                    const finalItems = currentItems.concat(sanitizedNew);
+                    const finalItems = (targetTrx.items || []).concat(window.AuraUtils.sanitizeItemsArray(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString()));
                     const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    
                     const upd = { items: finalItems, nominal: sum };
-                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah. Total akhir: ${window.displayCurrency} ${sum}`;
-                    
+                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
                     await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                 } else if(resJson.action === 'edit_item' && targetTrx && resJson.target_item_id && resJson.new_items && resJson.new_items.length > 0) {
-                    const currentItems = targetTrx.items || [];
                     const newEditData = resJson.new_items[0];
-                    const finalItems = currentItems.map(it => {
+                    const finalItems = (targetTrx.items || []).map(it => {
                         if(it.itemId === resJson.target_item_id) {
-                            return {
-                                ...it, 
-                                nama_barang: newEditData.nama_barang || it.nama_barang,
-                                harga: newEditData.harga !== undefined ? newEditData.harga : it.harga,
-                                qty: newEditData.qty !== undefined ? newEditData.qty : it.qty,
-                                kategori_barang: newEditData.kategori_barang || it.kategori_barang
-                            };
-                        }
-                        return it;
+                            return { ...it, nama_barang: newEditData.nama_barang || it.nama_barang, harga: newEditData.harga !== undefined ? newEditData.harga : it.harga, qty: newEditData.qty !== undefined ? newEditData.qty : it.qty, kategori_barang: newEditData.kategori_barang || it.kategori_barang };
+                        } return it;
                     });
                     const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    
                     const upd = { items: finalItems, nominal: sum };
-                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item disesuaikan. Total akhir: ${window.displayCurrency} ${sum}`;
-                    
+                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item disesuaikan AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
                     await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                 } else if(resJson.action === 'delete_item' && targetTrx && resJson.target_item_id) {
-                    const currentItems = targetTrx.items || [];
-                    const finalItems = currentItems.filter(it => it.itemId !== resJson.target_item_id);
-                    if(finalItems.length === 0) {
-                        await window.FirebaseService.moveToTrash(targetTrx.id);
-                    } else {
+                    const finalItems = (targetTrx.items || []).filter(it => it.itemId !== resJson.target_item_id);
+                    if(finalItems.length === 0) { await window.FirebaseService.moveToTrash(targetTrx.id); } 
+                    else {
                         const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
                         const upd = { items: finalItems, nominal: sum };
-                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus. Total akhir: ${window.displayCurrency} ${sum}`;
+                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
                         await window.FirebaseService.updateTransaction(targetTrx.id, upd);
                     }
                 }
-            } catch(e) {
-                resJson.reply += " (Gagal memproses sinkronisasi AI ke database. Cek log!)";
-                window.AuraFiLogger.error("AI Safe Sync Error:", e);
-            }
+            } catch(e) { resJson.reply += " (Gagal memproses sinkronisasi instruksi data AI.)"; }
         }
 
         await window.FirebaseService.pushOracleChat({role: 'ai', text: resJson.reply, timestamp: new Date().toISOString()});
 
     } catch(e) { 
         await window.FirebaseService.pushOracleChat({role: 'ai', text: `Gangguan transmisi sistem: ${e.message}`, timestamp: new Date().toISOString()});
-    } finally { 
-        window.setProcessingStatus(false); 
-    }
+    } finally { window.setProcessingStatus(false); }
 };
 
-
 /**
- * ----------------------------------------------------------------------------
- * 14. CORE LOGIC ENGINE (reCalculateAll) - FIX 8 BUGS INCLUDED
- * ----------------------------------------------------------------------------
- * Logika ini menghitung semua data dari database dan me-render ke DOM
+ * ============================================================================
+ * [15] RENDER ENGINE (RECALCULATE ALL)
+ * ============================================================================
  */
 let expItemsState = {};
 window.toggleReceipt = function(id) { expItemsState[id] = !expItemsState[id]; window.reCalculateAll(); };
 
+window.changeViewMode = function(mode) {
+    window.AuraState.filters.periodMode = mode;
+    window.reCalculateAll();
+    ['period', 'month', 'all'].forEach(m => {
+        window.AuraUtils.safeDOM(`btn-mode-${m}`, el => {
+            if(m === mode) el.classList.add('text-accent', 'bg-white/10');
+            else el.classList.remove('text-accent', 'bg-white/10');
+        });
+    });
+};
+
+window.applyFilters = function() {
+    window.AuraState.filters.search = document.getElementById('filter-search')?.value || '';
+    window.AuraState.filters.category = document.getElementById('filter-category')?.value || 'ALL';
+    window.AuraState.filters.user = document.getElementById('filter-user')?.value || 'ALL';
+    window.reCalculateAll();
+};
+
 window.reCalculateAll = function() {
-    let totBal = 0, cashBal = 0, cashlessBal = 0;
-    let thisMthSpent = 0, thisMthCashless = 0, thisMthIncome = 0, impulsif = 0;
-    let catSpend = {}, dailySp = {}, merchantSpend = {};
+    Logger.info('RenderEngine', 'Executing High-Performance Re-Calculation...');
+    
+    const allTx = window.allTransactions || [];
     const today = new Date();
     
-    // Siapkan array chart 7 hari (termasuk tanggal nol)
-    for(let i=6; i>=0; i--) { 
-        let d = new Date(today);
-        d.setDate(d.getDate()-i); 
-        dailySp[d.toISOString().split('T')[0]] = 0; 
-    }
-    let groupedTrx = {};
-
-    const txList = window.allTransactions || [];
-    txList.forEach(trx => {
-        const val = window.convertVal(trx.nominal, trx.mata_uang);
+    let cumulativeBalance = 0;
+    let totalCashBal = 0, totalCashlessBal = 0;
+    
+    allTx.forEach(trx => {
+        const val = window.AuraUtils.convertCurrency(trx.nominal, trx.mata_uang);
         const isCash = trx.metode_pembayaran === 'tunai';
         
-        const dStrRaw = trx.createdAt || trx.tanggal;
-        const dStr = dStrRaw ? dStrRaw.split('T')[0] : '';
-        const d = new Date(dStrRaw || trx.tanggal); 
-        const isThisMonth = !isNaN(d) && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
-        
-        let timeFormatted = "";
-        if (trx.createdAt) {
-            const dObjFull = new Date(trx.createdAt);
-            if(!isNaN(dObjFull)) {
-                const yr = dObjFull.getFullYear();
-                const mo = String(dObjFull.getMonth()+1).padStart(2,'0');
-                const da = String(dObjFull.getDate()).padStart(2,'0');
-                const hr = String(dObjFull.getHours()).padStart(2,'0');
-                const mi = String(dObjFull.getMinutes()).padStart(2,'0');
-                timeFormatted = `${yr}/${mo}/${da} ${hr}:${mi}`;
-            }
-        } else {
-            timeFormatted = (trx.tanggal || "---") + " 00:00"; 
+        if (trx.tipe === 'pemasukan') {
+            cumulativeBalance += val;
+            if (isCash) totalCashBal += val; else totalCashlessBal += val;
+        } else if (trx.tipe === 'pengeluaran') {
+            cumulativeBalance -= val;
+            if (isCash) totalCashBal -= val; else totalCashlessBal -= val;
+        } else if (trx.tipe === 'tarik_tunai') {
+            const feeVal = window.AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
+            cumulativeBalance -= feeVal; 
+            totalCashBal += val;
+            totalCashlessBal -= (val + feeVal);
+        } else if (trx.tipe === 'setor_tunai') {
+            const feeVal = window.AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
+            cumulativeBalance -= feeVal;
+            totalCashBal -= val;
+            totalCashlessBal += val;
+            totalCashlessBal -= feeVal;
         }
+    });
+
+    const periodRange = window.AuraUtils.getPeriodRange();
+    const fSearch = window.AuraState.filters.search.toLowerCase();
+    const fCat = window.AuraState.filters.category;
+    const fUser = window.AuraState.filters.user;
+
+    let periodSpent = 0, periodIncome = 0;
+    let catSpend = {}, merchantSpend = {}, groupedTrx = {};
+    let trackBeras = 0, trackMinyak = 0, trackSabun = 0; 
+    
+    let dailySp = {};
+    for (let i = 6; i >= 0; i--) { 
+        let d = new Date(today); d.setDate(d.getDate() - i); 
+        dailySp[d.toISOString().split('T')[0]] = 0; 
+    }
+
+    let filteredTx = allTx.filter(trx => {
+        const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
+        if (trxTime < periodRange.start || trxTime > periodRange.end) return false;
+        
+        if (fSearch) {
+            const desc = (trx.description || trx.catatan_ai || "").toLowerCase();
+            const merch = (trx.merchantName || trx.storeName || "").toLowerCase();
+            const hasItem = trx.items && trx.items.some(i => i.nama_barang.toLowerCase().includes(fSearch));
+            if (!desc.includes(fSearch) && !merch.includes(fSearch) && !hasItem) return false;
+        }
+        if (fCat !== 'ALL') {
+            const mainCatMatch = trx.kategori === fCat;
+            const itemCatMatch = trx.items && trx.items.some(i => i.kategori_barang === fCat);
+            if (!mainCatMatch && !itemCatMatch) return false;
+        }
+        if (fUser !== 'ALL') {
+            if (trx.user_id && trx.user_id !== fUser) return false;
+        }
+        return true;
+    });
+
+    filteredTx.forEach(trx => {
+        const val = window.AuraUtils.convertCurrency(trx.nominal, trx.mata_uang);
+        const dStrRaw = trx.tanggal || trx.createdAt;
+        const dStr = dStrRaw.split('T')[0];
+        const timeFormatted = window.AuraUtils.formatDateToReadable(dStrRaw);
         
         if(!groupedTrx[dStr]) groupedTrx[dStr] = { total: 0, items: [] };
 
-        if(trx.tipe === 'pemasukan') {
-            totBal += val;
-            if(isCash) cashBal += val; else cashlessBal += val; 
+        if (trx.tipe === 'pemasukan') {
+            periodIncome += val;
             groupedTrx[dStr].total += val;
-            
-            if(isThisMonth) thisMthIncome += val;
-            
-        } else if (trx.tipe === 'tarik_tunai') {
-            let adminFee = Number(trx.admin_fee || 0);
-            const feeVal = window.convertVal(adminFee, trx.mata_uang);
-            const mainVal = window.convertVal(trx.nominal, trx.mata_uang);
-            
-            totBal -= feeVal; 
-            cashBal += mainVal;
-            cashlessBal -= (mainVal + feeVal);
-            groupedTrx[dStr].total -= feeVal;
-            
-            if(isThisMonth) {
-                thisMthSpent += feeVal;
-                thisMthCashless += feeVal;
-                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal;
-                let mName = trx.merchantName || trx.storeName || 'ATM';
-                merchantSpend[mName] = (merchantSpend[mName] || 0) + feeVal;
-            }
-        
-        } else if (trx.tipe === 'setor_tunai') {
-            let adminFee = Number(trx.admin_fee || 0);
-            const feeVal = window.convertVal(adminFee, trx.mata_uang);
-            const mainVal = window.convertVal(trx.nominal, trx.mata_uang);
-            
-            totBal -= feeVal; 
-            cashBal -= mainVal;
-            cashlessBal += mainVal;
-            cashlessBal -= feeVal;
-            groupedTrx[dStr].total -= feeVal;
-            
-            if(isThisMonth) {
-                thisMthSpent += feeVal;
-                thisMthCashless += feeVal;
-                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + feeVal;
-            }
-
-        } else {
-            // PENGELUARAN REGULER
-            totBal -= val;
-            if(isCash) cashBal -= val; else cashlessBal -= val; 
-            groupedTrx[dStr].total -= val;
-            if(trx.sifat === 'impulsif') impulsif++;
-            
-            if(isThisMonth) {
-                thisMthSpent += val;
-                if(!isCash) thisMthCashless += val;
+        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
+            let actualSpend = val;
+            if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
+                actualSpend = window.AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
+                groupedTrx[dStr].total -= actualSpend;
+                periodSpent += actualSpend;
+                catSpend['Utilitas'] = (catSpend['Utilitas']||0) + actualSpend;
+            } else {
+                groupedTrx[dStr].total -= actualSpend;
+                periodSpent += actualSpend;
+                merchantSpend[trx.merchantName || trx.storeName || trx.kategori || 'Merchant'] = (merchantSpend[trx.merchantName || trx.storeName || trx.kategori || 'Merchant'] || 0) + actualSpend;
                 
-                // Track Merchant Aggregation
-                let mName = trx.merchantName || trx.storeName || trx.kategori || 'Merchant';
-                merchantSpend[mName] = (merchantSpend[mName] || 0) + val;
-
-                // Track Category based on exact items
                 if (trx.items && Array.isArray(trx.items) && trx.items.length > 0) {
                     let calcItemSum = 0;
                     trx.items.forEach(it => {
-                        const itemCat = it.kategori_barang || 'Lainnya';
-                        const itemVal = window.convertVal(it.harga * (it.qty || 1), trx.mata_uang);
+                        const itemVal = window.AuraUtils.convertCurrency(it.harga * (it.qty || 1), trx.mata_uang);
                         calcItemSum += itemVal;
-                        catSpend[itemCat] = (catSpend[itemCat] || 0) + itemVal;
+                        catSpend[it.kategori_barang || 'Lainnya'] = (catSpend[it.kategori_barang || 'Lainnya'] || 0) + itemVal;
+                        
+                        const iName = it.nama_barang.toUpperCase();
+                        if (iName.includes('BERAS')) trackBeras += itemVal;
+                        if (iName.includes('MINYAK')) trackMinyak += itemVal;
+                        if (iName.includes('SABUN') || iName.includes('CUCI') || iName.includes('SUNLIGHT') || iName.includes('DETERJEN')) trackSabun += itemVal;
                     });
-                    if (val > calcItemSum) {
-                        const diff = val - calcItemSum;
-                        catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + diff;
+                    if (actualSpend > calcItemSum) {
+                        catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + (actualSpend - calcItemSum);
                     }
                 } else {
-                    const c = trx.kategori || 'Lainnya'; 
-                    catSpend[c] = (catSpend[c]||0) + val;
+                    catSpend[trx.kategori || 'Lainnya'] = (catSpend[trx.kategori || 'Lainnya']||0) + actualSpend;
                 }
             }
-            // Add to 7 days chart if inside period
-            if(dailySp[dStr] !== undefined) dailySp[dStr] += val;
+            if(dailySp[dStr] !== undefined) dailySp[dStr] += actualSpend;
         }
-        
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     });
 
-    /** RENDER ENGINE - DOM MANIPULATION **/
+    window.AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.AuraUtils.formatCurrency(cumulativeBalance));
+    window.AuraUtils.safeDOM('dash-cash', el => el.innerText = window.AuraUtils.formatCurrency(totalCashBal));
+    window.AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.AuraUtils.formatCurrency(totalCashlessBal));
+    window.AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.AuraUtils.formatCurrency(periodIncome));
+    window.AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.AuraUtils.formatCurrency(periodSpent));
 
-    // 1. Dashboard Utama
-    const dBalance = document.getElementById('dash-total-balance'); if(dBalance) dBalance.innerText = window.formatVal(totBal);
-    const dCash = document.getElementById('dash-cash'); if(dCash) dCash.innerText = window.formatVal(cashBal);
-    const dCashless = document.getElementById('dash-cashless'); if(dCashless) dCashless.innerText = window.formatVal(cashlessBal);
+    const limitVal = window.AuraUtils.convertCurrency(window.monthlyBudget, 'JPY');
+    const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
+    const remainingBudget = limitVal - periodSpent;
+
+    window.AuraUtils.safeDOM('living-core', el => el.className = `w-48 h-48 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`);
+    window.AuraUtils.safeDOM('burn-progress', el => {
+        el.style.width = `${Math.min(burnPct, 100)}%`; 
+        el.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)';
+    });
+    window.AuraUtils.safeDOM('burn-spent', el => el.innerText = `Terpakai: ${window.AuraUtils.formatCurrency(periodSpent)}`);
+    window.AuraUtils.safeDOM('burn-limit', el => el.innerText = `Limit: ${window.AuraUtils.formatCurrency(limitVal)}`);
+
+    const daysInPeriod = Math.max(1, Math.ceil((periodRange.end - periodRange.start) / (1000 * 60 * 60 * 24)));
+    const daysPassed = Math.max(1, Math.ceil((today.getTime() - periodRange.start) / (1000 * 60 * 60 * 24)));
+    const dailyAvg = periodSpent / daysPassed;
+    const proj = dailyAvg * daysInPeriod;
+    const daysLeft = daysInPeriod - daysPassed;
+    const periodPct = Math.min((daysPassed / daysInPeriod) * 100, 100);
     
-    // FIX BUG 1: Injeksi Income & Expense Bulan Ini ke Dashboard
-    const elInc = document.getElementById('dash-income-mth'); if(elInc) elInc.innerText = '+' + window.formatVal(thisMthIncome);
-    const elExp = document.getElementById('dash-expense-mth'); if(elExp) elExp.innerText = '-' + window.formatVal(thisMthSpent);
-
-    // 2. Logika Burn Rate Limit & Persentase
-    const core = document.getElementById('living-core'); 
-    const limitVal = window.convertVal(window.monthlyBudget, 'JPY'); // Simpan referensi ke JPY sebagai default internal limit
-    const burnPct = limitVal > 0 ? (thisMthSpent / limitVal) * 100 : 0;
-    const remainingBudget = limitVal - thisMthSpent;
-    
-    // Update persisten ke firebase
-    if (window.FirebaseService && window.currentUserUid) {
-        clearTimeout(window.budgetUpdateTimer);
-        window.budgetUpdateTimer = setTimeout(() => {
-            window.FirebaseService.updateSettings({
-                monthlyBudget: { limit: window.monthlyBudget, spent: thisMthSpent, remaining: remainingBudget, percentage: burnPct.toFixed(2) }
-            });
-        }, 8000); // 8 Detik Throttling agar tidak spam ke backend
-    }
-
-    if (core) { core.className = `w-48 h-48 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden`; }
-    const bProg = document.getElementById('burn-progress');
-    if (bProg) { bProg.style.width = `${Math.min(burnPct, 100)}%`; bProg.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; }
-    
-    const sp = document.getElementById('burn-spent'); if (sp) sp.innerText = `Terpakai: ${window.formatVal(thisMthSpent)}`;
-    const lm = document.getElementById('burn-limit'); if (lm) lm.innerText = `Limit: ${window.formatVal(limitVal)}`;
-
-    // 3. STATISTIK & PROYEKSI (FIX BUG 2)
-    const daysInMth = new Date(today.getFullYear(), today.getMonth()+1, 0).getDate();
-    const currentDay = today.getDate() > 0 ? today.getDate() : 1;
-    const dailyAvg = thisMthSpent / currentDay;
-    const proj = dailyAvg * daysInMth;
-    
-    const elDaily = document.getElementById('stats-daily-avg'); if(elDaily) elDaily.innerText = window.formatVal(dailyAvg);
-    const elProj = document.getElementById('stats-proj-mth'); if(elProj) elProj.innerText = window.formatVal(proj);
-
-    const insightBox = document.getElementById('burn-insight-box');
-    if (insightBox) {
+    window.AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.AuraUtils.formatCurrency(dailyAvg));
+    window.AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.AuraUtils.formatCurrency(proj));
+    window.AuraUtils.safeDOM('burn-insight-box', el => {
         if(proj > limitVal) { 
-            insightBox.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir bulan tagihan mencapai ${window.formatVal(proj)}!`;
-            insightBox.style.borderColor = 'var(--color-expense)'; 
+            el.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> BAHAYA:</span> Estimasi akhir siklus tagihan mencapai ${window.AuraUtils.formatCurrency(proj)}!`;
+            el.style.borderColor = 'var(--color-expense)'; 
         } else { 
-            insightBox.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi akhir ${window.formatVal(proj)}.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa Anggaran: ${window.formatVal(remainingBudget)}</span>`; 
-            insightBox.style.borderColor = 'var(--border-glass)';
+            el.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN:</span> Pengeluaran stabil. Prediksi akhir ${window.AuraUtils.formatCurrency(proj)}.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa Anggaran: ${window.AuraUtils.formatCurrency(remainingBudget)}</span>`; 
+            el.style.borderColor = 'var(--border-glass)';
         }
-    }
+    });
 
-    // 4. DISTRIBUSI KATEGORI (FIX BUG 4: Pie Chart Dinamis Conic Gradient)
-    const topCatDiv = document.getElementById('top-categories-list');
+    window.AuraUtils.safeDOM('period-progress-bar', el => el.style.width = `${periodPct}%`);
+    window.AuraUtils.safeDOM('period-progress-text', el => el.innerText = `PROGRES SIKLUS: ${periodPct.toFixed(0)}%`);
+    window.AuraUtils.safeDOM('period-days-left', el => el.innerText = `${daysLeft} HARI TERSISA`);
+
+    window.AuraUtils.safeDOM('track-beras', el => el.innerText = window.AuraUtils.formatCurrency(trackBeras));
+    window.AuraUtils.safeDOM('track-minyak', el => el.innerText = window.AuraUtils.formatCurrency(trackMinyak));
+    window.AuraUtils.safeDOM('track-sabun', el => el.innerText = window.AuraUtils.formatCurrency(trackSabun));
+
     const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
-    
-    const pieChart = document.getElementById('category-pie-chart');
-    const pieLabel = document.getElementById('pie-total-label');
-    
-    if (pieChart && pieLabel) {
-        pieLabel.innerText = window.formatVal(thisMthSpent);
-        if (thisMthSpent > 0 && catSorted.length > 0) {
-            let conicStops = [];
-            let currentAngle = 0;
+    window.AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.AuraUtils.formatCurrency(periodSpent));
+    window.AuraUtils.safeDOM('category-pie-chart', el => {
+        if (periodSpent > 0 && catSorted.length > 0) {
+            let conicStops = []; let currentAngle = 0;
             catSorted.forEach(([c, v]) => {
-                let pct = (v / thisMthSpent) * 100;
-                let hex = window.getCategoryHexColor(c);
+                let pct = (v / periodSpent) * 100;
+                let hex = window.CategoryManager.resolveStyle(c).hex;
                 conicStops.push(`${hex} ${currentAngle}% ${currentAngle + pct}%`);
                 currentAngle += pct;
             });
-            pieChart.style.background = `conic-gradient(${conicStops.join(', ')})`;
-        } else {
-            pieChart.style.background = `conic-gradient(var(--border-glass) 0% 100%)`;
-        }
-    }
+            el.style.background = `conic-gradient(${conicStops.join(', ')})`;
+        } else { el.style.background = `conic-gradient(var(--border-glass) 0% 100%)`; }
+    });
 
-    if (topCatDiv) {
-        topCatDiv.innerHTML = catSorted.length === 0 ?
-            '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data bulan ini.</p>' : catSorted.map(([c,v]) => {
-            const style = window.getCategoryStyle(c);
-            const pct = thisMthSpent > 0 ? ((v/thisMthSpent)*100).toFixed(0) : 0;
+    window.AuraUtils.safeDOM('top-categories-list', el => {
+        el.innerHTML = catSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada data di filter/siklus ini.</p>' : catSorted.map(([c,v]) => {
+            const style = window.CategoryManager.resolveStyle(c);
+            const pct = periodSpent > 0 ? ((v/periodSpent)*100).toFixed(0) : 0;
             return `<div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0">
                 <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full ${style.bgClass} flex items-center justify-center border border-[var(--border-glass)]">
-                        <i class="fa-solid ${style.icon} ${style.colorClass}"></i>
-                    </div>
-                    <div>
-                        <p class="font-bold text-[var(--text-main)]">${c}</p>
-                        <p class="text-[9px] text-[var(--text-muted)] font-bold">${pct}% dari total belanja</p>
-                    </div>
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center border border-[var(--border-glass)]" style="background-color: ${style.hex}15; border-color: ${style.hex}40;"><i class="fa-solid ${style.icon}" style="color: ${style.hex}"></i></div>
+                    <div><p class="font-bold text-[var(--text-main)]">${style.name}</p><p class="text-[9px] text-[var(--text-muted)] font-bold">${pct}% dari belanja</p></div>
                 </div>
-                <p class="font-mono text-xs font-bold text-[var(--text-main)]">${window.formatVal(v)}</p>
+                <p class="font-mono text-xs font-bold text-[var(--text-main)]">${window.AuraUtils.formatCurrency(v)}</p>
             </div>`;
         }).join('');
-    }
+    });
 
-    // 5. TOP MERCHANT AGREGASI (FIX BUG 3)
-    const topMerchDiv = document.getElementById('top-merchants-list');
-    if (topMerchDiv) {
-        const merchSorted = Object.entries(merchantSpend).sort((a,b)=>b[1]-a[1]).slice(0, 5); // Max 5 Top
-        topMerchDiv.innerHTML = merchSorted.length === 0 ?
-            '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada transaksi bulan ini.</p>' : merchSorted.map(([m, v]) => `
+    window.AuraUtils.safeDOM('top-merchants-list', el => {
+        const merchSorted = Object.entries(merchantSpend).sort((a,b)=>b[1]-a[1]).slice(0, 5); 
+        el.innerHTML = merchSorted.length === 0 ? '<p class="text-xs text-[var(--text-muted)] text-center">Belum ada transaksi.</p>' : merchSorted.map(([m, v]) => `
             <div class="flex justify-between items-center text-sm border-b border-[var(--border-glass)] pb-2.5 last:border-0 last:pb-0">
                 <span class="font-bold text-[var(--text-main)] truncate max-w-[65%]">${m}</span>
-                <span class="font-mono font-bold text-[var(--color-expense)]">${window.formatVal(v)}</span>
-            </div>
-        `).join('');
+                <span class="font-mono font-bold text-[var(--color-expense)]">${window.AuraUtils.formatCurrency(v)}</span>
+            </div>`).join('');
+    });
+
+    const canvas = document.getElementById('canvas-7days');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const W = canvas.width; const H = canvas.height;
+        ctx.clearRect(0, 0, W, H);
+        
+        const vals = Object.values(dailySp);
+        const keys = Object.keys(dailySp);
+        const maxVal = Math.max(...vals, 1);
+        const padding = 12;
+        const barWidth = (W - (padding * vals.length)) / vals.length;
+        
+        vals.forEach((val, i) => {
+            const barH = (val / maxVal) * (H - 25); 
+            const x = i * (barWidth + padding) + padding/2;
+            const y = H - barH;
+            
+            ctx.fillStyle = keys[i] === today.toISOString().split('T')[0] ? '#38bdf8' : '#38bdf840'; 
+            ctx.beginPath();
+            if (ctx.roundRect) ctx.roundRect(x, y, barWidth, barH, [6, 6, 0, 0]); 
+            else ctx.rect(x, y, barWidth, barH);
+            ctx.fill();
+            
+            if (val > 0) {
+                ctx.fillStyle = '#ffffff'; ctx.font = 'bold 9px monospace'; ctx.textAlign = 'center';
+                let tVal = val >= 1000 ? (val/1000).toFixed(1).replace('.0','') + 'k' : val;
+                ctx.fillText(tVal, x + barWidth/2, y - 6);
+            }
+            
+            ctx.fillStyle = '#94a3b8'; ctx.font = '8px monospace';
+            ctx.fillText(keys[i].substring(5).replace('-','/'), x + barWidth/2, H - 4);
+        });
+    } else {
+        window.AuraUtils.safeDOM('chart-7days', el => {
+            const maxDSp2 = Math.max(...Object.values(dailySp), 1);
+            el.innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${window.AuraUtils.formatCurrency(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp2)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
+        });
     }
 
-    // 6. RENDER LOG TRANSAKSI LIST
-    const trxListContainer = document.getElementById('trx-list-container');
-    if (trxListContainer) {
-        trxListContainer.innerHTML = Object.keys(groupedTrx).length === 0 ?
-            '<p class="text-center text-[var(--text-muted)] mt-10">Ekosistem bersih. Belum ada rekam jejak.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
+    window.AuraUtils.safeDOM('trx-list-container', el => {
+        el.innerHTML = Object.keys(groupedTrx).length === 0 ? '<p class="text-center text-[var(--text-muted)] mt-10">Data tidak ditemukan pada filter ini.</p>' : Object.keys(groupedTrx).sort((a,b)=>new Date(b)-new Date(a)).map(dateStr => {
             const g = groupedTrx[dateStr]; 
             const dObj = new Date(dateStr);
-            return `<div class="mb-4"><div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1"><div class="flex items-baseline gap-1.5"><span class="text-xl font-display font-black leading-none">${!isNaN(dObj)?dObj.getDate().toString().padStart(2,'0'):'--'}</span><span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj)?dObj.toLocaleDateString('id-ID', {weekday:'short'}):'---'}</span></div><span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-[var(--text-main)]'}">${g.total>=0?'+':''}${window.formatVal(g.total)}</span></div><div class="space-y-3">${g.items.map(t => {
+            return `<div class="mb-4">
+                <div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1">
+                    <div class="flex items-baseline gap-1.5">
+                        <span class="text-xl font-display font-black leading-none">${!isNaN(dObj)?dObj.getDate().toString().padStart(2,'0'):'--'}</span>
+                        <span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj)?dObj.toLocaleDateString('id-ID', {weekday:'short'}):'---'}</span>
+                    </div>
+                    <span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-[var(--text-main)]'}">${g.total>=0?'+':''}${window.AuraUtils.formatCurrency(g.total)}</span>
+                </div>
+                <div class="space-y-3">${g.items.map(t => {
                 const isExp = expItemsState[t.id]; 
                 const hasItems = t.items && Array.isArray(t.items) && t.items.length > 0;
-                const catStyle = window.getCategoryStyle(t.kategori || 'Lainnya');
-                const catIcon = catStyle.icon;
                 
+                const catStyle = window.CategoryManager.resolveStyle(t.kategori || 'Lainnya');
                 const isTarikTunai = t.tipe === 'tarik_tunai';
                 const isSetorTunai = t.tipe === 'setor_tunai';
-                const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : (isTarikTunai || isSetorTunai) ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catIcon} text-[var(--text-main)]"></i>`;
+                
+                const iconHtml = t.tipe === 'pemasukan' ? '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>' : (isTarikTunai || isSetorTunai) ? '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>' : `<i class="fa-solid ${catStyle.icon}" style="color: ${catStyle.hex}"></i>`;
                 const colorClass = t.tipe === 'pemasukan' ? 'text-[var(--color-income)]' : (isTarikTunai || isSetorTunai) ? 'text-[#38bdf8]' : 'text-[var(--text-main)]';
                 const signChar = t.tipe === 'pemasukan' ? '+' : (isTarikTunai || isSetorTunai) ? '⇄' : '-';
                 const titleDisp = t.merchantName || t.storeName || t.kategori;
@@ -1559,229 +1166,40 @@ window.reCalculateAll = function() {
                 return `<div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-10 text-[var(--text-muted)] hover:text-accent opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-trash"></i></button>
-                    <div class="flex justify-between items-start mb-2 pr-12"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-[var(--bg-base)] flex items-center justify-center border border-[var(--border-glass)] shrink-0">${iconHtml}</div><div class="overflow-hidden"><h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran} • ${t.displayTime}</p></div></div><p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatVal(window.convertVal(t.nominal, t.mata_uang))}</p></div>${descDisp ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${descDisp}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><div class="flex justify-between items-center"><button onclick="window.toggleReceipt('${t.id}')" class="flex-1 text-left text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition">+ ITEM</button></div><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it) => {
+                    <div class="flex justify-between items-start mb-2 pr-12"><div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background-color: ${catStyle.hex}15; border: 1px solid ${catStyle.hex}30;">${iconHtml}</div><div class="overflow-hidden"><h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4><p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${t.metode_pembayaran==='tunai'?'<i class="fa-solid fa-money-bill"></i>':'<i class="fa-regular fa-credit-card"></i>'} ${t.metode_pembayaran} • ${t.displayTime}</p></div></div><p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.AuraUtils.formatCurrency(window.AuraUtils.convertCurrency(t.nominal, t.mata_uang))}</p></div>${descDisp ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${descDisp}"</div>` : ''}${hasItems ? `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><div class="flex justify-between items-center"><button onclick="window.toggleReceipt('${t.id}')" class="flex-1 text-left text-[9px] text-[var(--text-muted)] font-black uppercase tracking-wider py-1.5"><span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang (Klik Detil)</span> <i class="fa-solid fa-chevron-${isExp?'up':'down'}"></i></button><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition">+ ITEM</button></div><div class="${isExp?'block':'hidden'} mt-2 space-y-1.5">${t.items.map((it) => {
                     const safeItemId = it.itemId || 'no_id_fallback';
-                    return `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium">${it.nama_barang}</span> <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span> ${it.tax_rate ? `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : ''}</div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${window.formatVal(window.convertVal(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', '${safeItemId}')" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', '${safeItemId}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`;
+                    const itCatHex = window.CategoryManager.resolveStyle(it.kategori_barang).hex;
+                    return `<div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it"><div class="flex-1 truncate"><span class="text-[var(--text-main)] font-medium mr-1">${it.nama_barang}</span><span class="text-[8px] px-1.5 py-0.5 rounded font-bold mr-1" style="background-color: ${itCatHex}20; color: ${itCatHex};">${it.kategori_barang || 'Lainnya'}</span><span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span> ${it.tax_rate ? `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : ''}</div><span class="font-mono text-[var(--text-muted)] text-[11px] mr-2">${window.AuraUtils.formatCurrency(window.AuraUtils.convertCurrency(it.harga*(it.qty||1), t.mata_uang))}</span><div class="flex gap-2 opacity-100 md:opacity-0 group-hover/it:opacity-100"><button onclick="window.openEditItem('${t.id}', '${safeItemId}')" class="text-accent p-1 text-xs"><i class="fa-solid fa-pen"></i></button><button onclick="window.confirmDelItem('${t.id}', '${safeItemId}')" class="text-[var(--color-expense)] p-1 text-xs"><i class="fa-solid fa-xmark"></i></button></div></div>`;
                 }).join('')}</div></div>` : `<div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]"><button onclick="window.openAddItemModal('${t.id}')" class="bg-white/5 border border-[var(--border-glass)] w-full py-1.5 rounded-md text-[9px] font-bold text-[var(--text-muted)] hover:text-white transition">+ TAMBAH ITEM</button></div>`}</div>`
             }).join('')}</div></div>`
         }).join('');
-    }
+    });
 
-    // Chart 7 Hari
-    const c7d = document.getElementById('chart-7days');
-    if (c7d) {
-        const maxDSp2 = Math.max(...Object.values(dailySp), 1);
-        c7d.innerHTML = Object.entries(dailySp).map(([dStr, v]) => `<div class="flex flex-col items-center flex-1 group relative"><div class="absolute -top-7 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 z-10 whitespace-nowrap transition-all duration-200 pointer-events-none">${window.formatVal(v)}</div><div class="w-full rounded-t-md transition-all duration-1000 ${dStr === today.toISOString().split('T')[0]?'bg-accent':'bg-accent/30'}" style="height: ${v===0?4:(v/maxDSp2)*100}%"></div><span class="text-[8px] text-[var(--text-muted)] mt-1.5 font-mono">${dStr.split('-')[2]}/${dStr.split('-')[1]}</span></div>`).join('');
-    }
-
-    // 7. RENDER GOALS
-    const gCon = document.getElementById('goals-list-container');
-    if (gCon) {
+    window.AuraUtils.safeDOM('goals-list-container', el => {
         const glList = window.allGoals || [];
-        gCon.innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
-            const targetVal = window.convertVal(g.targetAmount, g.currency);
+        el.innerHTML = glList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Belum ada misi. Tambah misi baru di atas!</p>' : glList.map(g => {
+            const targetVal = window.AuraUtils.convertCurrency(g.targetAmount, g.currency);
             const diffDays = Math.ceil((new Date(g.targetDate) - new Date()) / (1000 * 3600 * 24));
             const daily = diffDays > 0 ? targetVal/diffDays : 0;
-            return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${window.formatVal(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?window.formatVal(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
+            return `<div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent"><button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1"><i class="fa-solid fa-trash text-xs"></i></button><h4 class="font-bold text-sm mb-1">${g.name}</h4><p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${window.AuraUtils.formatCurrency(targetVal)} sebelum ${g.targetDate}</p><div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]"><div><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Tabungan Harian</p><p class="font-mono text-accent font-bold text-xs">${diffDays>0?window.AuraUtils.formatCurrency(daily):'TARGET LEWAT'}</p></div><div class="text-right"><p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p><p class="font-bold text-xs">${diffDays>0?diffDays+' Hari':'-'}</p></div></div></div>`;
         }).join('');
-    }
+    });
 
-    // 8. RENDER TRASH
-    const trCon = document.getElementById('trash-list-container');
-    if (trCon) {
+    window.AuraUtils.safeDOM('trash-list-container', el => {
         const trashList = window.trashTransactions || [];
-        trCon.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.merchantName || t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${window.formatVal(window.convertVal(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Restore"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Hapus Permanen"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
-    }
+        el.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.merchantName || t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${window.AuraUtils.formatCurrency(window.AuraUtils.convertCurrency(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Restore"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Hapus Permanen"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
+    });
 
-    // Call Rendering Recurring Khusus Halaman Budget
+    // Invoke missing recurring renders
     if(window.renderRecurringUIForBudget) window.renderRecurringUIForBudget();
 };
 
+
 /**
- * ----------------------------------------------------------------------------
- * 15. INTERFACE & EVENT HANDLERS (GUI)
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [16] UI FUNCTIONS (Toast, Modals, Views)
+ * ============================================================================
  */
-window.onload = () => {
-    window.fetchExchangeRate();
-    window.applyTheme();
-    
-    const tx = document.getElementById('main-input-field');
-    if (tx) {
-        tx.addEventListener('input', function() {
-            this.style.height = '40px'; 
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-    }
-};
-
-window.fetchExchangeRate = async function() {
-    try {
-        const res = await fetch('https://open.er-api.com/v6/latest/JPY');
-        const data = await res.json();
-        if(data?.rates?.IDR) { 
-            window.exchangeRateIDR = data.rates.IDR;
-            window.isRatesLoaded = true; 
-            const displayObj = document.getElementById('live-rate-display');
-            if(displayObj) displayObj.innerText = `1 JPY = Rp ${window.exchangeRateIDR.toLocaleString('id-ID')}`;
-        }
-    } catch(e) { 
-        const displayObj = document.getElementById('live-rate-display');
-        if(displayObj) displayObj.innerText = "1 JPY = Rp 105 (OFFLINE)";
-    }
-};
-
-window.toggleTheme = function() {
-    const themes = ['midnight', 'sakura', 'neon'];
-    window.currentTheme = themes[(themes.indexOf(window.currentTheme) + 1) % themes.length];
-    window.applyTheme(); 
-    if(window.FirebaseService?.updateSettings) window.FirebaseService.updateSettings({ theme: window.currentTheme });
-};
-
-window.applyTheme = function() { document.documentElement.setAttribute('data-theme', window.currentTheme); };
-
-window.promptSettingsAccess = function() { window.showModal('modal-settings'); };
-
-window.closeSettingsModal = function() {
-    const m = document.getElementById('modal-settings');
-    if(m) { m.classList.remove('opacity-100'); setTimeout(() => m.classList.add('hidden'), 300); }
-};
-
-window.setCurrency = function(curr) {
-    window.displayCurrency = curr;
-    
-    const btnJpy = document.getElementById('btn-curr-jpy');
-    const btnIdr = document.getElementById('btn-curr-idr');
-    
-    if(btnJpy) btnJpy.className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${curr==='JPY'?'bg-accent text-[var(--bg-base)]':'text-[var(--text-muted)]'}`;
-    if(btnIdr) btnIdr.className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${curr==='IDR'?'bg-accent text-[var(--bg-base)]':'text-[var(--text-muted)]'}`;
-    
-    window.reCalculateAll();
-};
-
-window.switchView = function(viewId) {
-    window.activeView = viewId;
-    ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash'].forEach(id => {
-        const el = document.getElementById(`view-${id}`); 
-        if(el) {
-            if (id === viewId) { 
-                el.classList.remove('hidden'); 
-                if (id === 'oracle') el.style.display = 'flex'; 
-            } else { 
-                el.classList.add('hidden'); 
-                el.style.display = ''; 
-            }
-        }
-    });
-    
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        if(btn.dataset.target === viewId) { 
-            btn.classList.add('text-[var(--accent-primary)]'); 
-            btn.classList.remove('text-[var(--text-muted)]'); 
-        } else { 
-            btn.classList.remove('text-[var(--accent-primary)]'); 
-            btn.classList.add('text-[var(--text-muted)]'); 
-        }
-    });
-
-    const inputField = document.getElementById('main-input-field');
-    if(inputField) {
-        if(viewId === 'oracle') { 
-            inputField.placeholder = "Chat Oracle / Edit Data...";
-            setTimeout(() => { const anc = document.getElementById('chat-anchor'); if(anc) anc.scrollIntoView({behavior:'smooth'}); }, 100);
-        } else {
-            inputField.placeholder = "Ketik/Suara/Foto Transaksi...";
-        }
-    }
-    window.reCalculateAll();
-};
-
-window.setProcessingStatus = function(isProc) {
-    window.isProcessing = isProc;
-    const btn = document.getElementById('btn-send-main'); 
-    const icon = document.getElementById('icon-send');
-    if (btn && icon) {
-        if(isProc) { btn.disabled = true; icon.className = "fa-solid fa-circle-notch animate-spin"; } 
-        else { btn.disabled = false; icon.className = "fa-solid fa-paper-plane"; }
-    }
-};
-
-window.handleImage = function(e) { 
-    const f = e.target.files[0];
-    if(!f) return; 
-    
-    const previewEl = document.getElementById('img-preview');
-    const previewBox = document.getElementById('image-preview-box');
-    
-    if(previewEl) previewEl.src = URL.createObjectURL(f); 
-    if(previewBox) previewBox.classList.remove('hidden'); 
-    
-    const r = new FileReader(); 
-    r.onload = () => { window.base64Upload = r.result.split(',')[1]; };
-    r.readAsDataURL(f); 
-};
-
-window.removeImage = function() { 
-    const box = document.getElementById('image-preview-box'); if (box) box.classList.add('hidden'); 
-    window.base64Upload = ""; const fu = document.getElementById('file-upload'); if (fu) fu.value = "";
-};
-
-window.startVoice = function() { 
-    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!Speech) return alert("Browser tidak mendukung Web Speech API."); 
-    
-    const rec = new Speech(); 
-    rec.lang = 'id-ID'; 
-    rec.start(); 
-    
-    const btnVoice = document.getElementById('btn-voice');
-    if(btnVoice) btnVoice.classList.add('text-rose-500', 'animate-pulse');
-    
-    rec.onresult = e => { 
-        const field = document.getElementById('main-input-field');
-        if(field) field.value += " " + e.results[0][0].transcript; 
-    }; 
-    
-    rec.onend = () => {
-        if(btnVoice) btnVoice.classList.remove('text-rose-500', 'animate-pulse'); 
-    }
-};
-
-window.handleSend = async function() {
-    const txtField = document.getElementById('main-input-field');
-    if (!txtField) return;
-    
-    const txt = txtField.value.trim();
-    const imgData = window.base64Upload; 
-
-    if(!txt && !imgData) return;
-    
-    txtField.value = ""; 
-    txtField.style.height = '40px'; 
-    window.removeImage();
-    
-    if(window.activeView === 'oracle') { 
-        await window.processOracleChat(txt, imgData); 
-    } else { 
-        await window.processTransactionParsing(txt, imgData); 
-    }
-};
-
-window.renderOracleChats = function() {
-    const chatBox = document.getElementById('oracle-chat-box');
-    if(!chatBox) return;
-    
-    chatBox.innerHTML = window.oracleChats.map(c => {
-        let htmlFormat = c.text.replace(/\n/g, '<br/>');
-        return `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}"><div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel markdown-content'} leading-relaxed shadow-sm">${htmlFormat}</div></div>`;
-    }).join('');
-    
-    if(window.isProcessing && window.activeView === 'oracle') {
-        chatBox.innerHTML += `<div class="flex justify-start"><div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center"><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div><div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200"></div></div></div>`;
-    }
-    setTimeout(() => { const anc = document.getElementById('chat-anchor'); if(anc) anc.scrollIntoView({behavior:'smooth'}); }, 50);
-};
-
 window.showToast = function(msg, isError = false) {
     const container = document.getElementById('toast-container'); if(!container) return;
     const toast = document.createElement('div');
@@ -1797,259 +1215,489 @@ window.showModal = function(id) {
     if(m) { m.classList.remove('hidden'); setTimeout(()=>m.classList.add('opacity-100'), 10); }
 };
 
-/**
- * ----------------------------------------------------------------------------
- * 16. MODAL TRANSAKSI & CRUD EVENT HANDLERS
- * ----------------------------------------------------------------------------
- */
-
-window.openManualTrxModal = function() {
-    const amtField = document.getElementById('manual-trx-amount');
-    const strField = document.getElementById('manual-trx-store');
-    const catField = document.getElementById('manual-trx-category');
-    
-    if(amtField) amtField.value = "";
-    if(strField) strField.value = "";
-    if(catField) catField.value = "";
-    
-    window.toggleManualFormFields();
-    window.showModal('modal-manual-trx');
-};
-
-window.closeManualTrxModal = function() {
-    const m = document.getElementById('modal-manual-trx'); 
+window.closeModal = function(id) {
+    const m = document.getElementById(id); 
     if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
 };
 
-window.toggleManualFormFields = function() {
-    const tipeEl = document.getElementById('manual-trx-type');
-    const storeLabel = document.getElementById('lbl-manual-store');
-    const storeInput = document.getElementById('manual-trx-store');
-    
-    if(!tipeEl || !storeLabel || !storeInput) return;
-    const tipe = tipeEl.value;
-    
-    if(tipe === 'pemasukan') {
-        storeLabel.innerText = "Sumber Pemasukan";
-        storeInput.placeholder = "Contoh: Gaji / Top-Up / Refund";
-    } else {
-        storeLabel.innerText = "Nama Toko / Merchant";
-        storeInput.placeholder = "Contoh: 7-Eleven / Amazon";
+window.setProcessingStatus = function(isProc) {
+    window.AuraState.system.isProcessing = isProc;
+    window.isProcessing = isProc;
+    const btn = document.getElementById('btn-send-main'); const icon = document.getElementById('icon-send');
+    if (btn && icon) {
+        if(isProc) { btn.disabled = true; icon.className = "fa-solid fa-circle-notch animate-spin"; } 
+        else { btn.disabled = false; icon.className = "fa-solid fa-paper-plane"; }
     }
 };
 
-window.saveManualTransaction = async function() {
-    const tipe = document.getElementById('manual-trx-type').value;
-    const curr = document.getElementById('manual-trx-curr').value;
-    const method = document.getElementById('manual-trx-method').value;
-    const amount = parseFloat(document.getElementById('manual-trx-amount').value) || 0;
-    const storeName = document.getElementById('manual-trx-store').value.trim() || (tipe === 'pemasukan' ? "Sumber Dana" : "Toko/Merchant");
+window.switchView = function(viewId) {
+    window.AuraState.system.activeView = viewId;
+    window.activeView = viewId;
+    ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash'].forEach(id => {
+        const el = document.getElementById(`view-${id}`); 
+        if(el) {
+            if (id === viewId) { el.classList.remove('hidden'); if (id === 'oracle') el.style.display = 'flex'; } 
+            else { el.classList.add('hidden'); el.style.display = ''; }
+        }
+    });
     
-    const catEl = document.getElementById('manual-trx-category');
-    const category = (catEl ? catEl.value.trim() : "") || (tipe === 'pemasukan' ? "Pemasukan Manual" : "Lainnya");
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        if(btn.dataset.target === viewId) { btn.classList.add('text-[var(--accent-primary)]'); btn.classList.remove('text-[var(--text-muted)]'); } 
+        else { btn.classList.remove('text-[var(--accent-primary)]'); btn.classList.add('text-[var(--text-muted)]'); }
+    });
 
-    if (amount <= 0) return window.showToast("Nominal harus lebih dari 0!", true);
+    window.reCalculateAll();
+};
 
-    const timestamp = new Date().toISOString();
-    
-    const payload = {
-        merchantName: storeName,
-        storeName: storeName,
-        tanggal: timestamp.split('T')[0],
-        nominal: amount,
-        mata_uang: curr,
-        metode_pembayaran: method,
-        kategori: category,
-        tipe: tipe,
-        description: "Input Manual User",
-        catatan_ai: "Input Manual User",
-        isCustomDescription: true,
-        is_deleted: false,
-        createdAt: timestamp,
-        items: []
-    };
+
+/**
+ * ============================================================================
+ * [17] RENDER FUNCTIONS (UI RENDERERS FOR CHAT, KEYS, AND RECURRING BILLS)
+ * [ADDED]: Semua komponen hilang sudah dipulihkan secara penuh di sini!
+ * ============================================================================
+ */
+
+window.renderOracleChats = function() {
+    window.AuraUtils.safeDOM('oracle-chat-box', el => {
+        // Fallback Pesan Kosong
+        if (!window.oracleChats || window.oracleChats.length === 0) {
+            el.innerHTML = `<div class="text-center text-[var(--text-muted)] p-8">
+                <i class="fa-solid fa-comment-dots text-3xl mb-3 block opacity-30"></i>
+                Belum ada percakapan. Mulai chat dengan Oracle!
+            </div>`;
+            return;
+        }
+        
+        // Loop Map untuk Semua Chat
+        el.innerHTML = window.oracleChats.map(c => {
+            let htmlFormat = c.text.replace(/\n/g, '<br/>');
+            return `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}">
+                <div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel markdown-content'} leading-relaxed shadow-sm">
+                    ${htmlFormat}
+                </div>
+            </div>`;
+        }).join('');
+        
+        // Indikator Processing / Animasi Typing
+        if (window.isProcessing && window.activeView === 'oracle') {
+            el.innerHTML += `<div class="flex justify-start">
+                <div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center">
+                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div>
+                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div>
+                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200"></div>
+                </div>
+            </div>`;
+        }
+        
+        // Auto Scroll ke Bawah
+        setTimeout(() => { 
+            window.AuraUtils.safeDOM('chat-anchor', anc => anc.scrollIntoView({behavior:'smooth'})); 
+        }, 50);
+    });
+};
+
+window.renderGroqKeysUI = function() {
+    window.AuraUtils.safeDOM('groq-keys-container', el => {
+        const keys = window.rawGroqKeysData || [];
+        
+        if(keys.length === 0) {
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada API Key Groq yang tersimpan.</p>';
+            return;
+        }
+
+        el.innerHTML = keys.map((k, index) => {
+            const dec = window.EncryptionService.decryptApiKey(k.encryptedKey, window.GroqService.secret);
+            const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Korup)`;
+            const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
+            
+            return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
+                <div class="flex flex-col">
+                    <span class="font-mono text-xs ${statusColor}">${display}</span>
+                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Groq Key #${index + 1}</span>
+                </div>
+                <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+            </div>`;
+        }).join('');
+    });
+};
+
+window.renderRecurringUI = function() {
+    window.AuraUtils.safeDOM('recurring-list', el => {
+        const rPayments = window.settingsData?.recurringPayments || {};
+        const entries = Object.entries(rPayments);
+
+        if(entries.length === 0) {
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Belum ada tagihan rutin bulanan.</p>';
+            return;
+        }
+
+        el.innerHTML = entries.map(([id, rp]) => {
+            return `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
+                <div class="flex flex-col">
+                    <span class="font-bold text-xs text-sky-400">${rp.name}</span>
+                    <span class="text-[9px] text-[var(--text-muted)] font-mono">Tgl ${rp.date} | ${window.AuraUtils.formatCurrency(rp.amount)} (${rp.method})</span>
+                </div>
+                <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
+                    <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+            </div>`;
+        }).join('');
+    });
+};
+
+window.renderRecurringUIForBudget = function() {
+    window.AuraUtils.safeDOM('budget-bills-container', el => {
+        const rPayments = window.settingsData?.recurringPayments || {};
+        const entries = Object.entries(rPayments);
+        
+        if(entries.length === 0) {
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Belum ada tagihan rutin terkonfigurasi. Tambahkan di Settings.</p>';
+            return;
+        }
+
+        el.innerHTML = entries.map(([id, rp]) => {
+            return `<div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
+                <div>
+                    <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
+                        ${rp.name} 
+                        <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100">
+                            <i class="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                    </h4>
+                    <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">Tgl ${rp.date} setiap bulan • ${rp.method}</p>
+                </div>
+                <p class="font-bold text-sm font-mono text-[var(--text-main)]">${window.AuraUtils.formatCurrency(rp.amount)}</p>
+            </div>`;
+        }).join('');
+    });
+};
+
+
+/**
+ * ============================================================================
+ * [18] EXPORT CSV (DENGAN FILTER)
+ * ============================================================================
+ */
+window.downloadCSV = function() {
+    let csv = "Tanggal,Waktu_Dibuat,Merchant,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Deskripsi\n";
+    const periodRange = window.AuraUtils.getPeriodRange();
+    const fSearch = window.AuraState.filters.search.toLowerCase();
+    const fCat = window.AuraState.filters.category;
+    const fUser = window.AuraState.filters.user;
+
+    const dataToExport = window.allTransactions.filter(trx => {
+        const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
+        if (trxTime < periodRange.start || trxTime > periodRange.end) return false;
+        
+        if (fSearch) {
+            const desc = (trx.description || trx.catatan_ai || "").toLowerCase();
+            const merch = (trx.merchantName || trx.storeName || "").toLowerCase();
+            const hasItem = trx.items && trx.items.some(i => i.nama_barang.toLowerCase().includes(fSearch));
+            if (!desc.includes(fSearch) && !merch.includes(fSearch) && !hasItem) return false;
+        }
+        if (fCat !== 'ALL') {
+            const mainCatMatch = trx.kategori === fCat;
+            const itemCatMatch = trx.items && trx.items.some(i => i.kategori_barang === fCat);
+            if (!mainCatMatch && !itemCatMatch) return false;
+        }
+        if (fUser !== 'ALL' && trx.user_id && trx.user_id !== fUser) return false;
+        return true;
+    });
+
+    dataToExport.forEach(r => {
+        const d = r.tanggal?.split('T')[0] || ''; 
+        const created = r.createdAt || ''; 
+        const items = r.items && Array.isArray(r.items) ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga}) [${i.kategori_barang}]`).join('|') : '-'; 
+        const note = (r.description || r.catatan_ai || '').replace(/,/g, ''); 
+        const store = (r.merchantName || r.storeName || r.kategori || 'Toko').replace(/,/g, '');
+        csv += `${d},${created},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
+    });
+
+    const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csv); 
+    link.download = `AuraFi_Ledger_Report_${new Date().toISOString().split('T')[0]}.csv`; 
+    document.body.appendChild(link); link.click(); link.remove();
+    window.showToast(`Berhasil mengekspor ${dataToExport.length} transaksi!`);
+};
+
+/**
+ * ============================================================================
+ * [19] RECURRING PAYMENTS (TAGIHAN OTOMATIS)
+ * ============================================================================
+ */
+window.checkAndExecuteRecurringPayments = async function() {
+    const rPayments = window.settingsData?.recurringPayments || {};
+    const txList = window.allTransactions || [];
+    const today = new Date();
+    const curDate = today.getDate();
+    const curMonthYearStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2, '0')}`;
+
+    for (const [id, rp] of Object.entries(rPayments)) {
+        if (curDate >= rp.date) {
+            const alreadyPaid = txList.some(t => {
+                const sameRecurringId = t.recurring_id === id;
+                const sameMonthYear = t.tanggal && t.tanggal.startsWith(curMonthYearStr);
+                return sameRecurringId && sameMonthYear;
+            });
+
+            if (!alreadyPaid) {
+                const timestamp = today.toISOString();
+                const tagihanData = {
+                    tanggal: today.toISOString().split('T')[0],
+                    createdAt: timestamp,
+                    nominal: rp.amount,
+                    mata_uang: window.AuraState.system.displayCurrency,
+                    metode_pembayaran: rp.method,
+                    kategori: 'Utilitas',
+                    tipe: 'pengeluaran',
+                    sifat: 'kebutuhan',
+                    merchantName: rp.name,
+                    description: `Pembayaran otomatis: ${rp.name}`,
+                    isCustomDescription: true,
+                    recurring_id: id,
+                    is_deleted: false,
+                    items: [{
+                        itemId: window.AuraUtils.generateId('itm'),
+                        nama_barang: rp.name,
+                        harga: rp.amount,
+                        qty: 1,
+                        kategori_barang: 'Utilitas',
+                        tax_rate: 0,
+                        paymentMethod: rp.method,
+                        timestamp: timestamp
+                    }]
+                };
+                try {
+                    await window.FirebaseService.saveTransaction(tagihanData);
+                    window.showToast(`Tagihan otomatis "${rp.name}" berhasil dibayarkan sistem!`);
+                } catch(e) {}
+            }
+        }
+    }
+};
+
+window.addRecurringPayment = async function() {
+    const nameInput = document.getElementById('new-rec-name');
+    const amtInput = document.getElementById('new-rec-amt');
+    const dateInput = document.getElementById('new-rec-date');
+    const methodInput = document.getElementById('new-rec-method');
+
+    if (!nameInput || !amtInput || !dateInput || !methodInput) return window.showToast("Form tagihan tidak lengkap!", true);
+
+    const name = nameInput.value.trim();
+    const amount = parseFloat(amtInput.value);
+    const date = parseInt(dateInput.value);
+    const method = methodInput.value;
+
+    if(!name || isNaN(amount) || isNaN(date) || date < 1 || date > 31) return window.showToast("Lengkapi form tagihan dengan benar (Tgl 1-31)!", true);
+
+    const recId = 'rec_' + Date.now();
+    const updates = {};
+    updates[`recurringPayments/${recId}`] = { name, amount, date, method, active: true };
 
     try {
-        await window.FirebaseService.saveTransaction(payload);
-        window.closeManualTrxModal();
-        window.showToast("Transaksi Manual Berhasil Tersimpan!");
+        await window.FirebaseService.updateSettings(updates);
+        nameInput.value = ""; amtInput.value = ""; dateInput.value = "";
+        window.showToast("Tagihan bulanan berhasil dikonfigurasi!");
+    } catch(e) { window.showToast("Gagal menambahkan tagihan.", true); }
+};
+
+window.removeRecurringPayment = async function(recId) {
+    if(confirm("Hapus tagihan bulanan ini?")) {
+        const dbRef = ref(window.AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings/recurringPayments/${recId}`);
+        await remove(dbRef);
+        window.showToast("Tagihan bulanan berhasil dihapus!");
+    }
+};
+
+/**
+ * ============================================================================
+ * [20] REALTIME LISTENERS (FIREBASE PUB/SUB)
+ * ============================================================================
+ */
+function loadRealtimeDatabaseData() {
+    if (!window.currentUserUid) return;
+
+    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions`), (snapshot) => {
+        const all = []; const data = snapshot.val();
+        if (data) { Object.entries(data).forEach(([key, val]) => all.push({ id: key, ...val })); }
+        window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
+        window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+        window.checkAndExecuteRecurringPayments();
+        if(window.reCalculateAll) window.reCalculateAll();
+    });
+
+    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals`), (snapshot) => {
+        const goals = []; const data = snapshot.val();
+        if (data) { Object.entries(data).forEach(([key, val]) => goals.push({ id: key, ...val })); }
+        window.allGoals = goals;
+        if(window.reCalculateAll) window.reCalculateAll();
+    });
+
+    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings`), (snapshot) => {
+        const d = snapshot.val(); window.settingsData = d || {};
+        if (d) {
+            if(d.monthlyBudget && d.monthlyBudget.limit) window.monthlyBudget = d.monthlyBudget.limit;
+            if(d.theme && d.theme !== window.currentTheme) { window.currentTheme = d.theme; if(window.applyTheme) window.applyTheme(); }
+            if(d.profile) {
+                window.AuraUtils.safeDOM('user-fullname', el => el.value = d.profile.fullName || ''); 
+                window.AuraUtils.safeDOM('user-nickname', el => el.value = d.profile.nickname || '');
+            }
+            if (d.aiPreferences) {
+                window.AuraUtils.safeDOM('setting-ai-chat', el => el.value = d.aiPreferences.modelChat);
+                window.AuraUtils.safeDOM('setting-ai-vision', el => el.value = d.aiPreferences.modelVision);
+                window.AuraUtils.safeDOM('setting-ai-persona', el => el.value = d.aiPreferences.persona);
+                window.AuraUtils.safeDOM('setting-ai-style', el => el.value = d.aiPreferences.style);
+            }
+        }
+        window.CategoryManager.renderDropdowns();
+        if(window.renderRecurringUI) window.renderRecurringUI();
+        if(window.renderRecurringUIForBudget) window.renderRecurringUIForBudget();
+        if(window.reCalculateAll) window.reCalculateAll();
+    });
+
+    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys`), (snapshot) => {
+        window.rawGroqKeysData = []; const data = snapshot.val();
+        if (data) { Object.entries(data).forEach(([key, val]) => window.rawGroqKeysData.push({ id: key, ...val })); }
+        const activeCount = window.GroqService.init(window.rawGroqKeysData);
+        window.AuraUtils.safeDOM('groq-status-badge', el => {
+            if(activeCount > 0) { el.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded uppercase font-mono"; el.innerText = `ACTIVE (${activeCount})`; } 
+            else { el.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase font-mono"; el.innerText = "OFFLINE"; }
+        });
+        if(window.renderGroqKeysUI) window.renderGroqKeysUI();
+    });
+
+    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/oracleChats`), (snapshot) => {
+        const chats = []; const data = snapshot.val();
+        if (data) { Object.entries(data).forEach(([key, val]) => chats.push({ id: key, ...val })); chats.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)); }
+        window.oracleChats = chats.length === 0 ? [{ role: 'ai', text: `Halo! Aku Aura Oracle V3. Siap mencatat transaksi dan analisis finansial hari ini.`, timestamp: new Date().toISOString() }] : chats;
+        if(window.renderOracleChats) window.renderOracleChats();
+    });
+}
+
+onAuthStateChanged(auth, (user) => {
+    const modalLogin = document.getElementById('modal-login');
+    if (user) {
+        window.currentUserUid = user.uid; window.AuraState.user.uid = user.uid;
+        if(modalLogin) modalLogin.classList.add('hidden');
+        loadRealtimeDatabaseData();
+        window.FirebaseService.saveAuditLog('LOGIN', 'User Session Activated');
+        const savedGeminiPin = localStorage.getItem('aurafi_gemini_pin'); 
+        if (savedGeminiPin && window.syncGeminiEngine) { setTimeout(() => window.syncGeminiEngine(true), 800); }
+    } else {
+        window.currentUserUid = null; window.AuraState.user.uid = null;
+        if(modalLogin) modalLogin.classList.remove('hidden');
+    }
+});
+
+/**
+ * ============================================================================
+ * [21] EXECUTION HANDLERS & MODALS (Gemini, Edit Trx, Delete)
+ * ============================================================================
+ */
+
+window.syncGeminiEngine = async function(silent = false) {
+    const pinInput = document.getElementById('gemini-pin-input')?.value.trim();
+    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
+    if (!pin) { if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true); return; }
+
+    const gBadge = document.getElementById('gemini-status-badge');
+    if(gBadge) { gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-mono animate-pulse"; gBadge.innerText = "DECRYPTING..."; }
+    
+    try {
+        const geminiEngine = new window.GeminiFailoverEngine(pin);
+        const gCount = await geminiEngine.init();
+        if(gCount > 0) {
+            window.failoverEngineInstance = geminiEngine;
+            window.AuraState.instances.geminiEngine = geminiEngine;
+            localStorage.setItem('aurafi_gemini_pin', pin);
+            if(gBadge) { gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono"; gBadge.innerText = `ACTIVE (${gCount})`; }
+            if(!silent) window.showToast("Gemini Vision Berhasil Di-Unlock.");
+        } else { throw new Error("GCount 0"); }
     } catch(e) {
-        window.showToast("Gagal menyimpan transaksi.", true);
+        if(gBadge) { gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono"; gBadge.innerText = "FAIL / LOCKED"; }
+        if(!silent) window.showToast("Dekripsi Gagal: PIN Salah.", true);
     }
 };
 
 window.openEditTrxModal = function(id) {
-    const trx = window.allTransactions.find(t => t.id === id);
-    if(!trx) return;
+    const trx = window.allTransactions.find(t => t.id === id); 
+    if(!trx) return; 
     window.editTrxTargetData = id;
     
-    document.getElementById('edit-global-store').value = trx.merchantName || trx.storeName || trx.kategori || '';
-    document.getElementById('edit-global-curr').value = trx.mata_uang || 'JPY';
-    document.getElementById('edit-global-method').value = trx.metode_pembayaran || 'cashless';
-    document.getElementById('edit-global-nominal').value = trx.nominal || 0;
-    
-    const typeEl = document.getElementById('edit-global-type');
-    if (typeEl) typeEl.value = trx.tipe || 'pengeluaran';
-    
-    const descEl = document.getElementById('edit-global-desc');
-    if (descEl) descEl.value = trx.description || trx.catatan_ai || '';
-
+    window.AuraUtils.safeDOM('edit-global-store', el => el.value = trx.merchantName || trx.storeName || trx.kategori || '');
+    window.AuraUtils.safeDOM('edit-global-curr', el => el.value = trx.mata_uang || 'JPY');
+    window.AuraUtils.safeDOM('edit-global-method', el => el.value = trx.metode_pembayaran || 'cashless');
+    window.AuraUtils.safeDOM('edit-global-nominal', el => el.value = trx.nominal || 0);
+    window.AuraUtils.safeDOM('edit-global-type', el => el.value = trx.tipe || 'pengeluaran');
+    window.AuraUtils.safeDOM('edit-global-desc', el => el.value = trx.description || trx.catatan_ai || '');
     window.showModal('modal-edit-trx');
-};
-
-window.closeEditTrxModal = function() {
-    const m = document.getElementById('modal-edit-trx');
-    if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
-    window.editTrxTargetData = null;
 };
 
 window.saveEditTrx = async function() {
     if(!window.editTrxTargetData) return;
     const trxId = window.editTrxTargetData;
-    
-    const storeName = document.getElementById('edit-global-store').value.trim();
-    const curr = document.getElementById('edit-global-curr').value;
-    const method = document.getElementById('edit-global-method').value;
-    const nominal = parseFloat(document.getElementById('edit-global-nominal').value) || 0;
-    
-    const typeEl = document.getElementById('edit-global-type');
-    const descEl = document.getElementById('edit-global-desc');
-    
-    const tipe = typeEl ? typeEl.value : 'pengeluaran';
-    const desc = descEl ? descEl.value.trim() : '';
+    const storeName = document.getElementById('edit-global-store')?.value.trim(); 
+    const curr = document.getElementById('edit-global-curr')?.value;
+    const method = document.getElementById('edit-global-method')?.value; 
+    const nominal = parseFloat(document.getElementById('edit-global-nominal')?.value) || 0;
+    const tipe = document.getElementById('edit-global-type')?.value || 'pengeluaran'; 
+    const desc = document.getElementById('edit-global-desc')?.value.trim() || '';
 
-    const updates = {
-        merchantName: storeName,
-        storeName: storeName,
-        mata_uang: curr,
-        metode_pembayaran: method,
-        nominal: nominal,
-        tipe: tipe
-    };
+    const updates = { merchantName: storeName, storeName: storeName, mata_uang: curr, metode_pembayaran: method, nominal: nominal, tipe: tipe };
+    if (desc) { updates.description = desc; updates.catatan_ai = desc; updates.isCustomDescription = true; }
 
-    if (desc !== "") {
-        updates.description = desc;
-        updates.catatan_ai = desc;
-        updates.isCustomDescription = true;
-    }
-
-    try {
-        await window.FirebaseService.updateTransaction(trxId, updates);
-        window.closeEditTrxModal();
-        window.showToast("Perubahan Transaksi Berhasil Disimpan!");
-    } catch(e) {
-        window.showToast("Gagal mengupdate transaksi.", true);
-    }
+    try { 
+        await window.FirebaseService.updateTransaction(trxId, updates); 
+        window.closeModal('modal-edit-trx'); 
+        window.showToast("Perubahan Transaksi Berhasil Disimpan!"); 
+    } catch(e) { window.showToast("Gagal mengupdate transaksi.", true); }
 };
 
 window.openAddItemModal = function(trxId) {
     window.addItemTargetTrxId = trxId;
-    document.getElementById('add-item-name').value = "";
-    document.getElementById('add-item-qty').value = "1";
-    document.getElementById('add-item-price').value = "";
+    window.AuraUtils.safeDOM('add-item-name', el => el.value = ""); 
+    window.AuraUtils.safeDOM('add-item-qty', el => el.value = "1"); 
+    window.AuraUtils.safeDOM('add-item-price', el => el.value = "");
+    window.CategoryManager.renderDropdowns();
     window.showModal('modal-add-item');
-};
-
-window.closeAddItemModal = function() {
-    const m = document.getElementById('modal-add-item'); 
-    if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
-    window.addItemTargetTrxId = null;
 };
 
 window.saveAddItem = async function() {
     if(!window.addItemTargetTrxId) return;
-    const trx = window.allTransactions.find(t => t.id === window.addItemTargetTrxId);
-    if(!trx) return;
+    const trx = window.allTransactions.find(t => t.id === window.addItemTargetTrxId); if(!trx) return;
+    const name = document.getElementById('add-item-name')?.value.trim() || "Item Baru";
+    const qty = parseFloat(document.getElementById('add-item-qty')?.value) || 1;
+    const price = parseFloat(document.getElementById('add-item-price')?.value) || 0;
+    const category = document.getElementById('add-item-cat')?.value || 'Lainnya';
 
-    const name = document.getElementById('add-item-name').value.trim() || "Item Baru";
-    const qty = parseFloat(document.getElementById('add-item-qty').value) || 1;
-    const price = parseFloat(document.getElementById('add-item-price').value) || 0;
-
-    const newItem = {
-        itemId: window.generateItemId(),
-        nama_barang: name,
-        harga: price,
-        qty: qty,
-        kategori_barang: "Lainnya",
-        tax_rate: 0,
-        paymentMethod: trx.metode_pembayaran,
-        timestamp: new Date().toISOString()
-    };
-
-    const currentItems = trx.items || [];
-    const finalItems = currentItems.concat([newItem]);
+    const newItem = { itemId: window.AuraUtils.generateId('itm'), nama_barang: name, harga: price, qty: qty, kategori_barang: category, tax_rate: 0, paymentMethod: trx.metode_pembayaran, timestamp: new Date().toISOString() };
+    const finalItems = (trx.items || []).concat([newItem]);
     const newTotalSum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
 
     const upd = { items: finalItems, nominal: newTotalSum };
-    if (!trx.isCustomDescription) {
-        upd.description = `[Auto-Update] Transaksi diubah. Total terbaru: ${window.formatVal(newTotalSum)}.`;
-        upd.catatan_ai = upd.description;
-    }
+    if (!trx.isCustomDescription) { upd.description = `[Auto-Update] Transaksi diubah. Total terbaru: ${window.AuraUtils.formatCurrency(newTotalSum)}.`; upd.catatan_ai = upd.description; }
 
-    try {
-        await window.FirebaseService.updateTransaction(trx.id, upd);
-        window.closeAddItemModal();
-        window.showToast("Item berhasil ditambahkan!");
-    } catch(e) {
-        window.showToast("Gagal menambah item.", true);
-    }
-};
-
-window.confirmDelTrx = function(id) { 
-    const trx = window.allTransactions.find(t=>t.id === id); if(!trx) return;
-    window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; 
-    const cfmObj = document.getElementById('confirm-msg');
-    if(cfmObj) cfmObj.innerText = `Pindahkan transaksi "${trx.merchantName || trx.storeName || trx.kategori}" ke tempat sampah?`; 
-    window.showModal('modal-confirm');
-};
-
-window.confirmDelItem = function(trxId, itemId) { 
-    const trx = window.allTransactions.find(t=>t.id === trxId);
-    if(!trx || !trx.items) return;
-
-    const item = trx.items.find(i => (i.itemId || '') === itemId);
-    if(!item) return;
-
-    window.deleteTargetData = { type: 'item', id: trxId, name: item.nama_barang, itemId: itemId }; 
-    const cfmObj = document.getElementById('confirm-msg');
-    if(cfmObj) cfmObj.innerText = `Hapus "${item.nama_barang}" dari struk ini? Total belanja akan dihitung ulang otomatis.`; 
-    window.showModal('modal-confirm'); 
-};
-
-window.confirmDelGoal = function(id) { 
-    const goal = window.allGoals.find(g=>g.id === id);
-    if(!goal) return;
-    window.deleteTargetData = { type: 'goal', id, name: goal.name }; 
-    const cfmObj = document.getElementById('confirm-msg');
-    if(cfmObj) cfmObj.innerText = `Batalkan misi tabungan "${goal.name}" selamanya?`; 
-    window.showModal('modal-confirm'); 
-};
-
-window.closeConfirmModal = function() { 
-    const m = document.getElementById('modal-confirm'); 
-    if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
-    window.deleteTargetData=null; 
+    try { await window.FirebaseService.updateTransaction(trx.id, upd); window.closeModal('modal-add-item'); window.showToast("Item berhasil ditambahkan!"); } 
+    catch(e) { window.showToast("Gagal menambah item.", true); }
 };
 
 window.openEditItem = function(trxId, itemId) {
-    const trx = window.allTransactions.find(t=>t.id === trxId);
-    if(!trx || !trx.items) return;
+    const trx = window.allTransactions.find(t=>t.id === trxId); if(!trx || !trx.items) return;
+    const safeItemId = itemId || 'no_id_fallback';
+    const item = trx.items.find(i => (i.itemId || '') === safeItemId); if(!item) return;
+
+    window.editItemTargetData = { id: trxId, itemId: safeItemId, item: item };
+    window.AuraUtils.safeDOM('edit-store-name', el => el.value = trx.merchantName || trx.storeName || '');
+    window.AuraUtils.safeDOM('edit-item-name', el => el.value = item.nama_barang || '');
+    window.AuraUtils.safeDOM('edit-item-qty', el => el.value = item.qty || 1); 
+    window.AuraUtils.safeDOM('edit-item-price', el => el.value = item.harga || 0);
     
-    const item = trx.items.find(i => (i.itemId || '') === itemId);
-    if(!item) return;
-
-    window.editItemTargetData = { id: trxId, itemId: itemId, item: item };
-    document.getElementById('edit-store-name').value = trx.merchantName || trx.storeName || '';
-    document.getElementById('edit-item-name').value = item.nama_barang || '';
-    document.getElementById('edit-item-qty').value = item.qty || 1; 
-    document.getElementById('edit-item-price').value = item.harga || 0;
+    window.CategoryManager.renderDropdowns();
+    window.AuraUtils.safeDOM('edit-item-cat', el => el.value = item.kategori_barang || 'Lainnya');
+    
     window.showModal('modal-edit-item');
-};
-
-window.closeEditModal = function() { 
-    const m = document.getElementById('modal-edit-item'); 
-    if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
-    window.editItemTargetData=null; 
 };
 
 window.saveEditItem = async function() {
@@ -2057,144 +1705,74 @@ window.saveEditItem = async function() {
     const trx = window.allTransactions.find(t=>t.id === window.editItemTargetData.id);
     
     if(trx && window.FirebaseService?.updateTransaction) {
-        const storeNameVal = document.getElementById('edit-store-name').value.trim();
+        const storeNameVal = document.getElementById('edit-store-name')?.value.trim();
+        const newName = document.getElementById('edit-item-name')?.value.trim();
+        const newQty = parseFloat(document.getElementById('edit-item-qty')?.value) || 1;
+        const newPrice = parseFloat(document.getElementById('edit-item-price')?.value) || 0;
+        const newCategory = document.getElementById('edit-item-cat')?.value;
+        const targetItemId = window.editItemTargetData.itemId;
+        
         const nItems = trx.items.map(it => {
-            if (it.itemId === window.editItemTargetData.itemId) {
-                return {
-                    ...it,
-                    nama_barang: document.getElementById('edit-item-name').value, 
-                    qty: parseFloat(document.getElementById('edit-item-qty').value) || 1, 
-                    harga: parseFloat(document.getElementById('edit-item-price').value) || 0 
-                };
-            }
+            if (it.itemId === targetItemId || (!it.itemId && targetItemId === 'no_id_fallback')) {
+                return { ...it, nama_barang: newName || it.nama_barang, qty: newQty, harga: newPrice, kategori_barang: newCategory || it.kategori_barang };
+            } 
             return it;
         });
 
         const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-        const upd = { 
-            items: nItems, 
-            nominal: sum,
-            merchantName: storeNameVal || trx.merchantName || trx.storeName,
-            storeName: storeNameVal || trx.storeName || trx.kategori
-        };
+        const upd = { items: nItems, nominal: sum, merchantName: storeNameVal || trx.merchantName || trx.storeName, storeName: storeNameVal || trx.storeName || trx.kategori };
 
-        if (!trx.isCustomDescription) {
-            upd.description = `[Auto-Update] Item telah disesuaikan. Total terbaru: ${window.formatVal(sum)}.`;
-            upd.catatan_ai = upd.description;
-        }
-
+        if (!trx.isCustomDescription) { upd.description = `[Auto-Update] Item disesuaikan. Total terbaru: ${window.AuraUtils.formatCurrency(sum)}.`; upd.catatan_ai = upd.description; }
         await window.FirebaseService.updateTransaction(trx.id, upd);
-    }
-    window.closeEditModal();
-};
-
-window.restoreTransaction = async function(id) {
-    if(window.FirebaseService?.updateTransaction) {
-        await window.FirebaseService.updateTransaction(id, { is_deleted: false, deletedAt: null });
-        window.showToast("Transaksi dikembalikan dari sampah.");
+        window.closeModal('modal-edit-item');
+        window.showToast("Item dalam struk berhasil diperbarui!");
     }
 };
 
-window.deleteForever = async function(id) {
-    if(window.FirebaseService?.deleteTransactionPermanently) {
-        await window.FirebaseService.deleteTransactionPermanently(id);
-        window.showToast("Dihapus permanen.");
-    }
-};
-
-window.promptBudget = function() {
-    const amt = prompt("Masukkan Limit Anggaran Bulanan Baru (dalam JPY):", window.monthlyBudget);
-    if(amt && !isNaN(amt)) { 
-        window.monthlyBudget = parseFloat(amt);
-        if(window.FirebaseService?.updateSettings) {
-            window.FirebaseService.updateSettings({ 
-                monthlyBudget: { limit: window.monthlyBudget } 
-            });
-        }
-        window.reCalculateAll(); 
-    }
-};
-
-window.toggleGoalForm = function() { const f = document.getElementById('goal-form'); if(f) f.classList.toggle('hidden'); };
-
-window.saveGoal = async function() {
-    const name = document.getElementById('goal-name').value; 
-    const amt = document.getElementById('goal-target').value;
-    const dt = document.getElementById('goal-date').value;
-    if(!name || !amt || !dt) return window.showToast("Harap lengkapi semua form!", true);
-
-    if(window.FirebaseService?.saveGoal) {
-        await window.FirebaseService.saveGoal({ name, targetAmount: parseFloat(amt), targetDate: dt, currency: window.displayCurrency });
-        document.getElementById('goal-form').classList.add('hidden');
-        document.getElementById('goal-name').value = ""; document.getElementById('goal-target').value = ""; document.getElementById('goal-date').value = "";
-        window.showToast("Misi Tabungan Berhasil Ditambahkan!");
-    }
-};
-
-window.downloadCSV = function() {
-    let csv = "Tanggal,Waktu_Dibuat,Store,Tipe,Metode,Kategori,Nominal_Asli,Mata_Uang,Detail_Item,Deskripsi\n";
-    window.allTransactions.forEach(r => {
-        const d = r.tanggal?.split('T')[0] || ''; 
-        const created = r.createdAt || '';
-        const items = r.items && Array.isArray(r.items) ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga})`).join('|') : '-'; 
-        const note = (r.description || r.catatan_ai || '').replace(/,/g, '');
-        const store = r.merchantName || r.storeName || r.kategori || 'Toko';
-        csv += `${d},${created},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
-    });
-
-    const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csv); 
-    link.download = `AuraFi_Report_${new Date().toISOString().split('T')[0]}.csv`; 
-    document.body.appendChild(link); link.click(); link.remove();
-};
+window.confirmDelGoal = function(id) { const goal = window.allGoals.find(g=>g.id === id); if(!goal) return; window.deleteTargetData = { type: 'goal', id, name: goal.name }; window.AuraUtils.safeDOM('confirm-msg', el => el.innerText = `Batalkan misi tabungan "${goal.name}" selamanya?`); window.showModal('modal-confirm'); };
+window.confirmDelItem = function(trxId, itemId) { const trx = window.allTransactions.find(t=>t.id === trxId); if(!trx || !trx.items) return; const safeItemId = itemId || 'no_id_fallback'; const item = trx.items.find(i => (i.itemId || '') === safeItemId); if(!item) return; window.deleteTargetData = { type: 'item', id: trxId, name: item.nama_barang, itemId: safeItemId }; window.AuraUtils.safeDOM('confirm-msg', el => el.innerText = `Hapus "${item.nama_barang}" dari struk ini?`); window.showModal('modal-confirm'); };
+window.confirmDelTrx = function(id) { const trx = window.allTransactions.find(t=>t.id === id); if(!trx) return; window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; window.AuraUtils.safeDOM('confirm-msg', el => el.innerText = `Pindahkan transaksi "${trx.merchantName || trx.storeName || trx.kategori}" ke tempat sampah?`); window.showModal('modal-confirm'); };
+window.closeConfirmModal = function() { window.closeModal('modal-confirm'); window.deleteTargetData=null; };
 
 const executeConfirmDelete = document.getElementById('btn-execute-delete');
 if(executeConfirmDelete) {
     executeConfirmDelete.onclick = async () => {
         if(!window.deleteTargetData) return;
-
-        if(window.deleteTargetData.type === 'trx') {
-            if(window.activeView === 'trash') {
-                if(window.FirebaseService?.deleteTransactionPermanently) await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id);
-            } else {
-                if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(window.deleteTargetData.id);
-            }
-        } else if(window.deleteTargetData.type === 'goal') {
-            if(window.FirebaseService?.deleteGoal) await window.FirebaseService.deleteGoal(window.deleteTargetData.id);
-        } else if(window.deleteTargetData.type === 'item') {
+        if(window.deleteTargetData.type === 'trx') { 
+            if(window.activeView === 'trash') { await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id); } 
+            else { await window.FirebaseService.moveToTrash(window.deleteTargetData.id); } 
+        } 
+        else if(window.deleteTargetData.type === 'goal') { await window.FirebaseService.deleteGoal(window.deleteTargetData.id); } 
+        else if(window.deleteTargetData.type === 'item') {
             const trx = window.allTransactions.find(t=>t.id === window.deleteTargetData.id);
-            if(trx && window.FirebaseService?.updateTransaction) {
+            if(trx) {
                 const nItems = trx.items.filter(item => item.itemId !== window.deleteTargetData.itemId);
-                if(nItems.length === 0) {
-                    if(window.FirebaseService?.moveToTrash) await window.FirebaseService.moveToTrash(trx.id);
-                } else { 
-                    const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    const upd = { items: nItems, nominal: sum };
-                    if (!trx.isCustomDescription) {
-                        upd.description = `[Auto-Update] Item dihapus. Total terbaru: ${window.formatVal(sum)}.`;
-                        upd.catatan_ai = upd.description;
-                    }
+                if(nItems.length === 0) { await window.FirebaseService.moveToTrash(trx.id); } 
+                else { 
+                    const sum = nItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0); 
+                    const upd = { items: nItems, nominal: sum }; 
+                    if (!trx.isCustomDescription) { upd.description = `[Auto-Update] Item dihapus. Total terbaru: ${window.AuraUtils.formatCurrency(sum)}.`; upd.catatan_ai = upd.description; } 
                     await window.FirebaseService.updateTransaction(trx.id, upd); 
                 }
             }
         }
-        window.closeConfirmModal();
-        window.showToast("Perubahan Berhasil Disinkronkan secara Realtime.");
+        window.closeConfirmModal(); window.showToast("Aksi Destruktif Berhasil Dieksekusi.");
     };
 }
 
+window.promptBudget = function() { const amt = prompt("Masukkan Limit Anggaran Bulanan Baru:", window.monthlyBudget); if(amt && !isNaN(amt)) { window.monthlyBudget = parseFloat(amt); if(window.FirebaseService?.updateSettings) { window.FirebaseService.updateSettings({ monthlyBudget: { limit: window.monthlyBudget } }); } window.reCalculateAll(); } };
+window.restoreTransaction = async function(id) { if(window.FirebaseService?.updateTransaction) { await window.FirebaseService.updateTransaction(id, { is_deleted: false, deletedAt: null }); window.showToast("Transaksi dikembalikan dari sampah."); } };
+window.deleteForever = async function(id) { if(window.FirebaseService?.deleteTransactionPermanently) { await window.FirebaseService.deleteTransactionPermanently(id); window.showToast("Dihapus permanen."); } };
+
 /**
- * ----------------------------------------------------------------------------
- * 17. SERVICE WORKER REGISTRATION (PWA)
- * ----------------------------------------------------------------------------
+ * ============================================================================
+ * [22] SERVICE WORKER REGISTRATION (PWA)
+ * ============================================================================
  */
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./service-worker.js")
-      .then((registration) => {
-        window.AuraFiLogger.info("Service Worker aktif:", registration.scope);
-      })
-      .catch((error) => {
-        window.AuraFiLogger.error("Service Worker gagal:", error);
-      });
-  });
+if ("serviceWorker" in navigator) { 
+    window.addEventListener("load", () => { 
+        navigator.serviceWorker.register("./service-worker.js")
+            .then((r) => Logger.info("ServiceWorker", "PWA Service Worker aktif."))
+            .catch((e) => Logger.error("ServiceWorker", "Gagal register", e)); 
+    }); 
 }
