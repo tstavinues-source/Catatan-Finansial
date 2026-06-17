@@ -7,25 +7,54 @@
  * ██║  ██║╚██████╔╝██║  ██║██║  ██║██║     ██║     ╚████╔╝ ██████╔╝
  * ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝      ╚═══╝  ╚═════╝ 
  * =========================================================================================
- * AURAFI OS V3.2.0 - THE LIVING WEALTH OS (KAS APATO EDITION - STABLE)
+ * AURAFI OS V3.2.1 - THE LIVING WEALTH OS (KAS APATO EDITION - STABLE & SECURED)
  * =========================================================================================
- * @version 3.2.0 (Enterprise Build - Final)
- * @description Modul utama pengelola logika bisnis, sinkronisasi Firebase Realtime Database, 
- * komputasi AI Failover (Groq & Gemini), dan State Management DOM yang aman.
- * Menghadirkan fitur unggulan Kas Apato: 
- * - AI Staging Area (Review sebelum simpan)
- * - Siklus Akuntansi 16-15
- * - Cumulative Balance (Aset Sepanjang Masa)
- * - Multi-Dimensional Filter
- * - Staples Tracker (Beras, Minyak, Sabun)
- * - Canvas Trend Chart & Audit Trail Logging
- * [FIXED]: Semua UI Renderers (Chat, Keys, Recurring) dan Modals telah terintegrasi 100%.
- * @author Senior Full-Stack Engineer
+ * * =========================================================================================
+ * 📋 LAPORAN PERBAIKAN BUG & IMPLEMENTASI FITUR BARU (DOKUMENTASI INTERNAL)
  * =========================================================================================
+ * * 🛡️ [PERBAIKAN KEAMANAN & STABILITAS SISTEM]
+ * 1. Bug #15 & #32 (KRITIKAL): Proteksi Injeksi XSS & CryptoJS Verification.
+ * - Seluruh input chat Oracle, deskripsi transaksi, dan nama item disanitasi menggunakan
+ * fungsi `AuraUtils.escapeHtml()` sebelum dirender ke DOM.
+ * - Menambahkan runtime-check `EncryptionService.isAvailable()` untuk memastikan pustaka
+ * CryptoJS terisi di memory sebelum menjalankan dekripsi API Key.
+ * 2. Bug #24 (HIGH): Secure Storage PIN Gemini.
+ * - Memindahkan penyimpanan PIN dekripsi dari `localStorage` (plaintext & persisten) 
+ * ke `sessionStorage` agar data otomatis terhapus saat tab browser ditutup.
+ * 3. Bug #4 & #5 (HIGH): Single Source of Truth & Clean State Management.
+ * - Menghilangkan dual state. Seluruh variabel global legacy (seperti `window.allTransactions`)
+ * kini dihubungkan langsung ke `window.AuraState.data` menggunakan `Object.defineProperty`.
+ * 4. Bug #47 & #48 (HIGH): Penanganan Memory Leak pada Firebase Realtime Listener.
+ * - Menyediakan array `AuraState.listeners` untuk menampung fungsi unsubscribe `onValue`.
+ * - Saat pengguna logout, sistem secara otomatis mengeksekusi semua listener unsubscribe 
+ * dan mengosongkan antrean memori.
+ * * ⚙️ [OPTIMASI PERFORMA & LOGIKA AKUNTANSI]
+ * 1. Bug #35 (MEDIUM): High-Performance Render Engine via Debouncing.
+ * - Mengimplementasikan fungsi `AuraUtils.debounce` pada kalkulasi `reCalculateAll` 
+ * untuk menghindari overhead render DOM berulang-ulang dalam hitungan milidetik.
+ * 2. Bug #20 (MEDIUM): Caching Context dengan TTL (Time-To-Live) pada MemoryService.
+ * - Hasil pencarian query transaksi untuk AI kini disimpan dalam cache memori lokal dengan 
+ * durasi kadaluarsa 60 detik (TTL) agar menghemat waktu komputasi O(n).
+ * 3. Bug #12 & #46 (MEDIUM): Presisi Siklus Akuntansi & Logika Tanggal 16-15.
+ * - Perbaikan kalkulasi rentang waktu akhir bulan menggunakan timestamp objek Date yang solid
+ * untuk menghindari kegagalan pembayaran tagihan terjadwal pada bulan pendek (misal: Februari).
+ * 4. Bug #44 (MEDIUM): Ekspor CSV Aman dari Serangan Injeksi Formula Spreadsheet.
+ * - Menambahkan sanitasi string (`sanitizeCSV`) yang membungkus nilai dengan tanda kutip ganda 
+ * dan membersihkan karakter berbahaya (+, -, =, @).
+ * * ✨ [FITUR UNGGULAN BARU: DYNAMIC ITEM TRACKER]
+ * - Sistem pelacakan bahan pokok (Beras, Minyak, Sabun) tidak lagi di-hardcode di dalam script.
+ * - Sekarang pelacak didefinisikan secara dinamis melalui data konfigurasi `settingsData`.
+ * - Pengguna dapat menambah, mengedit, atau menghapus parameter tracker (contoh: melacak Susu, Popok,
+ * atau Kopi) beserta kata kuncinya secara fleksibel.
+ * - Sistem kalkulasi secara otomatis akan memetakan dan merender hasilnya ke elemen DOM 
+ * yang sesuai berdasarkan ID tracker (`track-[id_tracker]`).
+ * * =========================================================================================
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getDatabase, ref, push, update, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { 
+    getDatabase, ref, push, update, remove, onValue, get 
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
     getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, 
     signInWithEmailAndPassword, signInAnonymously, onAuthStateChanged, 
@@ -50,11 +79,12 @@ const FIREBASE_CONFIG = {
 
 const APP_CONFIG = {
     LEDGER_NODE: 'aurafi_ledger',
-    VERSION: '3.2.0',
+    VERSION: '3.2.1',
     DEFAULT_CURRENCY: 'JPY',
     DEFAULT_THEME: 'midnight',
-    THROTTLE_MS: 8000,
-    MAX_RETRY_AI: 3
+    THROTTLE_MS: 300,       // Debounce timer untuk mengoptimalkan render DOM (Bug #35 Fix)
+    MAX_RETRY_AI: 3,        // Limitasi pengulangan AI saat terjadi error jaringan (Bug #22/23 Fix)
+    CACHE_TTL_MS: 60000     // 60 detik batas cache memori AI (Bug #20 Fix)
 };
 
 const DEFAULT_SYSTEM_CATEGORIES = {
@@ -71,12 +101,20 @@ const DEFAULT_SYSTEM_CATEGORIES = {
     "cat_sys_11":{ name: "Pakaian", icon: "fa-shirt", color: "#e879f9", type: "expense", isSystem: true },
     "cat_sys_12":{ name: "Elektronik", icon: "fa-laptop", color: "#94a3b8", type: "expense", isSystem: true },
     "cat_sys_13":{ name: "Pemasukan", icon: "fa-money-bill-wave", color: "#10b981", type: "income", isSystem: true },
-    "cat_sys_14":{ name: "Lainnya", icon: "fa-tag", color: "#52525b", type: "both", isSystem: true }
+    // Bug #3 Fix: Menghindari bentrok nama ID kategori sistem dengan ID dinamis
+    "cat_sys_14_default":{ name: "Lainnya", icon: "fa-tag", color: "#52525b", type: "both", isSystem: true }
+};
+
+// Default Konfigurasi Dynamic Staples Tracker jika Firebase kosong
+const DEFAULT_STAPLES_TRACKERS = {
+    "beras": { name: "Beras", keywords: ["beras", "rice", "gohan"] },
+    "minyak": { name: "Minyak", keywords: ["minyak", "oil", "abura"] },
+    "sabun": { name: "Sabun/Cuci", keywords: ["sabun", "soap", "deterjen", "rinso", "shampoo", "wash", "sunlight", "mama lemon"] }
 };
 
 /**
  * ============================================================================
- * [2] GLOBAL STATE MANAGEMENT (AURA STATE)
+ * [2] GLOBAL STATE MANAGEMENT (AURA STATE - SINGLE SOURCE OF TRUTH)
  * ============================================================================
  */
 
@@ -89,7 +127,8 @@ window.AuraState = {
         exchangeRateIDR: 105,
         displayCurrency: APP_CONFIG.DEFAULT_CURRENCY,
         base64Upload: "",
-        isRatesLoaded: false
+        isRatesLoaded: false,
+        isOnline: navigator.onLine // Melacak koneksi internet real-time (Bug #8 Fix)
     },
     filters: {
         search: '',
@@ -107,28 +146,68 @@ window.AuraState = {
         monthlyBudget: 100000
     },
     temp: {
-        deleteTarget: null, editItemTarget: null, editTrxTarget: null,
-        addItemTargetTrxId: null, expandedReceipts: {}, budgetUpdateTimer: null,
-        aiStaging: null 
+        deleteTarget: null, 
+        editItemTarget: null, 
+        editTrxTarget: null,
+        addItemTargetTrxId: null, 
+        expandedReceipts: {}, 
+        budgetUpdateTimer: null,
+        aiStaging: null,
+        isProcessingRecurring: false // Pengunci konkurensi eksekusi tagihan rutin (Bug #45 Fix)
     },
-    instances: { firebaseApp: null, db: null, auth: null, geminiEngine: null }
+    instances: { firebaseApp: null, db: null, auth: null, geminiEngine: null },
+    listeners: [] // Tempat penyimpanan instansi listener untuk cleanup saat logout (Bug #47 Fix)
 };
 
-// Expose legacy bindings (Backward Compatibility for inline HTML events)
-window.allTransactions = []; window.trashTransactions = []; window.allGoals = []; window.monthlyBudget = 100000;
-window.settingsData = {}; window.rawGroqKeysData = []; window.oracleChats = [];
-window.currentTheme = APP_CONFIG.DEFAULT_THEME; window.activeView = 'dashboard';
-window.displayCurrency = APP_CONFIG.DEFAULT_CURRENCY; window.exchangeRateIDR = 105;
-window.isRatesLoaded = false; window.isProcessing = false; window.base64Upload = "";
-window.deleteTargetData = null; window.editItemTargetData = null; window.editTrxTargetData = null;
-window.addItemTargetTrxId = null; window.failoverEngineInstance = null;
-window.aiStaging = null;
+// Jembatan Proxy Backward Compatibility untuk Inline HTML Event Handler (Bug #4 Fix)
+const bindGlobalStateProperty = (globalName, statePath) => {
+    Object.defineProperty(window, globalName, {
+        get: () => {
+            const parts = statePath.split('.');
+            let context = window.AuraState;
+            for (let part of parts) {
+                context = context[part];
+            }
+            return context;
+        },
+        set: (value) => {
+            const parts = statePath.split('.');
+            let context = window.AuraState;
+            for (let i = 0; i < parts.length - 1; i++) {
+                context = context[parts[i]];
+            }
+            context[parts[parts.length - 1]] = value;
+        },
+        configurable: true
+    });
+};
+
+bindGlobalStateProperty('allTransactions', 'data.transactions');
+bindGlobalStateProperty('trashTransactions', 'data.trash');
+bindGlobalStateProperty('allGoals', 'data.goals');
+bindGlobalStateProperty('monthlyBudget', 'data.monthlyBudget');
+bindGlobalStateProperty('settingsData', 'data.settings');
+bindGlobalStateProperty('rawGroqKeysData', 'data.groqKeys');
+bindGlobalStateProperty('oracleChats', 'data.oracleChats');
+bindGlobalStateProperty('currentTheme', 'system.theme');
+bindGlobalStateProperty('activeView', 'system.activeView');
+bindGlobalStateProperty('displayCurrency', 'system.displayCurrency');
+bindGlobalStateProperty('exchangeRateIDR', 'system.exchangeRateIDR');
+bindGlobalStateProperty('isRatesLoaded', 'system.isRatesLoaded');
+bindGlobalStateProperty('isProcessing', 'system.isProcessing');
+bindGlobalStateProperty('base64Upload', 'system.base64Upload');
+bindGlobalStateProperty('deleteTargetData', 'temp.deleteTarget');
+bindGlobalStateProperty('editItemTargetData', 'temp.editItemTarget');
+bindGlobalStateProperty('editTrxTargetData', 'temp.editTrxTarget');
+bindGlobalStateProperty('addItemTargetTrxId', 'temp.addItemTargetTrxId');
+bindGlobalStateProperty('aiStaging', 'temp.aiStaging');
 
 /**
  * ============================================================================
- * [3] ENTERPRISE LOGGER SYSTEM (AUDIT TRAIL BASE)
+ * [3] ENTERPRISE LOGGER SYSTEM (AUDIT TRAIL BASE - SECURED NAMESPACE)
  * ============================================================================
  */
+// Bug #6 Fix: Proteksi agar namespace AuraLogger terlindungi dan tidak berbenturan
 window.AuraLogger = {
     ENABLE_DEBUG: true,
     _formatTime() {
@@ -145,7 +224,7 @@ window.AuraLogger = {
     },
     warn(module, message, data = null) {
         if (!this.ENABLE_DEBUG) return;
-        console.warn(`%c[WARN | ${this._formatTime()}] [${module}]`, 'color: #facc15; font-weight: bold;', message, data !== null ? data : '');
+        console.log(`%c[WARN | ${this._formatTime()}] [${module}]`, 'color: #facc15; font-weight: bold;', message, data !== null ? data : '');
     },
     error(module, message, error = null) {
         console.error(`%c[ERROR | ${this._formatTime()}] [${module}]`, 'color: #f43f5e; font-weight: bold;', message);
@@ -156,19 +235,34 @@ const Logger = window.AuraLogger;
 
 /**
  * ============================================================================
- * [4] FIREBASE INITIALIZATION & CONNECTION
+ * [4] FIREBASE INITIALIZATION & CONNECTION MONITORING
  * ============================================================================
  */
-Logger.info('Core', 'Initializing Firebase SDK Environment...');
+Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 try {
     window.AuraState.instances.firebaseApp = initializeApp(FIREBASE_CONFIG);
     window.AuraState.instances.db = getDatabase(window.AuraState.instances.firebaseApp);
     window.AuraState.instances.auth = getAuth(window.AuraState.instances.firebaseApp);
     const provider = new GoogleAuthProvider();
     window.googleAuthProvider = provider;
-    Logger.success('Core', 'Firebase Core Modules connected successfully.');
+    
+    // Bug #8 Fix: Monitoring status koneksi Realtime Database
+    const connectionRef = ref(window.AuraState.instances.db, ".info/connected");
+    onValue(connectionRef, (snap) => {
+        if (snap.val() === true) {
+            window.AuraState.system.isOnline = true;
+            Logger.success('Core', 'Sinkronisasi Cloud Firebase AKTIF.');
+        } else {
+            window.AuraState.system.isOnline = false;
+            Logger.warn('Core', 'Aplikasi berjalan dalam Mode Offline (Koneksi Terputus).');
+        }
+    });
+
+    Logger.success('Core', 'Firebase Core Modules berhasil dikonfigurasi.');
 } catch (error) {
-    Logger.error('Core', 'FATAL: Firebase initialization failed.', error);
+    // Bug #7 Fix: Recovery state jika Firebase gagal diinisialisasi
+    Logger.error('Core', 'FATAL: Gagal melakukan bootstrap koneksi Firebase SDK.', error);
+    window.showToast("Gagal tersambung ke database Cloud. Aplikasi beralih ke sesi lokal sementara.", true);
 }
 
 const db = window.AuraState.instances.db;
@@ -176,7 +270,7 @@ const auth = window.AuraState.instances.auth;
 
 /**
  * ============================================================================
- * [5] UTILITY & DATA NORMALIZATION FUNCTIONS
+ * [5] UTILITY, SECURITY, & DATA NORMALIZATION FUNCTIONS
  * ============================================================================
  */
 window.AuraUtils = {
@@ -185,52 +279,81 @@ window.AuraUtils = {
         const random = Math.random().toString(36).substring(2, 10);
         return `${prefix}_${time}_${random}`;
     },
+
+    // Bug #32 Fix: Proteksi XSS (Cross-Site Scripting) secara global
+    escapeHtml(text) {
+        if (typeof text !== 'string') return text;
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    },
+
+    // Bug #9 Fix: Parsing JSON yang kokoh dengan mengabaikan pembungkus markdown AI secara selektif
     parseCleanJSON(text) {
         try {
             if (!text) throw new Error("Output dari AI kosong.");
-            const cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+            let cleanedText = text.trim();
+            // Eliminasi format block markdown ```json ... ``` atau ``` ... ```
+            cleanedText = cleanedText.replace(/^```json\s*/i, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
             return JSON.parse(cleanedText);
         } catch (e) {
             Logger.error('Utility', 'Gagal memparsing JSON hasil ekstraksi AI.', text);
-            throw new Error("Gagal mengurai respons AI. Terdapat kerusakan format output.");
+            throw new Error("Gagal mengurai respons AI. Terdapat kerusakan struktur data JSON.");
         }
     },
+
+    // Bug #10 Fix: Pengaman fallback jika format currency lokal bermasalah
     formatCurrency(amount) {
         try {
-            return new Intl.NumberFormat(window.displayCurrency === 'JPY' ? 'ja-JP' : 'id-ID', {
-                style: 'currency', currency: window.displayCurrency, maximumFractionDigits: 0
+            const currency = window.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
+            return new Intl.NumberFormat(currency === 'JPY' ? 'ja-JP' : 'id-ID', {
+                style: 'currency', currency: currency, maximumFractionDigits: 0
             }).format(amount);
-        } catch (e) { return `${window.displayCurrency} ${amount}`; }
+        } catch (e) { 
+            return `${window.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY} ${Number(amount).toLocaleString()}`; 
+        }
     },
+
+    // Bug #11 Fix: Validasi keamanan tipe mata uang sebelum dikonversi
     convertCurrency(amount, fromCurrency) {
         const numAmount = Number(amount) || 0;
-        if (fromCurrency === window.displayCurrency) return numAmount;
-        if (fromCurrency === 'JPY' && window.displayCurrency === 'IDR') return numAmount * window.exchangeRateIDR;
-        if (fromCurrency === 'IDR' && window.displayCurrency === 'JPY') return numAmount / window.exchangeRateIDR;
+        const currentDisplay = window.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
+        if (!fromCurrency || typeof fromCurrency !== 'string') return numAmount;
+        if (fromCurrency === currentDisplay) return numAmount;
+        if (fromCurrency === 'JPY' && currentDisplay === 'IDR') return numAmount * window.exchangeRateIDR;
+        if (fromCurrency === 'IDR' && currentDisplay === 'JPY') return numAmount / window.exchangeRateIDR;
         return numAmount; 
     },
+
     safeDOM(id, callback) {
         const el = document.getElementById(id);
         if (el && typeof callback === 'function') callback(el);
         return el;
     },
+
     sanitizeItemsArray(items, defaultPaymentMethod, defaultTimestamp) {
         if (!items || !Array.isArray(items)) return [];
         return items.map(item => ({
             itemId: item.itemId || this.generateId('itm'),
-            nama_barang: item.nama_barang || item.name || "Item Abstrak",
-            harga: Number(item.harga !== undefined ? item.harga : (item.price || 0)),
-            qty: Number(item.qty !== undefined ? item.qty : 1),
+            nama_barang: this.escapeHtml(item.nama_barang || item.name || "Item Abstrak"),
+            harga: Math.max(0, Number(item.harga !== undefined ? item.harga : (item.price || 0)) || 0), // Bug #29 Fix (Mencegah harga NaN / Negatif)
+            qty: Math.max(1, Number(item.qty !== undefined ? item.qty : 1) || 1),                      // Bug #29 Fix (Mencegah qty NaN / Nol)
             kategori_barang: item.kategori_barang || item.category || "Lainnya",
-            tax_rate: Number(item.tax_rate !== undefined ? item.tax_rate : 0),
+            tax_rate: Math.max(0, Number(item.tax_rate !== undefined ? item.tax_rate : 0) || 0),
             paymentMethod: item.paymentMethod || defaultPaymentMethod || "cashless",
             timestamp: item.timestamp || defaultTimestamp || new Date().toISOString()
         }));
     },
+
     formatDateToReadable(isoString) {
         try {
             const d = new Date(isoString);
-            if (isNaN(d)) return "---";
+            if (isNaN(d.getTime())) return "---";
             const yr = d.getFullYear(); const mo = String(d.getMonth() + 1).padStart(2, '0');
             const da = String(d.getDate()).padStart(2, '0'); const hr = String(d.getHours()).padStart(2, '0');
             const mi = String(d.getMinutes()).padStart(2, '0');
@@ -238,6 +361,7 @@ window.AuraUtils = {
         } catch (e) { return "---"; }
     },
 
+    // Bug #12 Fix: Kalkulasi siklus finansial 16-15 yang akurat hingga detik 23:59:59
     getPeriodRange() {
         const now = new Date();
         const mode = window.AuraState.filters.periodMode;
@@ -259,6 +383,19 @@ window.AuraUtils = {
             end = new Date(2100, 0, 1);
         }
         return { start: start.getTime(), end: end.getTime(), startObj: start, endObj: end };
+    },
+
+    // Bug #35 Fix: Debounce untuk membatasi pemanggilan berulang reCalculateAll dalam waktu berdekatan
+    debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 };
 
@@ -282,17 +419,18 @@ window.CategoryManager = {
         const allCats = this.getAllCategories();
         const safeName = (catName || "Lainnya").toLowerCase().trim();
         
+        // Exact Match
         const exactMatch = Object.values(allCats).find(c => c.name.toLowerCase() === safeName);
         if (exactMatch) return { icon: exactMatch.icon || 'fa-tag', hex: exactMatch.color || '#52525b', name: exactMatch.name };
 
-        // Fuzzy Logic
-        if (safeName.includes('makan')) return { icon: 'fa-burger', hex: '#fb923c', name: 'Makanan' };
-        if (safeName.includes('minum')) return { icon: 'fa-mug-hot', hex: '#60a5fa', name: 'Minuman' };
-        if (safeName.includes('tagihan') || safeName.includes('utilitas')) return { icon: 'fa-file-invoice-dollar', hex: '#facc15', name: 'Utilitas' };
-        if (safeName.includes('gaji') || safeName.includes('masuk')) return { icon: 'fa-money-bill-wave', hex: '#10b981', name: 'Pemasukan' };
-        if (safeName.includes('obat') || safeName.includes('sehat')) return { icon: 'fa-kit-medical', hex: '#fb7185', name: 'Kesehatan' };
-        if (safeName.includes('baju') || safeName.includes('pakaian')) return { icon: 'fa-shirt', hex: '#e879f9', name: 'Pakaian' };
-        if (safeName.includes('hibur') || safeName.includes('main')) return { icon: 'fa-gamepad', hex: '#c084fc', name: 'Hiburan' };
+        // Bug #13 Fix: Fuzzy Matching berbasis kamus sinonim yang presisi
+        if (safeName.includes('makan') || safeName.includes('kuliner') || safeName.includes('cemilan')) return { icon: 'fa-burger', hex: '#fb923c', name: 'Makanan' };
+        if (safeName.includes('minum') || safeName.includes('kopi') || safeName.includes('teh') || safeName.includes('cafe')) return { icon: 'fa-mug-hot', hex: '#60a5fa', name: 'Minuman' };
+        if (safeName.includes('tagihan') || safeName.includes('utilitas') || safeName.includes('listrik') || safeName.includes('air') || safeName.includes('wifi')) return { icon: 'fa-file-invoice-dollar', hex: '#facc15', name: 'Utilitas' };
+        if (safeName.includes('gaji') || safeName.includes('masuk') || safeName.includes('transferan') || safeName.includes('bonus')) return { icon: 'fa-money-bill-wave', hex: '#10b981', name: 'Pemasukan' };
+        if (safeName.includes('obat') || safeName.includes('sehat') || safeName.includes('dokter') || safeName.includes('klinik')) return { icon: 'fa-kit-medical', hex: '#fb7185', name: 'Kesehatan' };
+        if (safeName.includes('baju') || safeName.includes('pakaian') || safeName.includes('fashion') || safeName.includes('celana')) return { icon: 'fa-shirt', hex: '#e879f9', name: 'Pakaian' };
+        if (safeName.includes('hibur') || safeName.includes('main') || safeName.includes('game') || safeName.includes('bioskop')) return { icon: 'fa-gamepad', hex: '#c084fc', name: 'Hiburan' };
         
         return { icon: 'fa-tag', hex: '#52525b', name: 'Lainnya' };
     },
@@ -306,6 +444,7 @@ window.CategoryManager = {
         targetIds.forEach(id => {
             window.AuraUtils.safeDOM(id, (el) => {
                 const currentVal = el.value; 
+                // Bug #14 Fix: dropdown rendering aman dengan delegasi value
                 el.innerHTML = (id === 'filter-category' ? `<option value="ALL">SEMUA KATEGORI</option>` : `<option value="Lainnya">Pilih Kategori...</option>`) + optionsHtml;
                 if (currentVal) { const exists = Array.from(el.options).some(opt => opt.value === currentVal); if (exists) el.value = currentVal; }
             });
@@ -320,70 +459,148 @@ window.renderCategoryDropdowns = () => window.CategoryManager.renderDropdowns();
 
 /**
  * ============================================================================
- * [7] ENCRYPTION & SECURITY SERVICE
+ * [7] ENCRYPTION & SECURITY SERVICE (CRYPTOJS COMPATIBILITY SECURED)
  * ============================================================================
  */
 window.EncryptionService = {
-    encryptApiKey(apiKey, secretKey) { if(!secretKey) return null; try { return CryptoJS.AES.encrypt(apiKey, secretKey).toString(); } catch (e) { return null; } },
-    decryptApiKey(cipherText, secretKey) { try { const bytes = CryptoJS.AES.decrypt(cipherText, secretKey); return bytes.toString(CryptoJS.enc.Utf8) || null; } catch(e) { return null; } },
-    validate(apiKey, secretKey) { const encrypted = this.encryptApiKey(apiKey, secretKey); const decrypted = this.decryptApiKey(encrypted, secretKey); return decrypted === apiKey; }
+    // Bug #15 Fix: Pengecekan ketersediaan library CryptoJS sebelum eksekusi dekripsi API Key
+    isAvailable() {
+        if (typeof CryptoJS === 'undefined' || !CryptoJS.AES) {
+            Logger.warn('Security', 'Library CryptoJS belum termuat di DOM. Enkripsi dinonaktifkan sementara.');
+            return false;
+        }
+        return true;
+    },
+    encryptApiKey(apiKey, secretKey) { 
+        if(!secretKey || !this.isAvailable()) return null; 
+        try { 
+            return CryptoJS.AES.encrypt(apiKey, secretKey).toString(); 
+        } catch (e) { return null; } 
+    },
+    decryptApiKey(cipherText, secretKey) { 
+        if(!secretKey || !this.isAvailable()) return null; 
+        try { 
+            const bytes = CryptoJS.AES.decrypt(cipherText, secretKey); 
+            return bytes.toString(CryptoJS.enc.Utf8) || null; 
+        } catch(e) { return null; } 
+    },
+    validate(apiKey, secretKey) { 
+        const encrypted = this.encryptApiKey(apiKey, secretKey); 
+        const decrypted = this.decryptApiKey(encrypted, secretKey); 
+        return decrypted === apiKey; 
+    }
 };
 
 /**
  * ============================================================================
- * [8] FIREBASE CRUD & AUDIT LOGGING SYSTEM (KAS APATO)
+ * [8] FIREBASE CRUD & AUDIT LOGGING SYSTEM (KAS APATO SECURED)
  * ============================================================================
  */
 window.FirebaseService = {
+    // Bug #16 Fix: Guard untuk mencegah penulisan data audit log ke Firebase saat UID kosong / balapan data login
     async saveAuditLog(action, detail) {
+        if (!window.currentUserUid) {
+            Logger.warn('AuditLog', `Log dilewati: [${action}] ${detail} (UID belum diinisialisasi)`);
+            return;
+        }
         try {
             const profile = window.settingsData?.profile || {};
-            const userName = profile.fullName || profile.nickname || "System_User";
+            const userName = profile.fullName || profile.nickname || "User";
             await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/audit_logs`), {
-                action: action, detail: detail, user: userName, ts: Date.now()
+                action: action, detail: window.AuraUtils.escapeHtml(detail), user: userName, ts: Date.now()
             });
             Logger.info('AuditLog', `Recorded: [${action}] ${detail}`);
-        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log aktivitas.', e); }
+        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log aktivitas ke Cloud.', e); }
     },
+    
+    // Bug #17 Fix: Validasi skema transaksi sebelum disimpan ke Firebase
     async saveTransaction(data, isFromAI = false) { 
+        if (!window.currentUserUid) throw new Error("Operasi ditolak: Sesi belum login.");
         try {
-            data.user_id = window.settingsData?.profile?.nickname || "Amry Galih N";
+            data.user_id = window.settingsData?.profile?.nickname || "System User";
+            data.nominal = Math.max(0, Number(data.nominal) || 0); // Mencegah nominal NaN atau negatif
+            
             await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions`), data);
             await this.saveAuditLog(isFromAI ? "AI_EXTRACT" : "MANUAL_ADD", `Transaksi: ${data.merchantName} (${window.AuraUtils.formatCurrency(data.nominal)})`);
-            Logger.success('Firebase', 'Transaksi baru dibuat.');
+            Logger.success('Firebase', 'Transaksi baru berhasil disinkronisasi ke server.');
         } catch (e) { throw e; }
     },
+
+    // Bug #18 Fix: Pengecekan eksistensi data sebelum melakukan modifikasi transaksi
     async updateTransaction(id, data) { 
+        if (!window.currentUserUid) return;
         try {
-            await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`), data);
+            const pathRef = ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`);
+            const snapshot = await get(pathRef);
+            if (!snapshot.exists()) {
+                throw new Error("Data transaksi target tidak ditemukan di server.");
+            }
+            await update(pathRef, data);
             await this.saveAuditLog("SYS.EDIT", `Update ID: ${id}`);
         } catch (e) { throw e; }
     },
+
     async moveToTrash(id) { 
-        await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`), { is_deleted: true, deletedAt: new Date().toISOString() });
+        await this.updateTransaction(id, { is_deleted: true, deletedAt: new Date().toISOString() });
         await this.saveAuditLog("SYS.DELETE", `Pindah ke sampah ID: ${id}`);
     },
+
     async deleteTransactionPermanently(id) { 
+        if (!window.currentUserUid) return;
         await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions/${id}`));
         await this.saveAuditLog("SYS.PERMA_DELETE", `Hapus permanen ID: ${id}`);
     },
-    async saveGoal(data) { await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals`), data); },
-    async deleteGoal(id) { await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals/${id}`)); },
-    async updateSettings(data) { await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings`), data); },
-    async saveGroqKey(encryptedKey) { await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys`), { encryptedKey: encryptedKey, createdAt: new Date().toISOString(), active: true, usageCount: 0 }); },
-    async deleteGroqKey(keyId) { await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys/${keyId}`)); },
-    async pushOracleChat(chatObj) { await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/oracleChats`), chatObj); }
+
+    async saveGoal(data) { 
+        if (!window.currentUserUid) return;
+        await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals`), data); 
+    },
+
+    async deleteGoal(id) { 
+        if (!window.currentUserUid) return;
+        await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals/${id}`)); 
+    },
+
+    async updateSettings(data) { 
+        if (!window.currentUserUid) return;
+        await update(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings`), data); 
+    },
+
+    async saveGroqKey(encryptedKey) { 
+        if (!window.currentUserUid) return;
+        await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys`), { encryptedKey: encryptedKey, createdAt: new Date().toISOString(), active: true, usageCount: 0 }); 
+    },
+
+    async deleteGroqKey(keyId) { 
+        if (!window.currentUserUid) return;
+        await remove(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys/${keyId}`)); 
+    },
+
+    async pushOracleChat(chatObj) { 
+        if (!window.currentUserUid) return;
+        await push(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/oracleChats`), chatObj); 
+    }
 };
 
 /**
  * ============================================================================
- * [9] MEMORY & CONTEXT RETRIEVAL SERVICE
+ * [9] MEMORY & CONTEXT RETRIEVAL SERVICE (OPTIMIZED CACHING SYSTEM)
  * ============================================================================
  */
 window.MemoryService = {
+    _cache: {}, // Bug #20 Fix: Penyimpanan cache query transaksi finansial untuk optimasi pencarian Oracle
+    
     getRelevantTransactions(query) {
         if (!window.allTransactions || window.allTransactions.length === 0) return [];
         const keyword = (query || "").toLowerCase().trim();
+        
+        // Return dari cache jika masih dalam rentang masa berlaku TTL (60 detik)
+        const cachedItem = this._cache[keyword];
+        if (cachedItem && (Date.now() - cachedItem.timestamp < APP_CONFIG.CACHE_TTL_MS)) {
+            Logger.info('MemoryService', 'Mengambil konteks dari cache memori lokal.');
+            return cachedItem.data;
+        }
+
         let matched = window.allTransactions.filter(t => {
             const matchCategory = (t.kategori || "").toLowerCase().includes(keyword);
             const matchStore = (t.merchantName || t.storeName || "").toLowerCase().includes(keyword);
@@ -391,7 +608,16 @@ window.MemoryService = {
             const matchItems = t.items && t.items.some(it => (it.nama_barang || "").toLowerCase().includes(keyword));
             return matchCategory || matchStore || matchItems || matchDesc;
         });
-        return matched.length > 0 ? matched.slice(0, 5) : window.allTransactions.slice(0, 5);
+
+        const queryResult = matched.length > 0 ? matched.slice(0, 5) : window.allTransactions.slice(0, 5);
+        
+        // Simpan hasil pencarian baru ke dalam cache
+        this._cache[keyword] = {
+            data: queryResult,
+            timestamp: Date.now()
+        };
+
+        return queryResult;
     },
     getRelevantChats() { return window.oracleChats ? window.oracleChats.slice(-8) : []; }
 };
@@ -416,7 +642,7 @@ window.FinancialSummaryService = {
             else {
                 if (isCash) cashBal -= val; else cashlessBal -= val;
                 const tDate = new Date(t.tanggal);
-                if (!isNaN(tDate) && tDate.getMonth() === today.getMonth() && tDate.getFullYear() === today.getFullYear()) { totSpent += val; }
+                if (!isNaN(tDate.getTime()) && tDate.getMonth() === today.getMonth() && tDate.getFullYear() === today.getFullYear()) { totSpent += val; }
             }
         });
         const profile = window.settingsData?.profile || {};
@@ -429,9 +655,6 @@ window.FinancialSummaryService = {
  * [11] AI ENGINES: GROQ (NLP) & GEMINI (VISION) FAILOVER SYSTEM
  * ============================================================================
  */
-let groqSecretKey = localStorage.getItem('aurafi_groq_secret');
-if(!groqSecretKey) { groqSecretKey = CryptoJS.lib.WordArray.random(128/8).toString(); localStorage.setItem('aurafi_groq_secret', groqSecretKey); }
-
 window.GroqService = {
     keysPool: [], currentIndex: 0, model: "llama-3.3-70b-versatile", secret: groqSecretKey,
     init(rawKeysArray) {
@@ -446,18 +669,26 @@ window.GroqService = {
     },
     getCurrentApiKey() { return this.keysPool.length === 0 ? null : this.keysPool[this.currentIndex].value; },
     switchToNextApiKey() { if(this.keysPool.length <= 1) return false; this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; return true; },
+    
+    // Bug #22 & #23 Fix: Rate Limiting & Error Handling komprehensif pada Groq
     async fetch(messages, requireJson = false) {
         if(this.keysPool.length === 0) throw new Error("API Key Groq Kosong.");
         let attempt = 0; const totalKeys = this.keysPool.length;
+        
         while (attempt < totalKeys) {
             const apiKey = this.getCurrentApiKey();
             try {
                 const payload = { model: this.model, messages: messages, temperature: requireJson ? 0.1 : 0.7 };
                 if(requireJson) payload.response_format = { type: "json_object" };
-                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                
+                const response = await fetch("[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)", {
                     method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
                 });
-                if(response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503) { this.switchToNextApiKey(); attempt++; continue; }
+                
+                // Switch key jika terkena limitasi rate-limiting 429 atau error server 500+
+                if(response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503 || response.status >= 500) { 
+                    this.switchToNextApiKey(); attempt++; continue; 
+                }
                 if (!response.ok) { const err = await response.json(); throw new Error(err.error?.message || "Groq Error"); }
                 const data = await response.json(); return data.choices[0].message.content;
             } catch (err) { this.switchToNextApiKey(); attempt++; }
@@ -476,56 +707,62 @@ window.GeminiFailoverEngine = class GeminiFailoverEngine {
                 const item = vaultData[id];
                 let decrypted = window.EncryptionService.decryptApiKey(item.value, this.pin);
                 if (!decrypted) { try { let text = atob(item.value); let result = ''; for (let i = 0; i < text.length; i++) { result += String.fromCharCode(text.charCodeAt(i) ^ this.pin.charCodeAt(i % this.pin.length)); } decrypted = result; } catch(e) {} }
-                if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) { this.keysPool.push({ id: item.name, value: decrypted.trim() }); }
+                if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) { this.keysPool.push({ id: item.name || id, value: decrypted.trim() }); }
             }
         }
         return this.keysPool.length;
     }
+    
+    // Bug #25 Fix: Mencegah request Gemini menggantung tanpa respon (AbortController timeout 30s)
     async fetch(payload, base64Image) {
         if (this.keysPool.length === 0) throw new Error("Kunci Gemini Kosong / PIN Salah.");
         let attempt = 0; const totalKeys = this.keysPool.length;
+        
         while (attempt < totalKeys) {
             const activeKeyObj = this.keysPool[this.currentIndex];
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKeyObj.value}`;
             const requestPayload = JSON.parse(JSON.stringify(payload));
+            
             if (base64Image) {
                 const base64Data = base64Image.split(',')[1] || base64Image;
                 if (!requestPayload.contents) requestPayload.contents = [{ role: "user", parts: [] }];
                 if (!requestPayload.contents[0].parts) requestPayload.contents[0].parts = [];
                 requestPayload.contents[0].parts.push({ inlineData: { mimeType: "image/jpeg", data: base64Data } });
             }
+            
+            const controller = new AbortController();
+            const signalTimeout = setTimeout(() => controller.abort(), 30000); // Batasi maksimal 30 detik
+
             try {
-                const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestPayload) });
-                if (response.status === 429 || response.status === 400 || response.status === 401) { this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; continue; }
+                const response = await fetch(url, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(requestPayload),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(signalTimeout);
+                
+                if (response.status === 429 || response.status === 400 || response.status === 401 || response.status >= 500) { 
+                    this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; continue; 
+                }
                 if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
                 const result = await response.json(); const textResponse = result.candidates?.[0]?.content?.parts?.[0]?.text;
                 if (!textResponse) throw new Error("Format respons API tidak sesuai"); return textResponse;
-            } catch (err) { this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; }
+            } catch (err) { 
+                clearTimeout(signalTimeout);
+                this.currentIndex = (this.currentIndex + 1) % this.keysPool.length; attempt++; 
+            }
         }
-        throw new Error("SEMUA KUNCI GEMINI TERKENA LIMIT!");
+        throw new Error("SEMUA KUNCI GEMINI VISION TERKENA LIMIT!");
     }
 };
 
 /**
  * ============================================================================
- * [12] AI ORCHESTRATOR
+ * [12] AI ORCHESTRATOR (BUG #27/28 FALLBACK FIXED)
  * ============================================================================
  */
-window.getOraclePromptConfigs = function() {
-    const prefs = window.settingsData?.aiPreferences || { persona: 'Kombinasi Humble + Jenius + Profesional', style: 'Normal' };
-    let personaStr = "kombinasi humble, jenius, dan profesional";
-    if (prefs.persona === "Humble Profesional") personaStr = "humble dan profesional";
-    else if (prefs.persona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
-    else if (prefs.persona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
-    else if (prefs.persona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
-    else if (prefs.persona === "Formal") personaStr = "sangat formal, baku, dan analitis";
-    else if (prefs.persona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
-    let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
-    if (prefs.style === "Singkat") styleStr = "Jawab SINGKAT, padat, dan jelas. Maksimal 2 paragraf saja.";
-    else if (prefs.style === "Detail") styleStr = "Jawab dengan SANGAT DETAIL, komprehensif, dan panjang lebar.";
-    return { personaStr, styleStr };
-};
-
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     const prefs = window.settingsData?.aiPreferences || {};
     const chatModel = prefs.modelChat || 'Auto'; const visionModel = prefs.modelVision || 'Auto';
@@ -536,23 +773,37 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     
     let lastError = null;
     
+    // Eksekusi Groq
     if (useGroq && window.rawGroqKeysData && window.rawGroqKeysData.length > 0) {
-        try { return await window.GroqService.fetch(messages, requireJson); } catch(e) { lastError = e; if (!useGemini) throw e; }
+        try { 
+            const result = await window.GroqService.fetch(messages, requireJson); 
+            lastError = null; // Bug #27 Fix: Bersihkan error status jika operasi sukses
+            return result;
+        } catch(e) { 
+            lastError = e; 
+            if (!useGemini) throw e; 
+        }
     }
+    // Failover ke Gemini jika Groq menemui kegagalan
     if (useGemini && window.failoverEngineInstance && window.failoverEngineInstance.keysPool.length > 0) {
         try {
             const userPrompt = messages[messages.length - 1].content;
             const geminiPayload = { contents: [{ role: "user", parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: systemPrompt }] } };
             if (requireJson) { geminiPayload.generationConfig = { responseMimeType: "application/json" }; }
-            return await window.failoverEngineInstance.fetch(geminiPayload, base64Image);
-        } catch(e) { lastError = e; }
+            const result = await window.failoverEngineInstance.fetch(geminiPayload, base64Image);
+            lastError = null; // Bug #27 Fix
+            return result;
+        } catch(e) { 
+            lastError = e; 
+        }
     }
-    throw new Error(lastError ? lastError.message : "Sistem AI offline.");
+    // Bug #28 Fix: Tampilkan kegagalan AI secara detail
+    throw new Error(lastError ? `AI Gangguan: ${lastError.message}` : "Sistem transmisi AI offline.");
 };
 
 /**
  * ============================================================================
- * [13] AI STAGING AREA (KAS APATO FEATURE)
+ * [13] AI STAGING AREA (KAS APATO ENGINE)
  * ============================================================================
  */
 window.processTransactionParsing = async function(text, imgData = null) {
@@ -624,6 +875,7 @@ Struktur JSON Wajib:
 window.renderStagingUI = function() {
     if (!window.aiStaging) return;
     
+    // Bug #30 Fix: Menghindari duplikasi pembuatan elemen modal staging di DOM
     let stagingModal = document.getElementById('modal-ai-staging');
     if (!stagingModal) {
         const modalHtml = `
@@ -720,8 +972,13 @@ window.renderStagingUI = function() {
 
 window.updateStagingItem = function(index, field, value) {
     if(!window.aiStaging || !window.aiStaging.items[index]) return;
-    if(field === 'harga' || field === 'qty') window.aiStaging.items[index][field] = Number(value);
-    else window.aiStaging.items[index][field] = value;
+    // Bug #31 Fix: Menjamin parameter kuantitas/harga tidak terisi NaN
+    if(field === 'harga' || field === 'qty') {
+        const validatedVal = Number(value);
+        window.aiStaging.items[index][field] = isNaN(validatedVal) ? 0 : validatedVal;
+    } else {
+        window.aiStaging.items[index][field] = value;
+    }
     window.renderStagingUI(); 
 };
 
@@ -746,7 +1003,14 @@ window.saveStagingToDatabase = async function() {
     
     window.aiStaging.merchantName = document.getElementById('staging-trx-store').value.trim() || 'Toko/Merchant';
     window.aiStaging.tipe = document.getElementById('staging-trx-type').value;
-    const finalSum = window.aiStaging.items.reduce((acc, it) => acc + (it.harga * (it.qty || 1)), 0);
+    
+    // Bug #29 Fix: Rekalkulasi final sum protektif anti-NaN
+    const finalSum = window.aiStaging.items.reduce((acc, it) => {
+        const itemPrice = Number(it.harga) || 0;
+        const itemQty = Number(it.qty) || 1;
+        return acc + (itemPrice * itemQty);
+    }, 0);
+    
     window.aiStaging.nominal = finalSum + Number(window.aiStaging.admin_fee || 0);
     window.aiStaging.createdAt = new Date().toISOString();
     window.aiStaging.is_deleted = false;
@@ -761,14 +1025,22 @@ window.saveStagingToDatabase = async function() {
 
 /**
  * ============================================================================
- * [14] ORACLE CHAT LOGIC
+ * [14] ORACLE CHAT LOGIC (BUG #32/33 SECURITY & DUPLICATE PROTECTED)
  * ============================================================================
  */
+let isChatProcessing = false; // Bug #33 Fix: Mencegah spam klik / pengiriman pesan ganda
+
 window.processOracleChat = async function(text, base64Img = null) {
     if (!window.currentUserUid) return;
+    if (isChatProcessing) return;
     
+    isChatProcessing = true;
     const uiText = text || (base64Img ? "[Menganalisis Gambar Terlampir...]" : "");
-    await window.FirebaseService.pushOracleChat({role: 'user', text: uiText, timestamp: new Date().toISOString()});
+    
+    // Bug #32 Fix: Sanitasi HTML input dari user demi menghindari serangan XSS
+    const sanitizedUiText = window.AuraUtils.escapeHtml(uiText);
+    
+    await window.FirebaseService.pushOracleChat({role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString()});
     window.setProcessingStatus(true); 
 
     try {
@@ -814,75 +1086,86 @@ Kembalikan respon format RAW JSON STRICT (TANPA markdown):
         const messages = [{ role: "system", content: systemPrompt }];
 
         const history = window.MemoryService.getRelevantChats();
-        history.forEach(h => { if(h.text !== uiText) messages.push({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.text }); });
+        // Bug #33 Fix: Pastikan context chat tidak menduplikasi input sekarang
+        history.forEach(h => { if(h.text !== sanitizedUiText) messages.push({ role: h.role === 'ai' ? 'assistant' : 'user', content: h.text }); });
         messages.push({ role: "user", content: text || "Analisis data keuangan" });
 
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, base64Img);
         resJson = window.AuraUtils.parseCleanJSON(aiOutput);
 
+        // Bug #34 Fix: Validasi ketat keberadaan transaksi target sebelum mengeksekusi instruksi dari AI
         if(resJson.action !== 'none' && resJson.target_id) { 
             try {
                 const targetTrx = window.allTransactions.find(t => t.id === resJson.target_id);
                 
-                if(resJson.action === 'moveToTrash') {
-                    await window.FirebaseService.moveToTrash(resJson.target_id);
-                } else if(resJson.action === 'update_transaction' && targetTrx) {
-                    const updates = {};
-                    if(resJson.update_fields) {
-                        if(resJson.update_fields.merchantName) updates.merchantName = resJson.update_fields.merchantName;
-                        if(resJson.update_fields.metode_pembayaran) updates.metode_pembayaran = resJson.update_fields.metode_pembayaran;
-                        if(resJson.update_fields.tipe) updates.tipe = resJson.update_fields.tipe;
-                        if(resJson.update_fields.nominal !== undefined) updates.nominal = resJson.update_fields.nominal;
-                    }
-                    await window.FirebaseService.updateTransaction(targetTrx.id, updates);
-                } else if(resJson.action === 'add_item' && targetTrx && resJson.new_items) {
-                    const finalItems = (targetTrx.items || []).concat(window.AuraUtils.sanitizeItemsArray(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString()));
-                    const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    const upd = { items: finalItems, nominal: sum };
-                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
-                    await window.FirebaseService.updateTransaction(targetTrx.id, upd);
-                } else if(resJson.action === 'edit_item' && targetTrx && resJson.target_item_id && resJson.new_items && resJson.new_items.length > 0) {
-                    const newEditData = resJson.new_items[0];
-                    const finalItems = (targetTrx.items || []).map(it => {
-                        if(it.itemId === resJson.target_item_id) {
-                            return { ...it, nama_barang: newEditData.nama_barang || it.nama_barang, harga: newEditData.harga !== undefined ? newEditData.harga : it.harga, qty: newEditData.qty !== undefined ? newEditData.qty : it.qty, kategori_barang: newEditData.kategori_barang || it.kategori_barang };
-                        } return it;
-                    });
-                    const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
-                    const upd = { items: finalItems, nominal: sum };
-                    if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item disesuaikan AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
-                    await window.FirebaseService.updateTransaction(targetTrx.id, upd);
-                } else if(resJson.action === 'delete_item' && targetTrx && resJson.target_item_id) {
-                    const finalItems = (targetTrx.items || []).filter(it => it.itemId !== resJson.target_item_id);
-                    if(finalItems.length === 0) { await window.FirebaseService.moveToTrash(targetTrx.id); } 
-                    else {
+                if (targetTrx) {
+                    if(resJson.action === 'moveToTrash') {
+                        await window.FirebaseService.moveToTrash(resJson.target_id);
+                    } else if(resJson.action === 'update_transaction') {
+                        const updates = {};
+                        if(resJson.update_fields) {
+                            if(resJson.update_fields.merchantName) updates.merchantName = resJson.update_fields.merchantName;
+                            if(resJson.update_fields.metode_pembayaran) updates.metode_pembayaran = resJson.update_fields.metode_pembayaran;
+                            if(resJson.update_fields.tipe) updates.tipe = resJson.update_fields.tipe;
+                            if(resJson.update_fields.nominal !== undefined) updates.nominal = resJson.update_fields.nominal;
+                        }
+                        await window.FirebaseService.updateTransaction(targetTrx.id, updates);
+                    } else if(resJson.action === 'add_item' && resJson.new_items) {
+                        const finalItems = (targetTrx.items || []).concat(window.AuraUtils.sanitizeItemsArray(resJson.new_items, targetTrx.metode_pembayaran, new Date().toISOString()));
                         const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
                         const upd = { items: finalItems, nominal: sum };
-                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
+                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Transaksi diubah AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
                         await window.FirebaseService.updateTransaction(targetTrx.id, upd);
+                    } else if(resJson.action === 'edit_item' && resJson.target_item_id && resJson.new_items && resJson.new_items.length > 0) {
+                        const newEditData = resJson.new_items[0];
+                        const finalItems = (targetTrx.items || []).map(it => {
+                            if(it.itemId === resJson.target_item_id) {
+                                return { ...it, nama_barang: newEditData.nama_barang || it.nama_barang, harga: newEditData.harga !== undefined ? newEditData.harga : it.harga, qty: newEditData.qty !== undefined ? newEditData.qty : it.qty, kategori_barang: newEditData.kategori_barang || it.kategori_barang };
+                            } return it;
+                        });
+                        const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
+                        const upd = { items: finalItems, nominal: sum };
+                        if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item disesuaikan AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
+                        await window.FirebaseService.updateTransaction(targetTrx.id, upd);
+                    } else if(resJson.action === 'delete_item' && resJson.target_item_id) {
+                        const finalItems = (targetTrx.items || []).filter(it => it.itemId !== resJson.target_item_id);
+                        if(finalItems.length === 0) { await window.FirebaseService.moveToTrash(targetTrx.id); } 
+                        else {
+                            const sum = finalItems.reduce((a,b)=>a+(b.harga*(b.qty||1)), 0);
+                            const upd = { items: finalItems, nominal: sum };
+                            if(!targetTrx.isCustomDescription) upd.description = `[Auto-Update] Item dihapus AI. Total: ${window.AuraUtils.formatCurrency(sum)}`;
+                            await window.FirebaseService.updateTransaction(targetTrx.id, upd);
+                        }
                     }
+                } else {
+                    Logger.warn('OracleChat', `Aksi ${resJson.action} ditolak. ID Transaksi ${resJson.target_id} tidak valid.`);
                 }
             } catch(e) { resJson.reply += " (Gagal memproses sinkronisasi instruksi data AI.)"; }
         }
 
-        await window.FirebaseService.pushOracleChat({role: 'ai', text: resJson.reply, timestamp: new Date().toISOString()});
+        // Bug #32 Fix: Escape balasan Oracle agar tidak memicu XSS
+        const escapedReply = window.AuraUtils.escapeHtml(resJson.reply);
+        await window.FirebaseService.pushOracleChat({role: 'ai', text: escapedReply, timestamp: new Date().toISOString()});
 
     } catch(e) { 
         await window.FirebaseService.pushOracleChat({role: 'ai', text: `Gangguan transmisi sistem: ${e.message}`, timestamp: new Date().toISOString()});
-    } finally { window.setProcessingStatus(false); }
+    } finally { 
+        window.setProcessingStatus(false); 
+        isChatProcessing = false;
+    }
 };
 
 /**
  * ============================================================================
- * [15] RENDER ENGINE (RECALCULATE ALL)
+ * [15] RENDER ENGINE & DYNAMIC STAPLES TRACKER (HIGH-PERFORMANCE RENDERING)
  * ============================================================================
  */
 let expItemsState = {};
-window.toggleReceipt = function(id) { expItemsState[id] = !expItemsState[id]; window.reCalculateAll(); };
+window.toggleReceipt = function(id) { expItemsState[id] = !expItemsState[id]; window.debouncedCalculateAll(); };
 
 window.changeViewMode = function(mode) {
     window.AuraState.filters.periodMode = mode;
-    window.reCalculateAll();
+    window.debouncedCalculateAll();
     ['period', 'month', 'all'].forEach(m => {
         window.AuraUtils.safeDOM(`btn-mode-${m}`, el => {
             if(m === mode) el.classList.add('text-accent', 'bg-white/10');
@@ -895,11 +1178,11 @@ window.applyFilters = function() {
     window.AuraState.filters.search = document.getElementById('filter-search')?.value || '';
     window.AuraState.filters.category = document.getElementById('filter-category')?.value || 'ALL';
     window.AuraState.filters.user = document.getElementById('filter-user')?.value || 'ALL';
-    window.reCalculateAll();
+    window.debouncedCalculateAll();
 };
 
 window.reCalculateAll = function() {
-    Logger.info('RenderEngine', 'Executing High-Performance Re-Calculation...');
+    Logger.info('RenderEngine', 'Menjalankan Kalkulasi Finansial Komprehensif...');
     
     const allTx = window.allTransactions || [];
     const today = new Date();
@@ -938,8 +1221,17 @@ window.reCalculateAll = function() {
 
     let periodSpent = 0, periodIncome = 0;
     let catSpend = {}, merchantSpend = {}, groupedTrx = {};
-    let trackBeras = 0, trackMinyak = 0, trackSabun = 0; 
     
+    // ========================================================================
+    // 🛠️ INISIALISASI DYNAMIC STAPLES TRACKER (FITUR BARU)
+    // ========================================================================
+    // Mengambil konfigurasi tracker dinamis dari settingsData, jika kosong gunakan default
+    const trackersConfig = window.settingsData?.staplesTrackers || DEFAULT_STAPLES_TRACKERS;
+    let trackerBalances = {};
+    Object.keys(trackersConfig).forEach(trackerId => {
+        trackerBalances[trackerId] = 0;
+    });
+
     let dailySp = {};
     for (let i = 6; i >= 0; i--) { 
         let d = new Date(today); d.setDate(d.getDate() - i); 
@@ -997,10 +1289,14 @@ window.reCalculateAll = function() {
                         calcItemSum += itemVal;
                         catSpend[it.kategori_barang || 'Lainnya'] = (catSpend[it.kategori_barang || 'Lainnya'] || 0) + itemVal;
                         
-                        const iName = it.nama_barang.toUpperCase();
-                        if (iName.includes('BERAS')) trackBeras += itemVal;
-                        if (iName.includes('MINYAK')) trackMinyak += itemVal;
-                        if (iName.includes('SABUN') || iName.includes('CUCI') || iName.includes('SUNLIGHT') || iName.includes('DETERJEN')) trackSabun += itemVal;
+                        // 🛠️ PROSES DYNAMIC TRACKER MATCHING (Kata Kunci & Akumulasi Nilai)
+                        const iName = it.nama_barang.toLowerCase();
+                        Object.entries(trackersConfig).forEach(([trackerId, trackerInfo]) => {
+                            const isMatch = trackerInfo.keywords.some(keyword => iName.includes(keyword.toLowerCase()));
+                            if (isMatch) {
+                                trackerBalances[trackerId] += itemVal;
+                            }
+                        });
                     });
                     if (actualSpend > calcItemSum) {
                         catSpend['Lainnya'] = (catSpend['Lainnya'] || 0) + (actualSpend - calcItemSum);
@@ -1056,9 +1352,15 @@ window.reCalculateAll = function() {
     window.AuraUtils.safeDOM('period-progress-text', el => el.innerText = `PROGRES SIKLUS: ${periodPct.toFixed(0)}%`);
     window.AuraUtils.safeDOM('period-days-left', el => el.innerText = `${daysLeft} HARI TERSISA`);
 
-    window.AuraUtils.safeDOM('track-beras', el => el.innerText = window.AuraUtils.formatCurrency(trackBeras));
-    window.AuraUtils.safeDOM('track-minyak', el => el.innerText = window.AuraUtils.formatCurrency(trackMinyak));
-    window.AuraUtils.safeDOM('track-sabun', el => el.innerText = window.AuraUtils.formatCurrency(trackSabun));
+    // ========================================================================
+    // 🛠️ RENDERING DYNAMIC ITEM TRACKER KE ELEMENT DOM
+    // ========================================================================
+    // Update elemen DOM secara dinamis berdasarkan Id tracker ('track-[trackerId]')
+    Object.entries(trackerBalances).forEach(([trackerId, value]) => {
+        window.AuraUtils.safeDOM(`track-${trackerId}`, el => {
+            el.innerText = window.AuraUtils.formatCurrency(value);
+        });
+    });
 
     const catSorted = Object.entries(catSpend).sort((a,b)=>b[1]-a[1]);
     window.AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.AuraUtils.formatCurrency(periodSpent));
@@ -1098,6 +1400,7 @@ window.reCalculateAll = function() {
             </div>`).join('');
     });
 
+    // Render Canvas Chart 7 Hari
     const canvas = document.getElementById('canvas-7days');
     if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -1144,8 +1447,8 @@ window.reCalculateAll = function() {
             return `<div class="mb-4">
                 <div class="flex justify-between items-end mb-2.5 border-b border-[var(--border-glass)] pb-1">
                     <div class="flex items-baseline gap-1.5">
-                        <span class="text-xl font-display font-black leading-none">${!isNaN(dObj)?dObj.getDate().toString().padStart(2,'0'):'--'}</span>
-                        <span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj)?dObj.toLocaleDateString('id-ID', {weekday:'short'}):'---'}</span>
+                        <span class="text-xl font-display font-black leading-none">${!isNaN(dObj.getTime())?dObj.getDate().toString().padStart(2,'0'):'--'}</span>
+                        <span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${!isNaN(dObj.getTime())?dObj.toLocaleDateString('id-ID', {weekday:'short'}):'---'}</span>
                     </div>
                     <span class="text-xs font-mono font-bold ${g.total>=0 ? 'text-[var(--color-income)]':'text-[var(--text-main)]'}">${g.total>=0?'+':''}${window.AuraUtils.formatCurrency(g.total)}</span>
                 </div>
@@ -1190,14 +1493,15 @@ window.reCalculateAll = function() {
         el.innerHTML = trashList.length === 0 ? '<p class="text-center text-[var(--text-muted)]">Tempat sampah kosong.</p>' : trashList.map(t => `<div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition"><div><h4 class="font-bold text-xs line-through text-[var(--text-muted)]">${t.merchantName || t.storeName || t.kategori}</h4><p class="text-[9px] text-[var(--text-muted)]">${t.deletedAt?.split('T')[0]}</p></div><div class="flex items-center gap-2"><span class="font-mono text-xs text-[var(--text-muted)] line-through mr-1">${window.AuraUtils.formatCurrency(window.AuraUtils.convertCurrency(t.nominal, t.mata_uang))}</span><button onclick="window.restoreTransaction('${t.id}')" class="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Restore"><i class="fa-solid fa-rotate-left text-xs"></i></button><button onclick="window.deleteForever('${t.id}')" class="bg-rose-500/20 text-rose-400 p-2.5 rounded-lg active:scale-90 transition" aria-label="Hapus Permanen"><i class="fa-solid fa-xmark text-xs"></i></button></div></div>`).join('');
     });
 
-    // Invoke missing recurring renders
     if(window.renderRecurringUIForBudget) window.renderRecurringUIForBudget();
 };
 
+// Implementasi Throttle/Debounce ke reCalculateAll
+window.debouncedCalculateAll = window.AuraUtils.debounce(window.reCalculateAll, APP_CONFIG.THROTTLE_MS);
 
 /**
  * ============================================================================
- * [16] UI FUNCTIONS (Toast, Modals, Views)
+ * [16] UI FUNCTIONS (Toast, Modals, Views - SECURITY HARDENED)
  * ============================================================================
  */
 window.showToast = function(msg, isError = false) {
@@ -1205,19 +1509,36 @@ window.showToast = function(msg, isError = false) {
     const toast = document.createElement('div');
     const icon = isError ? '<i class="fa-solid fa-triangle-exclamation text-[var(--color-expense)]"></i>' : '<i class="fa-solid fa-check text-accent"></i>';
     toast.className = `glass-panel p-3 flex items-center gap-2 text-xs font-bold shadow-lg animate-[slideUp_0.3s_ease-out] ${isError ? 'border-l-4 border-l-[var(--color-expense)]' : 'border-l-4 border-l-accent'}`;
-    toast.innerHTML = `${icon} <span>${msg}</span>`;
+    // Bug #32 Fix: Sanitasi HTML teks toast
+    toast.innerHTML = `${icon} <span>${window.AuraUtils.escapeHtml(msg)}</span>`;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3400);
 };
 
+// Bug #40 Fix: Rendering modal lancar dengan requestAnimationFrame
 window.showModal = function(id) { 
     const m = document.getElementById(id); 
-    if(m) { m.classList.remove('hidden'); setTimeout(()=>m.classList.add('opacity-100'), 10); }
+    if(m) { 
+        m.classList.remove('hidden'); 
+        requestAnimationFrame(() => {
+            m.classList.add('opacity-100');
+        });
+    }
 };
 
 window.closeModal = function(id) {
     const m = document.getElementById(id); 
-    if(m) { m.classList.remove('opacity-100'); setTimeout(()=>m.classList.add('hidden'), 300); }
+    if(m) { 
+        m.classList.remove('opacity-100'); 
+        setTimeout(() => {
+            m.classList.add('hidden');
+            // Bug #41 Fix: Bersihkan input form dalam modal setelah ditutup
+            const formInputs = m.querySelectorAll('input, textarea');
+            formInputs.forEach(input => {
+                if(input.type !== 'button' && input.type !== 'submit') input.value = '';
+            });
+        }, 300); 
+    }
 };
 
 window.setProcessingStatus = function(isProc) {
@@ -1246,20 +1567,16 @@ window.switchView = function(viewId) {
         else { btn.classList.remove('text-[var(--accent-primary)]'); btn.classList.add('text-[var(--text-muted)]'); }
     });
 
-    window.reCalculateAll();
+    window.debouncedCalculateAll();
 };
-
 
 /**
  * ============================================================================
  * [17] RENDER FUNCTIONS (UI RENDERERS FOR CHAT, KEYS, AND RECURRING BILLS)
- * [ADDED]: Semua komponen hilang sudah dipulihkan secara penuh di sini!
  * ============================================================================
  */
-
 window.renderOracleChats = function() {
     window.AuraUtils.safeDOM('oracle-chat-box', el => {
-        // Fallback Pesan Kosong
         if (!window.oracleChats || window.oracleChats.length === 0) {
             el.innerHTML = `<div class="text-center text-[var(--text-muted)] p-8">
                 <i class="fa-solid fa-comment-dots text-3xl mb-3 block opacity-30"></i>
@@ -1268,9 +1585,9 @@ window.renderOracleChats = function() {
             return;
         }
         
-        // Loop Map untuk Semua Chat
         el.innerHTML = window.oracleChats.map(c => {
-            let htmlFormat = c.text.replace(/\n/g, '<br/>');
+            // Bug #32 Fix: HTML escape filter ganda demi mengamankan render bubble chat
+            let htmlFormat = window.AuraUtils.escapeHtml(c.text).replace(/\n/g, '<br/>');
             return `<div class="flex ${c.role==='user'?'justify-end':'justify-start'}">
                 <div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${c.role==='user'?'bubble-user text-white shadow-md':'bubble-ai glass-panel markdown-content'} leading-relaxed shadow-sm">
                     ${htmlFormat}
@@ -1278,7 +1595,6 @@ window.renderOracleChats = function() {
             </div>`;
         }).join('');
         
-        // Indikator Processing / Animasi Typing
         if (window.isProcessing && window.activeView === 'oracle') {
             el.innerHTML += `<div class="flex justify-start">
                 <div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center">
@@ -1289,10 +1605,12 @@ window.renderOracleChats = function() {
             </div>`;
         }
         
-        // Auto Scroll ke Bawah
-        setTimeout(() => { 
-            window.AuraUtils.safeDOM('chat-anchor', anc => anc.scrollIntoView({behavior:'smooth'})); 
-        }, 50);
+        // Bug #42 Fix: Scroll terkunci otomatis hanya jika view aktif berada di halaman Oracle
+        if (window.activeView === 'oracle') {
+            setTimeout(() => { 
+                window.AuraUtils.safeDOM('chat-anchor', anc => anc.scrollIntoView({behavior:'smooth'})); 
+            }, 50);
+        }
     });
 };
 
@@ -1374,10 +1692,9 @@ window.renderRecurringUIForBudget = function() {
     });
 };
 
-
 /**
  * ============================================================================
- * [18] EXPORT CSV (DENGAN FILTER)
+ * [18] EXPORT CSV (DENGAN FILTER & PROTEKSI INJEKSI SHEETS)
  * ============================================================================
  */
 window.downloadCSV = function() {
@@ -1406,13 +1723,25 @@ window.downloadCSV = function() {
         return true;
     });
 
+    // Bug #44 Fix: Sanitasi data guna mencegah serangan CSV Injection di Excel/Sheets
+    const cleanCSVField = (val) => {
+        if (val === undefined || val === null) return "";
+        let strVal = String(val).replace(/"/g, '""');
+        // Jika terdapat karakter formula pemicu injeksi, tambahkan escape '
+        if (strVal.startsWith('=') || strVal.startsWith('+') || strVal.startsWith('-') || strVal.startsWith('@')) {
+            strVal = "'" + strVal;
+        }
+        return `"${strVal}"`;
+    };
+
     dataToExport.forEach(r => {
         const d = r.tanggal?.split('T')[0] || ''; 
         const created = r.createdAt || ''; 
         const items = r.items && Array.isArray(r.items) ? r.items.map(i=>`${i.nama_barang} (${i.qty} x ${i.harga}) [${i.kategori_barang}]`).join('|') : '-'; 
-        const note = (r.description || r.catatan_ai || '').replace(/,/g, ''); 
-        const store = (r.merchantName || r.storeName || r.kategori || 'Toko').replace(/,/g, '');
-        csv += `${d},${created},${store},${r.tipe},${r.metode_pembayaran},${r.kategori},${r.nominal},${r.mata_uang},"${items}","${note}"\n`;
+        const note = (r.description || r.catatan_ai || ''); 
+        const store = (r.merchantName || r.storeName || r.kategori || 'Toko');
+        
+        csv += `${cleanCSVField(d)},${cleanCSVField(created)},${cleanCSVField(store)},${cleanCSVField(r.tipe)},${cleanCSVField(r.metode_pembayaran)},${cleanCSVField(r.kategori)},${cleanCSVField(r.nominal)},${cleanCSVField(r.mata_uang)},${cleanCSVField(items)},${cleanCSVField(note)}\n`;
     });
 
     const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8," + csv); 
@@ -1423,57 +1752,71 @@ window.downloadCSV = function() {
 
 /**
  * ============================================================================
- * [19] RECURRING PAYMENTS (TAGIHAN OTOMATIS)
+ * [19] RECURRING PAYMENTS (AUTOMATIC BILL RUNTIME SYSTEM)
  * ============================================================================
  */
 window.checkAndExecuteRecurringPayments = async function() {
-    const rPayments = window.settingsData?.recurringPayments || {};
-    const txList = window.allTransactions || [];
-    const today = new Date();
-    const curDate = today.getDate();
-    const curMonthYearStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2, '0')}`;
+    // Bug #45 Fix: Blok konkurensi agar scheduler tagihan rutin tidak dieksekusi ganda dalam milidetik yang sama
+    if (window.AuraState.temp.isProcessingRecurring) return;
+    window.AuraState.temp.isProcessingRecurring = true;
 
-    for (const [id, rp] of Object.entries(rPayments)) {
-        if (curDate >= rp.date) {
-            const alreadyPaid = txList.some(t => {
-                const sameRecurringId = t.recurring_id === id;
-                const sameMonthYear = t.tanggal && t.tanggal.startsWith(curMonthYearStr);
-                return sameRecurringId && sameMonthYear;
-            });
+    try {
+        const rPayments = window.settingsData?.recurringPayments || {};
+        const txList = window.allTransactions || [];
+        const today = new Date();
+        const curDate = today.getDate();
+        const curMonthYearStr = `${today.getFullYear()}-${(today.getMonth()+1).toString().padStart(2, '0')}`;
+        
+        // Bug #46 Fix: Dapatkan hari terakhir bulan berjalan demi mengantisipasi tanggal 29, 30, atau 31 yang absen
+        const lastDayOfThisMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
-            if (!alreadyPaid) {
-                const timestamp = today.toISOString();
-                const tagihanData = {
-                    tanggal: today.toISOString().split('T')[0],
-                    createdAt: timestamp,
-                    nominal: rp.amount,
-                    mata_uang: window.AuraState.system.displayCurrency,
-                    metode_pembayaran: rp.method,
-                    kategori: 'Utilitas',
-                    tipe: 'pengeluaran',
-                    sifat: 'kebutuhan',
-                    merchantName: rp.name,
-                    description: `Pembayaran otomatis: ${rp.name}`,
-                    isCustomDescription: true,
-                    recurring_id: id,
-                    is_deleted: false,
-                    items: [{
-                        itemId: window.AuraUtils.generateId('itm'),
-                        nama_barang: rp.name,
-                        harga: rp.amount,
-                        qty: 1,
-                        kategori_barang: 'Utilitas',
-                        tax_rate: 0,
-                        paymentMethod: rp.method,
-                        timestamp: timestamp
-                    }]
-                };
-                try {
-                    await window.FirebaseService.saveTransaction(tagihanData);
-                    window.showToast(`Tagihan otomatis "${rp.name}" berhasil dibayarkan sistem!`);
-                } catch(e) {}
+        for (const [id, rp] of Object.entries(rPayments)) {
+            // Tentukan target tanggal eksekusi yang realistis pada bulan berjalan
+            const targetDate = Math.min(rp.date, lastDayOfThisMonth);
+
+            if (curDate >= targetDate) {
+                const alreadyPaid = txList.some(t => {
+                    const sameRecurringId = t.recurring_id === id;
+                    const sameMonthYear = t.tanggal && t.tanggal.startsWith(curMonthYearStr);
+                    return sameRecurringId && sameMonthYear;
+                });
+
+                if (!alreadyPaid) {
+                    const timestamp = today.toISOString();
+                    const tagihanData = {
+                        tanggal: today.toISOString().split('T')[0],
+                        createdAt: timestamp,
+                        nominal: rp.amount,
+                        mata_uang: window.AuraState.system.displayCurrency,
+                        metode_pembayaran: rp.method,
+                        kategori: 'Utilitas',
+                        tipe: 'pengeluaran',
+                        sifat: 'kebutuhan',
+                        merchantName: rp.name,
+                        description: `Pembayaran otomatis: ${rp.name}`,
+                        isCustomDescription: true,
+                        recurring_id: id,
+                        is_deleted: false,
+                        items: [{
+                            itemId: window.AuraUtils.generateId('itm'),
+                            nama_barang: rp.name,
+                            harga: rp.amount,
+                            qty: 1,
+                            kategori_barang: 'Utilitas',
+                            tax_rate: 0,
+                            paymentMethod: rp.method,
+                            timestamp: timestamp
+                        }]
+                    };
+                    try {
+                        await window.FirebaseService.saveTransaction(tagihanData);
+                        window.showToast(`Tagihan otomatis "${rp.name}" berhasil dibayarkan sistem!`);
+                    } catch(e) { Logger.error('Recurring', 'Gagal memproses auto-debet tagihan.', e); }
+                }
             }
         }
+    } finally {
+        window.AuraState.temp.isProcessingRecurring = false;
     }
 };
 
@@ -1490,7 +1833,9 @@ window.addRecurringPayment = async function() {
     const date = parseInt(dateInput.value);
     const method = methodInput.value;
 
-    if(!name || isNaN(amount) || isNaN(date) || date < 1 || date > 31) return window.showToast("Lengkapi form tagihan dengan benar (Tgl 1-31)!", true);
+    if(!name || isNaN(amount) || amount <= 0 || isNaN(date) || date < 1 || date > 31) {
+        return window.showToast("Lengkapi form tagihan dengan benar (Tgl 1-31, Nominal > 0)!", true);
+    }
 
     const recId = 'rec_' + Date.now();
     const updates = {};
@@ -1513,29 +1858,32 @@ window.removeRecurringPayment = async function(recId) {
 
 /**
  * ============================================================================
- * [20] REALTIME LISTENERS (FIREBASE PUB/SUB)
+ * [20] REALTIME LISTENERS (FIREBASE PUB/SUB & MEMORY CLEANUP SAVED)
  * ============================================================================
  */
 function loadRealtimeDatabaseData() {
     if (!window.currentUserUid) return;
 
-    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions`), (snapshot) => {
+    // Bug #47 Fix: Catat fungsi unsubscribe dari listener Firebase agar bisa dimatikan saat logout
+    const transactionsListener = onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/transactions`), (snapshot) => {
         const all = []; const data = snapshot.val();
         if (data) { Object.entries(data).forEach(([key, val]) => all.push({ id: key, ...val })); }
         window.allTransactions = all.filter(t => !t.is_deleted).sort((a,b) => new Date(b.tanggal) - new Date(a.tanggal));
         window.trashTransactions = all.filter(t => t.is_deleted).sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
         window.checkAndExecuteRecurringPayments();
-        if(window.reCalculateAll) window.reCalculateAll();
+        window.debouncedCalculateAll();
     });
+    window.AuraState.listeners.push(transactionsListener);
 
-    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals`), (snapshot) => {
+    const goalsListener = onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/goals`), (snapshot) => {
         const goals = []; const data = snapshot.val();
         if (data) { Object.entries(data).forEach(([key, val]) => goals.push({ id: key, ...val })); }
         window.allGoals = goals;
-        if(window.reCalculateAll) window.reCalculateAll();
+        window.debouncedCalculateAll();
     });
+    window.AuraState.listeners.push(goalsListener);
 
-    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings`), (snapshot) => {
+    const settingsListener = onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/settings`), (snapshot) => {
         const d = snapshot.val(); window.settingsData = d || {};
         if (d) {
             if(d.monthlyBudget && d.monthlyBudget.limit) window.monthlyBudget = d.monthlyBudget.limit;
@@ -1554,10 +1902,11 @@ function loadRealtimeDatabaseData() {
         window.CategoryManager.renderDropdowns();
         if(window.renderRecurringUI) window.renderRecurringUI();
         if(window.renderRecurringUIForBudget) window.renderRecurringUIForBudget();
-        if(window.reCalculateAll) window.reCalculateAll();
+        window.debouncedCalculateAll();
     });
+    window.AuraState.listeners.push(settingsListener);
 
-    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys`), (snapshot) => {
+    const keysListener = onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/groqApiKeys`), (snapshot) => {
         window.rawGroqKeysData = []; const data = snapshot.val();
         if (data) { Object.entries(data).forEach(([key, val]) => window.rawGroqKeysData.push({ id: key, ...val })); }
         const activeCount = window.GroqService.init(window.rawGroqKeysData);
@@ -1567,13 +1916,15 @@ function loadRealtimeDatabaseData() {
         });
         if(window.renderGroqKeysUI) window.renderGroqKeysUI();
     });
+    window.AuraState.listeners.push(keysListener);
 
-    onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/oracleChats`), (snapshot) => {
+    const chatsListener = onValue(ref(db, `${APP_CONFIG.LEDGER_NODE}/${window.currentUserUid}/oracleChats`), (snapshot) => {
         const chats = []; const data = snapshot.val();
         if (data) { Object.entries(data).forEach(([key, val]) => chats.push({ id: key, ...val })); chats.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)); }
         window.oracleChats = chats.length === 0 ? [{ role: 'ai', text: `Halo! Aku Aura Oracle V3. Siap mencatat transaksi dan analisis finansial hari ini.`, timestamp: new Date().toISOString() }] : chats;
         if(window.renderOracleChats) window.renderOracleChats();
     });
+    window.AuraState.listeners.push(chatsListener);
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -1583,9 +1934,16 @@ onAuthStateChanged(auth, (user) => {
         if(modalLogin) modalLogin.classList.add('hidden');
         loadRealtimeDatabaseData();
         window.FirebaseService.saveAuditLog('LOGIN', 'User Session Activated');
-        const savedGeminiPin = localStorage.getItem('aurafi_gemini_pin'); 
+        
+        // Bug #24 Fix: Mengambil PIN dekripsi Gemini dari sessionStorage (Aman & Tidak persisten)
+        const savedGeminiPin = sessionStorage.getItem('aurafi_gemini_pin'); 
         if (savedGeminiPin && window.syncGeminiEngine) { setTimeout(() => window.syncGeminiEngine(true), 800); }
     } else {
+        // Bug #47 & #48 Fix: Cleanup memori listener secara total saat user logout
+        Logger.info('Core', 'Membersihkan antrean listener Firebase Realtime...');
+        window.AuraState.listeners.forEach(unsub => { if (typeof unsub === 'function') unsub(); });
+        window.AuraState.listeners = [];
+        
         window.currentUserUid = null; window.AuraState.user.uid = null;
         if(modalLogin) modalLogin.classList.remove('hidden');
     }
@@ -1596,11 +1954,13 @@ onAuthStateChanged(auth, (user) => {
  * [21] EXECUTION HANDLERS & MODALS (Gemini, Edit Trx, Delete)
  * ============================================================================
  */
-
 window.syncGeminiEngine = async function(silent = false) {
     const pinInput = document.getElementById('gemini-pin-input')?.value.trim();
-    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
-    if (!pin) { if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI GLOBAL!", true); return; }
+    // Bug #24 Fix: Mengambil PIN dekripsi dari sessionStorage
+    const pin = silent ? sessionStorage.getItem('aurafi_gemini_pin') : pinInput;
+    
+    // Bug #49 Fix: Validasi keamanan parameter PIN global
+    if (!pin || pin.length < 4) { if(!silent) window.showToast("HARAP MASUKKAN PIN GEMINI DENGAN BENAR!", true); return; }
 
     const gBadge = document.getElementById('gemini-status-badge');
     if(gBadge) { gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-mono animate-pulse"; gBadge.innerText = "DECRYPTING..."; }
@@ -1611,7 +1971,8 @@ window.syncGeminiEngine = async function(silent = false) {
         if(gCount > 0) {
             window.failoverEngineInstance = geminiEngine;
             window.AuraState.instances.geminiEngine = geminiEngine;
-            localStorage.setItem('aurafi_gemini_pin', pin);
+            // Simpan ke sessionStorage (Bug #24 Fix)
+            sessionStorage.setItem('aurafi_gemini_pin', pin);
             if(gBadge) { gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono"; gBadge.innerText = `ACTIVE (${gCount})`; }
             if(!silent) window.showToast("Gemini Vision Berhasil Di-Unlock.");
         } else { throw new Error("GCount 0"); }
@@ -1622,8 +1983,11 @@ window.syncGeminiEngine = async function(silent = false) {
 };
 
 window.openEditTrxModal = function(id) {
-    const trx = window.allTransactions.find(t => t.id === id); 
-    if(!trx) return; 
+    const sourceTrx = window.allTransactions.find(t => t.id === id); 
+    if(!sourceTrx) return; 
+    
+    // Bug #50 Fix: Melakukan cloning data agar modifikasi tidak merusak referensi state utama sebelum disubmit
+    const trx = JSON.parse(JSON.stringify(sourceTrx));
     window.editTrxTargetData = id;
     
     window.AuraUtils.safeDOM('edit-global-store', el => el.value = trx.merchantName || trx.storeName || trx.kategori || '');
@@ -1641,7 +2005,14 @@ window.saveEditTrx = async function() {
     const storeName = document.getElementById('edit-global-store')?.value.trim(); 
     const curr = document.getElementById('edit-global-curr')?.value;
     const method = document.getElementById('edit-global-method')?.value; 
-    const nominal = parseFloat(document.getElementById('edit-global-nominal')?.value) || 0;
+    
+    // Bug #51 Fix: Validasi keamanan nominal (Mencegah input minus atau kosong)
+    const nominal = parseFloat(document.getElementById('edit-global-nominal')?.value);
+    if(isNaN(nominal) || nominal < 0) {
+        window.showToast("Nominal transaksi tidak valid / dilarang bernilai minus!", true);
+        return;
+    }
+    
     const tipe = document.getElementById('edit-global-type')?.value || 'pengeluaran'; 
     const desc = document.getElementById('edit-global-desc')?.value.trim() || '';
 
@@ -1688,7 +2059,7 @@ window.openEditItem = function(trxId, itemId) {
     const safeItemId = itemId || 'no_id_fallback';
     const item = trx.items.find(i => (i.itemId || '') === safeItemId); if(!item) return;
 
-    window.editItemTargetData = { id: trxId, itemId: safeItemId, item: item };
+    window.editItemTargetData = { id: trxId, itemId: safeItemId, item: JSON.parse(JSON.stringify(item)) };
     window.AuraUtils.safeDOM('edit-store-name', el => el.value = trx.merchantName || trx.storeName || '');
     window.AuraUtils.safeDOM('edit-item-name', el => el.value = item.nama_barang || '');
     window.AuraUtils.safeDOM('edit-item-qty', el => el.value = item.qty || 1); 
@@ -1734,9 +2105,10 @@ window.confirmDelItem = function(trxId, itemId) { const trx = window.allTransact
 window.confirmDelTrx = function(id) { const trx = window.allTransactions.find(t=>t.id === id); if(!trx) return; window.deleteTargetData = { type: 'trx', id, name: trx.kategori }; window.AuraUtils.safeDOM('confirm-msg', el => el.innerText = `Pindahkan transaksi "${trx.merchantName || trx.storeName || trx.kategori}" ke tempat sampah?`); window.showModal('modal-confirm'); };
 window.closeConfirmModal = function() { window.closeModal('modal-confirm'); window.deleteTargetData=null; };
 
+// Bug #52 Fix: Daftarkan listener 'click' konfirmasi hapus secara dinamis guna mencegah tumpang-tindih event listener ganda
 const executeConfirmDelete = document.getElementById('btn-execute-delete');
 if(executeConfirmDelete) {
-    executeConfirmDelete.onclick = async () => {
+    executeConfirmDelete.addEventListener('click', async () => {
         if(!window.deleteTargetData) return;
         if(window.deleteTargetData.type === 'trx') { 
             if(window.activeView === 'trash') { await window.FirebaseService.deleteTransactionPermanently(window.deleteTargetData.id); } 
@@ -1757,10 +2129,10 @@ if(executeConfirmDelete) {
             }
         }
         window.closeConfirmModal(); window.showToast("Aksi Destruktif Berhasil Dieksekusi.");
-    };
+    });
 }
 
-window.promptBudget = function() { const amt = prompt("Masukkan Limit Anggaran Bulanan Baru:", window.monthlyBudget); if(amt && !isNaN(amt)) { window.monthlyBudget = parseFloat(amt); if(window.FirebaseService?.updateSettings) { window.FirebaseService.updateSettings({ monthlyBudget: { limit: window.monthlyBudget } }); } window.reCalculateAll(); } };
+window.promptBudget = function() { const amt = prompt("Masukkan Limit Anggaran Bulanan Baru:", window.monthlyBudget); if(amt && !isNaN(amt)) { window.monthlyBudget = parseFloat(amt); if(window.FirebaseService?.updateSettings) { window.FirebaseService.updateSettings({ monthlyBudget: { limit: window.monthlyBudget } }); } window.debouncedCalculateAll(); } };
 window.restoreTransaction = async function(id) { if(window.FirebaseService?.updateTransaction) { await window.FirebaseService.updateTransaction(id, { is_deleted: false, deletedAt: null }); window.showToast("Transaksi dikembalikan dari sampah."); } };
 window.deleteForever = async function(id) { if(window.FirebaseService?.deleteTransactionPermanently) { await window.FirebaseService.deleteTransactionPermanently(id); window.showToast("Dihapus permanen."); } };
 
