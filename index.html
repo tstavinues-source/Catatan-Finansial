@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="midnight">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AuraFi V3.2.5 - The Living Wealth OS</title>
+    
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#030712">
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AuraFi OS">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+
+    <link rel="stylesheet" href="./css/style.css">
+</head>
+
+<body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
+
+    <!-- GLOBAL TOAST CONTAINER -->
+    <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
+
+    <!-- ==================== MODALS SECTION ==================== -->
+
+    <!-- MODAL 1: LOGIN -->
+    <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
+        <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar relative overflow-hidden">
+            <div class="absolute -top-20 -left-20 w-40 h-40 bg-[var(--accent-primary)] rounded-full blur-[80px] opacity-30"></div>
+            <div class="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-5 border border-accent/30 shadow-[0_0_40px_var(--accent-glow)] shrink-0 z-10">
+                <i class="fa-solid fa-fingerprint text-4xl text-accent"></i>
+            </div>
+            <h2 class="text-3xl font-display font-black tracking-tight mb-2 z-10">AuraFi OS</h2>
+            <p class="text-xs text-[var(--text-muted)] mb-8 leading-relaxed z-10">Cognitive Wealth System. Sinkronisasi persisten untuk akses tanpa batas.</p>
+            
+            <div class="space-y-3 w-full mb-6 z-10">
+                <input type="email" id="login-email" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Email Terdaftar">
+                <input type="password" id="login-pass" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Kata Sandi">
+                <button onclick="window.loginWithEmail()" class="w-full py-4 rounded-2xl bg-accent text-[var(--bg-base)] font-bold text-sm shadow-[0_0_20px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-envelope"></i> Masuk via Email
+                </button>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full mb-6 z-10">
+                <div class="h-px bg-[var(--border-glass)] flex-1"></div>
+                <span class="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-widest">ATAU</span>
+                <div class="h-px bg-[var(--border-glass)] flex-1"></div>
+            </div>
+
+            <button onclick="window.loginWithGoogle()" class="w-full py-4 mb-3 rounded-2xl bg-white text-black font-bold text-sm shadow-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition active:scale-95 z-10">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92(3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                Masuk dengan Google
+            </button>
+            <button onclick="window.loginAnonymously()" class="w-full py-4 rounded-2xl border border-[var(--border-glass)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-glass)] hover:text-white transition active:scale-95 flex items-center justify-center gap-2 z-10">
+                <i class="fa-solid fa-user-secret"></i> Mode Tamu Sementara
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 2: KONFIRMASI HAPUS -->
+    <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-[var(--color-expense)] shadow-2xl relative overflow-hidden">
+            <div class="w-16 h-16 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--color-expense)]/30">
+                <i class="fa-solid fa-triangle-exclamation text-2xl text-[var(--color-expense)]"></i>
+            </div>
+            <h3 class="text-xl font-bold mb-2 font-display">Konfirmasi Tindakan</h3>
+            <p class="text-sm text-[var(--text-muted)] mb-6 leading-relaxed" id="confirm-msg">Yakin ingin membuang data ini?</p>
+            <div class="flex gap-3">
+                <button onclick="window.closeConfirmModal()" class="flex-1 py-3.5 rounded-2xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm transition">Batal</button>
+                <button id="btn-execute-delete" class="flex-1 py-3.5 rounded-2xl bg-[var(--color-expense)] text-white font-bold text-sm shadow-[0_0_20px_rgba(244,63,94,0.4)] transition">Hapus Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: TAMBAH KATEGORI DINAMIS -->
+    <div id="modal-add-category" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-tags"></i> Kategori Baru</h3>
+                <button onclick="window.closeModal('modal-add-category')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Kategori</label>
+                    <input type="text" id="new-category-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Cth: Nongkrong">
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Icon (FontAwesome)</label>
+                        <input type="text" id="new-category-icon" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Cth: fa-mug-saucer">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Warna</label>
+                        <input type="color" id="new-category-color" class="v-input w-full rounded-xl p-1 outline-none h-11" value="#818cf8">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Aliran</label>
+                    <select id="new-category-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <option value="expense">Pengeluaran</option>
+                        <option value="income">Pemasukan</option>
+                        <option value="both">Keduanya</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="window.saveNewCategory()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition">
+                <i class="fa-solid fa-plus mr-2"></i> Buat Kategori
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL 4: AI STAGING AREA (KAS APATO) -->
+    <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel w-full max-w-lg h-[90vh] flex flex-col shadow-2xl border-t-4 border-t-accent overflow-hidden">
+            <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-glass)]">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-microscope"></i> AI Staging Area</h3>
+                <button onclick="window.closeModal('modal-ai-staging')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Toko / Merchant</label>
+                        <input type="text" id="staging-trx-store" class="v-input w-full rounded-xl p-3 text-sm outline-none">
+                    </div>
+                    <div class="w-1/3">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Aliran Dana</label>
+                        <select id="staging-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="pengeluaran">Pengeluaran (-)</option>
+                            <option value="pemasukan">Pemasukan (+)</option>
+                            <option value="tarik_tunai">Tarik Tunai</option>
+                            <option value="setor_tunai">Setor Tunai</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between items-center mt-4 mb-2">
+                    <h4 class="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]"><i class="fa-solid fa-list-check"></i> Keranjang Item</h4>
+                    <button onclick="window.addStagingItem()" class="text-[10px] text-accent font-bold hover:text-white bg-white/5 px-2 py-1 rounded"><i class="fa-solid fa-plus"></i> Manual</button>
+                </div>
+                
+                <!-- Keranjang Items Staging -->
+                <div id="staging-items-container" class="space-y-3"></div>
+            </div>
+            
+            <div class="p-4 border-t border-[var(--border-glass)] bg-[var(--bg-base)] shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-10">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Total Kalkulasi</span>
+                    <span class="text-xl font-bold font-mono text-accent" id="staging-total-display">0</span>
+                </div>
+                <button onclick="window.saveStagingToDatabase()" class="w-full py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2 text-sm"><i class="fa-solid fa-cloud-arrow-up"></i> Konfirmasi & Simpan Permanen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: MANUAL TRANSAKSI -->
+    <div id="modal-manual-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</h3>
+                <button onclick="window.closeModal('modal-manual-trx')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis</label>
+                        <select id="manual-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="pengeluaran">Pengeluaran (-)</option>
+                            <option value="pemasukan">Pemasukan (+)</option>
+                            <option value="tarik_tunai">Tarik Tunai (ATM)</option>
+                            <option value="setor_tunai">Setor Tunai</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Metode</label>
+                        <select id="manual-trx-method" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="cashless">Cashless</option>
+                            <option value="tunai">Tunai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div class="w-1/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
+                        <select id="manual-trx-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="JPY">JPY</option>
+                            <option value="IDR">IDR</option>
+                        </select>
+                    </div>
+                    <div class="w-2/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Total Nominal</label>
+                        <input type="number" id="manual-trx-amount" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold text-accent" placeholder="0">
+                    </div>
+                </div>
+
+                <div>
+                    <label id="lbl-manual-store" class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant / Sumber</label>
+                    <input type="text" id="manual-trx-store" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Contoh: 7-Eleven / Gaji / ATM">
+                </div>
+                
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Spesifik</label>
+                    <select id="manual-trx-category" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
+                        <!-- Populated Dynamically -->
+                    </select>
+                    <div class="text-right mt-2">
+                        <button onclick="window.showModal('modal-add-category')" class="text-[10px] font-bold text-accent hover:text-white transition">
+                            <i class="fa-solid fa-plus"></i> Buat Kategori Baru
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <button onclick="window.saveManualTransaction()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi</button>
+        </div>
+    </div>
+
+    <!-- MODAL 6: EDIT TRANSAKSI UTAMA -->
+    <div id="modal-edit-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-sliders"></i> Edit Induk Transaksi</h3>
+                <button onclick="window.closeModal('modal-edit-trx')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Transaksi</label>
+                        <select id="edit-global-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="pengeluaran">Pengeluaran (-)</option>
+                            <option value="pemasukan">Pemasukan (+)</option>
+                            <option value="tarik_tunai">Tarik Tunai</option>
+                            <option value="setor_tunai">Setor Tunai</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Metode</label>
+                        <select id="edit-global-method" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="cashless">Cashless</option>
+                            <option value="tunai">Tunai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Merchant / Toko</label>
+                    <input type="text" id="edit-global-store" class="v-input w-full rounded-xl p-3 text-sm outline-none">
+                </div>
+
+                <div class="flex gap-3">
+                    <div class="w-1/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
+                        <select id="edit-global-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                            <option value="JPY">JPY</option>
+                            <option value="IDR">IDR</option>
+                        </select>
+                    </div>
+                    <div class="w-2/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Total Manual</label>
+                        <input type="number" id="edit-global-nominal" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono">
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Deskripsi / Keterangan</label>
+                    <textarea id="edit-global-desc" rows="3" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Ubah deskripsi di sini..."></textarea>
+                </div>
+            </div>
+            <button onclick="window.saveEditTrx()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Update Global</button>
+        </div>
+    </div>
+
+    <!-- MODAL 7: TAMBAH ITEM -->
+    <div id="modal-add-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-cart-plus"></i> Tambah Item Baru</h3>
+                <button onclick="window.closeModal('modal-add-item')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Barang</label>
+                    <input type="text" id="add-item-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Cth: Susu Kotak">
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-1/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kuantitas</label>
+                        <input type="number" id="add-item-qty" class="v-input w-full rounded-xl p-3 text-sm text-center outline-none" value="1">
+                    </div>
+                    <div class="w-2/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold font-mono">Harga Satuan</label>
+                        <input type="number" id="add-item-price" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="0">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Item</label>
+                    <select id="add-item-cat" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
+                        <!-- Populated Dynamically -->
+                    </select>
+                </div>
+            </div>
+            <button onclick="window.saveAddItem()" class="w-full mt-6 py-4 rounded-xl bg-[var(--color-income)] text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] transition"><i class="fa-solid fa-plus mr-2"></i> Masukkan Item</button>
+        </div>
+    </div>
+
+    <!-- MODAL 8: EDIT ITEM LAMA -->
+    <div id="modal-edit-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-nib"></i> Edit Instrumen</h3>
+                <button onclick="window.closeModal('modal-edit-item')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant</label>
+                    <input type="text" id="edit-store-name" class="v-input w-full rounded-xl p-3 text-sm outline-none">
+                </div>
+                
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Barang</label>
+                    <input type="text" id="edit-item-name" class="v-input w-full rounded-xl p-3 text-sm outline-none">
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-1/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kuantitas</label>
+                        <input type="number" id="edit-item-qty" class="v-input w-full rounded-xl p-3 text-sm text-center outline-none">
+                    </div>
+                    <div class="w-2/3">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold font-mono">Harga Satuan</label>
+                        <input type="number" id="edit-item-price" class="v-input w-full rounded-xl p-3 text-sm outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Item</label>
+                    <select id="edit-item-cat" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
+                        <!-- Populated Dynamically via JS -->
+                    </select>
+                </div>
+            </div>
+            <button onclick="window.saveEditItem()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Terapkan Perubahan</button>
+        </div>
+    </div>
+
+    <!-- MODAL 9: SETTINGS & AI KEYS SETUP -->
+    <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
+            
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 z-10 backdrop-blur-md">
+                <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-microchip"></i> AURA SETTINGS</h3>
+                <button onclick="window.closeModal('modal-settings')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <!-- SECTION PROFILE -->
+            <div class="space-y-3 mb-6">
+                <h4 class="text-xs font-bold text-yellow-400 flex items-center gap-1.5"><i class="fa-solid fa-user-gear"></i> PROFIL PENGGUNA</h4>
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nama Lengkap</label>
+                    <input type="text" id="user-fullname" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Cth: Muhammad Aura">
+                </div>
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Panggilan (Nickname)</label>
+                    <input type="text" id="user-nickname" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Cth: Aura">
+                </div>
+                <button onclick="window.saveUserProfile()" class="w-full py-2.5 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-yellow-500/30">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Profil
+                </button>
+            </div>
+
+            <!-- SECTION AI ORACLE PREFERENCES -->
+            <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
+                <h4 class="text-xs font-bold text-violet-400 flex items-center gap-1.5"><i class="fa-solid fa-robot"></i> KEPRIBADIAN & PREFERENSI AI</h4>
+                
+                <div class="flex gap-2">
+                    <div class="w-1/2">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Chat</label>
+                        <select id="setting-ai-chat" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                            <option value="Auto">Auto (Groq->Gemini)</option>
+                            <option value="Groq">Groq</option>
+                            <option value="Gemini">Gemini</option>
+                        </select>
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Vision</label>
+                        <select id="setting-ai-vision" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                            <option value="Auto">Auto / Gemini</option>
+                            <option value="Gemini">Gemini</option>
+                            <option value="Groq Vision">Groq Vision</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kepribadian Oracle</label>
+                    <select id="setting-ai-persona" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                        <option value="Humble Profesional">1. Humble Profesional</option>
+                        <option value="Santai dan Asyik">2. Santai dan Asyik</option>
+                        <option value="Sarkas Cerdas">3. Sarkas Cerdas</option>
+                        <option value="Mentor Keuangan">4. Mentor Keuangan</option>
+                        <option value="Formal">5. Formal</option>
+                        <option value="Lucu">6. Lucu</option>
+                        <option value="Kombinasi Humble + Jenius + Profesional" selected>7. Kombinasi Humble + Jenius</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Gaya Jawaban AI</label>
+                    <select id="setting-ai-style" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
+                        <option value="Normal">Normal (Sedang)</option>
+                        <option value="Singkat">Singkat (Max 2 Paragraf)</option>
+                        <option value="Detail">Detail (Panjang & Lengkap)</option>
+                    </select>
+                </div>
+                
+                <button onclick="window.saveAIPreferences()" class="w-full py-2.5 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
+                    <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
+                </button>
+            </div>
+
+            <!-- SECTION GEMINI (VISION/OCR) -->
+            <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-indigo-400 flex items-center gap-1.5"><i class="fa-solid fa-eye"></i> GEMINI (VISION)</h4>
+                    <span id="gemini-status-badge" class="text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono">LOCKED</span>
+                </div>
+                <div>
+                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Master PIN Gemini</label>
+                    <input type="password" id="gemini-pin-input" class="v-input w-full rounded-xl p-2.5 text-xs font-mono outline-none" placeholder="Masukkan PIN Gemini Anda...">
+                </div>
+                <button onclick="window.syncGeminiEngine(false)" class="w-full py-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-indigo-500/30">
+                    <i class="fa-solid fa-unlock-keyhole"></i> Unlock & Sync Gemini
+                </button>
+            </div>
+
+            <!-- SECTION GROQ (CHAT/NLP) -->
+            <div class="space-y-3 pt-5 border-t border-[var(--border-glass)] mb-6">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-bolt"></i> GROQ (CHAT & NLP)</h4>
+                    <span id="groq-status-badge" class="text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono">OFFLINE</span>
+                </div>
+                <!-- Rendered Groq Keys -->
+                <div id="groq-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
+                
+                <div class="flex gap-2">
+                    <input type="password" id="new-groq-key" class="v-input flex-1 rounded-xl p-2 text-xs font-mono outline-none" placeholder="API Key (gsk_...)">
+                    <button onclick="window.addGroqKey()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION RECURRING BILLS (SETTINGS) -->
+            <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-bold text-sky-400 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> TAGIHAN RUTIN</h4>
+                </div>
+                <!-- Rendered Recurring Bills -->
+                <div id="recurring-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
+            </div>
+
+            <!-- SECTION KONFIGURASI LANJUTAN (INJEKSI BARU) -->
+            <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
+                <h4 class="text-xs font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-wrench"></i> KONFIGURASI LANJUTAN</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="window.openTrackerManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-box-open text-amber-400 mb-1 block text-lg"></i> Trackers</button>
+                    <button onclick="window.openFamilyManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-users text-indigo-400 mb-1 block text-lg"></i> Keluarga</button>
+                    <button id="btn-show-audit" onclick="window.openAuditLogs()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-shield-halved text-gray-300 mb-1 block text-lg"></i> Audit Log</button>
+                    <button onclick="window.showModal('modal-import-data')" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-file-import text-emerald-400 mb-1 block text-lg"></i> Impor Data</button>
+                </div>
+            </div>
+
+            <!-- SECTION AKUN & LOGOUT -->
+            <div class="mt-6 pt-5 border-t border-[var(--border-glass)]">
+                <button onclick="window.logoutAccount()" class="w-full py-3 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL 10: IMPORT DATA -->
+    <div id="modal-import-data" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-emerald-400">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-emerald-400 font-display"><i class="fa-solid fa-file-import"></i> Impor Transaksi</h3>
+                <button onclick="window.closeModal('modal-import-data')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4 text-center">
+                <p class="text-xs text-[var(--text-muted)]">Unggah file JSON atau CSV (Format AuraFi) untuk merestorasi riwayat transaksi lama Anda.</p>
+                <input type="file" id="import-file-input" accept=".json, .csv" class="hidden" onchange="window.processFileImport(event)">
+                <button onclick="document.getElementById('import-file-input').click()" class="w-full py-4 rounded-xl border-2 border-dashed border-emerald-500/50 text-emerald-400 font-bold hover:bg-emerald-500/20 transition flex flex-col items-center gap-2">
+                    <i class="fa-solid fa-cloud-arrow-up text-2xl"></i><span>Pilih File Dari Perangkat</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 11: TRACKER DINAMIS -->
+    <div id="modal-edit-tracker" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-400 max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-amber-400 font-display"><i class="fa-solid fa-box-open"></i> Tracker Dinamis</h3>
+                <button onclick="window.closeModal('modal-edit-tracker')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="tracker-list-container" class="space-y-3 mb-5"></div>
+            <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
+                <h4 class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Tambah Tracker Baru</h4>
+                <input type="text" id="new-track-id" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="ID (Contoh: kopi)">
+                <input type="text" id="new-track-name" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Nama Label (Cth: Ngopi)">
+                <input type="text" id="new-track-keywords" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Kata Kunci (Cth: starbucks, kopi, janji jiwa)">
+                <button onclick="window.saveNewTracker()" class="w-full py-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs uppercase tracking-wider hover:bg-amber-500/40 transition">Simpan Tracker</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 12: EDIT BUDGET LIMIT -->
+    <div id="modal-edit-budget" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-rose-400 font-display"><i class="fa-solid fa-fire-flame-curved"></i> Batas Burn Rate</h3>
+                <button onclick="window.closeModal('modal-edit-budget')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Batas Pengeluaran Bulanan (Limit)</label>
+                    <input type="number" id="budget-limit-input" class="v-input w-full rounded-xl p-3 text-sm font-mono font-bold text-rose-400 outline-none" placeholder="Masukkan Nominal JPY/IDR">
+                </div>
+                <button onclick="window.executeSaveBudget()" class="w-full py-4 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/50 font-bold text-sm hover:bg-rose-500/40 transition">Simpan Ketetapan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 13: FAMILY / MULTI-USER -->
+    <div id="modal-family" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-400 font-display"><i class="fa-solid fa-users"></i> Anggota Keluarga</h3>
+                <button onclick="window.closeModal('modal-family')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="family-list-container" class="space-y-3 mb-5"></div>
+            <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
+                <input type="text" id="new-family-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Nama Anggota (Cth: Istri)">
+                <button onclick="window.addFamilyMember()" class="w-full py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-xs uppercase tracking-wider hover:bg-indigo-500/40 transition">Tambah Anggota</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 14: AUDIT LOG -->
+    <div id="modal-audit-log" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-5 w-full max-w-md shadow-2xl border-t-4 border-t-white h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4 shrink-0">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-shield-halved"></i> Security Audit Log</h3>
+                <button onclick="window.closeModal('modal-audit-log')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="audit-log-content" class="flex-1 overflow-y-auto no-scrollbar space-y-3 bg-black/40 p-3 rounded-xl border border-[var(--border-glass)]">
+                <p class="text-xs text-center text-[var(--text-muted)] mt-10">Mencari rekam jejak pada Cloud Firebase...</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= MAIN APP CONTAINER ================= -->
+    <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+        
+        <!-- HEADER GLOBAL -->
+        <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
+            <div>
+                <h1 class="text-2xl font-display font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--invert-contrast)] to-[var(--accent-primary)]">AuraFi<span class="text-accent">.</span></h1>
+                <p class="text-[9px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5" id="live-rate-display">Mendapatkan kurs...</p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="window.toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition" aria-label="Ganti Tema">
+                    <i class="fa-solid fa-palette text-sm"></i>
+                </button>
+                <button onclick="window.showModal('modal-settings')" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition" aria-label="Pengaturan AI">
+                    <i class="fa-solid fa-gear text-sm"></i>
+                </button>
+                <div class="glass-panel p-0.5 flex rounded-xl border border-[var(--border-glass)]">
+                    <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
+                    <button id="btn-curr-idr" onclick="window.setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- DYNAMIC VIEW AREA -->
+        <main class="flex-1 overflow-y-auto no-scrollbar relative" id="view-container">
+            
+            <!-- VIEW: DASHBOARD -->
+            <div id="view-dashboard" class="p-4 space-y-5 block view-transition pb-12">
+                
+                <!-- FITUR KAS APATO: SIKLUS AKUNTANSI (16-15) TOGGLE -->
+                <div class="flex gap-2 mb-2">
+                    <button id="btn-mode-period" onclick="window.changeViewMode('period')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Siklus 16-15</button>
+                    <button id="btn-mode-month" onclick="window.changeViewMode('month')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all text-accent bg-white/10">Bulan Ini</button>
+                    <button id="btn-mode-all" onclick="window.changeViewMode('all')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Semua</button>
+                </div>
+
+                <div class="flex justify-between items-center mt-4">
+                    <span class="text-[10px] text-[var(--text-muted)] uppercase font-extrabold tracking-widest">Aset Kumulatif</span>
+                </div>
+
+                <div class="flex flex-col items-center justify-center py-2 relative">
+                    <div id="living-core" onclick="window.promptBudget()" class="w-48 h-48 rounded-full living-core flex flex-col items-center justify-center relative overflow-hidden cursor-pointer">
+                        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIyKSIvPgo8L3N2Zz4=')] opacity-25"></div>
+                        <div class="absolute w-[140%] h-[140%] border border-[var(--border-glass)] rounded-full border-t-[var(--accent-primary)] animate-[spin_12s_linear_infinite] opacity-60"></div>
+                        <p class="text-[9px] uppercase tracking-[0.25em] text-[var(--text-muted)] z-10 mb-1 font-bold">Net Worth</p>
+                        <!-- Cumulative Balance Display -->
+                        <h2 class="text-3xl font-display font-black z-10 tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400" id="dash-total-balance">0</h2>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-panel p-4 flex flex-col items-center text-center hover:bg-white/5 transition">
+                        <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-2"><i class="fa-solid fa-money-bill-wave text-[var(--text-muted)] text-base"></i></div>
+                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Dompet Tunai</p>
+                        <p class="font-extrabold text-sm" id="dash-cash">0</p>
+                    </div>
+                    <div class="glass-panel p-4 flex flex-col items-center text-center border-[var(--accent-primary)]/30 relative overflow-hidden group">
+                        <div class="absolute -right-4 -top-4 w-16 h-16 bg-[var(--accent-primary)]/10 rounded-full blur-xl group-hover:bg-[var(--accent-primary)]/20 transition"></div>
+                        <div class="w-10 h-10 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center mb-2"><i class="fa-solid fa-credit-card text-accent text-base"></i></div>
+                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Rekening Bank</p>
+                        <p class="font-extrabold text-sm text-accent" id="dash-cashless">0</p>
+                    </div>
+                </div>
+
+                <!-- Modul Info Siklus/Bulan Dashboard -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-panel p-3 border-l-4 border-l-[var(--color-income)]">
+                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pemasukan Siklus</p>
+                        <p class="font-mono font-bold text-xs text-[var(--color-income)]" id="dash-income-mth">+0</p>
+                    </div>
+                    <div class="glass-panel p-3 border-l-4 border-l-[var(--color-expense)]">
+                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Siklus</p>
+                        <p class="font-mono font-bold text-xs text-[var(--color-expense)]" id="dash-expense-mth">-0</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 relative overflow-hidden">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-fire-flame-curved text-orange-500"></i> Burn Rate Limit</h3>
+                        <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] bg-white/5 px-2 py-1 rounded hover:text-white transition"><i class="fa-solid fa-pen"></i> Set Limit</button>
+                    </div>
+                    
+                    <!-- Progress Bar Limit Uang -->
+                    <div class="w-full h-3 bg-black/50 rounded-full overflow-hidden mb-3 border border-[var(--border-glass)] shadow-inner">
+                        <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000 relative">
+                            <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-4">
+                        <span id="burn-spent" class="font-bold text-white">Terpakai: 0</span>
+                        <span id="burn-limit" class="font-bold">Limit: 0</span>
+                    </div>
+
+                    <!-- FITUR KAS APATO: Waktu / Hari Siklus Progress -->
+                    <div class="mb-4 pt-4 border-t border-[var(--border-glass)]">
+                        <div class="flex justify-between text-[8px] text-[var(--text-muted)] font-bold mb-1.5 uppercase tracking-widest">
+                            <span id="period-progress-text">PROGRES SIKLUS: 0%</span>
+                            <span id="period-days-left">0 HARI TERSISA</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
+                            <div id="period-progress-bar" class="h-full bg-accent transition-all duration-500" style="width:0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="burn-insight-box" class="p-3.5 rounded-xl bg-black/40 border border-[var(--border-glass)] text-[11px] leading-relaxed text-[var(--text-muted)]">
+                        Menganalisis sistem keuangan...
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: TRANSAKSI / LOG -->
+            <div id="view-transactions" class="hidden p-4 space-y-4 pb-12 view-transition">
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-xl font-display font-black tracking-tight">Log Transaksi</h2>
+                    <div class="flex gap-2">
+                        <button onclick="window.openManualTrxModal()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Manual</button>
+                        <button onclick="window.switchView('trash')" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-dumpster"></i> Sampah</button>
+                    </div>
+                </div>
+                
+                <!-- FITUR KAS APATO: MULTI-DIMENSIONAL FILTER -->
+                <div class="glass-panel p-3 flex gap-2 flex-wrap mb-4 border-t-2 border-t-accent bg-black/30">
+                    <input type="text" id="filter-search" oninput="window.applyFilters()" placeholder="Cari nama/toko..." class="v-input flex-1 min-w-[120px] rounded-lg p-2 text-[10px] outline-none">
+                    <select id="filter-category" onchange="window.applyFilters()" class="v-input flex-1 min-w-[100px] rounded-lg p-2 text-[10px] outline-none bg-black category-dropdown">
+                        <option value="ALL">SEMUA KATEGORI</option>
+                    </select>
+                    <!-- Contoh User Filter (Kas Apato Feature) -->
+                    <select id="filter-user" onchange="window.applyFilters()" class="v-input flex-1 min-w-[100px] rounded-lg p-2 text-[10px] outline-none bg-black">
+                        <option value="ALL">SEMUA USER</option>
+                    </select>
+                </div>
+
+                <!-- CONTAINER LIST TRANSAKSI UTAMA -->
+                <div id="trx-list-container" class="space-y-6 mt-2"></div>
+            </div>
+
+            <!-- VIEW: ANALYTICS / STATS -->
+            <div id="view-analytics" class="hidden p-4 space-y-5 pb-12 view-transition">
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-xl font-display font-black tracking-tight">Statistik Cerdas</h2>
+                    <button onclick="window.downloadCSV()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-bold text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-download"></i> CSV</button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="glass-panel p-3.5">
+                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Rata-rata Harian</p>
+                        <p class="font-mono font-bold text-sm text-[var(--text-main)]" id="stats-daily-avg">0</p>
+                    </div>
+                    <div class="glass-panel p-3.5">
+                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Proyeksi Akhir Siklus</p>
+                        <p class="font-mono font-bold text-sm text-orange-400" id="stats-proj-mth">0</p>
+                    </div>
+                </div>
+
+                <!-- FITUR KAS APATO: STAPLES TRACKER DINAMIS -->
+                <div class="glass-panel p-4 mt-2">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-[10px] font-bold text-[var(--text-muted)] tracking-widest uppercase flex items-center gap-1.5"><i class="fa-solid fa-box-archive text-amber-500"></i> Kebutuhan Pokok Utama</h3>
+                        <button onclick="window.openTrackerManager()" class="text-[10px] text-accent hover:text-white transition"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-black/30 p-2 rounded-xl border border-[var(--border-glass)]">
+                            <i class="fa-solid fa-bowl-rice text-amber-100 mb-1"></i>
+                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Beras</p>
+                            <p class="text-[10px] font-bold font-mono text-[var(--text-main)]" id="track-beras">0</p>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-xl border border-[var(--border-glass)]">
+                            <i class="fa-solid fa-bottle-droplet text-yellow-500 mb-1"></i>
+                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Minyak</p>
+                            <p class="text-[10px] font-bold font-mono text-[var(--text-main)]" id="track-minyak">0</p>
+                        </div>
+                        <div class="bg-black/30 p-2 rounded-xl border border-[var(--border-glass)]">
+                            <i class="fa-solid fa-pump-soap text-sky-300 mb-1"></i>
+                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Sabun</p>
+                            <p class="text-[10px] font-bold font-mono text-[var(--text-main)]" id="track-sabun">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FITUR KAS APATO: CANVAS CHART 7 HARI -->
+                <div class="glass-panel p-5">
+                    <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase">Tren Pengeluaran 7 Hari</h3>
+                    <canvas id="canvas-7days" width="350" height="150" class="w-full"></canvas>
+                </div>
+
+                <!-- DIAGRAM PIE KATEGORI -->
+                <div class="glass-panel p-5 flex flex-col items-center">
+                    <h3 class="font-bold text-xs w-full text-left mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
+                    <div id="category-pie-chart" class="w-40 h-40 pie-chart relative flex items-center justify-center mb-4">
+                        <div class="w-24 h-24 bg-[var(--bg-base)] rounded-full absolute flex flex-col items-center justify-center shadow-lg">
+                            <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest">Total</span>
+                            <span class="text-xs font-bold font-mono" id="pie-total-label">0</span>
+                        </div>
+                    </div>
+                    <!-- DAFTAR KATEGORI -->
+                    <div id="top-categories-list" class="w-full space-y-3 mt-2"></div>
+                </div>
+                
+                <div class="glass-panel p-5">
+                    <h3 class="font-bold text-xs flex items-center gap-2 mb-4"><i class="fa-solid fa-store text-indigo-400"></i> Top Merchant / Toko</h3>
+                    <!-- DAFTAR MERCHANT -->
+                    <div id="top-merchants-list" class="space-y-3"></div>
+                </div>
+            </div>
+
+            <!-- VIEW: ANGGARAN & MISI (BUDGETS) -->
+            <div id="view-budgets" class="hidden p-4 space-y-5 pb-12 view-transition">
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-xl font-display font-black tracking-tight">Manajer Anggaran</h2>
+                    <div class="flex gap-2">
+                        <button onclick="window.toggleGoalForm()" class="glass-panel w-9 h-9 rounded-full flex items-center justify-center text-accent hover:bg-white/10 active:scale-90 transition shadow-lg"><i class="fa-solid fa-bullseye"></i></button>
+                    </div>
+                </div>
+                
+                <div id="goal-form" class="glass-panel p-5 space-y-4 hidden border-t-4 border-t-accent shadow-2xl transition-all">
+                    <h3 class="font-bold text-xs mb-2">Misi Tabungan Baru</h3>
+                    <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo)" class="v-input w-full rounded-xl p-3.5 text-sm outline-none">
+                    <div class="flex gap-3">
+                        <input type="number" id="goal-target" placeholder="Target Dana" class="v-input w-1/2 rounded-xl p-3.5 text-sm outline-none">
+                        <input type="date" id="goal-date" class="v-input w-1/2 rounded-xl p-3.5 text-sm text-[var(--text-muted)] outline-none">
+                    </div>
+                    <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-lg">Mulai Misi Menabung</button>
+                </div>
+
+                <div>
+                    <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1"><i class="fa-solid fa-bullseye mr-1"></i> Misi Aktif</h3>
+                    <div id="goals-list-container" class="space-y-4"></div>
+                </div>
+                
+                <div class="pt-2 border-t border-[var(--border-glass)]">
+                    <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1 mt-4"><i class="fa-solid fa-calendar-check mr-1"></i> Tagihan Otomatis</h3>
+                    
+                    <!-- CONTAINER TAGIHAN RUTIN (BUDGET VIEW) -->
+                    <div id="budget-bills-container" class="space-y-3 mb-4"></div>
+
+                    <!-- FORM TAMBAH TAGIHAN RUTIN -->
+                    <div class="glass-panel p-4 border-t-2 border-t-sky-400">
+                        <h4 class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-3">➕ Tambah Tagihan Rutin</h4>
+                        <div class="space-y-3">
+                            <input id="new-rec-name" placeholder="Nama Tagihan (Cth: Listrik)" class="v-input w-full rounded-xl p-2.5 text-xs outline-none">
+                            <div class="flex gap-2">
+                                <input id="new-rec-amt" type="number" placeholder="Nominal" class="v-input flex-1 rounded-xl p-2.5 text-xs outline-none">
+                                <input id="new-rec-date" type="number" placeholder="Tanggal (1-31)" class="v-input w-24 rounded-xl p-2.5 text-xs outline-none">
+                                <select id="new-rec-method" class="v-input flex-1 rounded-xl p-2.5 text-xs outline-none bg-black">
+                                    <option value="cashless">Cashless</option>
+                                    <option value="tunai">Tunai</option>
+                                </select>
+                            </div>
+                            <button onclick="window.addRecurringPayment()" class="w-full py-2.5 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold text-[10px] uppercase tracking-wider transition-all hover:bg-sky-500/30">
+                                <i class="fa-solid fa-plus"></i> Tambah Tagihan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VIEW: ORACLE CHAT -->
+            <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
+                <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-surface)] backdrop-blur-xl z-10 shrink-0 sticky top-0 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/30 shadow-[0_0_15px_var(--accent-glow)]"><i class="fa-solid fa-brain text-accent text-lg"></i></div>
+                        <div>
+                            <h2 class="font-bold text-[var(--text-main)] text-sm tracking-wide">Aura Oracle V3</h2>
+                            <p class="text-[9px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-widest mt-0.5">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Online
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="window.showModal('modal-settings')" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-sliders text-xs"></i></button>
+                </div>
+                <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar pb-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjAxKSIvPgo8L3N2Zz4=')]"></div>
+                <div id="chat-anchor" class="h-4 shrink-0"></div>
+            </div>
+
+            <!-- VIEW: TRASH -->
+            <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
+                    <button onclick="window.switchView('transactions')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white active:scale-95 transition"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                </div>
+                <div id="trash-list-container" class="space-y-3"></div>
+            </div>
+
+        </main>
+
+        <!-- OMNIPRESENT INPUT BAR -->
+        <div id="omnipresent-input" class="w-full px-4 pt-2 pb-3 bg-[var(--bg-surface)] backdrop-blur-2xl z-40 shrink-0 border-t border-[var(--border-glass)]">
+            
+            <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
+                <img id="img-preview" src="" class="h-16 rounded-xl object-cover shadow-lg border border-[var(--border-glass)]">
+                <button onclick="window.removeImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition shadow-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="glass-panel p-1.5 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] bg-black/40 focus-within:border-[var(--accent-primary)] focus-within:bg-black/60 transition-all rounded-2xl">
+                <button onclick="document.getElementById('file-upload').click()" class="w-12 h-12 text-[var(--text-muted)] hover:text-accent rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
+                    <i class="fa-solid fa-camera text-lg"></i>
+                    <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="window.handleImage(event)">
+                </button>
+                <button id="btn-voice" onclick="window.startVoice()" class="w-12 h-12 text-[var(--text-muted)] hover:text-accent rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Rekam Suara">
+                    <i class="fa-solid fa-microphone text-lg"></i>
+                </button>
+                <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-[15px] text-[var(--text-main)] outline-none py-3.5 px-2 max-h-24 min-h-[48px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik transaksi / chat AI..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
+                <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--bg-base)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label="Kirim Input">
+                    <i class="fa-solid fa-paper-plane text-base" id="icon-send"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- FLOATING BOTTOM NAVIGATION -->
+        <nav class="w-full h-[70px] glass-nav flex justify-around items-center px-2 z-50 shrink-0 safe-pb">
+            <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--accent-primary)] active:scale-90 transition group" data-target="dashboard">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-meteor text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
+            </button>
+            <button onclick="window.switchView('transactions')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="transactions">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-list-ul text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Log</span>
+            </button>
+            <button onclick="window.switchView('analytics')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="analytics">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-chart-pie text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Stats</span>
+            </button>
+            <button onclick="window.switchView('budgets')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="budgets">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-wallet text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Budget</span>
+            </button>
+            <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group relative" data-target="oracle">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition relative">
+                    <i class="fa-solid fa-brain text-[18px]"></i>
+                    <div class="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border border-[var(--bg-base)]"></div>
+                </div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Oracle</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- MENGGUNAKAN ARSITEKTUR MODULAR (ES6 MODULES) -->
+    <!-- Tahap 1: Memanggil main.js sebagai entry point -->
+    <script type="module" src="./js/main.js"></script>
+    
+</body>
+</html>
