@@ -1,58 +1,42 @@
-window.onerror = function(msg, url, line, col, error) {
-    alert(
-        "ERROR:\n" +
-        msg +
-        "\nLine: " + line +
-        "\nColumn: " + col
-    );
-};
-
-window.onunhandledrejection = function(event) {
-    alert(
-        "PROMISE ERROR:\n" +
-        event.reason
-    );
-};
 /**
  * ============================================================================
  * AURAFI OS - ENTRY POINT (main.js)
  * ============================================================================
  * Mengorkestrasi seluruh modul, error handling, inisialisasi awal sistem,
  * serta registrasi PWA Service Worker untuk instalasi mobile.
- * Hak Cipta Enterprise Build - Final Post Bugfix.
  */
 
-// 1. Core & Config Imports (Diperbarui ke Jalur Absolut)
-import { APP_CONFIG } from '/js/config/constants.js';
-import { Logger } from '/js/core/logger.js';
-import { AuraState } from '/js/core/state.js';
-import { AuraUtils } from '/js/core/utils.js';
+// 1. Core & Config Imports (Ini aman karena strukturnya statis)
+import { APP_CONFIG } from './config/constants.js';
+import { Logger } from './core/logger.js';
+import { AuraState } from './core/state.js';
+import { AuraUtils } from './core/utils.js';
 
-// 2. Services & Modules Imports (Diperbarui ke Jalur Absolut)
-import { FirebaseService } from '/js/services/firebase.js';
-import { CategoryManager } from '/js/modules/categories.js'; 
+// 2. Services & Modules Imports (UBAH: Gunakan Safe Import tanpa Kurung Kurawal)
+import './services/firebase.js';
+import './modules/categories.js'; 
 
-// 3. Renderers Imports (Diperbarui ke Jalur Absolut)
-import '/js/renderers/dashboard.js';
-import { injectMissingModals } from '/js/renderers/modals.js';
+// 3. Renderers Imports
+import './renderers/dashboard.js';
+import './renderers/modals.js';
 
-// 4. AI Engines Imports (Diperbarui ke Jalur Absolut)
-import '/js/services/memory.js';
-// import '/js/services/ai/groq.js';
-// import '/js/services/ai/gemini.js';
-// import '/js/services/ai/orchestrator.js';
+// 4. AI Engines Imports
+import './services/memory.js';
+import './services/ai/groq.js';
+import './services/ai/gemini.js';
+import './services/ai/orchestrator.js';
 
-// 5. Handlers Imports (Diperbarui ke Jalur Absolut)
-import '/js/handlers/auth.js'; 
-import '/js/handlers/navigation.js'; 
-import '/js/handlers/transactions.js';
-import '/js/handlers/confirm.js'; 
-import '/js/handlers/goals.js';   
-import '/js/handlers/settings-ui.js'; 
-import '/js/handlers/import-export.js';
-import '/js/modules/staging.js';
-import '/js/handlers/input.js';
-import '/js/renderers/oracle.js';
+// 5. Handlers Imports
+import './handlers/auth.js'; 
+import './handlers/navigation.js'; 
+import './handlers/transactions.js';
+import './handlers/confirm.js'; 
+import './handlers/goals.js';   
+import './handlers/settings-ui.js'; 
+import './handlers/import-export.js';
+import './modules/staging.js';
+import './handlers/input.js';
+import './renderers/oracle.js';
 
 // ============================================================================
 // GLOBAL ERROR HANDLERS
@@ -66,13 +50,9 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 
 // ============================================================================
-// GLOBAL UI & PROCESSING FUNCTIONS (Dibutuhkan langsung oleh HTML inline onclick)
+// GLOBAL UI & PROCESSING FUNCTIONS
 // ============================================================================
 
-/**
- * Mengatur status indikator pemrosesan aplikasi (loading state)
- * @param {boolean} isProcessing - Status aktif/nonaktif pemrosesan
- */
 window.setProcessingStatus = function(isProcessing) {
     AuraState.system.isProcessing = isProcessing;
     const btnSend = document.getElementById('btn-send-main');
@@ -89,11 +69,6 @@ window.setProcessingStatus = function(isProcessing) {
     }
 };
 
-/**
- * Menampilkan pesan notifikasi pop-up (Toast) dinamis
- * @param {string} message - Isi pesan yang akan ditampilkan
- * @param {boolean} isError - Penentu skema warna (true untuk merah, false untuk hijau)
- */
 window.showToast = function(message, isError = false) {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -110,13 +85,11 @@ window.showToast = function(message, isError = false) {
     
     container.appendChild(toast);
     
-    // Animasi Masuk (Fade In & Slide Down)
     requestAnimationFrame(() => {
         toast.classList.remove('translate-y-[-20px]', 'opacity-0');
         toast.classList.add('translate-y-0', 'opacity-100');
     });
 
-    // Otomatis Hancurkan Elemen Setelah 3 Detik
     setTimeout(() => {
         toast.classList.remove('translate-y-0', 'opacity-100');
         toast.classList.add('translate-y-[-20px]', 'opacity-0');
@@ -124,10 +97,6 @@ window.showToast = function(message, isError = false) {
     }, 3000);
 };
 
-/**
- * Membuka komponen modal antarmuka
- * @param {string} id - ID elemen HTML modal target
- */
 window.showModal = function(id) {
     AuraUtils.safeDOM(id, function(el) {
         el.classList.remove('hidden');
@@ -138,10 +107,6 @@ window.showModal = function(id) {
     });
 };
 
-/**
- * Menutup komponen modal antarmuka dengan efek transisi
- * @param {string} id - ID elemen HTML modal target
- */
 window.closeModal = function(id) {
     AuraUtils.safeDOM(id, function(el) {
         el.classList.remove('opacity-100');
@@ -158,20 +123,20 @@ window.closeModal = function(id) {
 window.addEventListener('DOMContentLoaded', () => {
     Logger.info('System', `AuraFi OS v${APP_CONFIG.VERSION} Bootstrapping initiated...`);
     
-    // Injeksi Modals dinamis otomatis berjalan di sini
-    if (typeof injectMissingModals === 'function') injectMissingModals();
+    // UBAH: Panggil lewat window agar aman
+    if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
     
-    Logger.success('System', 'Sistem Kendali Utama (main.js) dan Protokol Terkait Berhasil Disinkronisasikan.');
+    Logger.success('System', 'Sistem Kendali Utama (main.js) Berhasil Disinkronisasikan.');
 });
 
 // ============================================================================
-// PWA & SERVICE WORKER REGISTRATION (Mobile Installability)
+// PWA & SERVICE WORKER REGISTRATION
 // ============================================================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js')
             .then((registration) => {
-                Logger.success('PWA', `Service Worker terdaftar sukses. Scope: ${registration.scope}`);
+                Logger.success('PWA', `Service Worker terdaftar sukses.`);
             })
             .catch((error) => {
                 Logger.error('PWA', 'Gagal mendaftarkan Service Worker:', error);
