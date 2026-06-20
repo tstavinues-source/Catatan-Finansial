@@ -34,112 +34,88 @@ try {
     authInstance = getAuth(firebaseAppInstance);
     googleAuthProviderInstance = new GoogleAuthProvider();
     
-    // Simpan instance ke dalam State Global untuk diakses modul lain jika diperlukan
+    // Simpan instance ke dalam State Global untuk diakses modul lain secara internal
     AuraState.instances.firebaseApp = firebaseAppInstance;
     AuraState.instances.db = dbInstance;
-    AuraState.instances.auth = authInstance;
-    window.googleAuthProvider = googleAuthProviderInstance;
+    AuraState.instances.auth = authInstance; // <--- PERBAIKAN SINKRONISASI GERBANG AUTH
     
-    const connectionRef = ref(dbInstance, ".info/connected");
-    onValue(connectionRef, function(snap) {
-        if (snap.val() === true) {
-            AuraState.system.isOnline = true;
-            Logger.success('Core', 'Sinkronisasi Cloud Firebase AKTIF.');
-        } else {
-            AuraState.system.isOnline = false;
-            Logger.warn('Core', 'Mode Offline (Koneksi Terputus).');
-        }
-    });
-} catch (error) {
-    Logger.error('Core', 'FATAL: Gagal melakukan bootstrap koneksi Firebase SDK.', error);
-    setTimeout(function() {
-        if (typeof window.showToast === 'function') {
-            window.showToast("Gagal tersambung ke database Cloud. Aplikasi beralih ke sesi lokal sementara.", true);
-        }
-    }, 2000);
+    Logger.success('Core', 'Firebase SDK Environment & Instance Auth Berhasil Tersinkronisasi.');
+} catch (e) {
+    Logger.error('Core', 'Gagal menginisialisasi koneksi Firebase:', e);
 }
 
+// ============================================================================
+// SERVICE EXPORTS & BUSINESS LOGIC IMPLEMENTATION
+// ============================================================================
 export const FirebaseService = {
+    
     _checkAuth: function() {
-        if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) {
-            throw new Error("Sesi pengguna tidak valid. Anda harus masuk akun terlebih dahulu.");
+        if (!AuraState.user.uid) {
+            throw new Error("Protokol Keamanan: Sesi tidak terautentikasi untuk melakukan mutasi data Cloud.");
         }
     },
 
     saveAuditLog: async function(action, detail) {
-        if (!AuraState.user.uid || !dbInstance) return;
+        if (!dbInstance || !AuraState.user.uid) return;
         try {
-            const profile = AuraState.data.settings?.profile || {};
-            const userName = profile.fullName || profile.nickname || "Anonymous User";
-            const payload = { 
-                action: action, 
-                detail: AuraUtils.escapeHtml(detail), 
-                user: AuraUtils.escapeHtml(userName), 
-                ts: Date.now() 
-            };
-            await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/audit_logs`), payload);
-        } catch (e) { 
-            Logger.error('AuditLog', 'Gagal merekam log aktivitas ke Cloud.', e);
-        }
-    },
-    
-    saveTransaction: async function(data, isFromAI = false) { 
-        this._checkAuth();
-        try {
-            data.user_id = AuraState.data.settings?.profile?.nickname || "User";
-            data.nominal = Math.max(0, Number(data.nominal) || 0); 
-            
-            if (!data.createdAt) {
-                data.createdAt = new Date().toISOString();
-            }
-            
-            await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
-            await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
-        } catch (e) { 
-            throw e;
+            const nickname = AuraState.data.settings?.profile?.nickname || "System User";
+            await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/auditLogs`), {
+                action: action,
+                detail: detail,
+                ts: new Date().getTime(),
+                user: nickname
+            });
+        } catch (e) {
+            console.error("Gagal mencatat log audit ke sistem cloud:", e);
         }
     },
 
-    updateTransaction: async function(id, data) { 
+    saveTransaction: async function(trxData) {
         this._checkAuth();
-        if (!id) {
-            throw new Error("ID Referensi Transaksi tidak terdefinisi.");
-        }
-        try {
-            const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
-            const snapshot = await get(pathRef);
-            
-            if (!snapshot.exists()) {
-                throw new Error("Objek transaksi ini sudah tidak ada.");
-            }
-            
-            data.updatedAt = new Date().toISOString();
-            await update(pathRef, data);
-            await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
-        } catch (e) { 
-            throw e;
-        }
+        const cleanData = {
+            ...trxData,
+            createdAt: new Date().toISOString(),
+            is_deleted: false
+        };
+        const newRef = await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), cleanData);
+        await this.saveAuditLog("TRX.INSERT", `Menambahkan catatan transaksi baru pada merchant: ${trxData.merchant || 'Manual Input'}`);
+        return newRef.key;
     },
 
-    moveToTrash: async function(id) { 
+    updateTransaction: async function(id, data) {
         this._checkAuth();
-        await this.updateTransaction(id, { 
-            is_deleted: true, 
-            deletedAt: new Date().toISOString() 
+        const updatedData = {
+            ...data,
+            updatedAt: new Date().toISOString()
+        };
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`), updatedData);
+        await this.saveAuditLog("TRX.UPDATE", `Mengubah entri data pada transaksi ID: ${id}`);
+    },
+
+    moveToTrash: async function(id) {
+        this._checkAuth();
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`), {
+            is_deleted: true,
+            deletedAt: new Date().toISOString()
         });
-        await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
+        await this.saveAuditLog("TRX.TRASH", `Memindahkan transaksi ID: ${id} ke dalam folder sampah`);
     },
 
-    deleteTransactionPermanently: async function(id) { 
+    deleteTransactionPermanently: async function(id) {
         this._checkAuth();
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`));
-        await this.saveAuditLog("SYS.DESTROY", `Pembersihan permanen ID: ${id}`);
+        await this.saveAuditLog("TRX.HARD_DELETE", `Menghapus permanen data riwayat transaksi ID: ${id}`);
     },
 
-    saveGoal: async function(data) { 
+    saveGoal: async function(goalData) {
         this._checkAuth();
-        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals`), data); 
-        await this.saveAuditLog("GOAL.ADD", `Tujuan finansial baru.`);
+        const cleanGoal = {
+            ...goalData,
+            createdAt: new Date().toISOString(),
+            currentAmount: 0
+        };
+        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals`), cleanGoal);
+        await this.saveAuditLog("GOAL.INSERT", `Membuat misi target finansial baru: ${goalData.name}`);
     },
 
     updateGoal: async function(id, data) {
@@ -157,6 +133,7 @@ export const FirebaseService = {
     updateSettings: async function(data) { 
         this._checkAuth();
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), data); 
+        await this.saveAuditLog("SETTINGS.UPDATE", "Memperbarui konfigurasi preferensi pengguna di cloud.");
     },
 
     saveGroqKey: async function(encryptedKey) { 
@@ -167,18 +144,27 @@ export const FirebaseService = {
             active: true, 
             usageCount: 0 
         });
+        await this.saveAuditLog("APIKEY.SAVE", "Menyimpan konfigurasi token enkripsi API Groq baru.");
     },
 
     deleteGroqKey: async function(keyId) { 
         this._checkAuth();
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/groqApiKeys/${keyId}`));
+        await this.saveAuditLog("APIKEY.DELETE", `Menghapus konfigurasi token API Groq ID: ${keyId}`);
     },
 
     pushOracleChat: async function(chatObj) { 
         if (!AuraState.user.uid || !dbInstance) return;
-        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/oracleChats`), chatObj); 
+        try {
+            await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/oracleChats`), {
+                ...chatObj,
+                timestamp: new Date().getTime()
+            });
+        } catch (e) {
+            console.error("Gagal mengarsipkan log interaksi AI Oracle:", e);
+        }
     }
 };
 
-// Pasang ke window untuk menjaga kompatibilitas dengan sisa kode lama
+// Ekspos ke window layer demi kompatibilitas modul legacy/inline HTML handler
 window.FirebaseService = FirebaseService;
