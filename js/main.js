@@ -1,3 +1,18 @@
+window.onerror = function(msg, url, line, col, error) {
+    alert(
+        "ERROR:\n" +
+        msg +
+        "\nLine: " + line +
+        "\nColumn: " + col
+    );
+};
+
+window.onunhandledrejection = function(event) {
+    alert(
+        "PROMISE ERROR:\n" +
+        event.reason
+    );
+};
 /**
  * ============================================================================
  * AURAFI OS - ENTRY POINT (main.js)
