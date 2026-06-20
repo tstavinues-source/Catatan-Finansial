@@ -100,8 +100,8 @@ function initializeAuthObserver() {
             
             if (modalLogin) modalLogin.classList.add('hidden');
             
-            // if (typeof window.loadRealtimeDatabaseData === 'function') {
-            //     window.loadRealtimeDatabaseData();
+            if (typeof window.loadRealtimeDatabaseData === 'function') {
+            window.loadRealtimeDatabaseData();
             // }
             
             if (window.FirebaseService) {
