@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="id" data-theme="midnight">
 <head>
+    <script>
+        // Penangkap Error Global Super Cepat
+        window.onerror = function(message, source, lineno, colno, error) {
+            alert("💥 ERROR SYNTAX DITEMUKAN!\n\nPesan: " + message + "\n\nFile: " + source + "\n\nBaris ke: " + lineno);
+            return true; 
+        };
+        window.addEventListener('unhandledrejection', function(event) {
+            alert("💥 ERROR PROMISE/IMPORT:\n\n" + (event.reason.message || event.reason));
+        });
+    </script>
+
   <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
 <script>eruda.init();</script>
 
