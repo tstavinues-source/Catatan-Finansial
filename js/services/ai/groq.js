@@ -6,16 +6,17 @@
 import { APP_CONFIG } from '../../config/constants.js';
 import { EncryptionService } from '../encryption.js';
 
+// Mengamankan inisialisasi kunci rahasia dari Strict Mode
 let groqSecretKey = null;
 try {
     groqSecretKey = localStorage.getItem('aurafi_groq_secret');
-    if (!groqSecretKey && typeof CryptoJS !== 'undefined' && CryptoJS.lib?.WordArray) { 
-        groqSecretKey = CryptoJS.lib.WordArray.random(128/8).toString();
+    if (!groqSecretKey && typeof window.CryptoJS !== 'undefined' && window.CryptoJS.lib?.WordArray) { 
+        groqSecretKey = window.CryptoJS.lib.WordArray.random(16).toString();
         localStorage.setItem('aurafi_groq_secret', groqSecretKey); 
     }
 } catch (e) {
     groqSecretKey = sessionStorage.getItem('aurafi_groq_secret') || "fallback_secret_key_" + Date.now();
-    sessionStorage.setItem('aurafi_groq_secret', groqSecretKey);
+    try { sessionStorage.setItem('aurafi_groq_secret', groqSecretKey); } catch(err){}
 }
 
 export const GroqService = {
@@ -61,8 +62,6 @@ export const GroqService = {
         let attempt = 0;
         const totalKeys = this.keysPool.length;
         const maxLimit = Math.min(totalKeys, APP_CONFIG.MAX_RETRY_AI);
-        
-        // URL bersih dari Markdown (Sesuai koreksi sebelumnya)
         const groqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
         
         while (attempt < maxLimit) {
