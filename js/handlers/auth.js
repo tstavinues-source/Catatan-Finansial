@@ -100,7 +100,6 @@ function initializeAuthObserver() {
             
             if (modalLogin) modalLogin.classList.add('hidden');
             
-            // TODO: Memantik trigger fetching listener database (Akan aktif di tahap transaksi)
             // if (typeof window.loadRealtimeDatabaseData === 'function') {
             //     window.loadRealtimeDatabaseData();
             // }
