@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isolasi Test Login</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .box { background: white; padding: 20px; border-radius: 8px; max-width: 300px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input, button { width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; }
+        button { cursor: pointer; font-weight: bold; }
+        #status { font-family: monospace; color: blue; font-weight: bold; margin-top: 15px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <h3>Test Koneksi Firebase</h3>
+        
+        <input type="email" id="email" placeholder="Ketik Email">
+        <input type="password" id="pass" placeholder="Ketik Password">
+        
+        <button id="btnEmail" style="background: #10b981; color: white; border: none;">1. Login Email</button>
+        <button id="btnGoogle" style="background: #ef4444; color: white; border: none;">2. Login Google</button>
+        <button id="btnAnon" style="background: #3b82f6; color: white; border: none;">3. Login Tamu</button>
+
+        <div id="status">Status: Menunggu aksi...</div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+        // Konfigurasi langsung dari file milikmu
+        const firebaseConfig = {
+            apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
+            authDomain: "agrivision-574be.firebaseapp.com",
+            databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com",
+            projectId: "agrivision-574be",
+            storageBucket: "agrivision-574be.firebasestorage.app",
+            messagingSenderId: "732120986243",
+            appId: "1:732120986243:web:d025c9a2908b1ca892a1b6"
+        };
+
+        // Inisialisasi Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        const statusEl = document.getElementById('status');
+
+        // FUNGSI 1: LOGIN EMAIL
+        document.getElementById('btnEmail').addEventListener('click', async () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('pass').value;
+            statusEl.innerText = "Status: Memproses Email...";
+            try {
+                const credential = await signInWithEmailAndPassword(auth, email, pass);
+                statusEl.innerText = "BERHASIL! UID Anda: " + credential.user.uid;
+            } catch (error) {
+                statusEl.innerText = "GAGAL: " + error.message;
+            }
+        });
+
+        // FUNGSI 2: LOGIN GOOGLE
+        document.getElementById('btnGoogle').addEventListener('click', async () => {
+            statusEl.innerText = "Status: Membuka Popup Google...";
+            try {
+                const credential = await signInWithPopup(auth, provider);
+                statusEl.innerText = "BERHASIL! UID Anda: " + credential.user.uid;
+            } catch (error) {
+                statusEl.innerText = "GAGAL: " + error.message;
+            }
+        });
+
+        // FUNGSI 3: LOGIN TAMU
+        document.getElementById('btnAnon').addEventListener('click', async () => {
+            statusEl.innerText = "Status: Meminta Sesi Tamu...";
+            try {
+                const credential = await signInAnonymously(auth);
+                statusEl.innerText = "BERHASIL! UID Anda: " + credential.user.uid;
+            } catch (error) {
+                statusEl.innerText = "GAGAL: " + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
