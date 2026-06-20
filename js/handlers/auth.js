@@ -102,7 +102,7 @@ function initializeAuthObserver() {
             
             if (typeof window.loadRealtimeDatabaseData === 'function') {
             window.loadRealtimeDatabaseData();
-            // }
+            }
             
             if (window.FirebaseService) {
                 window.FirebaseService.saveAuditLog('LOGIN.SUCCESS', 'Validasi Gerbang Pertahanan User Lulus Otorisasi Penuh.');
