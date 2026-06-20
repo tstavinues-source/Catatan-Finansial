@@ -9,11 +9,12 @@ import {
     signInAnonymously, 
     signOut, 
     onAuthStateChanged,
-    GoogleAuthProvider // <--- PERBAIKAN 1: Impor GoogleAuthProvider langsung dari SDK Firebase
+    GoogleAuthProvider
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
-import { AuraState } from '../core/state.js';
-import { Logger } from '../core/logger.js';
+// Menggunakan Jalur Absolut untuk mencegah Error 404
+import { AuraState } from '/js/core/state.js';
+import { Logger } from '/js/core/logger.js';
 
 // ============================================================================
 // FUNGSI AKSI LOGIN & LOGOUT (Terekspos ke HTML)
@@ -45,10 +46,10 @@ window.loginWithGoogle = async function() {
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        // PERBAIKAN 2: Inisialisasi provider secara mandiri (lokal) sebelum popup dipanggil
+        // Inisialisasi provider secara mandiri (lokal) sebelum popup dipanggil
         const googleProvider = new GoogleAuthProvider();
         
-        // Opsional: Memaksa Google menampilkan pilihan akun setiap kali login klik dilakukan
+        // Memaksa Google menampilkan pilihan akun setiap kali tombol login diklik
         googleProvider.setCustomParameters({ prompt: 'select_account' });
         
         // Melakukan proses otentikasi menggunakan provider lokal baru
@@ -99,7 +100,7 @@ export function initializeAuthObserver() {
     
     onAuthStateChanged(AuraState.instances.auth, (user) => {
         if (user) {
-            Logger.success('Auth', `Sesi Aktif Terdeteksi: ${user.email || 'Anonymous'} [${user.uid}]`);
+            Logger.success('Auth', `Sesi Dokumen Aktif: ${user.email || 'Anonymous'} [${user.uid}]`);
             AuraState.user.uid = user.uid;
             
             if (modalLogin) {
@@ -109,7 +110,7 @@ export function initializeAuthObserver() {
                 }, 300);
             }
             
-            // Trigger database fetching jika diperlukan
+            // Memantik trigger fetching listener database
             if (typeof window.loadRealtimeDatabaseData === 'function') {
                 window.loadRealtimeDatabaseData();
             }
@@ -142,5 +143,5 @@ export function initializeAuthObserver() {
     });
 }
 
-// Inisiasi Observer saat modul diimpor pertama kali oleh sistem
+// Inisiasi Observer saat modul diimpor
 initializeAuthObserver();
