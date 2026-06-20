@@ -38,9 +38,9 @@ import { injectMissingModals } from '/js/renderers/modals.js';
 
 // 4. AI Engines Imports (Diperbarui ke Jalur Absolut)
 import '/js/services/memory.js';
-import '/js/services/ai/groq.js';
-import '/js/services/ai/gemini.js';
-import '/js/services/ai/orchestrator.js';
+// import '/js/services/ai/groq.js';
+// import '/js/services/ai/gemini.js';
+// import '/js/services/ai/orchestrator.js';
 
 // 5. Handlers Imports (Diperbarui ke Jalur Absolut)
 import '/js/handlers/auth.js'; 
