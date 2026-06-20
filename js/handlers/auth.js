@@ -1,72 +1,66 @@
- /**
- * Authentication Handlers
- * Menangani logika login, logout, dan pengawasan sesi pengguna (Auth Observer).
+/**
+ * Authentication Handler
+ * Menangani interaksi UI untuk Login, Register, dan Logout.
+ * Terhubung langsung dengan tombol-tombol di index.html.
  */
 
-import { 
-    signInWithEmailAndPassword, 
-    signInWithPopup, 
-    signInAnonymously, 
-    signOut, 
-    onAuthStateChanged,
-    GoogleAuthProvider
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
-// Menggunakan Jalur Absolut untuk mencegah Error 404
-import { AuraState } from '/js/core/state.js';
-import { Logger } from '/js/core/logger.js';
+import { AuraState } from '../core/state.js';
+import { Logger } from '../core/logger.js';
+import { FirebaseService } from '../services/firebase.js';
 
 // ============================================================================
-// FUNGSI AKSI LOGIN & LOGOUT (Terekspos ke HTML)
+// FUNGSI LOGIN GLOBAL (Diikat ke window agar bisa dipanggil HTML)
 // ============================================================================
 
 window.loginWithEmail = async function() {
-    const email = document.getElementById('login-email')?.value;
-    const pass = document.getElementById('login-pass')?.value;
+    const emailInput = document.getElementById('login-email');
+    const passInput = document.getElementById('login-pass');
     
-    if (!email || !pass) {
-        if (window.showToast) window.showToast("Email dan sandi wajib diisi!", true);
+    if (!emailInput || !passInput) return;
+
+    const email = emailInput.value.trim();
+    const password = passInput.value;
+
+    if (!email || !password) {
+        if (typeof window.showToast === 'function') {
+            window.showToast("Email dan Kata Sandi wajib diisi!", true);
+        }
         return;
     }
-    
+
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        await signInWithEmailAndPassword(AuraState.instances.auth, email, pass);
-        if (window.showToast) window.showToast("Berhasil masuk via Email.");
-    } catch (e) {
-        Logger.error('Auth', 'Login Email Gagal', e);
-        if (window.showToast) window.showToast("Gagal masuk: Kredensial tidak valid atau ditolak.", true);
+        Logger.info('Auth', 'Mencoba login dengan Email...');
+        // Memanggil Firebase Service untuk eksekusi otentikasi
+        await FirebaseService.loginWithEmail(email, password);
+        
+        // Bersihkan input setelah berhasil
+        emailInput.value = '';
+        passInput.value = '';
+        
+    } catch (error) {
+        Logger.error('Auth', 'Gagal login email:', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast("Login Gagal: Periksa kembali email dan sandi Anda.", true);
+        }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
     }
 };
 
 window.loginWithGoogle = async function() {
-
-    alert("Google Login dipanggil");
-
-    if (typeof window.setProcessingStatus === 'function')
-        window.setProcessingStatus(true);
-
-    ...
-}
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        // Inisialisasi provider secara mandiri (lokal) sebelum popup dipanggil
-        const googleProvider = new GoogleAuthProvider();
-        
-        // Memaksa Google menampilkan pilihan akun setiap kali tombol login diklik
-        googleProvider.setCustomParameters({ prompt: 'select_account' });
-        
-        // Melakukan proses otentikasi menggunakan provider lokal baru
-        await signInWithPopup(AuraState.instances.auth, googleProvider);
-        
-        if (window.showToast) window.showToast("Berhasil masuk via Akun Google.");
-    } catch (e) {
-        Logger.error('Auth', 'Login Google Gagal', e);
-        if (window.showToast) window.showToast("Gagal otentikasi via Google Provider.", true);
+        Logger.info('Auth', 'Mencoba login dengan Google...');
+        await FirebaseService.loginWithGoogle();
+        // Modal login biasanya otomatis ditutup oleh observer di firebase.js saat login sukses
+    } catch (error) {
+        Logger.error('Auth', 'Gagal login Google:', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast("Akses Google ditolak atau dibatalkan.", true);
+        }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
     }
@@ -76,80 +70,54 @@ window.loginAnonymously = async function() {
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        await signInAnonymously(AuraState.instances.auth);
-        if (window.showToast) window.showToast("Masuk sebagai Tamu (Anonim).");
-    } catch (e) {
-        Logger.error('Auth', 'Login Anonim Gagal', e);
-        if (window.showToast) window.showToast("Gagal masuk sebagai tamu.", true);
+        Logger.info('Auth', 'Memasuki Mode Tamu (Anonim)...');
+        await FirebaseService.loginAnonymously();
+    } catch (error) {
+        Logger.error('Auth', 'Gagal login anonim:', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast("Sistem gagal membuat sesi Tamu.", true);
+        }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
     }
 };
 
-window.logoutSystem = async function() {
+window.logoutAccount = async function() {
+    // Konfirmasi ganda sebelum logout untuk mencegah ketidaksengajaan
+    const confirmLogout = confirm("Apakah Anda yakin ingin keluar dari AuraFi OS?");
+    if (!confirmLogout) return;
+
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        await signOut(AuraState.instances.auth);
-        if (window.showToast) window.showToast("Berhasil keluar dari sistem.");
-    } catch (e) {
-        Logger.error('Auth', 'Logout Gagal', e);
-        if (window.showToast) window.showToast("Gagal keluar dari sesi.", true);
+        Logger.info('Auth', 'Memutus sesi pengguna...');
+        await FirebaseService.logout();
+        
+        if (typeof window.showToast === 'function') {
+            window.showToast("Berhasil keluar dari sistem.");
+        }
+        
+        // Tutup modal settings jika sedang terbuka
+        if (typeof window.closeModal === 'function') {
+            window.closeModal('modal-settings');
+        }
+
+        // Tampilkan kembali modal login
+        if (typeof window.showModal === 'function') {
+            window.showModal('modal-login');
+        }
+
+        // Opsional: Muat ulang halaman untuk membersihkan sisa memori browser
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+
+    } catch (error) {
+        Logger.error('Auth', 'Gagal logout:', error);
+        if (typeof window.showToast === 'function') {
+            window.showToast("Terjadi kesalahan saat memutus sesi.", true);
+        }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
     }
 };
-
-// ============================================================================
-// AUTH STATE OBSERVER (PENGAWAS SESI AKTIF)
-// ============================================================================
-export function initializeAuthObserver() {
-    const modalLogin = document.getElementById('modal-login');
-    
-    onAuthStateChanged(AuraState.instances.auth, (user) => {
-        if (user) {
-            Logger.success('Auth', `Sesi Dokumen Aktif: ${user.email || 'Anonymous'} [${user.uid}]`);
-            AuraState.user.uid = user.uid;
-            
-            if (modalLogin) {
-                modalLogin.classList.add('opacity-0');
-                setTimeout(() => {
-                    modalLogin.classList.add('hidden');
-                }, 300);
-            }
-            
-            // Memantik trigger fetching listener database
-            if (typeof window.loadRealtimeDatabaseData === 'function') {
-                window.loadRealtimeDatabaseData();
-            }
-            
-            if (window.FirebaseService) {
-                window.FirebaseService.saveAuditLog('LOGIN.SUCCESS', 'Validasi Gerbang Pertahanan User Lulus Otorisasi Penuh.');
-            }
-            
-            const savedGeminiPin = sessionStorage.getItem('aurafi_gemini_pin');
-            if (savedGeminiPin && typeof window.syncGeminiEngine === 'function') { 
-                setTimeout(function() {
-                    window.syncGeminiEngine(true);
-                }, 1000);
-            }
-        } else {
-            Logger.info('Auth', 'Sesi Otorisasi Kosong. Memutus jalur antrean Cloud...');
-            const subs = AuraState.listeners;
-            for (let i = 0; i < subs.length; i++) {
-                if (typeof subs[i] === 'function') subs[i]();
-            }
-            AuraState.listeners = [];
-            AuraState.user.uid = null;
-            
-            if (modalLogin) {
-                modalLogin.classList.remove('hidden');
-                modalLogin.classList.remove('opacity-0');
-                modalLogin.classList.add('opacity-100');
-            }
-        }
-    });
-}
-
-// Inisiasi Observer saat modul diimpor
-initializeAuthObserver();
