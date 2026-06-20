@@ -906,7 +906,20 @@
 
     <!-- MENGGUNAKAN ARSITEKTUR MODULAR (ES6 MODULES) -->
     <!-- Tahap 1: Memanggil main.js sebagai entry point -->
-    <script type="module" src="./js/main.js"></script>
+        <script>
+        import('./js/handlers/auth.js?v=test1')
+            .then(() => {
+                // Jika auth.js dan firebase.js sehat, ini akan muncul!
+                alert("TEST SUKSES: auth.js berhasil dimuat! Silakan klik tombol login.");
+                console.log("auth.js siap digunakan.");
+            })
+            .catch((err) => {
+                // Jika ada file yang rusak/hilang di dalam auth.js, ini akan menangkapnya!
+                alert("TEST GAGAL! auth.js tidak bisa dimuat karena:\n" + err.message);
+                console.error("Error modular:", err);
+            });
+    </script>
+
     
 </body>
 </html>
