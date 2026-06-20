@@ -2,9 +2,6 @@
  * ============================================================================
  * AURAFI OS - ENTRY POINT (main.js)
  * ============================================================================
- * Mengorkestrasi seluruh modul, error handling, inisialisasi awal sistem,
- * serta registrasi PWA Service Worker untuk instalasi mobile.
- * Hak Cipta Enterprise Build - Final Post Bugfix.
  */
 
 // 1. Core & Config Imports
@@ -15,7 +12,7 @@ import { AuraUtils } from './core/utils.js';
 
 // 2. Services & Modules Imports
 import { FirebaseService } from './services/firebase.js';
-import { CategoryManager } from './modules/categories.js'; 
+import { CategoryManager } from './modules/categories.js';
 
 // 3. Renderers Imports
 import './renderers/dashboard.js';
@@ -28,20 +25,139 @@ import './services/ai/gemini.js';
 import './services/ai/orchestrator.js';
 
 // 5. Handlers Imports
-import './handlers/auth.js'; 
-import './handlers/navigation.js'; 
+import './handlers/auth.js';
+import './handlers/navigation.js';
 import './handlers/transactions.js';
-import './handlers/confirm.js'; 
-import './handlers/goals.js';   
-import './handlers/settings-ui.js'; 
+import './handlers/confirm.js';
+import './handlers/goals.js';
+import './handlers/settings-ui.js';
 import './handlers/import-export.js';
 import './modules/staging.js';
 import './handlers/input.js';
 import './renderers/oracle.js';
 
 // ============================================================================
+// GLOBAL UI FUNCTIONS (WAJIB ADA SEBELUM HTML ONCLICK DIPANGGIL)
+// ============================================================================
+
+/**
+ * Tampilkan notifikasi toast
+ */
+window.showToast = function(message, isError = false) {
+    const container = document.getElementById('toast-container');
+    if (!container) {
+        console.warn('[Toast] Container tidak ditemukan:', message);
+        return;
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `glass-panel p-4 text-sm font-medium pointer-events-auto transition-all duration-300 ${
+        isError ? 'border-red-500 text-red-400' : 'border-accent text-accent'
+    }`;
+    toast.innerText = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+};
+
+/**
+ * Tampilkan modal
+ */
+window.showModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.remove('hidden');
+        void el.offsetWidth;
+        el.style.opacity = '1';
+    } else {
+        console.warn('[Modal] Element tidak ditemukan:', id);
+    }
+};
+
+/**
+ * Tutup modal
+ */
+window.closeModal = function(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.style.opacity = '0';
+        setTimeout(() => {
+            el.classList.add('hidden');
+        }, 300);
+    }
+};
+
+/**
+ * Set status processing
+ */
+window.setProcessingStatus = function(isProcessing) {
+    AuraState.system.isProcessing = isProcessing;
+    const btn = document.getElementById('btn-send-main');
+    if (btn) {
+        btn.disabled = isProcessing;
+        btn.classList.toggle('opacity-50', isProcessing);
+    }
+    const icon = document.getElementById('icon-send');
+    if (icon) {
+        icon.className = isProcessing 
+            ? 'fa-solid fa-spinner fa-spin text-base' 
+            : 'fa-solid fa-paper-plane text-base';
+    }
+};
+
+/**
+ * Tutup modal konfirmasi
+ */
+window.closeConfirmModal = function() {
+    window.closeModal('modal-confirm');
+    AuraState.temp.deleteTarget = null;
+};
+
+/**
+ * Prompt budget
+ */
+window.promptBudget = function() {
+    const currentBudget = AuraState.data.monthlyBudget || 100000;
+    const amt = prompt("Ubah Batas Anggaran (Nominal Angka):", currentBudget);
+    if (amt !== null) {
+        const parsedAmt = parseFloat(amt);
+        if (!isNaN(parsedAmt) && parsedAmt >= 0) {
+            AuraState.data.monthlyBudget = parsedAmt;
+            
+            if (AuraState.user.uid && FirebaseService) {
+                FirebaseService.updateSettings({ 
+                    monthlyBudget: { limit: parsedAmt } 
+                }).catch(err => {
+                    console.warn('Gagal simpan budget ke Cloud', err);
+                });
+            }
+            
+            if (typeof window.debouncedCalculateAll === 'function') {
+                window.debouncedCalculateAll();
+            }
+            window.showToast(`Anggaran diperbarui menjadi ${AuraUtils.formatCurrency(parsedAmt)}`);
+        } else {
+            window.showToast("Input anggaran tidak valid!", true);
+        }
+    }
+};
+
+/**
+ * Toggle goal form
+ */
+window.toggleGoalForm = function() {
+    AuraUtils.safeDOM('goal-form', function(el) {
+        el.classList.toggle('hidden');
+    });
+};
+
+// ============================================================================
 // GLOBAL ERROR HANDLERS
 // ============================================================================
+
 window.addEventListener('error', function(event) {
     Logger.error('Global', 'Unhandled Exception Caught:', event.error || event.message);
 });
@@ -51,116 +167,74 @@ window.addEventListener('unhandledrejection', function(event) {
 });
 
 // ============================================================================
-// GLOBAL UI & PROCESSING FUNCTIONS (Dibutuhkan langsung oleh HTML inline onclick)
+// BOOTSTRAPPING
 // ============================================================================
 
-/**
- * Mengatur status indikator pemrosesan aplikasi (loading state)
- * @param {boolean} isProcessing - Status aktif/nonaktif pemrosesan
- */
-window.setProcessingStatus = function(isProcessing) {
-    AuraState.system.isProcessing = isProcessing;
-    const btnSend = document.getElementById('btn-send-main');
-    const iconSend = document.getElementById('icon-send');
-    
-    if (btnSend && iconSend) {
-        if (isProcessing) {
-            btnSend.disabled = true;
-            iconSend.className = "fa-solid fa-circle-notch animate-spin text-base";
-        } else {
-            btnSend.disabled = false;
-            iconSend.className = "fa-solid fa-paper-plane text-base";
-        }
-    }
-};
-
-/**
- * Menampilkan pesan notifikasi pop-up (Toast) dinamis
- * @param {string} message - Isi pesan yang akan ditampilkan
- * @param {boolean} isError - Penentu skema warna (true untuk merah, false untuk hijau)
- */
-window.showToast = function(message, isError = false) {
-    const container = document.getElementById('toast-container');
-    if (!container) return;
-
-    const toast = document.createElement('div');
-    toast.className = `p-3 rounded-xl shadow-2xl text-xs font-bold transition-all duration-300 transform translate-y-[-20px] opacity-0 border backdrop-blur-md flex items-center gap-2 ${
-        isError 
-        ? 'bg-rose-950/80 text-rose-100 border-rose-900/50' 
-        : 'bg-emerald-950/80 text-emerald-100 border-emerald-900/50'
-    }`;
-    
-    const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-check"></i>';
-    toast.innerHTML = `${icon} <span>${AuraUtils.escapeHtml(message)}</span>`;
-    
-    container.appendChild(toast);
-    
-    // Animasi Masuk (Fade In & Slide Down)
-    requestAnimationFrame(() => {
-        toast.classList.remove('translate-y-[-20px]', 'opacity-0');
-        toast.classList.add('translate-y-0', 'opacity-100');
-    });
-
-    // Otomatis Hancurkan Elemen Setelah 3 Detik
-    setTimeout(() => {
-        toast.classList.remove('translate-y-0', 'opacity-100');
-        toast.classList.add('translate-y-[-20px]', 'opacity-0');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-};
-
-/**
- * Membuka komponen modal antarmuka
- * @param {string} id - ID elemen HTML modal target
- */
-window.showModal = function(id) {
-    AuraUtils.safeDOM(id, function(el) {
-        el.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            el.classList.remove('opacity-0');
-            el.classList.add('opacity-100');
-        });
-    });
-};
-
-/**
- * Menutup komponen modal antarmuka dengan efek transisi
- * @param {string} id - ID elemen HTML modal target
- */
-window.closeModal = function(id) {
-    AuraUtils.safeDOM(id, function(el) {
-        el.classList.remove('opacity-100');
-        el.classList.add('opacity-0');
-        setTimeout(() => {
-            el.classList.add('hidden');
-        }, 300);
-    });
-};
-
-// ============================================================================
-// BOOTSTRAPPING SYSTEM
-// ============================================================================
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', function() {
     Logger.info('System', `AuraFi OS v${APP_CONFIG.VERSION} Bootstrapping initiated...`);
     
-    // Injeksi Modals dinamis otomatis berjalan di sini
-    if (typeof injectMissingModals === 'function') injectMissingModals();
+    // 1. Inject Missing Modals
+    if (typeof injectMissingModals === 'function') {
+        injectMissingModals();
+        Logger.success('System', '✅ Modal UI dinamis berhasil diinjeksi.');
+    }
     
-    Logger.success('System', 'Sistem Kendali Utama (main.js) dan Protokol Terkait Berhasil Disinkronisasikan.');
+    // 2. Render Category Dropdowns
+    if (CategoryManager && typeof CategoryManager.renderDropdowns === 'function') {
+        CategoryManager.renderDropdowns();
+        Logger.success('System', '✅ Dropdown kategori berhasil dirender.');
+    }
+    
+    // 3. Set Currency Button State
+    const curr = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
+    const btnJpy = document.getElementById('btn-curr-jpy');
+    const btnIdr = document.getElementById('btn-curr-idr');
+    if (btnJpy && btnIdr) {
+        btnJpy.className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${
+            curr === 'JPY' ? 'bg-accent text-[var(--bg-base)]' : 'text-[var(--text-muted)]'
+        }`;
+        btnIdr.className = `px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all ${
+            curr === 'IDR' ? 'bg-accent text-[var(--bg-base)]' : 'text-[var(--text-muted)]'
+        }`;
+    }
+    
+    // 4. Set Theme
+    const theme = AuraState.system.theme || APP_CONFIG.DEFAULT_THEME;
+    document.documentElement.setAttribute('data-theme', theme);
+    
+    // 5. Load Exchange Rate
+    const savedRate = localStorage.getItem('aurafi_exchange_rate');
+    if (savedRate) {
+        AuraState.system.exchangeRateIDR = parseFloat(savedRate) || 105;
+    } else {
+        AuraState.system.exchangeRateIDR = 105;
+        localStorage.setItem('aurafi_exchange_rate', '105');
+    }
+    const rateDisplay = document.getElementById('live-rate-display');
+    if (rateDisplay) {
+        rateDisplay.textContent = `💱 1 JPY = ${AuraState.system.exchangeRateIDR} IDR`;
+    }
+    
+    // 6. Default View
+    if (typeof window.switchView === 'function') {
+        window.switchView('dashboard');
+    }
+    
+    Logger.success('System', '🎉 AuraFi OS v3.2.6 siap digunakan!');
 });
 
 // ============================================================================
-// PWA & SERVICE WORKER REGISTRATION (Mobile Installability)
+// PWA SERVICE WORKER
 // ============================================================================
+
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    window.addEventListener('load', function() {
         navigator.serviceWorker.register('./service-worker.js')
-            .then((registration) => {
-                Logger.success('PWA', `Service Worker terdaftar sukses. Scope: ${registration.scope}`);
+            .then(function(registration) {
+                Logger.success('PWA', 'Service Worker terdaftar sukses.');
             })
-            .catch((error) => {
+            .catch(function(error) {
                 Logger.error('PWA', 'Gagal mendaftarkan Service Worker:', error);
             });
     });
 }
-
