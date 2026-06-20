@@ -6,7 +6,7 @@
 export const FIREBASE_CONFIG = {
     apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
     authDomain: "agrivision-574be.firebaseapp.com",
-    [span_0](start_span)databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com", // <-- Sudah bersih dari format Markdown[span_0](end_span)
+    databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com",
     projectId: "agrivision-574be",
     storageBucket: "agrivision-574be.firebasestorage.app",
     messagingSenderId: "732120986243",
