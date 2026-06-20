@@ -40,24 +40,93 @@ import '/js/handlers/input.js';
 import '/js/renderers/oracle.js';
 
 // ============================================================================
-// GLOBAL WINDOW LAYERING & BACKWARD COMPATIBILITY
+// GLOBAL ERROR HANDLERS
 // ============================================================================
-// Mengekspos utilitas inti agar dapat diakses oleh komponen UI inline HTML legacy
-window.AuraState = AuraState;
-window.AuraUtils = AuraUtils;
-window.Logger = Logger;
+window.addEventListener('error', function(event) {
+    Logger.error('Global', 'Unhandled Exception Caught:', event.error || event.message);
+});
 
-// Global Window Helpers untuk manipulasi Modal & DOM secara cepat
+window.addEventListener('unhandledrejection', function(event) {
+    Logger.error('Global', 'Unhandled Promise Rejection:', event.reason);
+});
+
+// ============================================================================
+// GLOBAL UI & PROCESSING FUNCTIONS (Dibutuhkan langsung oleh HTML inline onclick)
+// ============================================================================
+
+/**
+ * Mengatur status indikator pemrosesan aplikasi (loading state)
+ * @param {boolean} isProcessing - Status aktif/nonaktif pemrosesan
+ */
+window.setProcessingStatus = function(isProcessing) {
+    AuraState.system.isProcessing = isProcessing;
+    const btnSend = document.getElementById('btn-send-main');
+    const iconSend = document.getElementById('icon-send');
+    
+    if (btnSend && iconSend) {
+        if (isProcessing) {
+            btnSend.disabled = true;
+            iconSend.className = "fa-solid fa-circle-notch animate-spin text-base";
+        } else {
+            btnSend.disabled = false;
+            iconSend.className = "fa-solid fa-paper-plane text-base";
+        }
+    }
+};
+
+/**
+ * Menampilkan pesan notifikasi pop-up (Toast) dinamis
+ * @param {string} message - Isi pesan yang akan ditampilkan
+ * @param {boolean} isError - Penentu skema warna (true untuk merah, false untuk hijau)
+ */
+window.showToast = function(message, isError = false) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `p-3 rounded-xl shadow-2xl text-xs font-bold transition-all duration-300 transform translate-y-[-20px] opacity-0 border backdrop-blur-md flex items-center gap-2 ${
+        isError 
+        ? 'bg-rose-950/80 text-rose-100 border-rose-900/50' 
+        : 'bg-emerald-950/80 text-emerald-100 border-emerald-900/50'
+    }`;
+    
+    const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-check"></i>';
+    toast.innerHTML = `${icon} <span>${AuraUtils.escapeHtml(message)}</span>`;
+    
+    container.appendChild(toast);
+    
+    // Animasi Masuk (Fade In & Slide Down)
+    requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-[-20px]', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+    });
+
+    // Otomatis Hancurkan Elemen Setelah 3 Detik
+    setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-[-20px]', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+};
+
+/**
+ * Membuka komponen modal antarmuka
+ * @param {string} id - ID elemen HTML modal target
+ */
 window.showModal = function(id) {
     AuraUtils.safeDOM(id, function(el) {
         el.classList.remove('hidden');
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             el.classList.remove('opacity-0');
             el.classList.add('opacity-100');
-        }, 50);
+        });
     });
 };
 
+/**
+ * Menutup komponen modal antarmuka dengan efek transisi
+ * @param {string} id - ID elemen HTML modal target
+ */
 window.closeModal = function(id) {
     AuraUtils.safeDOM(id, function(el) {
         el.classList.remove('opacity-100');
