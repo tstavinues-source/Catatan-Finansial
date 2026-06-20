@@ -906,21 +906,54 @@
 
     <!-- MENGGUNAKAN ARSITEKTUR MODULAR (ES6 MODULES) -->
     <!-- Tahap 1: Memanggil main.js sebagai entry point -->
-               <button onclick="window.jalankanDetektif()" style="position:fixed; z-index:9999; top:50%; left:50%; transform:translate(-50%, -50%); padding:20px; background:#ef4444; color:white; font-weight:bold; text-align:center; border-radius:15px; border:2px solid white; box-shadow:0 10px 25px rgba(0,0,0,0.8);">
-        🔍 1. Buka Tab NETWORK di Eruda<br><br>👇 2. KLIK TOMBOL INI 👇
+                   <button onclick="window.mulaiScan()" style="position:fixed; z-index:9999; top:50%; left:50%; transform:translate(-50%, -50%); padding:20px; background:#f59e0b; color:white; font-weight:bold; text-align:center; border-radius:15px; border:2px solid white; box-shadow:0 10px 25px rgba(0,0,0,0.8);">
+        🚀 MULAI SCANNING FILE
     </button>
 
     <script>
-        window.jalankanDetektif = function() {
-            // Memaksa browser mengunduh ulang tanpa cache
-            import('./js/main.js?v=' + new Date().getTime())
-                .then(() => alert("AJAIB! Tiba-tiba berhasil memuat main.js!"))
-                .catch(err => {
-                    console.error("Gagal memuat:", err);
-                    // Kita tidak pakai alert lagi, kita akan melihat langsung di tab Network Eruda
-                });
+        window.mulaiScan = async function() {
+            // Ini adalah daftar persis semua file yang dipanggil oleh main.js
+            const files = [
+                './js/config/constants.js',
+                './js/core/logger.js',
+                './js/core/state.js',
+                './js/core/utils.js',
+                './js/services/firebase.js',
+                './js/modules/categories.js',
+                './js/renderers/dashboard.js',
+                './js/renderers/modals.js',
+                './js/services/memory.js',
+                './js/services/ai/groq.js',
+                './js/services/ai/gemini.js',
+                './js/services/ai/orchestrator.js',
+                './js/handlers/auth.js',
+                './js/handlers/navigation.js',
+                './js/handlers/transactions.js',
+                './js/handlers/confirm.js',
+                './js/handlers/goals.js',
+                './js/handlers/settings-ui.js',
+                './js/handlers/import-export.js',
+                './js/modules/staging.js',
+                './js/handlers/input.js',
+                './js/renderers/oracle.js'
+            ];
+
+            let count = 0;
+            for (let file of files) {
+                try {
+                    // Bypass cache mutlak untuk setiap file
+                    await import(file + '?v=' + Date.now());
+                    count++;
+                } catch (e) {
+                    // Begitu ada 1 yang gagal, langsung lapor!
+                    alert("🚨 KETEMU PELAKUNYA!\n\nFile yang rusak/tidak terbaca adalah:\n" + file);
+                    return; 
+                }
+            }
+            alert("✅ SEMUA FILE AMAN (" + count + " file). Berarti kode di dalam main.js yang salah ketik.");
         }
     </script>
+
 
 
 
