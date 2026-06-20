@@ -906,16 +906,22 @@
 
     <!-- MENGGUNAKAN ARSITEKTUR MODULAR (ES6 MODULES) -->
     <!-- Tahap 1: Memanggil main.js sebagai entry point -->
-            <script>
-        import('./js/main.js?v=final')
-            .then(() => {
-                console.log("Sistem Utama Berhasil Dimuat!");
-            })
-            .catch((err) => {
-                // Ini akan memunculkan popup berisi nama file yang menyebabkan mogok!
-                alert("SISTEM MOGOK KARENA FILE INI:\n" + err.message);
-            });
+               <button onclick="window.jalankanDetektif()" style="position:fixed; z-index:9999; top:50%; left:50%; transform:translate(-50%, -50%); padding:20px; background:#ef4444; color:white; font-weight:bold; text-align:center; border-radius:15px; border:2px solid white; box-shadow:0 10px 25px rgba(0,0,0,0.8);">
+        🔍 1. Buka Tab NETWORK di Eruda<br><br>👇 2. KLIK TOMBOL INI 👇
+    </button>
+
+    <script>
+        window.jalankanDetektif = function() {
+            // Memaksa browser mengunduh ulang tanpa cache
+            import('./js/main.js?v=' + new Date().getTime())
+                .then(() => alert("AJAIB! Tiba-tiba berhasil memuat main.js!"))
+                .catch(err => {
+                    console.error("Gagal memuat:", err);
+                    // Kita tidak pakai alert lagi, kita akan melihat langsung di tab Network Eruda
+                });
+        }
     </script>
+
 
 
     
