@@ -1,6 +1,6 @@
 /**
  * AI Orchestrator
- * Mengatur rute eksekusi antara model Groq dan Gemini berdasarkan jenis data (teks/gambar).
+ * Mengatur rute eksekusi antara model Groq dan Gemini berdasarkan jenis data.
  */
 
 import { AuraState } from '../../core/state.js';
@@ -19,7 +19,7 @@ window.getOraclePromptConfigs = function() {
     else if (userPersona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
     else if (userPersona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
     else if (userPersona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
-    else if (userPersona === "Formal") personaStr = "sangat formal, baku, dan analitis";
+    else if (userPersona === "Formal") personaStr = "sangt formal, baku, dan analitis";
     else if (userPersona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
     
     let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
@@ -50,7 +50,6 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     let fallbackToGemini = false;
     
     if (useGroq) {
-        // Groq Initialization Check
         if (GroqService.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
             GroqService.init(AuraState.data.groqKeys);
         }
