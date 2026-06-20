@@ -7,27 +7,27 @@
  * Hak Cipta Enterprise Build - Final Post Bugfix.
  */
 
-// 1. Core & Config Imports (Menggunakan Jalur Absolut)
+// 1. Core & Config Imports (Diperbarui ke Jalur Absolut)
 import { APP_CONFIG } from '/js/config/constants.js';
 import { Logger } from '/js/core/logger.js';
 import { AuraState } from '/js/core/state.js';
 import { AuraUtils } from '/js/core/utils.js';
 
-// 2. Services & Modules Imports
+// 2. Services & Modules Imports (Diperbarui ke Jalur Absolut)
 import { FirebaseService } from '/js/services/firebase.js';
 import { CategoryManager } from '/js/modules/categories.js'; 
 
-// 3. Renderers Imports
+// 3. Renderers Imports (Diperbarui ke Jalur Absolut)
 import '/js/renderers/dashboard.js';
 import { injectMissingModals } from '/js/renderers/modals.js';
 
-// 4. AI Engines Imports
+// 4. AI Engines Imports (Diperbarui ke Jalur Absolut)
 import '/js/services/memory.js';
 import '/js/services/ai/groq.js';
 import '/js/services/ai/gemini.js';
 import '/js/services/ai/orchestrator.js';
 
-// 5. Handlers Imports
+// 5. Handlers Imports (Diperbarui ke Jalur Absolut)
 import '/js/handlers/auth.js'; 
 import '/js/handlers/navigation.js'; 
 import '/js/handlers/transactions.js';
