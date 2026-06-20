@@ -8,7 +8,8 @@ import {
     signInWithPopup, 
     signInAnonymously, 
     signOut, 
-    onAuthStateChanged 
+    onAuthStateChanged,
+    GoogleAuthProvider // <--- PERBAIKAN 1: Impor GoogleAuthProvider langsung dari SDK Firebase
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { AuraState } from '../core/state.js';
@@ -44,7 +45,15 @@ window.loginWithGoogle = async function() {
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        await signInWithPopup(AuraState.instances.auth, window.googleAuthProvider);
+        // PERBAIKAN 2: Inisialisasi provider secara mandiri (lokal) sebelum popup dipanggil
+        const googleProvider = new GoogleAuthProvider();
+        
+        // Opsional: Memaksa Google menampilkan pilihan akun setiap kali login klik dilakukan
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+        
+        // Melakukan proses otentikasi menggunakan provider lokal baru
+        await signInWithPopup(AuraState.instances.auth, googleProvider);
+        
         if (window.showToast) window.showToast("Berhasil masuk via Akun Google.");
     } catch (e) {
         Logger.error('Auth', 'Login Google Gagal', e);
@@ -59,49 +68,50 @@ window.loginAnonymously = async function() {
     
     try {
         await signInAnonymously(AuraState.instances.auth);
-        if (window.showToast) window.showToast("Sesi Tamu Terenkripsi Diaktifkan.");
+        if (window.showToast) window.showToast("Masuk sebagai Tamu (Anonim).");
     } catch (e) {
-        Logger.error('Auth', 'Login Tamu Gagal', e);
-        if (window.showToast) window.showToast("Gagal membuat sesi Tamu.", true);
+        Logger.error('Auth', 'Login Anonim Gagal', e);
+        if (window.showToast) window.showToast("Gagal masuk sebagai tamu.", true);
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
     }
 };
 
-window.logoutAccount = async function() {
-    if (!confirm("Yakin ingin keluar dari perangkat ini? (Data Cloud akan tetap aman)")) return;
+window.logoutSystem = async function() {
+    if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
         await signOut(AuraState.instances.auth);
-        if (window.showToast) window.showToast("Berhasil keluar. Sesi dibersihkan.");
+        if (window.showToast) window.showToast("Berhasil keluar dari sistem.");
     } catch (e) {
         Logger.error('Auth', 'Logout Gagal', e);
+        if (window.showToast) window.showToast("Gagal keluar dari sesi.", true);
+    } finally {
+        if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
     }
 };
 
 // ============================================================================
-// OBSERVER SESI OTENTIKASI (Pintu Gerbang Sistem)
+// AUTH STATE OBSERVER (PENGAWAS SESI AKTIF)
 // ============================================================================
-
-function initializeAuthObserver() {
-    // Memastikan instance Firebase Auth sudah dimuat oleh services/firebase.js
-    if (!AuraState.instances.auth) {
-        Logger.warn('Auth', 'Menunggu Firebase Auth instance...');
-        setTimeout(initializeAuthObserver, 200);
-        return;
-    }
-
-    onAuthStateChanged(AuraState.instances.auth, function(user) {
-        const modalLogin = document.getElementById('modal-login');
-        
+export function initializeAuthObserver() {
+    const modalLogin = document.getElementById('modal-login');
+    
+    onAuthStateChanged(AuraState.instances.auth, (user) => {
         if (user) {
-            AuraState.user.uid = user.uid; 
-            AuraState.user.isAnonymous = user.isAnonymous;
+            Logger.success('Auth', `Sesi Aktif Terdeteksi: ${user.email || 'Anonymous'} [${user.uid}]`);
+            AuraState.user.uid = user.uid;
             
-            if (modalLogin) modalLogin.classList.add('hidden');
+            if (modalLogin) {
+                modalLogin.classList.add('opacity-0');
+                setTimeout(() => {
+                    modalLogin.classList.add('hidden');
+                }, 300);
+            }
             
+            // Trigger database fetching jika diperlukan
             if (typeof window.loadRealtimeDatabaseData === 'function') {
-            window.loadRealtimeDatabaseData();
+                window.loadRealtimeDatabaseData();
             }
             
             if (window.FirebaseService) {
@@ -125,7 +135,6 @@ function initializeAuthObserver() {
             
             if (modalLogin) {
                 modalLogin.classList.remove('hidden');
-                // Paksa modal login terlihat
                 modalLogin.classList.remove('opacity-0');
                 modalLogin.classList.add('opacity-100');
             }
@@ -133,5 +142,5 @@ function initializeAuthObserver() {
     });
 }
 
-// Inisiasi Observer saat modul diimpor
+// Inisiasi Observer saat modul diimpor pertama kali oleh sistem
 initializeAuthObserver();
