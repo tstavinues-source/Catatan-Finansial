@@ -1,4 +1,4 @@
-/**
+ /**
  * Authentication Handlers
  * Menangani logika login, logout, dan pengawasan sesi pengguna (Auth Observer).
  */
@@ -43,6 +43,14 @@ window.loginWithEmail = async function() {
 };
 
 window.loginWithGoogle = async function() {
+
+    alert("Google Login dipanggil");
+
+    if (typeof window.setProcessingStatus === 'function')
+        window.setProcessingStatus(true);
+
+    ...
+}
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
