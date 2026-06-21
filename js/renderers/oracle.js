@@ -26,7 +26,7 @@ window.processOracleChat = async function(text, base64Img = null) {
     const uiText = text || (base64Img ? "[File Lampiran Visual]" : "");
     const sanitizedUiText = AuraUtils.escapeHtml(uiText);
     
-    // 1. UPDATE UI SECARA LOKAL INSTAN (Mem-bypass delay jaringan agar tidak hang)
+    // 1. UPDATE UI SECARA LOKAL INSTAN
     if (!AuraState.data.oracleChats) AuraState.data.oracleChats = [];
     AuraState.data.oracleChats.push({ 
         role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString() 
@@ -35,7 +35,7 @@ window.processOracleChat = async function(text, base64Img = null) {
     
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
 
-    // 2. FIRE AND FORGET KE FIREBASE (Tanpa await agar tidak mogok saat internet offline)
+    // 2. FIRE AND FORGET KE FIREBASE (Tanpa await)
     FirebaseService.pushOracleChat({ 
         role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString() 
     }).catch(e => console.warn("Sinkronisasi chat user tertunda"));
@@ -43,8 +43,10 @@ window.processOracleChat = async function(text, base64Img = null) {
     try {
         const summaryString = FinancialSummaryService.getSummaryString();
         const relevantTx = MemoryService.getRelevantTransactions(text);
+        
+        // MENARIK NAMA USER DARI FIREBASE
         const profile = AuraState.data.settings?.profile || {};
-        const nickname = profile.nickname || profile.fullName || "Bapak/Ibu";
+        const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         
         let txString = "";
         for (let i = 0; i < relevantTx.length; i++) {
@@ -81,18 +83,19 @@ JSON MURNI TANPA TAG:
 }`;
         let resJson;
         const messages = [{ role: "system", content: systemPrompt }];
-        const history = MemoryService.getRelevantChats();
         
-        for (let i = 0; i < history.length; i++) {
-            if (history[i].text !== sanitizedUiText) { 
+        // MENGAMBIL 10 RIWAYAT CHAT TERAKHIR AGAR AI INGAT KONTEKS
+        const recentChats = (AuraState.data.oracleChats || []).slice(-10);
+        for (let i = 0; i < recentChats.length; i++) {
+            if (recentChats[i].text !== sanitizedUiText) { 
                 messages.push({ 
-                    role: history[i].role === 'ai' ? 'assistant' : 'user', 
-                    content: history[i].text 
+                    role: recentChats[i].role === 'ai' ? 'assistant' : 'user', 
+                    content: recentChats[i].text 
                 });
             }
         }
         
-        messages.push({ role: "user", content: text || "Analisa keuanganku." });
+        messages.push({ role: "user", content: text || "Analisa keuanganku / baca struk terlampir." });
         
         // Panggil AI Engine
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, base64Img);
