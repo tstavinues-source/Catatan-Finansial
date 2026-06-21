@@ -12,8 +12,8 @@
         });
     </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -29,7 +29,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght=300;400;500;600;700;800;900&family=Space+Grotesk:wght=500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
     <link rel="stylesheet" href="./css/style.css">
@@ -37,12 +37,8 @@
 
 <body class="antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black">
 
-    <!-- GLOBAL TOAST CONTAINER -->
     <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
 
-    <!-- ==================== MODALS SECTION ==================== -->
-
-    <!-- MODAL 1: LOGIN -->
     <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
         <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar relative overflow-hidden">
             <div class="absolute -top-20 -left-20 w-40 h-40 bg-[var(--accent-primary)] rounded-full blur-[80px] opacity-30"></div>
@@ -67,7 +63,7 @@
             </div>
 
             <button onclick="window.loginWithGoogle()" class="w-full py-4 mb-3 rounded-2xl bg-white text-black font-bold text-sm shadow-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition active:scale-95 z-10">
-                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92(3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                 Masuk dengan Google
             </button>
             <button onclick="window.loginAnonymously()" class="w-full py-4 rounded-2xl border border-[var(--border-glass)] text-[var(--text-muted)] font-bold text-sm hover:bg-[var(--bg-glass)] hover:text-white transition active:scale-95 flex items-center justify-center gap-2 z-10">
@@ -76,7 +72,6 @@
         </div>
     </div>
 
-    <!-- MODAL 2: KONFIRMASI HAPUS -->
     <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-[var(--color-expense)] shadow-2xl relative overflow-hidden">
             <div class="w-16 h-16 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--color-expense)]/30">
@@ -91,7 +86,6 @@
         </div>
     </div>
 
-    <!-- MODAL 3: TAMBAH KATEGORI DINAMIS -->
     <div id="modal-add-category" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent">
             <div class="flex justify-between items-center mb-6">
@@ -128,7 +122,6 @@
         </div>
     </div>
 
-    <!-- MODAL 4: AI STAGING AREA (KAS APATO) -->
     <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-lg h-[90vh] flex flex-col shadow-2xl border-t-4 border-t-accent overflow-hidden">
             <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-glass)]">
@@ -158,7 +151,6 @@
                     <button onclick="window.addStagingItem()" class="text-[10px] text-accent font-bold hover:text-white bg-white/5 px-2 py-1 rounded"><i class="fa-solid fa-plus"></i> Manual</button>
                 </div>
                 
-                <!-- Keranjang Items Staging -->
                 <div id="staging-items-container" class="space-y-3"></div>
             </div>
             
@@ -172,7 +164,6 @@
         </div>
     </div>
 
-    <!-- MODAL 5: MANUAL TRANSAKSI -->
     <div id="modal-manual-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
@@ -222,8 +213,7 @@
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Spesifik</label>
                     <select id="manual-trx-category" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
-                        <!-- Populated Dynamically -->
-                    </select>
+                        </select>
                     <div class="text-right mt-2">
                         <button onclick="window.showModal('modal-add-category')" class="text-[10px] font-bold text-accent hover:text-white transition">
                             <i class="fa-solid fa-plus"></i> Buat Kategori Baru
@@ -235,7 +225,6 @@
         </div>
     </div>
 
-    <!-- MODAL 6: EDIT TRANSAKSI UTAMA -->
     <div id="modal-edit-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6">
@@ -276,7 +265,7 @@
                         </select>
                     </div>
                     <div class="w-2/3">
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Total Manual</label>
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold font-mono">Total Manual</label>
                         <input type="number" id="edit-global-nominal" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono">
                     </div>
                 </div>
@@ -290,7 +279,6 @@
         </div>
     </div>
 
-    <!-- MODAL 7: TAMBAH ITEM -->
     <div id="modal-add-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -315,15 +303,13 @@
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Item</label>
                     <select id="add-item-cat" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
-                        <!-- Populated Dynamically -->
-                    </select>
+                        </select>
                 </div>
             </div>
             <button onclick="window.saveAddItem()" class="w-full mt-6 py-4 rounded-xl bg-[var(--color-income)] text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] transition"><i class="fa-solid fa-plus mr-2"></i> Masukkan Item</button>
         </div>
     </div>
 
-    <!-- MODAL 8: EDIT ITEM LAMA -->
     <div id="modal-edit-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -335,7 +321,6 @@
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant</label>
                     <input type="text" id="edit-store-name" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                 </div>
-                
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Barang</label>
                     <input type="text" id="edit-item-name" class="v-input w-full rounded-xl p-3 text-sm outline-none">
@@ -353,24 +338,20 @@
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Item</label>
                     <select id="edit-item-cat" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
-                        <!-- Populated Dynamically via JS -->
-                    </select>
+                        </select>
                 </div>
             </div>
             <button onclick="window.saveEditItem()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Terapkan Perubahan</button>
         </div>
     </div>
 
-    <!-- MODAL 9: SETTINGS & AI KEYS SETUP -->
     <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
-            
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 z-10 backdrop-blur-md">
                 <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-microchip"></i> AURA SETTINGS</h3>
                 <button onclick="window.closeModal('modal-settings')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <!-- SECTION PROFILE -->
             <div class="space-y-3 mb-6">
                 <h4 class="text-xs font-bold text-yellow-400 flex items-center gap-1.5"><i class="fa-solid fa-user-gear"></i> PROFIL PENGGUNA</h4>
                 <div>
@@ -386,10 +367,8 @@
                 </button>
             </div>
 
-            <!-- SECTION AI ORACLE PREFERENCES -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <h4 class="text-xs font-bold text-violet-400 flex items-center gap-1.5"><i class="fa-solid fa-robot"></i> KEPRIBADIAN & PREFERENSI AI</h4>
-                
                 <div class="flex gap-2">
                     <div class="w-1/2">
                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Chat</label>
@@ -408,7 +387,6 @@
                         </select>
                     </div>
                 </div>
-
                 <div>
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kepribadian Oracle</label>
                     <select id="setting-ai-persona" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
@@ -421,7 +399,6 @@
                         <option value="Kombinasi Humble + Jenius + Profesional" selected>7. Kombinasi Humble + Jenius</option>
                     </select>
                 </div>
-
                 <div>
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Gaya Jawaban AI</label>
                     <select id="setting-ai-style" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
@@ -430,13 +407,11 @@
                         <option value="Detail">Detail (Panjang & Lengkap)</option>
                     </select>
                 </div>
-                
                 <button onclick="window.saveAIPreferences()" class="w-full py-2.5 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
                     <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
                 </button>
             </div>
 
-            <!-- SECTION GEMINI (VISION/OCR) -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-bold text-indigo-400 flex items-center gap-1.5"><i class="fa-solid fa-eye"></i> GEMINI (VISION)</h4>
@@ -451,15 +426,12 @@
                 </button>
             </div>
 
-            <!-- SECTION GROQ (CHAT/NLP) -->
             <div class="space-y-3 pt-5 border-t border-[var(--border-glass)] mb-6">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-bold text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-bolt"></i> GROQ (CHAT & NLP)</h4>
                     <span id="groq-status-badge" class="text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono">OFFLINE</span>
                 </div>
-                <!-- Rendered Groq Keys -->
                 <div id="groq-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
-                
                 <div class="flex gap-2">
                     <input type="password" id="new-groq-key" class="v-input flex-1 rounded-xl p-2 text-xs font-mono outline-none" placeholder="API Key (gsk_...)">
                     <button onclick="window.addGroqKey()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-bold transition">
@@ -468,16 +440,13 @@
                 </div>
             </div>
 
-            <!-- SECTION RECURRING BILLS (SETTINGS) -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <div class="flex items-center justify-between">
                     <h4 class="text-xs font-bold text-sky-400 flex items-center gap-1.5"><i class="fa-solid fa-calendar-check"></i> TAGIHAN RUTIN</h4>
                 </div>
-                <!-- Rendered Recurring Bills -->
                 <div id="recurring-list" class="space-y-2 max-h-40 overflow-y-auto no-scrollbar"></div>
             </div>
 
-            <!-- SECTION KONFIGURASI LANJUTAN (INJEKSI BARU) -->
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <h4 class="text-xs font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-wrench"></i> KONFIGURASI LANJUTAN</h4>
                 <div class="grid grid-cols-2 gap-2">
@@ -488,17 +457,14 @@
                 </div>
             </div>
 
-            <!-- SECTION AKUN & LOGOUT -->
             <div class="mt-6 pt-5 border-t border-[var(--border-glass)]">
                 <button onclick="window.logoutAccount()" class="w-full py-3 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
                 </button>
             </div>
-
         </div>
     </div>
 
-    <!-- MODAL 10: IMPORT DATA -->
     <div id="modal-import-data" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-emerald-400">
             <div class="flex justify-between items-center mb-6">
@@ -515,7 +481,6 @@
         </div>
     </div>
 
-    <!-- MODAL 11: TRACKER DINAMIS -->
     <div id="modal-edit-tracker" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-400 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
@@ -533,7 +498,6 @@
         </div>
     </div>
 
-    <!-- MODAL 12: EDIT BUDGET LIMIT -->
     <div id="modal-edit-budget" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
             <div class="flex justify-between items-center mb-6">
@@ -550,7 +514,6 @@
         </div>
     </div>
 
-    <!-- MODAL 13: FAMILY / MULTI-USER -->
     <div id="modal-family" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
@@ -565,7 +528,6 @@
         </div>
     </div>
 
-    <!-- MODAL 14: AUDIT LOG -->
     <div id="modal-audit-log" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-5 w-full max-w-md shadow-2xl border-t-4 border-t-white h-[85vh] flex flex-col">
             <div class="flex justify-between items-center mb-4 shrink-0">
@@ -579,46 +541,38 @@
     </div>
 
 
-    <!-- ================= MAIN APP CONTAINER ================= -->
     <div class="w-full max-w-md h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)]">
         
-        <!-- HEADER GLOBAL -->
         <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
             <div>
                 <h1 class="text-2xl font-display font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-[var(--invert-contrast)] to-[var(--accent-primary)]">AuraFi<span class="text-accent">.</span></h1>
                 <p class="text-[9px] font-mono tracking-widest text-[var(--text-muted)] mt-0.5" id="live-rate-display">Mendapatkan kurs...</p>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="window.toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition" aria-label="Ganti Tema">
+            
+            <div class="flex items-center flex-nowrap gap-2 shrink-0">
+                <button onclick="window.toggleTheme()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition shrink-0" aria-label="Ganti Tema">
                     <i class="fa-solid fa-palette text-sm"></i>
                 </button>
-                <button onclick="window.showModal('modal-settings')" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition" aria-label="Pengaturan AI">
+
+                <button onclick="window.refreshAuraData()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition active:rotate-180 duration-500 shrink-0" aria-label="Refresh Data">
+                    <i class="fa-solid fa-arrows-rotate text-sm"></i>
+                </button>
+
+                <div class="glass-panel p-0.5 flex rounded-xl border border-[var(--border-glass)] shrink-0">
+                    <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
+                    <button id="btn-curr-idr" onclick="window.setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
+                </div>
+
+                <button onclick="window.showModal('modal-settings')" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition shrink-0" aria-label="Pengaturan AI">
                     <i class="fa-solid fa-gear text-sm"></i>
                 </button>
-                <div class="flex items-center gap-2">
-
-    <button onclick="window.refreshAuraData()" class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all active:rotate-180 duration-500">
-        <i class="fa-solid fa-arrows-rotate text-xs"></i>
-    </button>
-
-    <div class="flex bg-black/20 p-0.5 rounded-lg border border-white/5">
-        <button id="btn-currency-jpy" onclick="window.switchCurrency('JPY')" class="px-2 py-1 text-[10px] font-bold rounded-md bg-accent text-white transition-all shadow-sm">JPY</button>
-        <button id="btn-currency-idr" onclick="window.switchCurrency('IDR')" class="px-2 py-1 text-[10px] font-bold rounded-md text-white/40 hover:text-white/70 transition-all">IDR</button>
-    </div>
-
-    <button onclick="window.openSettingsModal()" class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all">
-        <i class="fa-solid fa-gear text-xs"></i>
-    </button>
-</div>
+            </div>
         </header>
 
-        <!-- DYNAMIC VIEW AREA -->
         <main class="flex-1 overflow-y-auto no-scrollbar relative" id="view-container">
             
-            <!-- VIEW: DASHBOARD -->
             <div id="view-dashboard" class="p-4 space-y-5 block view-transition pb-12">
                 
-                <!-- FITUR KAS APATO: SIKLUS AKUNTANSI (16-15) TOGGLE -->
                 <div class="flex gap-2 mb-2">
                     <button id="btn-mode-period" onclick="window.changeViewMode('period')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Siklus 16-15</button>
                     <button id="btn-mode-month" onclick="window.changeViewMode('month')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all text-accent bg-white/10">Bulan Ini</button>
@@ -634,7 +588,6 @@
                         <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIyKSIvPgo8L3N2Zz4=')] opacity-25"></div>
                         <div class="absolute w-[140%] h-[140%] border border-[var(--border-glass)] rounded-full border-t-[var(--accent-primary)] animate-[spin_12s_linear_infinite] opacity-60"></div>
                         <p class="text-[9px] uppercase tracking-[0.25em] text-[var(--text-muted)] z-10 mb-1 font-bold">Net Worth</p>
-                        <!-- Cumulative Balance Display -->
                         <h2 class="text-3xl font-display font-black z-10 tracking-tight text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400" id="dash-total-balance">0</h2>
                     </div>
                 </div>
@@ -653,7 +606,6 @@
                     </div>
                 </div>
 
-                <!-- Modul Info Siklus/Bulan Dashboard -->
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-panel p-3 border-l-4 border-l-[var(--color-income)]">
                         <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pemasukan Siklus</p>
@@ -671,7 +623,6 @@
                         <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] bg-white/5 px-2 py-1 rounded hover:text-white transition"><i class="fa-solid fa-pen"></i> Set Limit</button>
                     </div>
                     
-                    <!-- Progress Bar Limit Uang -->
                     <div class="w-full h-3 bg-black/50 rounded-full overflow-hidden mb-3 border border-[var(--border-glass)] shadow-inner">
                         <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000 relative">
                             <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
@@ -682,7 +633,6 @@
                         <span id="burn-limit" class="font-bold">Limit: 0</span>
                     </div>
 
-                    <!-- FITUR KAS APATO: Waktu / Hari Siklus Progress -->
                     <div class="mb-4 pt-4 border-t border-[var(--border-glass)]">
                         <div class="flex justify-between text-[8px] text-[var(--text-muted)] font-bold mb-1.5 uppercase tracking-widest">
                             <span id="period-progress-text">PROGRES SIKLUS: 0%</span>
@@ -699,7 +649,6 @@
                 </div>
             </div>
 
-            <!-- VIEW: TRANSAKSI / LOG -->
             <div id="view-transactions" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-1">
                     <h2 class="text-xl font-display font-black tracking-tight">Log Transaksi</h2>
@@ -709,23 +658,19 @@
                     </div>
                 </div>
                 
-                <!-- FITUR KAS APATO: MULTI-DIMENSIONAL FILTER -->
                 <div class="glass-panel p-3 flex gap-2 flex-wrap mb-4 border-t-2 border-t-accent bg-black/30">
                     <input type="text" id="filter-search" oninput="window.applyFilters()" placeholder="Cari nama/toko..." class="v-input flex-1 min-w-[120px] rounded-lg p-2 text-[10px] outline-none">
                     <select id="filter-category" onchange="window.applyFilters()" class="v-input flex-1 min-w-[100px] rounded-lg p-2 text-[10px] outline-none bg-black category-dropdown">
                         <option value="ALL">SEMUA KATEGORI</option>
                     </select>
-                    <!-- Contoh User Filter (Kas Apato Feature) -->
                     <select id="filter-user" onchange="window.applyFilters()" class="v-input flex-1 min-w-[100px] rounded-lg p-2 text-[10px] outline-none bg-black">
                         <option value="ALL">SEMUA USER</option>
                     </select>
                 </div>
 
-                <!-- CONTAINER LIST TRANSAKSI UTAMA -->
                 <div id="trx-list-container" class="space-y-6 mt-2"></div>
             </div>
 
-            <!-- VIEW: ANALYTICS / STATS -->
             <div id="view-analytics" class="hidden p-4 space-y-5 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-1">
                     <h2 class="text-xl font-display font-black tracking-tight">Statistik Cerdas</h2>
@@ -743,7 +688,6 @@
                     </div>
                 </div>
 
-                <!-- FITUR KAS APATO: STAPLES TRACKER DINAMIS -->
                 <div class="glass-panel p-4 mt-2">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-[10px] font-bold text-[var(--text-muted)] tracking-widest uppercase flex items-center gap-1.5"><i class="fa-solid fa-box-archive text-amber-500"></i> Kebutuhan Pokok Utama</h3>
@@ -768,13 +712,11 @@
                     </div>
                 </div>
 
-                <!-- FITUR KAS APATO: CANVAS CHART 7 HARI -->
                 <div class="glass-panel p-5">
                     <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase">Tren Pengeluaran 7 Hari</h3>
                     <canvas id="canvas-7days" width="350" height="150" class="w-full"></canvas>
                 </div>
 
-                <!-- DIAGRAM PIE KATEGORI -->
                 <div class="glass-panel p-5 flex flex-col items-center">
                     <h3 class="font-bold text-xs w-full text-left mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
                     <div id="category-pie-chart" class="w-40 h-40 pie-chart relative flex items-center justify-center mb-4">
@@ -783,18 +725,15 @@
                             <span class="text-xs font-bold font-mono" id="pie-total-label">0</span>
                         </div>
                     </div>
-                    <!-- DAFTAR KATEGORI -->
                     <div id="top-categories-list" class="w-full space-y-3 mt-2"></div>
                 </div>
                 
                 <div class="glass-panel p-5">
                     <h3 class="font-bold text-xs flex items-center gap-2 mb-4"><i class="fa-solid fa-store text-indigo-400"></i> Top Merchant / Toko</h3>
-                    <!-- DAFTAR MERCHANT -->
                     <div id="top-merchants-list" class="space-y-3"></div>
                 </div>
             </div>
 
-            <!-- VIEW: ANGGARAN & MISI (BUDGETS) -->
             <div id="view-budgets" class="hidden p-4 space-y-5 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-1">
                     <h2 class="text-xl font-display font-black tracking-tight">Manajer Anggaran</h2>
@@ -821,10 +760,8 @@
                 <div class="pt-2 border-t border-[var(--border-glass)]">
                     <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1 mt-4"><i class="fa-solid fa-calendar-check mr-1"></i> Tagihan Otomatis</h3>
                     
-                    <!-- CONTAINER TAGIHAN RUTIN (BUDGET VIEW) -->
                     <div id="budget-bills-container" class="space-y-3 mb-4"></div>
 
-                    <!-- FORM TAMBAH TAGIHAN RUTIN -->
                     <div class="glass-panel p-4 border-t-2 border-t-sky-400">
                         <h4 class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-3">➕ Tambah Tagihan Rutin</h4>
                         <div class="space-y-3">
@@ -845,7 +782,6 @@
                 </div>
             </div>
 
-            <!-- VIEW: ORACLE CHAT -->
             <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
                 <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-surface)] backdrop-blur-xl z-10 shrink-0 sticky top-0 shadow-sm">
                     <div class="flex items-center gap-3">
@@ -863,7 +799,6 @@
                 <div id="chat-anchor" class="h-4 shrink-0"></div>
             </div>
 
-            <!-- VIEW: TRASH -->
             <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
@@ -871,12 +806,9 @@
                 </div>
                 <div id="trash-list-container" class="space-y-3"></div>
             </div>
-
         </main>
 
-        <!-- OMNIPRESENT INPUT BAR -->
         <div id="omnipresent-input" class="w-full px-4 pt-2 pb-3 bg-[var(--bg-surface)] backdrop-blur-2xl z-40 shrink-0 border-t border-[var(--border-glass)]">
-            
             <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
                 <img id="img-preview" src="" class="h-16 rounded-xl object-cover shadow-lg border border-[var(--border-glass)]">
                 <button onclick="window.removeImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition shadow-lg"><i class="fa-solid fa-xmark"></i></button>
@@ -897,7 +829,6 @@
             </div>
         </div>
 
-        <!-- FLOATING BOTTOM NAVIGATION -->
         <nav class="w-full h-[70px] glass-nav flex justify-around items-center px-2 z-50 shrink-0 safe-pb">
             <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--accent-primary)] active:scale-90 transition group" data-target="dashboard">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-meteor text-[18px]"></i></div>
@@ -925,12 +856,7 @@
         </nav>
     </div>
 
-    <!-- MENGGUNAKAN ARSITEKTUR MODULAR (ES6 MODULES) -->
-    <!-- Tahap 1: Memanggil main.js sebagai entry point -->
-                   <script type="module" src="./js/main.js?v=AURA_FINAL"></script>
+    <script type="module" src="./js/main.js?v=AURA_FINAL"></script>
 
-
-
-    
 </body>
 </html>
