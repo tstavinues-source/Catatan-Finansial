@@ -22,12 +22,13 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT PAMUNGKAS: LOGIKA PAJAK BERSYARAT & KUNCI KATEGORI
+        // PROMPT PAMUNGKAS: LOGIKA PAJAK BERSYARAT & AUTO-LEARN KATEGORI
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
 FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
 
-ATURAN KATEGORI (WAJIB):
-Pilih "kategori_barang" HANYA dari daftar ini: [${categoryListStr}]. JIKA tidak ada yang cocok sama sekali, gunakan "Lainnya".
+ATURAN KATEGORI (SMART LEARNING):
+Prioritaskan memilih "kategori_barang" dari daftar ini: [${categoryListStr}]. 
+NAMUN, jika barangnya sangat spesifik, KAMU DIIZINKAN membuat kategori baru (Maksimal 1-2 kata, Contoh: "Camilan", "Produk Daging", "Sayuran", "Bumbu Dapur", dll). Jangan gunakan kata "Lainnya" kecuali benar-benar terpaksa.
 
 ATURAN PAJAK BERSYARAT (SANGAT KRITIKAL!):
 Hitung dulu ada berapa jumlah barang di struk ini.
@@ -205,7 +206,14 @@ window.saveStagingToDatabase = async function() {
     stagingData.is_deleted = false;
 
     try {
+        // === PELATUK AUTO-LEARN CATEGORY: BIARKAN SISTEM MEMPELAJARI KATEGORI BARU ===
+        if (typeof CategoryManager.autoLearnCategories === 'function') {
+            await CategoryManager.autoLearnCategories(stagingData.items);
+        }
+        
+        // Simpan transaksi utamanya ke Firebase
         await FirebaseService.saveTransaction(stagingData, true);
+        
         if (typeof window.closeModal === 'function') window.closeModal('modal-ai-staging');
         
         AuraState.temp.aiStaging = null;
