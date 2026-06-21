@@ -141,8 +141,8 @@ window.syncGeminiEngine = async function(silent = false) {
     const pinInput = pinEl ? pinEl.value.trim() : '';
     const pin = silent ? sessionStorage.getItem('aurafi_gemini_pin') : pinInput;
     
-    if (!pin || pin.length < 4) { 
-        if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI (MINIMAL 4 KARAKTER)!", true);
+    if (!pin || pin.length < 3) { 
+        if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI (MINIMAL 3 KARAKTER)!", true);
         return; 
     }
 
