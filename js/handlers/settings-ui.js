@@ -81,17 +81,33 @@ window.addGroqKey = async function() {
         return;
     }
     
-    const encrypted = EncryptionService.encryptApiKey(key, groqSecretKey);
+    // Perbaikan: Tambahkan window. agar aman
+    const encrypted = window.EncryptionService.encryptApiKey(key, groqSecretKey);
     if (!encrypted) {
         if (window.showToast) window.showToast("Sistem enkripsi gagal memproses kunci.", true);
         return;
     }
     
     try {
-        await FirebaseService.saveGroqKey(encrypted);
+        // PAKSA UPDATE ARRAY LOKAL AGAR LANGSUNG MUNCUL DI LAYAR
+        if(!window.AuraState.data.groqKeys) window.AuraState.data.groqKeys = [];
+        window.AuraState.data.groqKeys.push({ 
+            id: 'groq_' + Date.now(), 
+            encryptedKey: encrypted, 
+            active: true 
+        });
+
+        // Simpan ke Firebase
+        if (window.FirebaseService && typeof window.FirebaseService.saveGroqKey === 'function') {
+            await window.FirebaseService.saveGroqKey(encrypted);
+        } else {
+            await window.FirebaseService.updateSettings({ groqKeys: window.AuraState.data.groqKeys });
+        }
+        
         input.value = '';
         if (window.showToast) window.showToast("Kunci API Groq berhasil diamankan ke dalam brankas.");
         
+        // Render ulang UI
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
         
         const badge = document.getElementById('groq-status-badge');
@@ -101,17 +117,6 @@ window.addGroqKey = async function() {
         }
     } catch(e) {
         if (window.showToast) window.showToast("Gagal menyimpan kunci ke Cloud.", true);
-    }
-};
-
-window.removeGroqKey = async function(id) {
-    if (confirm("Cabut otorisasi API Key ini dari ekosistem?")) {
-        try {
-            await FirebaseService.deleteGroqKey(id);
-            if (window.showToast) window.showToast("Kunci dihapus.");
-        } catch(e) {
-            if (window.showToast) window.showToast("Gagal menghapus kunci.", true);
-        }
     }
 };
 
