@@ -76,13 +76,21 @@ window.saveManualTransaction = async function() {
         }]
     };
 
-    try {
+        try {
         await FirebaseService.saveTransaction(data, false);
         if (typeof window.closeModal === 'function') window.closeModal('modal-manual-trx');
         if (window.showToast) window.showToast("✅ Transaksi manual berhasil disimpan!");
         
         storeInput.value = '';
         amtInput.value = '';
+
+        // --- PELATUK SINKRONISASI UI INSTAN ---
+        if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+        if (typeof window.renderLog === 'function') window.renderLog();
+        // --------------------------------------
+
     } catch (e) {
         if (window.showToast) window.showToast("❌ Gagal menyimpan transaksi manual.", true);
     }
