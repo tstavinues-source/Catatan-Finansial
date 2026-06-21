@@ -60,7 +60,6 @@ window.saveAIPreferences = async function() {
 // MANAJEMEN API KEYS (GROQ & GEMINI)
 // ============================================================================
 
-// 1. KEMBALIKAN KUNCI RAHASIA YANG TERHAPUS
 let groqSecretKey = null;
 try {
     groqSecretKey = localStorage.getItem('aurafi_groq_secret');
@@ -105,7 +104,6 @@ window.addGroqKey = async function() {
     }
 };
 
-// 2. KEMBALIKAN FUNGSI MENGHAPUS & MERENDER KEY
 window.removeGroqKey = async function(id) {
     if (confirm("Cabut otorisasi API Key ini dari ekosistem?")) {
         try {
@@ -181,7 +179,6 @@ window.syncGeminiEngine = async function(silent = false) {
         } else { 
             throw new Error("GCount 0");
         }
-    // 3. KEMBALIKAN BAGIAN PENUTUP GEMINI YANG HILANG
     } catch(e) {
         if (gBadge) { 
             gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
