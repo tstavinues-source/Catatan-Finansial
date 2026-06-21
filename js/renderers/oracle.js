@@ -12,7 +12,10 @@ import { MemoryService, FinancialSummaryService } from '../services/memory.js';
 let isChatProcessing = false;
 
 window.processOracleChat = async function(text, base64Img = null) {
-    if (!AuraState.user.uid) return;
+    if (!AuraState.user.uid) {
+        if(window.showToast) window.showToast("Sesi tidak valid.", true);
+        return;
+    }
     
     if (isChatProcessing) { 
         if (window.showToast) window.showToast("Oracle masih memproses antrean chat lain...", true);
@@ -23,11 +26,19 @@ window.processOracleChat = async function(text, base64Img = null) {
     const uiText = text || (base64Img ? "[File Lampiran Visual]" : "");
     const sanitizedUiText = AuraUtils.escapeHtml(uiText);
     
-    await FirebaseService.pushOracleChat({ 
+    // 1. UPDATE UI SECARA LOKAL INSTAN (Mem-bypass delay jaringan agar tidak hang)
+    if (!AuraState.data.oracleChats) AuraState.data.oracleChats = [];
+    AuraState.data.oracleChats.push({ 
         role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString() 
     });
+    window.renderOracleChats();
     
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
+
+    // 2. FIRE AND FORGET KE FIREBASE (Tanpa await agar tidak mogok saat internet offline)
+    FirebaseService.pushOracleChat({ 
+        role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString() 
+    }).catch(e => console.warn("Sinkronisasi chat user tertunda"));
 
     try {
         const summaryString = FinancialSummaryService.getSummaryString();
@@ -49,7 +60,7 @@ window.processOracleChat = async function(text, base64Img = null) {
             txString += `ID:${t.id} | Toko:${t.merchantName || t.storeName || 'Merchant'} | Tipe:${t.tipe} | Ket:${t.description || t.catatan_ai} | Nom:${t.nominal} ${t.mata_uang} ${itemStr}\n`;
         }
 
-        const promptConfigs = window.getOraclePromptConfigs();
+        const promptConfigs = typeof window.getOraclePromptConfigs === 'function' ? window.getOraclePromptConfigs() : { personaStr: "Asisten", styleStr: "Normal" };
         const categoryListStr = CategoryManager.getCategoryStringList();
         
         const systemPrompt = `Kamu adalah AuraFi Oracle V3. Kepribadian: ${promptConfigs.personaStr}. Nama Tuan: ${nickname}.
@@ -83,9 +94,11 @@ JSON MURNI TANPA TAG:
         
         messages.push({ role: "user", content: text || "Analisa keuanganku." });
         
+        // Panggil AI Engine
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, base64Img);
         resJson = AuraUtils.parseCleanJSON(aiOutput);
         
+        // Eksekusi Action jika ada perintah mengubah transaksi
         if (resJson.action !== 'none' && resJson.target_id) { 
             try {
                 const targetTrx = AuraState.data.transactions.find(t => t.id === resJson.target_id);
@@ -142,21 +155,36 @@ JSON MURNI TANPA TAG:
                     }
                 }
             } catch(e) { 
-                resJson.reply += " (Gagal memodifikasi data via Oracle.)";
+                resJson.reply += " (Catatan: Gagal memodifikasi data via Oracle.)";
             }
         }
 
+        // 3. TAMPILKAN BALASAN AI SECARA LOKAL INSTAN
         const escapedReply = AuraUtils.escapeHtml(resJson.reply);
-        await FirebaseService.pushOracleChat({ 
+        AuraState.data.oracleChats.push({ 
             role: 'ai', text: escapedReply, timestamp: new Date().toISOString() 
         });
+        window.renderOracleChats();
+
+        // Fire and forget AI reply ke Firebase
+        FirebaseService.pushOracleChat({ 
+            role: 'ai', text: escapedReply, timestamp: new Date().toISOString() 
+        }).catch(e => console.warn("Sinkronisasi balasan AI tertunda"));
+
     } catch(e) { 
-        await FirebaseService.pushOracleChat({ 
-            role: 'ai', text: `Gangguan transmisi: ${e.message}`, timestamp: new Date().toISOString() 
+        const errMsg = `Gangguan transmisi intelek: ${e.message}`;
+        AuraState.data.oracleChats.push({ 
+            role: 'ai', text: errMsg, timestamp: new Date().toISOString() 
         });
+        window.renderOracleChats();
+        
+        FirebaseService.pushOracleChat({ 
+            role: 'ai', text: errMsg, timestamp: new Date().toISOString() 
+        }).catch(e=>console.warn("Sync error"));
     } finally { 
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
         isChatProcessing = false;
+        window.renderOracleChats();
     }
 };
 
@@ -178,7 +206,7 @@ window.renderOracleChats = function() {
             const alignment = c.role === 'user' ? 'justify-end' : 'justify-start';
             const bubbleStyle = c.role === 'user' ? 'bubble-user text-white shadow-md' : 'bubble-ai glass-panel markdown-content';
             chatsHtml += `
-            <div class="flex ${alignment}">
+            <div class="flex ${alignment} mb-3">
                 <div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${bubbleStyle} leading-relaxed shadow-sm">
                     ${htmlFormat}
                 </div>
@@ -188,7 +216,7 @@ window.renderOracleChats = function() {
         el.innerHTML = chatsHtml;
         if (AuraState.system.isProcessing && AuraState.system.activeView === 'oracle') {
             el.innerHTML += `
-            <div class="flex justify-start">
+            <div class="flex justify-start mb-3">
                 <div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center">
                     <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div>
                     <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div>
@@ -204,3 +232,10 @@ window.renderOracleChats = function() {
         }
     });
 };
+
+// PAKSA RENDER SAAT PERTAMA KALI HALAMAN DIMUAT (Mencegah Layar Hitam)
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        if(typeof window.renderOracleChats === 'function') window.renderOracleChats();
+    }, 1500);
+});
