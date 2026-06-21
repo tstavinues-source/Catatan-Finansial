@@ -18,29 +18,22 @@ window.processTransactionParsing = async function(text, imgData = null) {
     
     try {
         const activeCurrency = AuraState.system.displayCurrency || 'JPY';
-        
-        // TARIK NAMA LANGSUNG DARI DATABASE FIREBASE
         const profile = AuraState.data.settings?.profile || {};
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT BARU: LOGIKA PAJAK KHUSUS STRUK JEPANG & GLOBAL
+        // PROMPT DISEMPURNAKAN: Logika Selisih Pajak (Tax-Inclusive vs Tax-Exclusive)
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
 FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
 
-ATURAN PAJAK & HARGA (PENTING!):
-- Harga item di struk seringkali belum termasuk pajak (Subtotal).
-- Makanan/Minuman (biasanya ada tanda * di struk Jepang) = Pajak 8%.
-- Barang non-makanan/Lainnya = Pajak 10%.
-- WAJIB hitung harga final per item = harga dasar + pajak. Masukkan harga final ini ke field 'harga'.
-- Total 'nominal' WAJIB sama persis dengan Grand Total (Total Akhir Pembayaran) di struk.
+ATURAN PAJAK & HARGA (SANGAT KRITIKAL!):
+1. Baca harga masing-masing item, lalu jumlahkan semuanya. Bandingkan jumlah ini dengan "Grand Total" (Total Akhir Bayar).
+2. JIKA jumlah item == Grand Total (atau selisih sangat kecil), berarti harga sudah TERMASUK pajak. JANGAN tambahkan pajak apa pun. Tulis harga apa adanya.
+3. JIKA jumlah item < Grand Total (ada selisih pajak 8% atau 10%), berarti harga BELUM termasuk pajak. BARU DI SINI kamu wajib membagi dan memasukkan pajak tersebut ke harga masing-masing item (makanan 8%, barang 10%).
+4. Untuk input CHAT MANUAL (tanpa struk), asumsikan harga yang diketik adalah HARGA FINAL. JANGAN pernah tambah pajak kecuali user memintanya.
 
-ALUR:
-1. Tarik tunai: Tipe="tarik_tunai".
-2. Setor tunai: Tipe="setor_tunai".
-3. Belanja: Tipe="pengeluaran".
-4. KATEGORI WAJIB: "${categoryListStr}".
-5. merchantName wajib diisi sesuai nama toko.
+ATURAN TRANSLASI:
+- Terjemahkan nama toko & nama barang ke BAHASA INDONESIA. (Contoh: "セブン-イレブン" -> "7-Eleven", "水" -> "Air Mineral").
 
 Struktur Output Target JSON MURNI:
 {
@@ -85,7 +78,7 @@ Struktur Output Target JSON MURNI:
         
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
-        if (window.showToast) window.showToast("Selesai diproses! Silakan verifikasi pajak & harga.");
+        if (window.showToast) window.showToast("Berhasil diproses! AI telah menyesuaikan kalkulasi pajaknya.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
