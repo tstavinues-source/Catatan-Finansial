@@ -441,3 +441,46 @@ window.deleteForever = async function(id) {
         if (window.showToast) window.showToast("Gagal musnahkan materi.", true);
     }
 };
+// ============================================================================
+// FUNGSI REFRESH DATA MANUAL (ANTI-LAG & ANTI-ERROR)
+// ============================================================================
+window.refreshAuraData = async function(isSilent = false) {
+    if (!AuraState.user.uid || !AuraState.instances.db) return;
+    
+    if (!isSilent && typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
+    
+    try {
+        // Mengambil modul database secara dinamis agar anti-error
+        const { get, ref } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js");
+        
+        // Membaca jalur data (sesuai APP_CONFIG ledger node)
+        const dbPath = `apato_404_ledger/${AuraState.user.uid}/transactions`;
+        const snapshot = await get(ref(AuraState.instances.db, dbPath));
+        
+        const data = snapshot.val();
+        const transactionsArray = [];
+        
+        if (data) {
+            for (const key in data) {
+                if (Object.prototype.hasOwnProperty.call(data, key)) {
+                    transactionsArray.push({ id: key, ...data[key] });
+                }
+            }
+        }
+        
+        // Simpan data ke memori layar
+        AuraState.data.transactions = transactionsArray;
+        
+        // Gambar ulang semua layar
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+        if (typeof window.renderLog === 'function') window.renderLog();
+        
+        if (!isSilent && window.showToast) window.showToast("Data berhasil disinkronisasi!");
+    } catch (e) {
+        console.error(e);
+        if (!isSilent && window.showToast) window.showToast("Gagal menarik data dari server.", true);
+    } finally {
+        if (!isSilent && typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
+    }
+};
