@@ -599,6 +599,21 @@
                     <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
                     <button id="btn-curr-idr" onclick="window.setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
                 </div>
+<div class="flex items-center gap-2">
+
+    <button onclick="window.refreshAuraData()" class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all active:rotate-180 duration-500">
+        <i class="fa-solid fa-arrows-rotate text-xs"></i>
+    </button>
+
+    <div class="flex bg-black/20 p-0.5 rounded-lg border border-white/5">
+        <button id="btn-currency-jpy" onclick="window.switchCurrency('JPY')" class="px-2 py-1 text-[10px] font-bold rounded-md bg-accent text-white transition-all shadow-sm">JPY</button>
+        <button id="btn-currency-idr" onclick="window.switchCurrency('IDR')" class="px-2 py-1 text-[10px] font-bold rounded-md text-white/40 hover:text-white/70 transition-all">IDR</button>
+    </div>
+
+    <button onclick="window.openSettingsModal()" class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all">
+        <i class="fa-solid fa-gear text-xs"></i>
+    </button>
+</div>
             </div>
         </header>
 
