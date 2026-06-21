@@ -22,18 +22,19 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT DISEMPURNAKAN: Logika Selisih Pajak (Tax-Inclusive vs Tax-Exclusive)
+        // PROMPT VALIDASI PAJAK SELISIH & TRANSLASI OTOMATIS
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
 FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
 
 ATURAN PAJAK & HARGA (SANGAT KRITIKAL!):
-1. Baca harga masing-masing item, lalu jumlahkan semuanya. Bandingkan jumlah ini dengan "Grand Total" (Total Akhir Bayar).
-2. JIKA jumlah item == Grand Total (atau selisih sangat kecil), berarti harga sudah TERMASUK pajak. JANGAN tambahkan pajak apa pun. Tulis harga apa adanya.
-3. JIKA jumlah item < Grand Total (ada selisih pajak 8% atau 10%), berarti harga BELUM termasuk pajak. BARU DI SINI kamu wajib membagi dan memasukkan pajak tersebut ke harga masing-masing item (makanan 8%, barang 10%).
-4. Untuk input CHAT MANUAL (tanpa struk), asumsikan harga yang diketik adalah HARGA FINAL. JANGAN pernah tambah pajak kecuali user memintanya.
+1. Baca harga masing-masing item, lalu jumlahkan semuanya. Bandingkan jumlah ini dengan "Grand Total" (Total Akhir Pembayaran) di struk.
+2. JIKA jumlah item == Grand Total (atau selisih sangat kecil), berarti harga sudah TERMASUK pajak (Tax-Inclusive). JANGAN tambahkan pajak apa pun ke harga item. Tulis harga apa adanya.
+3. JIKA jumlah item < Grand Total (ada selisih pajak 8% atau 10% yang ditulis terpisah di bawah), berarti harga BELUM termasuk pajak (Tax-Exclusive). Di sini kamu WAJIB membagikan nilai persen pajak tersebut ke harga masing-masing item secara proporsional (makanan 8%, barang non-makanan 10%). Sehingga 'harga' yang keluar di JSON adalah harga final setelah pajak.
+4. Untuk input CHAT MANUAL / KETIKAN TEKS biasa (tanpa foto struk resmi), asumsikan harga yang diketik user adalah HARGA FINAL. JANGAN pernah menambahkan pajak buatan kecuali user meminta eksplisit.
 
 ATURAN TRANSLASI:
-- Terjemahkan nama toko & nama barang ke BAHASA INDONESIA. (Contoh: "セブン-イレブン" -> "7-Eleven", "水" -> "Air Mineral").
+- Wajib TERJEMAHKAN nama toko (merchantName) dan nama barang (nama_barang) dari bahasa asing (Jepang/Inggris) ke dalam BAHASA INDONESIA yang lazim.
+- Contoh: "セブン-イレブン" -> "7-Eleven", "超熟 6枚" -> "Roti Tawar Choujuku 6 lembar", "ポテトチップス" -> "Keripik Kentang".
 
 Struktur Output Target JSON MURNI:
 {
@@ -78,7 +79,7 @@ Struktur Output Target JSON MURNI:
         
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
-        if (window.showToast) window.showToast("Berhasil diproses! AI telah menyesuaikan kalkulasi pajaknya.");
+        if (window.showToast) window.showToast("Selesai diproses! Verifikasi intelijen pajak & bahasa selesai.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
@@ -114,7 +115,7 @@ window.renderStagingUI = function() {
                 const safeName = AuraUtils.escapeHtml(it.nama_barang);
                 
                 compiledItemsHtml += `
-                <div class="glass-panel p-3 relative group border-l-2 border-l-accent">
+                <div class="glass-panel p-3 relative group border-l-2 border-l-accent mb-2">
                     <button onclick="window.removeStagingItem(${idx})" class="absolute top-2 right-2 text-[var(--color-expense)] hover:text-rose-400 p-1 bg-black/40 rounded-full w-6 h-6 flex items-center justify-center z-10">
                         <i class="fa-solid fa-trash text-[10px]"></i>
                     </button>
@@ -198,20 +199,15 @@ window.saveStagingToDatabase = async function() {
     stagingData.createdAt = new Date().toISOString();
     stagingData.is_deleted = false;
 
-        try {
+    try {
         await FirebaseService.saveTransaction(stagingData, true);
         if (typeof window.closeModal === 'function') window.closeModal('modal-ai-staging');
         
         AuraState.temp.aiStaging = null;
         if (window.showToast) window.showToast("Berkas Staging Area dikonfirmasi ke server Cloud!");
 
-        // --- PELATUK SINKRONISASI UI INSTAN ---
-        if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
-        if (typeof window.renderTransactions === 'function') window.renderTransactions();
-        if (typeof window.renderLog === 'function') window.renderLog();
-        // --------------------------------------
-
+        // PELATUK REFRESH DATA INSTAN SETELAH SUBMIT STAGING
+        if (typeof window.refreshAuraData === 'function') window.refreshAuraData(true);
     } catch(e) { 
         if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
     }
