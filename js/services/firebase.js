@@ -13,7 +13,6 @@ import {
     onValue, 
     get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-// TAMBAHAN: Import modul otentikasi yang kurang
 import { 
     getAuth, 
     GoogleAuthProvider,
@@ -43,7 +42,6 @@ try {
     authInstance = getAuth(firebaseAppInstance);
     googleAuthProviderInstance = new GoogleAuthProvider();
     
-    // Simpan instance ke dalam State Global untuk diakses modul lain jika diperlukan
     AuraState.instances.firebaseApp = firebaseAppInstance;
     AuraState.instances.db = dbInstance;
     AuraState.instances.auth = authInstance;
@@ -60,22 +58,51 @@ try {
         }
     });
 
-    // TAMBAHAN: Pemantau Sesi (Agar Modal Popup Login Tertutup Otomatis)
     onAuthStateChanged(authInstance, (user) => {
         if (user) {
             AuraState.user.uid = user.uid;
             Logger.success('Auth', `Sesi pengguna dikonfirmasi: ${user.uid}`);
-            // Tutup popup login
+            
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
-            // Pindahkan tampilan ke Dashboard
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // Opsional: Jika kamu punya fungsi untuk memuat data transaksi setelah login
-            // if (typeof window.loadInitialData === 'function') window.loadInitialData();
+            // --- PELATUK SINKRONISASI DATA INSTAN SAAT LOGIN ---
+            // Dengarkan perubahan data pada node transaksi pengguna ini
+            const userTransactionsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
+            
+            // onValue akan terus berjalan dan memperbarui State setiap ada perubahan di Firebase
+            onValue(userTransactionsRef, (snapshot) => {
+                const data = snapshot.val();
+                const transactionsArray = [];
+                
+                if (data) {
+                    for (const key in data) {
+                        if (Object.prototype.hasOwnProperty.call(data, key)) {
+                            transactionsArray.push({ id: key, ...data[key] });
+                        }
+                    }
+                }
+                
+                // Simpan data terbaru ke Global State
+                AuraState.data.transactions = transactionsArray;
+                
+                // Bangunkan UI untuk menggambar ulang dengan data baru
+                if (typeof window.renderDashboard === 'function') window.renderDashboard();
+                if (typeof window.renderTransactions === 'function') window.renderTransactions();
+                if (typeof window.renderLog === 'function') window.renderLog();
+                
+                Logger.info('Sync', `Berhasil menarik ${transactionsArray.length} transaksi dari Cloud.`);
+            }, (error) => {
+                 Logger.error('Sync', 'Gagal menarik data transaksi dari Cloud.', error);
+            });
+            // ----------------------------------------------------
+
         } else {
+            // Bersihkan State jika user logout
             AuraState.user.uid = null;
+            AuraState.data.transactions = [];
+            
             Logger.info('Auth', 'Sesi kosong. Menunggu login...');
-            // Tampilkan popup login
             if (typeof window.showModal === 'function') window.showModal('modal-login');
         }
     });
@@ -90,9 +117,6 @@ try {
 }
 
 export const FirebaseService = {
-    // ==========================================
-    // TAMBAHAN: Modul Eksekusi Login yang Hilang
-    // ==========================================
     loginWithEmail: async function(email, password) {
         return await signInWithEmailAndPassword(authInstance, email, password);
     },
@@ -106,9 +130,6 @@ export const FirebaseService = {
         return await signOut(authInstance);
     },
 
-    // ==========================================
-    // Modul CRUD Transaksi & Database
-    // ==========================================
     _checkAuth: function() {
         if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) {
             throw new Error("Sesi pengguna tidak valid. Anda harus masuk akun terlebih dahulu.");
@@ -229,5 +250,4 @@ export const FirebaseService = {
     }
 };
 
-// Pasang ke window untuk menjaga kompatibilitas dengan sisa kode lama
 window.FirebaseService = FirebaseService;
