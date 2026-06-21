@@ -554,9 +554,10 @@
                     <i class="fa-solid fa-palette text-sm"></i>
                 </button>
 
-                <button onclick="window.refreshAuraData()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition active:rotate-180 duration-500 shrink-0" aria-label="Refresh Data">
-                    <i class="fa-solid fa-arrows-rotate text-sm"></i>
-                </button>
+                <button onclick="window.loadRealtimeDatabaseData()" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition active:rotate-180 duration-500 shrink-0" aria-label="Refresh Data">
+                 <i class="fa-solid fa-arrows-rotate text-sm"></i>
+                 </button>
+
 
                 <div class="glass-panel p-0.5 flex rounded-xl border border-[var(--border-glass)] shrink-0">
                     <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
@@ -823,7 +824,7 @@
                     <i class="fa-solid fa-microphone text-lg"></i>
                 </button>
                 <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-[15px] text-[var(--text-main)] outline-none py-3.5 px-2 max-h-24 min-h-[48px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik transaksi / chat AI..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
-                <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--bg-base)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label="Kirim Input">
+                <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--bg-base)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label ="Kirim Input">
                     <i class="fa-solid fa-paper-plane text-base" id="icon-send"></i>
                 </button>
             </div>
