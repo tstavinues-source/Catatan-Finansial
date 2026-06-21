@@ -194,12 +194,20 @@ window.saveStagingToDatabase = async function() {
     stagingData.createdAt = new Date().toISOString();
     stagingData.is_deleted = false;
 
-    try {
+        try {
         await FirebaseService.saveTransaction(stagingData, true);
         if (typeof window.closeModal === 'function') window.closeModal('modal-ai-staging');
         
         AuraState.temp.aiStaging = null;
         if (window.showToast) window.showToast("Berkas Staging Area dikonfirmasi ke server Cloud!");
+
+        // --- PELATUK SINKRONISASI UI INSTAN ---
+        if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+        if (typeof window.renderLog === 'function') window.renderLog();
+        // --------------------------------------
+
     } catch(e) { 
         if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
     }
