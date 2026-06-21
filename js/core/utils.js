@@ -49,13 +49,12 @@ export const AuraUtils = {
 
     formatCurrency: function(amount) {
         try {
-            // Mengambil dari state terbaru yang diupdate oleh window.setCurrency
             const currency = AuraState.system.displayCurrency || 'JPY';
             const val = Number(amount) || 0;
             
             if (currency === 'IDR') {
-                const rate = AuraState.system.exchangeRate || 105;
-                return 'Rp ' + Math.round(val * rate).toLocaleString('id-ID');
+                // HANYA MENCETAK STRING, TIDAK MENGALIKAN RATE LAGI (Mencegah Double Math)
+                return 'Rp ' + Math.round(val).toLocaleString('id-ID');
             } else {
                 return '¥' + Math.round(val).toLocaleString('ja-JP');
             }
@@ -71,7 +70,6 @@ export const AuraUtils = {
         const currentDisplay = AuraState.system.displayCurrency || 'JPY';
         if (!fromCurrency || fromCurrency === currentDisplay) return numAmount;
         
-        // Memastikan variabel rate sesuai dengan yang disimpan di main.js
         const rate = AuraState.system.exchangeRate || 105;
         
         if (fromCurrency === 'JPY' && currentDisplay === 'IDR') return numAmount * rate;
