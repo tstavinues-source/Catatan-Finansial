@@ -450,11 +450,12 @@ window.refreshAuraData = async function(isSilent = false) {
     if (!isSilent && typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
     
     try {
-        // Mengambil modul database secara dinamis agar anti-error
+        // Mengambil modul database & config secara dinamis
         const { get, ref } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js");
+        const { APP_CONFIG } = await import("../config/constants.js");
         
-        // Membaca jalur data (sesuai APP_CONFIG ledger node)
-        const dbPath = `apato_404_ledger/${AuraState.user.uid}/transactions`;
+        // Membaca jalur data yang BENAR milik AuraFi
+        const dbPath = `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`;
         const snapshot = await get(ref(AuraState.instances.db, dbPath));
         
         const data = snapshot.val();
