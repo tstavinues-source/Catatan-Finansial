@@ -60,19 +60,6 @@ window.saveAIPreferences = async function() {
 // MANAJEMEN API KEYS (GROQ & GEMINI)
 // ============================================================================
 
-// Memastikan fallback secret key terpasang
-let groqSecretKey = null;
-try {
-    groqSecretKey = localStorage.getItem('aurafi_groq_secret');
-    if (!groqSecretKey && typeof CryptoJS !== 'undefined' && CryptoJS.lib?.WordArray) { 
-        groqSecretKey = CryptoJS.lib.WordArray.random(128/8).toString();
-        localStorage.setItem('aurafi_groq_secret', groqSecretKey); 
-    }
-} catch (e) {
-    groqSecretKey = sessionStorage.getItem('aurafi_groq_secret') || "fallback_secret_key_" + Date.now();
-    sessionStorage.setItem('aurafi_groq_secret', groqSecretKey);
-}
-
 window.addGroqKey = async function() {
     const input = document.getElementById('new-groq-key');
     if (!input) return;
@@ -89,58 +76,33 @@ window.addGroqKey = async function() {
     }
     
     try {
+        // Simpan ke Firebase
         await FirebaseService.saveGroqKey(encrypted);
         input.value = '';
         if (window.showToast) window.showToast("Kunci API Groq berhasil diamankan ke dalam brankas.");
+        
+        // Memperbarui UI agar list key langsung muncul
+        if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+        
+        // Mengubah tulisan OFFLINE menjadi ONLINE berwarna hijau
+        const badge = document.getElementById('groq-status-badge');
+        if (badge) {
+            badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+            badge.innerText = "ONLINE";
+        }
     } catch(e) {
-        if (window.showToast) window.showToast("Gagal menyimpan kunci.", true);
+        if (window.showToast) window.showToast("Gagal menyimpan kunci ke Cloud.", true);
     }
-};
-
-window.removeGroqKey = async function(id) {
-    if (confirm("Cabut otorisasi API Key ini dari ekosistem?")) {
-        try {
-            await FirebaseService.deleteGroqKey(id);
-            if (window.showToast) window.showToast("Kunci dihapus.");
-        } catch(e) {
-            if (window.showToast) window.showToast("Gagal menghapus kunci.", true);
-        }
-    }
-};
-
-window.renderGroqKeysUI = function() {
-    AuraUtils.safeDOM('groq-keys-container', function(el) {
-        const keys = AuraState.data.groqKeys || [];
-        if (keys.length === 0) {
-            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg">Tidak satupun Kunci API Groq Sistem terpasang. Mesin Nirkabel LLM Nonaktif.</p>';
-            return;
-        }
-
-        let keysHtml = '';
-        for (let i = 0; i < keys.length; i++) {
-            const k = keys[i];
-            const dec = EncryptionService.decryptApiKey(k.encryptedKey, groqSecretKey);
-            const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Memori Data Enkripsi Korup/Tertolak)`;
-            const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
-            
-            keysHtml += `
-            <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-                <div class="flex flex-col">
-                    <span class="font-mono text-xs ${statusColor}">${display}</span>
-                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Master Key Pool Ke-${i + 1}</span>
-                </div>
-                <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-            </div>`;
-        }
-        el.innerHTML = keysHtml;
-    });
 };
 
 window.syncGeminiEngine = async function(silent = false) {
     const pinEl = document.getElementById('gemini-pin-input');
     const pinInput = pinEl ? pinEl.value.trim() : '';
-    const pin = silent ? sessionStorage.getItem('aurafi_gemini_pin') : pinInput;
     
+    // Ambil PIN dari input, ATAU tarik dari LocalStorage jika sedang refresh (silent mode)
+    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
+    
+    // UBAH: Batas minimal PIN sekarang jadi 3 karakter
     if (!pin || pin.length < 3) { 
         if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI (MINIMAL 3 KARAKTER)!", true);
         return; 
@@ -160,23 +122,14 @@ window.syncGeminiEngine = async function(silent = false) {
         
         if (gCount > 0) {
             AuraState.instances.geminiEngine = geminiEngine;
-            sessionStorage.setItem('aurafi_gemini_pin', pin);
+            
+            // SIMPAN PIN SECARA PERMANEN KE MEMORI HP
+            localStorage.setItem('aurafi_gemini_pin', pin);
+            
             if (gBadge) { 
                 gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono";
                 gBadge.innerText = `ACTIVE (${gCount})`; 
             }
-            if (!silent && window.showToast) window.showToast("Gemini Vision Berhasil Di-Unlock.");
-        } else { 
-            throw new Error("GCount 0");
-        }
-    } catch(e) {
-        if (gBadge) { 
-            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
-            gBadge.innerText = "FAIL / LOCKED"; 
-        }
-        if (!silent && window.showToast) window.showToast("Dekripsi Gagal: PIN Salah atau Modul Belum Siap.", true);
-    }
-};
 
 // ============================================================================
 // MANAJEMEN TAGIHAN RUTIN (RECURRING)
