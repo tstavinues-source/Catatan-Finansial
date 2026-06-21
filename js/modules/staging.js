@@ -212,4 +212,9 @@ window.saveStagingToDatabase = async function() {
         if (window.showToast) window.showToast("Berkas Staging Area dikonfirmasi ke server Cloud!");
 
         // PELATUK REFRESH MENGGUNAKAN MESIN ASLI
-if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
+        if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
+
+    } catch(e) { 
+        if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
+    }
+};
