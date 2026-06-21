@@ -1,6 +1,7 @@
 /**
  * Dynamic Category Engine (Smart Classification System)
  * Mengelola aturan pencocokan kata kunci kategori bawaan dan custom dari database.
+ * Dilengkapi dengan Auto-Learn untuk mempelajari kategori baru dari AI.
  */
 
 import { DEFAULT_SYSTEM_CATEGORIES } from '../config/categories.js';
@@ -35,7 +36,7 @@ export const CategoryManager = {
 
         // Aturan fallback berbasis kecocokan kata kunci (Smart Keyword Matcher)
         const rules = [
-            { words: ['makan', 'kuliner', 'cemilan', 'snack', 'food', 'resto'], icon: 'fa-burger', hex: '#fb923c', name: 'Makanan' },
+            { words: ['makan', 'kuliner', 'cemilan', 'snack', 'food', 'resto', 'mie', 'daging', 'sayur'], icon: 'fa-burger', hex: '#fb923c', name: 'Makanan' },
             { words: ['minum', 'kopi', 'teh', 'cafe', 'drink', 'beverage'], icon: 'fa-mug-hot', hex: '#60a5fa', name: 'Minuman' },
             { words: ['tagihan', 'utilitas', 'listrik', 'air', 'wifi', 'pajak', 'internet', 'bill'], icon: 'fa-file-invoice-dollar', hex: '#facc15', name: 'Utilitas' },
             { words: ['gaji', 'masuk', 'transferan', 'bonus', 'pendapatan', 'income', 'salary'], icon: 'fa-money-bill-wave', hex: '#10b981', name: 'Pemasukan' },
@@ -44,7 +45,7 @@ export const CategoryManager = {
             { words: ['hibur', 'main', 'game', 'bioskop', 'rekreasi', 'entertainment'], icon: 'fa-gamepad', hex: '#c084fc', name: 'Hiburan' },
             { words: ['online', 'shopee', 'tokopedia', 'amazon', 'gojek', 'grab'], icon: 'fa-box-open', hex: '#f472b6', name: 'Belanja Online' },
             { words: ['transport', 'kereta', 'bus', 'bensin', 'parkir', 'tol', 'travel'], icon: 'fa-train', hex: '#34d399', name: 'Transportasi' },
-            { words: ['pokok', 'pasar', 'supermarket', 'groceries', 'mart'], icon: 'fa-basket-shopping', hex: '#4ade80', name: 'Bahan Pokok' },
+            { words: ['pokok', 'pasar', 'supermarket', 'groceries', 'mart', 'dapur'], icon: 'fa-basket-shopping', hex: '#4ade80', name: 'Bahan Pokok' },
             { words: ['elektronik', 'gadget', 'laptop', 'hp', 'device'], icon: 'fa-laptop', hex: '#94a3b8', name: 'Elektronik' },
             { words: ['didik', 'sekolah', 'kursus', 'buku', 'edukasi', 'education'], icon: 'fa-graduation-cap', hex: '#22d3ee', name: 'Pendidikan' }
         ];
@@ -75,7 +76,6 @@ export const CategoryManager = {
             optionsHtml += `<option value="${c.name}">${c.name}</option>`; 
         });
 
-        // Array targetIds sudah dibersihkan dari 'staging-trx-cat'
         const targetIds = ['manual-trx-category', 'add-item-cat', 'edit-item-cat', 'filter-category'];
         
         targetIds.forEach(function(id) {
@@ -94,6 +94,86 @@ export const CategoryManager = {
                 }
             });
         });
+    },
+
+    // ============================================================================
+    // FUNGSI AUTO-LEARN: Mendaftarkan Kategori Baru dari AI ke Firebase
+    // ============================================================================
+    autoLearnCategories: async function(itemsArray) {
+        if (!itemsArray || !itemsArray.length) return;
+        
+        const existingCats = this.getAllCategories();
+        let customCats = AuraState.data.settings?.categories || {};
+        let isNewCategoryAdded = false;
+
+        // Palet warna estetik untuk kategori baru buatan AI
+        const autoColors = ['#f472b6', '#34d399', '#60a5fa', '#fb923c', '#c084fc', '#facc15', '#22d3ee', '#fb7185', '#a78bfa'];
+
+        for (let i = 0; i < itemsArray.length; i++) {
+            let rawCat = (itemsArray[i].kategori_barang || '').trim();
+            if (!rawCat || rawCat.toLowerCase() === 'lainnya') continue;
+
+            // Standarisasi: Huruf depan kapital (Contoh: "camilan" -> "Camilan")
+            let cleanCatName = rawCat.charAt(0).toUpperCase() + rawCat.slice(1).toLowerCase();
+
+            // Cek apakah kategori sudah ada (case-insensitive)
+            const exists = Object.values(existingCats).some(c => c.name && c.name.toLowerCase() === cleanCatName.toLowerCase());
+
+            if (!exists) {
+                // Ciptakan ID & Profil Kategori Baru
+                const newCatId = AuraUtils.generateId('cat');
+                const randomColor = autoColors[Math.floor(Math.random() * autoColors.length)];
+                
+                // Coba tebak icon menggunakan smart matcher, jika gagal pakai default 'fa-tags'
+                const styleHint = this.resolveStyle(cleanCatName);
+                const finalIcon = styleHint.icon !== 'fa-tag' ? styleHint.icon : 'fa-tags';
+
+                customCats[newCatId] = {
+                    id: newCatId,
+                    name: cleanCatName,
+                    icon: finalIcon,
+                    color: randomColor,
+                    type: 'expense',
+                    isAutoLearned: true // Penanda bahwa ini hasil buatan AI
+                };
+
+                // Tambahkan sementara ke cache agar tidak double jika ada 2 kategori baru yg sama di 1 struk
+                existingCats[newCatId] = customCats[newCatId];
+                isNewCategoryAdded = true;
+                
+                // Pastikan item di-update dengan nama yang sudah bersih
+                itemsArray[i].kategori_barang = cleanCatName;
+            } else {
+                // Jika sudah ada, pastikan penulisannya mengikuti database (Mencegah Duplikat)
+                const matchedCat = Object.values(existingCats).find(c => c.name && c.name.toLowerCase() === cleanCatName.toLowerCase());
+                if (matchedCat) {
+                    itemsArray[i].kategori_barang = matchedCat.name;
+                }
+            }
+        }
+
+        if (isNewCategoryAdded) {
+            // 1. Update memory lokal
+            if (!AuraState.data.settings) AuraState.data.settings = {};
+            AuraState.data.settings.categories = customCats;
+            
+            // 2. Tanamkan ke Database Cloud Firebase secara diam-diam (Silent Sync)
+            try {
+                const { ref, update } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js");
+                const { APP_CONFIG } = await import("../config/constants.js");
+                
+                if (AuraState.user.uid && AuraState.instances.db) {
+                    const dbPath = `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/categories`;
+                    await update(ref(AuraState.instances.db, dbPath), customCats);
+                    
+                    // Perbarui tampilan Dropdown di seluruh layar
+                    this.renderDropdowns();
+                    console.log("[AuraFi Auto-Learn] Kategori baru berhasil dipelajari dan diamankan ke Firebase.");
+                }
+            } catch(e) {
+                console.error("[AuraFi Auto-Learn] Gagal sinkronisasi kategori baru:", e);
+            }
+        }
     }
 };
 
