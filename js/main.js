@@ -6,15 +6,16 @@
  * serta registrasi PWA Service Worker untuk instalasi mobile.
  */
 
-// 1. Core & Config Imports (Ini aman karena strukturnya statis)
+// 1. Core & Config Imports
 import { APP_CONFIG } from './config/constants.js';
 import { Logger } from './core/logger.js';
 import { AuraState } from './core/state.js';
 import { AuraUtils } from './core/utils.js';
 
-// 2. Services & Modules Imports (UBAH: Gunakan Safe Import tanpa Kurung Kurawal)
+// 2. Services & Modules Imports
 import './services/firebase.js';
-import './modules/categories.js'; 
+import './modules/categories.js';
+import './modules/analytics.js'; // Inject file analytics yang baru kita buat
 
 // 3. Renderers Imports
 import './renderers/dashboard.js';
@@ -79,12 +80,12 @@ window.showToast = function(message, isError = false) {
         ? 'bg-rose-950/80 text-rose-100 border-rose-900/50' 
         : 'bg-emerald-950/80 text-emerald-100 border-emerald-900/50'
     }`;
-    
+
     const icon = isError ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-check"></i>';
     toast.innerHTML = `${icon} <span>${AuraUtils.escapeHtml(message)}</span>`;
     
     container.appendChild(toast);
-    
+
     requestAnimationFrame(() => {
         toast.classList.remove('translate-y-[-20px]', 'opacity-0');
         toast.classList.add('translate-y-0', 'opacity-100');
@@ -125,7 +126,10 @@ window.setCurrency = function(curr) {
     // 1. Simpan pilihan ke memori HP agar tidak reset saat refresh
     localStorage.setItem('aurafi_active_currency', curr);
     
-    if (window.AuraState) window.AuraState.system.currency = curr;
+    if (window.AuraState) {
+        window.AuraState.system.displayCurrency = curr; // Sinkronisasi variabel untuk utils.js
+        window.AuraState.system.currency = curr;
+    }
     
     // 2. Update warna tombol JPY / IDR di Header
     const btnJpy = document.getElementById('btn-curr-jpy');
@@ -141,32 +145,45 @@ window.setCurrency = function(curr) {
         }
     }
     
-    // 3. Refresh ulang angka-angka di Dashboard sesuai mata uang baru
+    // 3. PAKSA SEMUA LAYAR ME-REFRESH ANGKA DAN LAMBANG UANG!
     if(typeof window.renderDashboard === 'function') window.renderDashboard();
+    if(typeof window.renderTransactions === 'function') window.renderTransactions();
+    if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
+    if(typeof window.renderBudgets === 'function') window.renderBudgets();
 };
 
 window.fetchLiveExchangeRate = async function() {
     const display = document.getElementById('live-rate-display');
     if (!display) return;
-    
+
     try {
         display.innerText = "Menarik data kurs dunia...";
+
         // Mengambil kurs JPY ke IDR secara langsung dan gratis
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
         const data = await response.json();
         const idrRate = data.rates.IDR;
         
         display.innerText = `1 JPY = Rp ${idrRate.toLocaleString('id-ID')}`;
-        
+
         // Simpan rate di state agar kalkulasi total aset menjadi akurat
-        if (window.AuraState) window.AuraState.system.exchangeRate = idrRate;
+        if (window.AuraState) {
+            window.AuraState.data.exchangeRate = idrRate;
+            window.AuraState.system.exchangeRate = idrRate;
+        }
     } catch (e) {
         display.innerText = "Kurs Offline (Gagal memuat)";
     }
 };
 
-// 4. PEMICU OTOMATIS SAAT APLIKASI PERTAMA KALI DIBUKA
+// ============================================================================
+// BOOTSTRAPPING SYSTEM & PWA REGISTRATION
+// ============================================================================
 window.addEventListener('DOMContentLoaded', () => {
+    Logger.info('System', `AuraFi OS v${APP_CONFIG.VERSION} Bootstrapping initiated...`);
+    
+    if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
+    
     // Tarik memori mata uang terakhir yang dipilih user (Default: JPY)
     const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
     window.setCurrency(savedCurr);
@@ -180,23 +197,10 @@ window.addEventListener('DOMContentLoaded', () => {
             window.syncGeminiEngine(true); // true = mode silent (tanpa notif)
         }
     }, 1500);
-});
 
-// ============================================================================
-// BOOTSTRAPPING SYSTEM
-// ============================================================================
-window.addEventListener('DOMContentLoaded', () => {
-    Logger.info('System', `AuraFi OS v${APP_CONFIG.VERSION} Bootstrapping initiated...`);
-    
-    // UBAH: Panggil lewat window agar aman
-    if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
-    
     Logger.success('System', 'Sistem Kendali Utama (main.js) Berhasil Disinkronisasikan.');
 });
 
-// ============================================================================
-// PWA & SERVICE WORKER REGISTRATION
-// ============================================================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js')
