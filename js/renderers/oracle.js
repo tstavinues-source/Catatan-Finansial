@@ -11,6 +11,15 @@ import { MemoryService, FinancialSummaryService } from '../services/memory.js';
 
 let isChatProcessing = false;
 
+// --- FUNGSI SCROLL OTOMATIS (STANDAR APLIKASI CHAT) ---
+window.scrollToBottomOracle = function() {
+    AuraUtils.safeDOM('oracle-chat-box', function(el) {
+        requestAnimationFrame(() => {
+            el.scrollTop = el.scrollHeight;
+        });
+    });
+};
+
 window.processOracleChat = async function(text, base64Img = null) {
     if (!AuraState.user.uid) return;
     
@@ -23,7 +32,6 @@ window.processOracleChat = async function(text, base64Img = null) {
     const uiText = text || (base64Img ? "[File Lampiran Visual]" : "");
     const sanitizedUiText = AuraUtils.escapeHtml(uiText);
     
-    // --- PERBAIKAN 1: Tampilkan chat user ke layar secara instan ---
     if (!AuraState.data.oracleChats) AuraState.data.oracleChats = [];
     AuraState.data.oracleChats.push({ 
         role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString() 
@@ -32,7 +40,6 @@ window.processOracleChat = async function(text, base64Img = null) {
     
     if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
 
-    // --- PERBAIKAN 2: Hilangkan 'await' agar tidak hang jika sinyal jelek ---
     FirebaseService.pushOracleChat({ 
         role: 'user', text: sanitizedUiText, timestamp: new Date().toISOString() 
     }).catch(e => console.warn("Sinkronisasi chat tertunda"));
@@ -57,7 +64,7 @@ window.processOracleChat = async function(text, base64Img = null) {
             txString += `ID:${t.id} | Toko:${t.merchantName || t.storeName || 'Merchant'} | Tipe:${t.tipe} | Ket:${t.description || t.catatan_ai} | Nom:${t.nominal} ${t.mata_uang} ${itemStr}\n`;
         }
 
-        const promptConfigs = window.getOraclePromptConfigs();
+        const promptConfigs = window.getOraclePromptConfigs ? window.getOraclePromptConfigs() : { personaStr: "Kombinasi Humble + Jenius", styleStr: "Normal" };
         const categoryListStr = CategoryManager.getCategoryStringList();
         
         const systemPrompt = `Kamu adalah AuraFi Oracle V3. Kepribadian: ${promptConfigs.personaStr}. Nama Tuan: ${nickname}.
@@ -79,7 +86,6 @@ JSON MURNI TANPA TAG:
         let resJson;
         const messages = [{ role: "system", content: systemPrompt }];
         
-        // --- MENGKEMBALIKAN FITUR MEMORY ORIGINAL MILIKMU ---
         const history = MemoryService.getRelevantChats();
         
         for (let i = 0; i < history.length; i++) {
@@ -158,13 +164,11 @@ JSON MURNI TANPA TAG:
 
         const escapedReply = AuraUtils.escapeHtml(resJson.reply);
         
-        // --- PERBAIKAN 3: Tampilkan balasan AI ke layar secara instan ---
         AuraState.data.oracleChats.push({ 
             role: 'ai', text: escapedReply, timestamp: new Date().toISOString() 
         });
         window.renderOracleChats();
 
-        // --- PERBAIKAN 4: Hilangkan 'await' ---
         FirebaseService.pushOracleChat({ 
             role: 'ai', text: escapedReply, timestamp: new Date().toISOString() 
         }).catch(e => console.warn(e));
@@ -172,7 +176,6 @@ JSON MURNI TANPA TAG:
     } catch(e) { 
         const errMsg = `Gangguan transmisi: ${e.message}`;
         
-        // Tampilkan error ke layar
         AuraState.data.oracleChats.push({ 
             role: 'ai', text: errMsg, timestamp: new Date().toISOString() 
         });
@@ -185,7 +188,7 @@ JSON MURNI TANPA TAG:
     } finally { 
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
         isChatProcessing = false;
-        window.renderOracleChats();
+        window.scrollToBottomOracle(); // Pastikan scroll setelah animasi loading selesai
     }
 };
 
@@ -193,9 +196,9 @@ window.renderOracleChats = function() {
     AuraUtils.safeDOM('oracle-chat-box', function(el) {
         if (!AuraState.data.oracleChats || AuraState.data.oracleChats.length === 0) {
             el.innerHTML = `
-            <div class="text-center text-[var(--text-muted)] p-8">
+            <div class="text-center text-[var(--text-muted)] p-8 mt-10">
                 <i class="fa-solid fa-comment-dots text-3xl mb-3 block opacity-30"></i>
-                Belum ada percakapan. Mulai chat dengan Oracle!
+                <p class="text-xs">Belum ada percakapan.<br>Mulai chat dengan Oracle!</p>
             </div>`;
             return;
         }
@@ -207,36 +210,42 @@ window.renderOracleChats = function() {
             const alignment = c.role === 'user' ? 'justify-end' : 'justify-start';
             const bubbleStyle = c.role === 'user' ? 'bubble-user text-white shadow-md' : 'bubble-ai glass-panel markdown-content';
             
-            // Perbaikan tampilan: Menambahkan mb-3 agar antar chat ada jarak
             chatsHtml += `
-            <div class="flex ${alignment} mb-3">
-                <div class="p-3.5 rounded-2xl text-xs max-w-[85%] ${bubbleStyle} leading-relaxed shadow-sm">
+            <div class="flex ${alignment} mb-4">
+                <div class="p-3.5 rounded-2xl text-[13px] max-w-[85%] ${bubbleStyle} leading-relaxed shadow-sm">
                     ${htmlFormat}
                 </div>
             </div>`;
         }
         
         el.innerHTML = chatsHtml;
+        
         if (AuraState.system.isProcessing && AuraState.system.activeView === 'oracle') {
             el.innerHTML += `
-            <div class="flex justify-start mb-3">
-                <div class="bubble-ai glass-panel p-3 rounded-2xl flex gap-1 items-center">
+            <div class="flex justify-start mb-4">
+                <div class="bubble-ai glass-panel p-3.5 rounded-2xl flex gap-1.5 items-center">
                     <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce"></div>
-                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-100"></div>
-                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce delay-200"></div>
+                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                    <div class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
                 </div>
             </div>`;
         }
         
-        if (AuraState.system.activeView === 'oracle') {
-            setTimeout(() => { 
-                AuraUtils.safeDOM('chat-anchor', anc => anc.scrollIntoView({ behavior: 'smooth' })); 
-            }, 50);
-        }
+        window.scrollToBottomOracle();
     });
 };
 
-// --- PERBAIKAN 5: Mencegah layar hitam saat pertama kali buka ---
+// --- SENSOR KLIK UNTUK NAVIGASI BAWAH ---
+// Memaksa chat scroll ke bawah setiap kali user membuka tab Oracle
+document.addEventListener('click', (e) => {
+    const navBtn = e.target.closest('.nav-btn');
+    if (navBtn && navBtn.dataset.target === 'oracle') {
+        setTimeout(() => {
+            window.scrollToBottomOracle();
+        }, 50); // Menunggu animasi layar pindah selesai
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
         if(typeof window.renderOracleChats === 'function') window.renderOracleChats();
