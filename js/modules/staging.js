@@ -206,9 +206,5 @@ window.saveStagingToDatabase = async function() {
         AuraState.temp.aiStaging = null;
         if (window.showToast) window.showToast("Berkas Staging Area dikonfirmasi ke server Cloud!");
 
-        // PELATUK REFRESH DATA INSTAN SETELAH SUBMIT STAGING
-        if (typeof window.refreshAuraData === 'function') window.refreshAuraData(true);
-    } catch(e) { 
-        if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
-    }
-};
+        // PELATUK REFRESH MENGGUNAKAN MESIN ASLI
+if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
