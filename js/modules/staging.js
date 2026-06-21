@@ -22,19 +22,24 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT VALIDASI PAJAK SELISIH & TRANSLASI OTOMATIS
+        // PROMPT PAMUNGKAS: LOGIKA PAJAK BERSYARAT & KUNCI KATEGORI
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
 FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
 
-ATURAN PAJAK & HARGA (SANGAT KRITIKAL!):
-1. Baca harga masing-masing item, lalu jumlahkan semuanya. Bandingkan jumlah ini dengan "Grand Total" (Total Akhir Pembayaran) di struk.
-2. JIKA jumlah item == Grand Total (atau selisih sangat kecil), berarti harga sudah TERMASUK pajak (Tax-Inclusive). JANGAN tambahkan pajak apa pun ke harga item. Tulis harga apa adanya.
-3. JIKA jumlah item < Grand Total (ada selisih pajak 8% atau 10% yang ditulis terpisah di bawah), berarti harga BELUM termasuk pajak (Tax-Exclusive). Di sini kamu WAJIB membagikan nilai persen pajak tersebut ke harga masing-masing item secara proporsional (makanan 8%, barang non-makanan 10%). Sehingga 'harga' yang keluar di JSON adalah harga final setelah pajak.
-4. Untuk input CHAT MANUAL / KETIKAN TEKS biasa (tanpa foto struk resmi), asumsikan harga yang diketik user adalah HARGA FINAL. JANGAN pernah menambahkan pajak buatan kecuali user meminta eksplisit.
+ATURAN KATEGORI (WAJIB):
+Pilih "kategori_barang" HANYA dari daftar ini: [${categoryListStr}]. JIKA tidak ada yang cocok sama sekali, gunakan "Lainnya".
+
+ATURAN PAJAK BERSYARAT (SANGAT KRITIKAL!):
+Hitung dulu ada berapa jumlah barang di struk ini.
+1. JIKA JUMLAH BARANG <= 10 (1 sampai 10 item): 
+   Bagikan nilai persen pajak (8% atau 10%) ke harga masing-masing item secara proporsional. Masukkan harga final ini ke field 'harga'.
+2. JIKA JUMLAH BARANG > 10 (11 item ke atas): 
+   JANGAN membagikan pecahan pajak ke masing-masing item (untuk mencegah timeout). Masukkan harga item SAMA PERSIS dengan harga dasar di struk. LALU, buat item baru secara terpisah di bagian bawah untuk pajaknya (Contoh: nama_barang: "Pajak Konsumsi 8%", harga: nominal_pajaknya).
+3. Pengecualian: JIKA total harga barang sudah sama dengan Grand Total (Tax-Inclusive), JANGAN tambahkan/hitung pajak apa pun, tulis harga apa adanya.
+4. Total nominal dari semua item di JSON WAJIB sama persis dengan Total Akhir Pembayaran (Grand Total).
 
 ATURAN TRANSLASI:
-- Wajib TERJEMAHKAN nama toko (merchantName) dan nama barang (nama_barang) dari bahasa asing (Jepang/Inggris) ke dalam BAHASA INDONESIA yang lazim.
-- Contoh: "セブン-イレブン" -> "7-Eleven", "超熟 6枚" -> "Roti Tawar Choujuku 6 lembar", "ポテトチップス" -> "Keripik Kentang".
+- Wajib TERJEMAHKAN nama toko (merchantName) dan nama barang (nama_barang) ke BAHASA INDONESIA yang lazim.
 
 Struktur Output Target JSON MURNI:
 {
@@ -42,8 +47,8 @@ Struktur Output Target JSON MURNI:
     "tanggal": "YYYY-MM-DD", 
     "mata_uang": "string", 
     "metode_pembayaran": "tunai/cashless", 
-    "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai", 
-    "admin_fee": number, 
+    "tipe": "pengeluaran", 
+    "admin_fee": 0, 
     "description": "string", 
     "items": [
         {
@@ -51,7 +56,7 @@ Struktur Output Target JSON MURNI:
             "harga": number, 
             "qty": number, 
             "kategori_barang": "string", 
-            "tax_rate": number
+            "tax_rate": 0
         }
     ]
 }`;
@@ -79,7 +84,7 @@ Struktur Output Target JSON MURNI:
         
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
-        if (window.showToast) window.showToast("Selesai diproses! Verifikasi intelijen pajak & bahasa selesai.");
+        if (window.showToast) window.showToast("Selesai diproses! Strategi komputasi pajak disesuaikan otomatis.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
