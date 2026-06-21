@@ -6,6 +6,7 @@
 
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
+import { CategoryManager } from './categories.js';
 
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
@@ -28,7 +29,7 @@ window.renderAnalytics = function() {
         startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).getTime();
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
     } else {
-        startDate = 0; // Mode All-Time
+        startDate = 0; 
     }
 
     // Variabel Penyimpanan
@@ -43,7 +44,7 @@ window.renderAnalytics = function() {
         
         const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
 
-        // Data untuk Grafik Tren 7 Hari (Tidak terpengaruh filter siklus)
+        // Data untuk Grafik Tren 7 Hari
         const daysDiff = Math.floor((now.getTime() - trxTime) / (1000 * 3600 * 24));
         if (daysDiff >= 0 && daysDiff < 7) {
             trend7Days[6 - daysDiff] += (trx.nominal || 0);
@@ -56,7 +57,6 @@ window.renderAnalytics = function() {
 
             (trx.items || []).forEach(it => {
                 // PEMBERSIH KATEGORI (ANTI-DUPLIKAT)
-                // Menghilangkan spasi dan membuat Huruf Kapital di setiap awal kata
                 let rawCat = (it.kategori_barang || 'Lainnya').trim();
                 let cleanCat = rawCat.split(' ').map(word => 
                     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
@@ -74,7 +74,7 @@ window.renderAnalytics = function() {
 
     // 3. RENDER DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
-    AuraUtils.safeDOM('pie-total-label', el => el.innerText = AuraUtils.formatCurrency(totalExpense));
+    AuraUtils.safeDOM('pie-total-label', el => el.innerText = AuraUtils.formatCurrency(AuraUtils.convertCurrency(totalExpense, 'JPY')));
     
     if (catContainer) {
         catContainer.innerHTML = '';
@@ -85,16 +85,20 @@ window.renderAnalytics = function() {
         } else {
             sortedCats.forEach(c => {
                 let percent = totalExpense > 0 ? Math.round((c.total / totalExpense) * 100) : 0;
+                const style = CategoryManager.resolveStyle(c.name); // MENGAMBIL IKON & WARNA ASLI
+                
                 catContainer.innerHTML += `
                 <div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-[var(--border-glass)] hover:border-white/10 transition mb-2">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center"><i class="fa-solid fa-tag text-[var(--text-muted)] text-xs"></i></div>
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background-color: ${style.hex}20;">
+                            <i class="fa-solid ${style.icon}" style="color: ${style.hex};"></i>
+                        </div>
                         <div>
                             <p class="text-xs font-bold text-white">${c.name}</p>
                             <p class="text-[9px] text-[var(--text-muted)]">${percent}% dari total pengeluaran</p>
                         </div>
                     </div>
-                    <p class="text-xs font-bold font-mono text-white">${AuraUtils.formatCurrency(c.total)}</p>
+                    <p class="text-xs font-bold font-mono text-white">${AuraUtils.formatCurrency(AuraUtils.convertCurrency(c.total, 'JPY'))}</p>
                 </div>`;
             });
         }
@@ -104,7 +108,7 @@ window.renderAnalytics = function() {
     const merchantContainer = document.getElementById('top-merchants-list');
     if (merchantContainer) {
         merchantContainer.innerHTML = '';
-        const sortedMerchants = Object.keys(merchantMap).map(k => ({name: k, total: merchantMap[k]})).sort((a,b) => b.total - a.total).slice(0, 5); // Ambil Top 5
+        const sortedMerchants = Object.keys(merchantMap).map(k => ({name: k, total: merchantMap[k]})).sort((a,b) => b.total - a.total).slice(0, 5);
         
         if (sortedMerchants.length === 0) {
             merchantContainer.innerHTML = '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada toko yang dikunjungi.</p>';
@@ -117,7 +121,7 @@ window.renderAnalytics = function() {
                         <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
                         <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
                     </div>
-                    <span class="text-[10px] font-mono text-accent font-bold">${AuraUtils.formatCurrency(m.total)}</span>
+                    <span class="text-[10px] font-mono text-accent font-bold">${AuraUtils.formatCurrency(AuraUtils.convertCurrency(m.total, 'JPY'))}</span>
                 </div>`;
             });
         }
@@ -130,10 +134,9 @@ window.renderAnalytics = function() {
     const dailyAvg = totalExpense / daysElapsed;
     const projected = dailyAvg * totalDays;
 
-    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = AuraUtils.formatCurrency(dailyAvg));
-    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = AuraUtils.formatCurrency(projected));
+    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = AuraUtils.formatCurrency(AuraUtils.convertCurrency(dailyAvg, 'JPY')));
+    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = AuraUtils.formatCurrency(AuraUtils.convertCurrency(projected, 'JPY')));
 
-    // 6. GAMBAR GRAFIK 7 HARI (CANVAS)
     drawCanvasChart(trend7Days);
 };
 
@@ -145,7 +148,6 @@ function drawCanvasChart(dataArray) {
     const width = canvas.offsetWidth || 350;
     const height = canvas.offsetHeight || 150;
     
-    // Setup Retina Display
     canvas.width = width * 2;
     canvas.height = height * 2;
     ctx.scale(2, 2);
@@ -160,11 +162,9 @@ function drawCanvasChart(dataArray) {
         const x = padding + i * (barWidth + 10);
         const y = height - padding - barHeight;
         
-        // Warna batang grafik
-        ctx.fillStyle = '#f43f5e'; // Rose-500 (Warna Expense)
-        ctx.globalAlpha = i === 6 ? 1.0 : 0.4; // Hari ini lebih terang
+        ctx.fillStyle = '#f43f5e';
+        ctx.globalAlpha = i === 6 ? 1.0 : 0.4;
         
-        // Gambar batang dengan sudut membulat (jika disupport)
         if (typeof ctx.roundRect === 'function') {
             ctx.beginPath();
             ctx.roundRect(x, y, barWidth, barHeight, 6);
@@ -173,18 +173,19 @@ function drawCanvasChart(dataArray) {
             ctx.fillRect(x, y, barWidth, barHeight);
         }
         
-        // Teks nominal di atas batang
         if (val > 0) {
             ctx.globalAlpha = 1.0;
-            ctx.fillStyle = '#9ca3af'; // Text-muted
+            ctx.fillStyle = '#9ca3af';
             ctx.font = "bold 9px 'Space Grotesk', monospace";
             ctx.textAlign = "center";
-            ctx.fillText((val / 1000).toFixed(1) + 'k', x + barWidth / 2, y - 5);
+            // Hitung konversi untuk chart
+            const convertedVal = AuraUtils.convertCurrency(val, 'JPY');
+            const displayStr = AuraState.system.displayCurrency === 'IDR' ? (convertedVal / 1000).toFixed(0) + 'k' : (convertedVal / 1000).toFixed(1) + 'k';
+            ctx.fillText(displayStr, x + barWidth / 2, y - 5);
         }
     });
 }
 
-// 7. FITUR EXPORT CSV
 window.downloadCSV = function() {
     const transactions = AuraState.data.transactions || [];
     if (transactions.length === 0) {
