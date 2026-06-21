@@ -49,14 +49,18 @@ export const AuraUtils = {
 
     formatCurrency: function(amount) {
         try {
-            const currency = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
-            const styleOpts = { style: 'currency', currency: currency, maximumFractionDigits: 0 };
-            return currency === 'JPY' 
-                ? new Intl.NumberFormat('ja-JP', styleOpts).format(amount)
-                : new Intl.NumberFormat('id-ID', styleOpts).format(amount);
+            // Mengambil dari state terbaru yang diupdate oleh window.setCurrency
+            const currency = AuraState.system.displayCurrency || 'JPY';
+            const val = Number(amount) || 0;
+            
+            if (currency === 'IDR') {
+                const rate = AuraState.system.exchangeRate || 105;
+                return 'Rp ' + Math.round(val * rate).toLocaleString('id-ID');
+            } else {
+                return '¥' + Math.round(val).toLocaleString('ja-JP');
+            }
         } catch (e) { 
-            const fallbackCurr = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
-            return `${fallbackCurr} ${Number(amount).toLocaleString()}`; 
+            return `${AuraState.system.displayCurrency || 'JPY'} ${Number(amount).toLocaleString()}`; 
         }
     },
 
@@ -64,12 +68,12 @@ export const AuraUtils = {
         const numAmount = Number(amount);
         if (isNaN(numAmount)) return 0;
         
-        const currentDisplay = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
-        if (!fromCurrency || typeof fromCurrency !== 'string' || fromCurrency === currentDisplay) {
-            return numAmount;
-        }
+        const currentDisplay = AuraState.system.displayCurrency || 'JPY';
+        if (!fromCurrency || fromCurrency === currentDisplay) return numAmount;
         
-        const rate = AuraState.system.exchangeRateIDR;
+        // Memastikan variabel rate sesuai dengan yang disimpan di main.js
+        const rate = AuraState.system.exchangeRate || 105;
+        
         if (fromCurrency === 'JPY' && currentDisplay === 'IDR') return numAmount * rate;
         if (fromCurrency === 'IDR' && currentDisplay === 'JPY') return numAmount / rate;
         return numAmount; 
@@ -158,7 +162,6 @@ export const AuraUtils = {
     }
 };
 
-// Global Exposure untuk fungsi utilitas yang dipakai di HTML
 window.AuraUtils = AuraUtils;
 window.generateItemId = function() { return AuraUtils.generateId('itm'); };
 window.parseCleanJSON = AuraUtils.parseCleanJSON;
