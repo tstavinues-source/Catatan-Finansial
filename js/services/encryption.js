@@ -5,13 +5,14 @@
 
 export const EncryptionService = {
     isAvailable: function() {
-        return typeof CryptoJS !== 'undefined' && !!CryptoJS.AES;
+        // PERBAIKAN: Tambahkan window. agar aman di Strict Mode
+        return typeof window.CryptoJS !== 'undefined' && !!window.CryptoJS.AES;
     },
     
     encryptApiKey: function(apiKey, secretKey) { 
         if(!secretKey || !this.isAvailable()) return null;
         try { 
-            return CryptoJS.AES.encrypt(apiKey, secretKey).toString();
+            return window.CryptoJS.AES.encrypt(apiKey, secretKey).toString();
         } catch (e) { 
             return null;
         } 
@@ -20,8 +21,8 @@ export const EncryptionService = {
     decryptApiKey: function(cipherText, secretKey) { 
         if(!secretKey || !this.isAvailable()) return null;
         try { 
-            const bytes = CryptoJS.AES.decrypt(cipherText, secretKey);
-            return bytes.toString(CryptoJS.enc.Utf8) || null; 
+            const bytes = window.CryptoJS.AES.decrypt(cipherText, secretKey);
+            return bytes.toString(window.CryptoJS.enc.Utf8) || null; 
         } catch(e) { 
             return null;
         } 
@@ -34,5 +35,4 @@ export const EncryptionService = {
     }
 };
 
-// Ekspos ke window agar bisa diakses oleh AI Failover Engine lama (sementara)
 window.EncryptionService = EncryptionService;
