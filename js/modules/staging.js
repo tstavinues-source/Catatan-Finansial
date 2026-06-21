@@ -18,20 +18,31 @@ window.processTransactionParsing = async function(text, imgData = null) {
     
     try {
         const activeCurrency = AuraState.system.displayCurrency || 'JPY';
+        
+        // TARIK NAMA LANGSUNG DARI DATABASE FIREBASE
         const profile = AuraState.data.settings?.profile || {};
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
+        // PROMPT BARU: LOGIKA PAJAK KHUSUS STRUK JEPANG & GLOBAL
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
-FOKUS UTAMA: Ekstrak JSON mentah.
+FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
+
+ATURAN PAJAK & HARGA (PENTING!):
+- Harga item di struk seringkali belum termasuk pajak (Subtotal).
+- Makanan/Minuman (biasanya ada tanda * di struk Jepang) = Pajak 8%.
+- Barang non-makanan/Lainnya = Pajak 10%.
+- WAJIB hitung harga final per item = harga dasar + pajak. Masukkan harga final ini ke field 'harga'.
+- Total 'nominal' WAJIB sama persis dengan Grand Total (Total Akhir Pembayaran) di struk.
+
 ALUR:
 1. Tarik tunai: Tipe="tarik_tunai".
 2. Setor tunai: Tipe="setor_tunai".
 3. Belanja: Tipe="pengeluaran".
-4. 'nominal' = sum(harga x qty) + admin_fee.
-5. KATEGORI WAJIB DARI DAFTAR INI: "${categoryListStr}".
-6. merchantName wajib diisi.
-Struktur Output Target:
+4. KATEGORI WAJIB: "${categoryListStr}".
+5. merchantName wajib diisi sesuai nama toko.
+
+Struktur Output Target JSON MURNI:
 {
     "merchantName": "string", 
     "tanggal": "YYYY-MM-DD", 
@@ -74,7 +85,7 @@ Struktur Output Target:
         
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
-        if (window.showToast) window.showToast("Selesai diproses! Silakan verifikasi.");
+        if (window.showToast) window.showToast("Selesai diproses! Silakan verifikasi pajak & harga.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
