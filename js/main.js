@@ -117,6 +117,71 @@ window.closeModal = function(id) {
     });
 };
 
+// ==========================================
+// 3. FUNGSI PREFERENSI MATA UANG & KURS REALTIME
+// ==========================================
+
+window.setCurrency = function(curr) {
+    // 1. Simpan pilihan ke memori HP agar tidak reset saat refresh
+    localStorage.setItem('aurafi_active_currency', curr);
+    
+    if (window.AuraState) window.AuraState.system.currency = curr;
+    
+    // 2. Update warna tombol JPY / IDR di Header
+    const btnJpy = document.getElementById('btn-curr-jpy');
+    const btnIdr = document.getElementById('btn-curr-idr');
+    
+    if (btnJpy && btnIdr) {
+        if(curr === 'JPY') {
+            btnJpy.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]";
+            btnIdr.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]";
+        } else {
+            btnIdr.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]";
+            btnJpy.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]";
+        }
+    }
+    
+    // 3. Refresh ulang angka-angka di Dashboard sesuai mata uang baru
+    if(typeof window.renderDashboard === 'function') window.renderDashboard();
+};
+
+window.fetchLiveExchangeRate = async function() {
+    const display = document.getElementById('live-rate-display');
+    if (!display) return;
+    
+    try {
+        display.innerText = "Menarik data kurs dunia...";
+        // Mengambil kurs JPY ke IDR secara langsung dan gratis
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
+        const data = await response.json();
+        const idrRate = data.rates.IDR;
+        
+        display.innerText = `1 JPY = Rp ${idrRate.toLocaleString('id-ID')}`;
+        
+        // Simpan rate di state agar kalkulasi total aset menjadi akurat
+        if (window.AuraState) window.AuraState.system.exchangeRate = idrRate;
+    } catch (e) {
+        display.innerText = "Kurs Offline (Gagal memuat)";
+    }
+};
+
+// 4. PEMICU OTOMATIS SAAT APLIKASI PERTAMA KALI DIBUKA
+window.addEventListener('DOMContentLoaded', () => {
+    // Tarik memori mata uang terakhir yang dipilih user (Default: JPY)
+    const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
+    window.setCurrency(savedCurr);
+    
+    // Jalankan penarik kurs
+    window.fetchLiveExchangeRate();
+    
+    // Buka Gemini secara diam-diam jika PIN-nya sudah pernah disimpan
+    setTimeout(() => {
+        if(typeof window.syncGeminiEngine === 'function') {
+            window.syncGeminiEngine(true); // true = mode silent (tanpa notif)
+        }
+    }, 1500);
+});
+
 // ============================================================================
 // BOOTSTRAPPING SYSTEM
 // ============================================================================
