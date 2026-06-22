@@ -23,35 +23,34 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 THE ULTIMATE DEBOUNCER (PELINDUNG ANIMASI & ANTI-CRASH)
+// 🚀 THE ULTIMATE DEBOUNCER (DENGAN REQUEST ANIMATION FRAME)
 // ============================================================================
 let syncTimeout = null;
 window.forceSyncUI = function() {
     if (syncTimeout) clearTimeout(syncTimeout);
     
-    // Kita beri jeda 250ms. Ini mengizinkan Firebase mengumpulkan SEMUA data 
-    // sebelum menyuruh browser melukis layar. Mencegah animasi bertabrakan!
+    // Kombinasi timeout ringan dan requestAnimationFrame untuk UI yang super mulus
     syncTimeout = setTimeout(() => {
-        const renderers = [
-            'renderDashboard', 
-            'renderTransactions', 
-            'renderAnalytics', 
-            'renderBudgets', 
-            'renderTrash' // Memanggil fungsi pembaruan log sampah (jika ada)
-        ];
+        requestAnimationFrame(() => {
+            const renderers = [
+                'renderDashboard', 
+                'renderTransactions', 
+                'renderAnalytics', 
+                'renderBudgets', 
+                'renderTrash'
+            ];
 
-        renderers.forEach(fn => {
-            // SANGAT PENTING: Gunakan try-catch per fungsi. 
-            // Jika satu layar gagal dilukis, layar lain tetap akan dilukis dengan sukses!
-            try {
-                if (typeof window[fn] === 'function') {
-                    window[fn]();
+            renderers.forEach(fn => {
+                try {
+                    if (typeof window[fn] === 'function') {
+                        window[fn]();
+                    }
+                } catch (e) {
+                    console.warn(`Peringatan: Gagal menyinkronkan UI pada modul ${fn}`, e);
                 }
-            } catch (e) {
-                console.warn(`Peringatan: Gagal menyinkronkan UI pada modul ${fn}`, e);
-            }
+            });
         });
-    }, 250); 
+    }, 100); // Latensi diturunkan untuk responsivitas maksimal
 };
 
 try {
@@ -77,7 +76,7 @@ try {
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // 1. STREAM TRANSAKSI
+            // 1. STREAM TRANSAKSI MURNI (Tanpa duplikasi get())
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
@@ -95,12 +94,11 @@ try {
                     }
                 }
                 
-                // Urutkan dari yang terbaru
                 activeArr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
                 trashArr.sort((a, b) => new Date(b.deletedAt || b.createdAt) - new Date(a.deletedAt || a.createdAt));
                 
                 AuraState.data.transactions = activeArr;
-                AuraState.data.trash = trashArr; // Simpan data sampah
+                AuraState.data.trash = trashArr; 
                 
                 window.forceSyncUI();
             });
@@ -139,7 +137,6 @@ try {
     Logger.error('Core', 'Gagal memuat Firebase.', error);
 }
 
-// Trik Manual Refresh
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
         window.forceSyncUI();
@@ -184,19 +181,22 @@ export const FirebaseService = {
         if (!id) throw new Error("ID Referensi Transaksi tidak terdefinisi.");
         
         const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
-        const snapshot = await get(pathRef);
-        if (!snapshot.exists()) throw new Error("Objek transaksi ini sudah tidak ada.");
-        
         data.updatedAt = new Date().toISOString();
+        
+        // Optimasi latensi: Langsung tembak update tanpa 'get'
         await update(pathRef, data);
         await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
     },
 
     moveToTrash: async function(id) { 
         this._checkAuth();
-        // Cukup perbarui data di Firebase. onValue Stream akan menangkap perubahannya secara otomatis!
-        await this.updateTransaction(id, { is_deleted: true, deletedAt: new Date().toISOString() });
+        // Langsung eksekusi pembaruan status ke Firebase. onValue akan otomatis menyegarkan antarmuka!
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`), { 
+            is_deleted: true, 
+            deletedAt: new Date().toISOString() 
+        });
         await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
+        window.forceSyncUI();
     },
 
     deleteTransactionPermanently: async function(id) { 
