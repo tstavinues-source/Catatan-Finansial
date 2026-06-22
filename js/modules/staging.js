@@ -42,7 +42,7 @@ NAMUN, jika barangnya sangat spesifik, KAMU DIIZINKAN membuat kategori baru (Mak
 
 ATURAN PAJAK BERSYARAT (SANGAT KRITIKAL!):
 Hitung dulu ada berapa jumlah barang di struk ini.
-1. JIKA JUMLAH BARANG <= 10: Bagikan nilai persen pajak ke harga masing-masing item proporsional. Masukkan harga final ke field 'harga'.
+1. JIKA JUMLAH BARANG <= 17: Bagikan nilai persen pajak ke harga masing-masing item proporsional. Masukkan harga final ke field 'harga'.
 2. JIKA JUMLAH BARANG > 10: JANGAN membagikan pajak. Masukkan harga item SAMA PERSIS dengan struk. LALU, buat item terpisah di bawah untuk pajaknya (Contoh: nama_barang: "Pajak Konsumsi", harga: nominal_pajaknya).
 3. Pengecualian: JIKA total harga barang sudah sama dengan Grand Total, JANGAN hitung pajak lagi.
 4. Total nominal item di JSON WAJIB sama persis dengan Total Akhir Pembayaran.
