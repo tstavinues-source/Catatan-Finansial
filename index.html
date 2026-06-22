@@ -701,23 +701,12 @@
                         <h3 class="text-[10px] font-bold text-[var(--text-muted)] tracking-widest uppercase flex items-center gap-1.5"><i class="fa-solid fa-box-archive text-amber-500"></i> Kebutuhan Pokok Utama</h3>
                         <button onclick="window.openTrackerManager()" class="text-[10px] text-accent hover:text-white transition"><i class="fa-solid fa-pen"></i></button>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 text-center">
-                        <div class="bg-black/30 p-2 rounded-xl border border-[var(--border-glass)]">
-                            <i class="fa-solid fa-bowl-rice text-amber-100 mb-1"></i>
-                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Beras</p>
-                            <p class="text-[10px] font-bold font-mono text-[var(--text-main)]" id="track-beras">0</p>
-                        </div>
-                        <div class="bg-black/30 p-2 rounded-xl border border-[var(--border-glass)]">
-                            <i class="fa-solid fa-bottle-droplet text-yellow-500 mb-1"></i>
-                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Minyak</p>
-                            <p class="text-[10px] font-bold font-mono text-[var(--text-main)]" id="track-minyak">0</p>
-                        </div>
-                        <div class="bg-black/30 p-2 rounded-xl border border-[var(--border-glass)]">
-                            <i class="fa-solid fa-pump-soap text-sky-300 mb-1"></i>
-                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Sabun</p>
-                            <p class="text-[10px] font-bold font-mono text-[var(--text-main)]" id="track-sabun">0</p>
-                        </div>
-                    </div>
+                    <div id="staples-container" class="w-full">
+                   <div class="flex items-center justify-center p-4">
+                   <i class="fa-solid fa-circle-notch animate-spin text-[var(--text-muted)]"></i>
+                   </div>
+                </div>
+
                 </div>
 
                 <div class="glass-panel p-5">
