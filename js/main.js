@@ -212,3 +212,80 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
+
+// ============================================================================
+// MESIN PENANGKAP SUARA (WEB SPEECH API)
+// ============================================================================
+
+window.startVoice = function() {
+    const btnVoice = document.getElementById('btn-voice');
+    const inputField = document.getElementById('main-input-field');
+
+    // 1. Cek apakah browser mendukung fitur pengenalan suara
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+        if (window.showToast) window.showToast("Maaf, browser Anda belum mendukung fitur input suara.", true);
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'id-ID'; // Mengatur bahasa pendengaran ke Bahasa Indonesia
+    recognition.interimResults = false; // Hanya ambil hasil akhir yang sudah pasti
+    recognition.maxAlternatives = 1;
+
+    // 2. Saat mesin mulai mendengarkan
+    recognition.onstart = function() {
+        // Ubah tombol mikrofon menjadi merah berkedip sebagai indikator
+        btnVoice.classList.add('text-rose-500', 'animate-pulse');
+        btnVoice.classList.remove('text-[var(--text-muted)]', 'hover:text-accent');
+        inputField.placeholder = "Mendengarkan suara Anda...";
+    };
+
+    // 3. Saat user selesai berbicara
+    recognition.onspeechend = function() {
+        recognition.stop();
+    };
+
+    // 4. Saat mesin berhasil menerjemahkan suara menjadi teks
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        
+        // Tambahkan teks hasil suara ke dalam kolom input (ditambah spasi jika sudah ada teks sebelumnya)
+        inputField.value = (inputField.value + ' ' + transcript).trim();
+        
+        // Kembalikan tampilan tombol ke bentuk semula
+        resetVoiceUI();
+        
+        // Otomatis menyesuaikan tinggi kolom input agar teksnya tidak terpotong
+        inputField.style.height = 'auto';
+        inputField.style.height = (inputField.scrollHeight) + 'px';
+        
+        if (window.showToast) window.showToast("Suara berhasil diterjemahkan!");
+    };
+
+    // 5. Jika terjadi error (misal: tidak ada suara atau izin mikrofon ditolak)
+    recognition.onerror = function(event) {
+        console.error("Kesalahan Speech API:", event.error);
+        if (event.error === 'not-allowed') {
+            if (window.showToast) window.showToast("Izin mikrofon ditolak oleh browser.", true);
+        } else {
+            if (window.showToast) window.showToast("Gagal mengenali suara. Coba bicara lebih keras.", true);
+        }
+        resetVoiceUI();
+    };
+
+    // Fungsi bantuan untuk mereset tampilan UI
+    function resetVoiceUI() {
+        btnVoice.classList.remove('text-rose-500', 'animate-pulse');
+        btnVoice.classList.add('text-[var(--text-muted)]', 'hover:text-accent');
+        inputField.placeholder = "Ketik transaksi / chat AI...";
+    }
+
+    // Eksekusi: Nyalakan mikrofon!
+    try {
+        recognition.start();
+    } catch(e) {
+        resetVoiceUI();
+    }
+};
