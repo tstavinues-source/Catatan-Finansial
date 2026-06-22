@@ -362,6 +362,23 @@
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Panggilan (Nickname)</label>
                     <input type="text" id="user-nickname" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Cth: Aura">
                 </div>
+                <div class="flex gap-2 mt-2">
+    <div class="w-1/2">
+        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Negara (Pajak)</label>
+        <select id="user-country" class="v-input w-full rounded-xl p-2.5 text-xs outline-none bg-black">
+            <option value="Jepang">Jepang</option>
+            <option value="Indonesia">Indonesia</option>
+        </select>
+    </div>
+    <div class="w-1/2">
+        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Mata Uang Awal</label>
+        <select id="user-currency" class="v-input w-full rounded-xl p-2.5 text-xs outline-none bg-black">
+            <option value="JPY">JPY (Yen)</option>
+            <option value="IDR">IDR (Rupiah)</option>
+        </select>
+    </div>
+</div>
+
                 <button onclick="window.saveUserProfile()" class="w-full py-2.5 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-yellow-500/30">
                     <i class="fa-solid fa-floppy-disk"></i> Simpan Profil
                 </button>
