@@ -12,24 +12,42 @@ import { EncryptionService } from '../services/encryption.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 // ============================================================================
-// PROFIL & PREFERENSI AI
+// PROFIL & PREFERENSI AI (UPGRADE NEGARA & MATA UANG)
 // ============================================================================
 
 window.saveUserProfile = async function() {
     const nameEl = document.getElementById('user-fullname');
     const nickEl = document.getElementById('user-nickname');
+    const countryEl = document.getElementById('user-country');
+    const currEl = document.getElementById('user-currency');
+    
     if (!nameEl || !nickEl) return;
     
     const name = nameEl.value.trim();
     const nick = nickEl.value.trim();
+    const country = countryEl ? countryEl.value : 'Jepang';
+    const currency = currEl ? currEl.value : 'JPY';
     
     if (!name || !nick) {
         if (window.showToast) window.showToast("Nama dan Panggilan tidak boleh kosong!", true);
         return;
     }
     try {
-        await FirebaseService.updateSettings({ profile: { fullName: name, nickname: nick } });
-        if (window.showToast) window.showToast("Profil berhasil diperbarui.");
+        await FirebaseService.updateSettings({ 
+            profile: { 
+                fullName: name, 
+                nickname: nick,
+                country: country,
+                defaultCurrency: currency
+            } 
+        });
+        
+        // Memaksa UI langsung berubah menyesuaikan mata uang baru jika diganti
+        if (typeof window.setCurrency === 'function' && AuraState.system.displayCurrency !== currency) {
+            window.setCurrency(currency);
+        }
+        
+        if (window.showToast) window.showToast("Profil, Negara & Mata Uang berhasil disimpan!");
     } catch (e) {
         if (window.showToast) window.showToast("Gagal menyimpan profil.", true);
     }
@@ -297,12 +315,10 @@ window.renderRecurringUIForBudget = function() {
 // LANJUTAN: TRACKER DINAMIS (DILENGKAPI AI FORM FILLER)
 // ============================================================================
 
-// --- FUNGSI BARU: ASISTEN AI PENGISI FORM TRACKER ---
 window.autoFillTrackerWithAI = async function() {
     const topic = prompt("Tracker apa yang ingin kamu buat? (Misal: Skincare, Kopi, Kucing)");
     if (!topic || topic.trim() === '') return;
     
-    // Tampilkan status loading pada tombol
     const btn = document.getElementById('btn-ai-tracker');
     const originalText = btn.innerHTML;
     if (btn) {
@@ -325,11 +341,9 @@ WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG \`\`\`json:
 }`;
         const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
         
-        // Memanggil AI Orchestrator
         const responseText = await window.executeAIWithFallback(messages, systemPrompt, true, null);
         const aiJson = AuraUtils.parseCleanJSON(responseText);
 
-        // Mengisi Form
         AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || '');
         AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || '');
         AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
@@ -339,7 +353,6 @@ WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG \`\`\`json:
     } catch (e) {
         if (window.showToast) window.showToast("AI gagal memproses permintaan: " + e.message, true);
     } finally {
-        // Kembalikan tombol ke keadaan semula
         if (btn) {
             btn.innerHTML = originalText;
             btn.disabled = false;
@@ -370,7 +383,6 @@ window.openTrackerManager = function() {
     }
     listContainer.innerHTML = html;
     
-    // MENYISIPKAN TOMBOL AI DI ATAS FORM TAMBAH TRACKER
     const formContainer = document.getElementById('new-tracker-form-container');
     if (formContainer && !document.getElementById('btn-ai-tracker')) {
         const aiBtnHtml = `
