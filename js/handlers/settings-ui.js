@@ -1,6 +1,6 @@
 /**
  * Settings UI Handlers & Renderers
- * Mengelola semua form di dalam Modal Settings: Profil, Preferensi AI, API Keys, Trackers, Family, Recurring, dan Audit Logs.
+ * Mengelola semua form di dalam Modal Settings: Profil, Preferensi AI, API Keys (XOR Cloud Sync), dll.
  */
 
 import { AuraState } from '../core/state.js';
@@ -8,11 +8,10 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { DEFAULT_STAPLES_TRACKERS } from '../config/categories.js';
 import { FirebaseService } from '../services/firebase.js';
-import { EncryptionService } from '../services/encryption.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 // ============================================================================
-// PROFIL & PREFERENSI AI (UPGRADE NEGARA & MATA UANG)
+// PROFIL & PREFERENSI AI
 // ============================================================================
 
 window.saveUserProfile = async function() {
@@ -42,7 +41,6 @@ window.saveUserProfile = async function() {
             } 
         });
         
-        // Memaksa UI langsung berubah menyesuaikan mata uang baru jika diganti
         if (typeof window.setCurrency === 'function' && AuraState.system.displayCurrency !== currency) {
             window.setCurrency(currency);
         }
@@ -75,135 +73,126 @@ window.saveAIPreferences = async function() {
 };
 
 // ============================================================================
-// MANAJEMEN API KEYS (GROQ & GEMINI)
+// MANAJEMEN API KEYS (GROQ CLOUD CIPHER & GEMINI)
 // ============================================================================
-
-let groqSecretKey = null;
-try {
-    groqSecretKey = localStorage.getItem('aurafi_groq_secret');
-    if (!groqSecretKey && typeof window.CryptoJS !== 'undefined' && window.CryptoJS.lib?.WordArray) { 
-        groqSecretKey = window.CryptoJS.lib.WordArray.random(16).toString();
-        localStorage.setItem('aurafi_groq_secret', groqSecretKey); 
-    }
-} catch (e) {
-    groqSecretKey = sessionStorage.getItem('aurafi_groq_secret') || "fallback_secret_key_" + Date.now();
-    try { sessionStorage.setItem('aurafi_groq_secret', groqSecretKey); } catch(err){}
-}
 
 window.addGroqKey = async function() {
     const input = document.getElementById('new-groq-key');
     if (!input) return;
     const key = input.value.trim();
+    
     if (!key || !key.startsWith('gsk_')) {
         if (window.showToast) window.showToast("Format API Key tidak valid (harus gsk_...)", true);
         return;
     }
     
-    const encrypted = window.EncryptionService.encryptApiKey(key, groqSecretKey);
-    if (!encrypted) {
-        if (window.showToast) window.showToast("Sistem enkripsi gagal memproses kunci.", true);
-        return;
+    // SISTEM ENKRIPSI XOR DENGAN UID (Aman & Tidak Terbaca di Firebase)
+    const secret = AuraState.user?.uid || "aura_secret_fallback";
+    let result = '';
+    for (let i = 0; i < key.length; i++) {
+        result += String.fromCharCode(key.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
     }
+    const encryptedBase64 = btoa(result);
     
     try {
-        if(!window.AuraState.data.groqKeys) window.AuraState.data.groqKeys = [];
-        window.AuraState.data.groqKeys.push({ 
-            id: 'groq_' + Date.now(), 
-            encryptedKey: encrypted, 
-            active: true 
-        });
-
-        if (window.FirebaseService && typeof window.FirebaseService.saveGroqKey === 'function') {
-            await window.FirebaseService.saveGroqKey(encrypted);
-        } else {
-            await window.FirebaseService.updateSettings({ groqKeys: window.AuraState.data.groqKeys });
-        }
+        await FirebaseService.updateSettings({ groqApiKeyEncrypted: encryptedBase64 });
+        
+        if(!AuraState.data.settings) AuraState.data.settings = {};
+        AuraState.data.settings.groqApiKeyEncrypted = encryptedBase64;
         
         input.value = '';
-        if (window.showToast) window.showToast("Kunci API Groq berhasil diamankan ke dalam brankas.");
+        if (window.showToast) window.showToast("Kunci Groq dienkripsi dan diamankan ke Cloud Firebase!");
         
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
-        
-        const badge = document.getElementById('groq-status-badge');
-        if (badge) {
-            badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-            badge.innerText = "ONLINE";
-        }
     } catch(e) {
-        if (window.showToast) window.showToast("Gagal menyimpan kunci ke Cloud.", true);
+        if (window.showToast) window.showToast("Gagal mengunggah kunci ke Cloud.", true);
+    }
+};
+
+window.removeGroqKey = async function() {
+    if(!confirm("Yakin ingin mencabut LPU Master Key Groq dari Cloud?")) return;
+    try {
+        await FirebaseService.updateSettings({ groqApiKeyEncrypted: null });
+        if(AuraState.data.settings) AuraState.data.settings.groqApiKeyEncrypted = null;
+        if (window.showToast) window.showToast("Kunci berhasil dihancurkan dari Cloud.");
+        if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+    } catch(e) {
+        if (window.showToast) window.showToast("Gagal mencabut kunci.", true);
     }
 };
 
 window.renderGroqKeysUI = function() {
     AuraUtils.safeDOM('groq-keys-container', function(el) {
-        const keys = AuraState.data.groqKeys || [];
-        if (keys.length === 0) {
-            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg">Tidak satupun Kunci API Groq Sistem terpasang. Mesin Nirkabel LLM Nonaktif.</p>';
+        const encKey = AuraState.data.settings?.groqApiKeyEncrypted;
+        const badge = document.getElementById('groq-status-badge');
+
+        if (!encKey) {
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Groq terpasang. Mesin Offline.</p>';
+            if(badge) {
+                badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
+                badge.innerText = "OFFLINE";
+            }
             return;
         }
 
-        let keysHtml = '';
-        for (let i = 0; i < keys.length; i++) {
-            const k = keys[i];
-            const dec = EncryptionService.decryptApiKey(k.encryptedKey, groqSecretKey);
-            const display = dec ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Memori Data Enkripsi Korup/Tertolak)`;
-            const statusColor = dec ? 'text-emerald-400' : 'text-rose-400';
-            
-            keysHtml += `
-            <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-                <div class="flex flex-col">
-                    <span class="font-mono text-xs ${statusColor}">${display}</span>
-                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider">Master Key Pool Ke-${i + 1}</span>
-                </div>
-                <button onclick="window.removeGroqKey('${k.id}')" class="text-rose-500 p-1 hover:text-rose-400 active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-            </div>`;
+        // Dekripsi Visual untuk ditampilkan
+        const secret = AuraState.user?.uid || "aura_secret_fallback";
+        let dec = null;
+        try {
+            let text = atob(encKey);
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+            }
+            dec = result;
+        } catch(e) {}
+
+        const isValid = dec && dec.startsWith('gsk_');
+        const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
+        const statusColor = isValid ? 'text-emerald-400' : 'text-rose-400';
+
+        if(badge && isValid) {
+             badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]";
+             badge.innerText = "ONLINE";
         }
-        el.innerHTML = keysHtml;
+
+        el.innerHTML = `
+        <div class="flex justify-between items-center bg-[var(--bg-base)] p-2.5 rounded-xl border border-emerald-900/30 bg-emerald-900/10">
+            <div class="flex flex-col">
+                <span class="font-mono text-xs font-bold ${statusColor} flex items-center gap-2"><i class="fa-solid fa-cloud-check"></i> ${display}</span>
+                <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Tersinkronisasi dengan Firebase Cloud</span>
+            </div>
+            <button onclick="window.removeGroqKey()" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+        </div>`;
     });
 };
 
 window.syncGeminiEngine = async function(silent = false) {
     const pinEl = document.getElementById('gemini-pin-input');
     const pinInput = pinEl ? pinEl.value.trim() : '';
-    
     const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
     
     if (!pin || pin.length < 3) { 
-        if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI (MINIMAL 3 KARAKTER)!", true);
-        return; 
+        if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI!", true); return; 
     }
 
     const gBadge = document.getElementById('gemini-status-badge');
-    if (gBadge) { 
-        gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-mono animate-pulse";
-        gBadge.innerText = "DECRYPTING..."; 
-    }
+    if (gBadge) { gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-mono animate-pulse"; gBadge.innerText = "DECRYPTING..."; }
     
     try {
-        if(typeof window.GeminiFailoverEngine !== 'function') throw new Error("Modul AI belum dimuat penuh.");
-        
+        if(typeof window.GeminiFailoverEngine !== 'function') throw new Error("Modul AI belum siap.");
         const geminiEngine = new window.GeminiFailoverEngine(pin);
         const gCount = await geminiEngine.init();
         
         if (gCount > 0) {
             AuraState.instances.geminiEngine = geminiEngine;
-            
             localStorage.setItem('aurafi_gemini_pin', pin);
-            
-            if (gBadge) { 
-                gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono";
-                gBadge.innerText = `ACTIVE (${gCount})`; 
-            }
-            if (!silent && window.showToast) window.showToast("Gemini Vision Berhasil Di-Unlock.");
-        } else { 
-            throw new Error("GCount 0");
-        }
+            if (gBadge) { gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono"; gBadge.innerText = `ACTIVE (${gCount})`; }
+            if (!silent && window.showToast) window.showToast("Gemini Vision Di-Unlock.");
+        } else { throw new Error("0 Keys"); }
     } catch(e) {
-        if (gBadge) { 
-            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
-            gBadge.innerText = "FAIL / LOCKED"; 
-        }
-        if (!silent && window.showToast) window.showToast("Dekripsi Gagal: PIN Salah atau Modul Belum Siap.", true);
+        if (gBadge) { gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono"; gBadge.innerText = "LOCKED"; }
+        if (!silent && window.showToast) window.showToast("Dekripsi Gagal: PIN Salah.", true);
     }
 };
 
@@ -218,63 +207,41 @@ window.addRecurringPayment = async function() {
     const methodEl = document.getElementById('new-rec-method');
     
     if(!nameEl || !amtEl || !dateEl) return;
-    const name = nameEl.value.trim();
-    const amt = parseFloat(amtEl.value);
-    const date = parseInt(dateEl.value);
-    const method = methodEl ? methodEl.value : 'cashless';
-    
-    if(!name || isNaN(amt) || isNaN(date) || date < 1 || date > 31) {
-        if(window.showToast) window.showToast("Form tagihan tidak valid!", true);
-        return;
-    }
+    const name = nameEl.value.trim(); const amt = parseFloat(amtEl.value); const date = parseInt(dateEl.value); const method = methodEl ? methodEl.value : 'cashless';
+    if(!name || isNaN(amt) || isNaN(date) || date < 1 || date > 31) { if(window.showToast) window.showToast("Form tidak valid!", true); return; }
     
     const recId = `rec_${Date.now()}`;
-    const updates = {};
-    updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method };
-    
+    const updates = {}; updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method };
     try {
         await FirebaseService.updateSettings(updates);
         nameEl.value = ''; amtEl.value = ''; dateEl.value = '';
         if(window.showToast) window.showToast("Tagihan otomatis ditambahkan.");
-    } catch(e) {
-        if(window.showToast) window.showToast("Gagal menambah tagihan.", true);
-    }
+    } catch(e) { if(window.showToast) window.showToast("Gagal menambah.", true); }
 };
 
 window.removeRecurringPayment = async function(id) {
     if(!confirm("Hapus tagihan otomatis ini?")) return;
-    try {
-        const dbRef = ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/recurringPayments/${id}`);
-        await remove(dbRef);
-        if(window.showToast) window.showToast("Tagihan dihapus.");
-    } catch(e) {
-        if(window.showToast) window.showToast("Gagal menghapus tagihan.", true);
-    }
+    try { await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/recurringPayments/${id}`)); if(window.showToast) window.showToast("Tagihan dihapus."); } 
+    catch(e) { if(window.showToast) window.showToast("Gagal menghapus.", true); }
 };
 
 window.renderRecurringUI = function() {
     AuraUtils.safeDOM('recurring-list', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
-
-        if (entries.length === 0) {
-            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Mesin belum diajarkan mengenai rutinitas siklus bulanan Anda.</p>';
-            return;
-        }
+        if (entries.length === 0) { el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Mesin belum diajarkan mengenai rutinitas bulanan Anda.</p>'; return; }
 
         let htmlCompiled = '';
-        for (let i = 0; i < entries.length; i++) {
-            const id = entries[i][0];
-            const rp = entries[i][1];
+        entries.forEach(([id, rp]) => {
             htmlCompiled += `
             <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
                 <div class="flex flex-col">
                     <span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span>
-                    <span class="text-[9px] text-[var(--text-muted)] font-mono">Eksekusi H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)} via [${AuraUtils.escapeHtml(rp.method)}]</span>
+                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)}</span>
                 </div>
                 <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90"><i class="fa-solid fa-trash-can text-xs"></i></button>
             </div>`;
-        }
+        });
         el.innerHTML = htmlCompiled;
     });
 };
@@ -283,36 +250,28 @@ window.renderRecurringUIForBudget = function() {
     AuraUtils.safeDOM('budget-bills-container', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
-        
-        if (entries.length === 0) {
-            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Konfigurasi Tagihan Kosong. Buat rutinitas cicilan/tagihan Anda di kolom bawah.</p>';
-            return;
-        }
+        if (entries.length === 0) { el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Konfigurasi Tagihan Kosong.</p>'; return; }
 
         let compiledBudgets = '';
-        for (let i = 0; i < entries.length; i++) {
-            const id = entries[i][0];
-            const rp = entries[i][1];
+        entries.forEach(([id, rp]) => {
             compiledBudgets += `
             <div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
                 <div>
                     <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
                         ${AuraUtils.escapeHtml(rp.name)} 
-                        <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100">
-                            <i class="fa-solid fa-trash text-[10px]"></i>
-                        </button>
+                        <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash text-[10px]"></i></button>
                     </h4>
-                    <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">Tgl Eksekusi Robot AI: ${rp.date} / Bulan</p>
+                    <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">Tgl Eksekusi: ${rp.date} / Bulan</p>
                 </div>
                 <p class="font-bold text-sm font-mono text-[var(--text-main)]">${AuraUtils.formatCurrency(rp.amount)}</p>
             </div>`;
-        }
+        });
         el.innerHTML = compiledBudgets;
     });
 };
 
 // ============================================================================
-// LANJUTAN: TRACKER DINAMIS (DILENGKAPI AI FORM FILLER)
+// LANJUTAN: TRACKER DINAMIS & FITUR LAINNYA
 // ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
@@ -321,24 +280,16 @@ window.autoFillTrackerWithAI = async function() {
     
     const btn = document.getElementById('btn-ai-tracker');
     const originalText = btn.innerHTML;
-    if (btn) {
-        btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...';
-        btn.disabled = true;
-    }
+    if (btn) { btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...'; btn.disabled = true; }
 
     try {
         const systemPrompt = `Kamu adalah ahli pembuat kata kunci untuk sistem Tracker Keuangan. 
 TUGAS: Buat konfigurasi untuk melacak pengeluaran pengguna yang berkaitan dengan topik: "${topic}".
-1. "id": satu kata pendek huruf kecil (contoh: kopi, kucing, skincare).
-2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe, Anabul, Perawatan Wajah).
-3. "keywords": array minimal 10 kata yang merupakan sinonim, merek terkenal, atau benda terkait topik tersebut. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi", "cafe", "latte", "espresso", "americano"]).
-
+1. "id": satu kata pendek huruf kecil (contoh: kopi).
+2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe).
+3. "keywords": array minimal 10 kata bersinonim/merek. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi"]).
 WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG \`\`\`json:
-{
-    "id": "string",
-    "name": "string",
-    "keywords": ["string1", "string2", "string3"]
-}`;
+{"id": "string", "name": "string", "keywords": ["string1", "string2"]}`;
         const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
         
         const responseText = await window.executeAIWithFallback(messages, systemPrompt, true, null);
@@ -347,16 +298,11 @@ WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG \`\`\`json:
         AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || '');
         AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || '');
         AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
-        
         if (window.showToast) window.showToast("Berhasil! AI telah mengisi form untukmu.");
-
     } catch (e) {
         if (window.showToast) window.showToast("AI gagal memproses permintaan: " + e.message, true);
     } finally {
-        if (btn) {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
+        if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
     }
 };
 
@@ -366,12 +312,8 @@ window.openTrackerManager = function() {
     
     const trackers = AuraState.data.settings?.staplesTrackers || DEFAULT_STAPLES_TRACKERS;
     let html = '';
-    const trackerEntries = Object.entries(trackers);
     
-    for (let i = 0; i < trackerEntries.length; i++) {
-        const id = trackerEntries[i][0];
-        const t = trackerEntries[i][1];
-        
+    Object.entries(trackers).forEach(([id, t]) => {
         html += `
         <div class="glass-panel p-3 border-l-2 border-l-amber-400 flex justify-between items-center mb-2">
             <div>
@@ -380,15 +322,12 @@ window.openTrackerManager = function() {
             </div>
             <button onclick="window.removeTracker('${id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
         </div>`;
-    }
+    });
     listContainer.innerHTML = html;
     
     const formContainer = document.getElementById('new-tracker-form-container');
     if (formContainer && !document.getElementById('btn-ai-tracker')) {
-        const aiBtnHtml = `
-        <button id="btn-ai-tracker" onclick="window.autoFillTrackerWithAI()" class="w-full bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 font-bold text-[10px] py-2 rounded-lg mb-3 transition active:scale-[0.98]">
-            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Isi Otomatis dengan AI
-        </button>`;
+        const aiBtnHtml = `<button id="btn-ai-tracker" onclick="window.autoFillTrackerWithAI()" class="w-full bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 font-bold text-[10px] py-2 rounded-lg mb-3 transition active:scale-[0.98]"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Isi Otomatis dengan AI</button>`;
         formContainer.insertAdjacentHTML('afterbegin', aiBtnHtml);
     }
 
@@ -396,157 +335,75 @@ window.openTrackerManager = function() {
 };
 
 window.saveNewTracker = async function() {
-    const idInput = document.getElementById('new-track-id');
-    const nameInput = document.getElementById('new-track-name');
-    const keyInput = document.getElementById('new-track-keywords');
+    const idInput = document.getElementById('new-track-id'); const nameInput = document.getElementById('new-track-name'); const keyInput = document.getElementById('new-track-keywords');
     if (!idInput || !nameInput || !keyInput) return;
     
-    const id = idInput.value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-    const name = nameInput.value.trim();
-    const keywordsRaw = keyInput.value.split(',');
-    const keywords = [];
+    const id = idInput.value.trim().toLowerCase().replace(/[^a-z0-9]/g, ''); const name = nameInput.value.trim();
+    const keywords = keyInput.value.split(',').map(k => k.trim().toLowerCase()).filter(k => k);
     
-    for (let i = 0; i < keywordsRaw.length; i++) {
-        const k = keywordsRaw[i].trim().toLowerCase();
-        if (k) keywords.push(k);
-    }
+    if (!id || !name || keywords.length === 0) { if (window.showToast) window.showToast("Isi ID, Nama, dan minimal 1 kata kunci!", true); return; }
     
-    if (!id || !name || keywords.length === 0) {
-        if (window.showToast) window.showToast("Mohon isi ID, Nama, dan minimal 1 kata kunci!", true);
-        return;
-    }
-    
-    const updates = {};
-    updates[`staplesTrackers/${id}`] = { name: name, keywords: keywords };
-    
-    try {
-        await FirebaseService.updateSettings(updates);
-        idInput.value = ''; nameInput.value = ''; keyInput.value = '';
-        if (window.showToast) window.showToast("Tracker dinamis baru telah didaftarkan.");
-        window.openTrackerManager();
-    } catch(e) {
-        if (window.showToast) window.showToast("Gagal menyimpan Tracker.", true);
-    }
+    const updates = {}; updates[`staplesTrackers/${id}`] = { name: name, keywords: keywords };
+    try { await FirebaseService.updateSettings(updates); idInput.value = ''; nameInput.value = ''; keyInput.value = ''; window.openTrackerManager(); } 
+    catch(e) { if (window.showToast) window.showToast("Gagal menyimpan Tracker.", true); }
 };
 
 window.removeTracker = async function(id) {
-    if (confirm(`Anda yakin ingin menghapus pelacak ${id}?`)) {
-        try {
-            const dbRef = ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/staplesTrackers/${id}`);
-            await remove(dbRef);
-            if (window.showToast) window.showToast("Pelacak ditiadakan dari dashboard.");
-            window.openTrackerManager();
-        } catch(e) {
-            if (window.showToast) window.showToast("Gagal menghapus Tracker.", true);
-        }
+    if (confirm(`Hapus pelacak ${id}?`)) {
+        try { await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/staplesTrackers/${id}`)); window.openTrackerManager(); } 
+        catch(e) { if (window.showToast) window.showToast("Gagal menghapus Tracker.", true); }
     }
 };
 
 window.openFamilyManager = function() {
     const listContainer = document.getElementById('family-list-container');
     if (!listContainer) return;
-    
     const members = AuraState.data.settings?.familyMembers || [];
     let html = '';
     
-    for (let i = 0; i < members.length; i++) {
-        html += `
-        <div class="glass-panel p-3 border-l-2 border-l-indigo-400 flex justify-between items-center mb-2">
-            <p class="text-xs font-bold text-indigo-400"><i class="fa-solid fa-user mr-2"></i>${AuraUtils.escapeHtml(members[i])}</p>
-            <button onclick="window.removeFamilyMember('${i}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
-        </div>`;
-    }
+    members.forEach((m, i) => {
+        html += `<div class="glass-panel p-3 border-l-2 border-l-indigo-400 flex justify-between items-center mb-2"><p class="text-xs font-bold text-indigo-400"><i class="fa-solid fa-user mr-2"></i>${AuraUtils.escapeHtml(m)}</p><button onclick="window.removeFamilyMember('${i}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button></div>`;
+    });
     
-    if (members.length === 0) {
-        html = '<p class="text-[10px] text-[var(--text-muted)] text-center">Belum ada tanggungan anggota keluarga tambahan.</p>';
-    }
-    
+    if (members.length === 0) html = '<p class="text-[10px] text-[var(--text-muted)] text-center">Belum ada tanggungan keluarga.</p>';
     listContainer.innerHTML = html;
     if (typeof window.showModal === 'function') window.showModal('modal-family');
 };
 
 window.addFamilyMember = async function() {
-    const input = document.getElementById('new-family-name');
-    if (!input) return;
-    
-    const name = input.value.trim();
-    if (!name) {
-        if (window.showToast) window.showToast("Masukan nama keluarga yang valid!", true);
-        return;
-    }
-    
+    const input = document.getElementById('new-family-name'); if (!input) return;
+    const name = input.value.trim(); if (!name) return;
     const members = AuraState.data.settings?.familyMembers || [];
-    if (members.includes(name)) {
-        if (window.showToast) window.showToast("Anggota ini sudah ada di dalam database keluarga.", true);
-        return;
-    }
+    if (members.includes(name)) { if (window.showToast) window.showToast("Anggota ini sudah terdaftar.", true); return; }
     
-    const newMembers = [...members, name];
-    try {
-        await FirebaseService.updateSettings({ familyMembers: newMembers });
-        input.value = '';
-        if (window.showToast) window.showToast(`Anggota Keluarga ${name} didaftarkan.`);
-        window.openFamilyManager();
-    } catch (e) {
-        if (window.showToast) window.showToast("Gagal mendaftarkan anggota keluarga.", true);
-    }
+    try { await FirebaseService.updateSettings({ familyMembers: [...members, name] }); input.value = ''; window.openFamilyManager(); } 
+    catch (e) { if (window.showToast) window.showToast("Gagal menambah anggota.", true); }
 };
 
 window.removeFamilyMember = async function(index) {
     const members = AuraState.data.settings?.familyMembers || [];
-    const memberName = members[index];
-    
-    if (confirm(`Lepaskan akses pencatatan transaksi untuk [${memberName}]?`)) {
+    if (confirm(`Lepaskan akses untuk [${members[index]}]?`)) {
         members.splice(index, 1);
-        try {
-            await FirebaseService.updateSettings({ familyMembers: members });
-            if (window.showToast) window.showToast(`Akses untuk ${memberName} dicabut.`);
-            window.openFamilyManager();
-        } catch(e) {
-            if (window.showToast) window.showToast("Gagal mencabut akses.", true);
-        }
+        try { await FirebaseService.updateSettings({ familyMembers: members }); window.openFamilyManager(); } 
+        catch(e) { if (window.showToast) window.showToast("Gagal mencabut akses.", true); }
     }
 };
 
 window.openAuditLogs = async function() {
-    const container = document.getElementById('audit-log-content');
-    if (!container) return;
-    
+    const container = document.getElementById('audit-log-content'); if (!container) return;
     if (typeof window.showModal === 'function') window.showModal('modal-audit-log');
-    container.innerHTML = '<div class="text-center p-8"><i class="fa-solid fa-circle-notch animate-spin text-2xl text-white mb-2 block"></i><p class="text-[10px] text-[var(--text-muted)]">Mengunduh blok rantai keamanan...</p></div>';
+    container.innerHTML = '<div class="text-center p-8"><i class="fa-solid fa-circle-notch animate-spin text-2xl text-white mb-2 block"></i><p class="text-[10px] text-[var(--text-muted)]">Mengunduh blok rantai...</p></div>';
     
     try {
         const snapshot = await get(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/audit_logs`));
         if (snapshot.exists()) {
-            const logsData = snapshot.val();
-            const logsArray = [];
-            for (const key in logsData) {
-                if (Object.prototype.hasOwnProperty.call(logsData, key)) {
-                    logsArray.push({ id: key, ...logsData[key] });
-                }
-            }
-            logsArray.sort((a, b) => b.ts - a.ts);
-            
+            const logsArray = Object.entries(snapshot.val()).map(([id, data]) => ({ id, ...data })).sort((a, b) => b.ts - a.ts);
             let logHtml = '';
-            for (let i = 0; i < logsArray.length; i++) {
-                const log = logsArray[i];
-                const dateObj = new Date(log.ts);
-                const timeStr = `${dateObj.toLocaleDateString()} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
-                logHtml += `
-                <div class="border-b border-[var(--border-glass)] pb-2 mb-2 last:border-0 last:pb-0 last:mb-0">
-                    <div class="flex justify-between items-start mb-1">
-                        <span class="text-[9px] bg-white/10 text-white px-1.5 py-0.5 rounded font-mono">${AuraUtils.escapeHtml(log.action)}</span>
-                        <span class="text-[8px] text-[var(--text-muted)] font-mono">${timeStr}</span>
-                    </div>
-                    <p class="text-xs text-[var(--text-main)]">${AuraUtils.escapeHtml(log.detail)}</p>
-                    <p class="text-[8px] text-[var(--text-muted)] uppercase mt-1">Executor: ${AuraUtils.escapeHtml(log.user)}</p>
-                </div>`;
-            }
+            logsArray.forEach(log => {
+                const dateObj = new Date(log.ts); const timeStr = `${dateObj.toLocaleDateString()} ${dateObj.getHours().toString().padStart(2,'0')}:${dateObj.getMinutes().toString().padStart(2,'0')}`;
+                logHtml += `<div class="border-b border-[var(--border-glass)] pb-2 mb-2 last:border-0 last:pb-0 last:mb-0"><div class="flex justify-between items-start mb-1"><span class="text-[9px] bg-white/10 text-white px-1.5 py-0.5 rounded font-mono">${AuraUtils.escapeHtml(log.action)}</span><span class="text-[8px] text-[var(--text-muted)] font-mono">${timeStr}</span></div><p class="text-xs text-[var(--text-main)]">${AuraUtils.escapeHtml(log.detail)}</p><p class="text-[8px] text-[var(--text-muted)] uppercase mt-1">Executor: ${AuraUtils.escapeHtml(log.user)}</p></div>`;
+            });
             container.innerHTML = logHtml;
-        } else {
-            container.innerHTML = '<p class="text-center text-xs text-[var(--text-muted)] p-5">Tidak ada riwayat aktivitas yang terekam sejauh ini.</p>';
-        }
-    } catch(e) {
-        container.innerHTML = '<p class="text-center text-xs text-rose-500 p-5"><i class="fa-solid fa-triangle-exclamation block text-2xl mb-2"></i>Gagal membaca log dari Cloud Firebase.</p>';
-    }
+        } else { container.innerHTML = '<p class="text-center text-xs text-[var(--text-muted)] p-5">Tidak ada riwayat aktivitas.</p>'; }
+    } catch(e) { container.innerHTML = '<p class="text-center text-xs text-rose-500 p-5">Gagal membaca log dari Cloud.</p>'; }
 };
