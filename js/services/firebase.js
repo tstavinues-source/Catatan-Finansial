@@ -5,22 +5,10 @@
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { 
-    getDatabase, 
-    ref, 
-    push, 
-    update, 
-    remove, 
-    onValue, 
-    get 
+    getDatabase, ref, push, update, remove, onValue, get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
-    getAuth, 
-    GoogleAuthProvider,
-    signInWithEmailAndPassword,
-    signInWithPopup,
-    signInAnonymously,
-    signOut,
-    onAuthStateChanged
+    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInAnonymously, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { FIREBASE_CONFIG, APP_CONFIG } from '../config/constants.js';
@@ -28,7 +16,6 @@ import { Logger } from '../core/logger.js';
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
 
-// Module-scoped instances
 let firebaseAppInstance = null;
 let dbInstance = null;
 let authInstance = null;
@@ -67,50 +54,52 @@ try {
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
             // ================================================================
-            // 🚀 MESIN REAL-TIME STREAMING FIREBASE (VERSI PRESISI)
+            // 🚀 MESIN REAL-TIME STREAMING (ANTI RACE-CONDITION)
             // ================================================================
             
-            // FUNGSI PINTAR: Menunggu semua data terkumpul sebelum merender UI (Debounce)
+            // FUNGSI PINTAR: Memastikan fungsi pelukis benar-benar sudah siap
             let renderTimeout = null;
             function triggerUIRender() {
                 if (renderTimeout) clearTimeout(renderTimeout);
                 renderTimeout = setTimeout(() => {
-                    if (typeof window.renderDashboard === 'function') window.renderDashboard();
-                    if (typeof window.renderTransactions === 'function') window.renderTransactions();
-                    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-                    if (typeof window.renderBudgets === 'function') window.renderBudgets();
-                }, 150); // Menunggu 150 milidetik agar tidak ada data yang tumpang tindih
+                    // Cek apakah fungsi pelukis sudah di-load oleh browser
+                    if (typeof window.renderDashboard === 'function') {
+                        window.renderDashboard();
+                        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+                        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+                        if (typeof window.renderBudgets === 'function') window.renderBudgets();
+                    } else {
+                        // Jika belum siap (karena browser telat memuat file), coba lagi dalam 150ms!
+                        triggerUIRender();
+                    }
+                }, 150);
             }
 
-            // 1. STREAM TRANSAKSI (DENGAN FILTER ANTI-SAMPAH)
+            // 1. STREAM TRANSAKSI
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
                 const arr = [];
                 if (data) {
                     for (const key in data) {
-                        // SANGAT PENTING: Saring transaksi yang sudah dihapus agar saldo tidak error
-                        if (!data[key].is_deleted) {
+                        if (!data[key].is_deleted) { // Anti-Sampah
                             arr.push({ id: key, ...data[key] });
                         }
                     }
                 }
-                
-                // Urutkan transaksi dari yang paling baru ke paling lama
                 arr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
-                
                 AuraState.data.transactions = arr;
                 triggerUIRender();
             });
 
-            // 2. STREAM PENGATURAN (Limit Budget, Tracker, Profil, Groq Keys)
+            // 2. STREAM PENGATURAN
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
                 triggerUIRender();
             });
 
-            // 3. STREAM GOALS (Misi Tabungan)
+            // 3. STREAM GOALS
             const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const data = snapshot.val();
@@ -122,10 +111,7 @@ try {
                 triggerUIRender();
             });
             
-            // ================================================================
-
         } else {
-            // Bersihkan State jika user logout
             AuraState.user.uid = null;
             AuraState.data.transactions = [];
             AuraState.data.settings = {};
@@ -138,42 +124,27 @@ try {
 
 } catch (error) {
     Logger.error('Core', 'FATAL: Gagal melakukan bootstrap koneksi Firebase SDK.', error);
-    setTimeout(function() {
-        if (typeof window.showToast === 'function') {
-            window.showToast("Gagal tersambung ke database Cloud. Aplikasi beralih ke sesi lokal sementara.", true);
-        }
-    }, 2000);
 }
 
-// MENGAMBIL ALIH TOMBOL REFRESH MANUAL
-// Karena aplikasi sudah 100% Real-Time, tombol refresh di atas kita ubah 
-// fungsinya hanya untuk memastikan/menyegarkan UI secara instan.
-window.loadRealtimeDatabaseData = function() {
+// Fungsi manual untuk refresh UI jika user menekan tombol putar di pojok
+window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
         if (typeof window.renderDashboard === 'function') window.renderDashboard();
         if (typeof window.renderTransactions === 'function') window.renderTransactions();
         if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
         if (typeof window.renderBudgets === 'function') window.renderBudgets();
         
-        if (typeof window.showToast === 'function') {
-            window.showToast("Sinkronisasi Real-Time Aktif & Data Akurat!");
+        if (!silent && typeof window.showToast === 'function') {
+            window.showToast("UI Disegarkan. Mode Real-Time Aktif!");
         }
     }
 };
 
 export const FirebaseService = {
-    loginWithEmail: async function(email, password) {
-        return await signInWithEmailAndPassword(authInstance, email, password);
-    },
-    loginWithGoogle: async function() {
-        return await signInWithPopup(authInstance, googleAuthProviderInstance);
-    },
-    loginAnonymously: async function() {
-        return await signInAnonymously(authInstance);
-    },
-    logout: async function() {
-        return await signOut(authInstance);
-    },
+    loginWithEmail: async function(email, password) { return await signInWithEmailAndPassword(authInstance, email, password); },
+    loginWithGoogle: async function() { return await signInWithPopup(authInstance, googleAuthProviderInstance); },
+    loginAnonymously: async function() { return await signInAnonymously(authInstance); },
+    logout: async function() { return await signOut(authInstance); },
 
     _checkAuth: function() {
         if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) {
@@ -186,16 +157,9 @@ export const FirebaseService = {
         try {
             const profile = AuraState.data.settings?.profile || {};
             const userName = profile.fullName || profile.nickname || "Anonymous User";
-            const payload = { 
-                action: action, 
-                detail: AuraUtils.escapeHtml(detail), 
-                user: AuraUtils.escapeHtml(userName), 
-                ts: Date.now() 
-            };
+            const payload = { action: action, detail: AuraUtils.escapeHtml(detail), user: AuraUtils.escapeHtml(userName), ts: Date.now() };
             await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/audit_logs`), payload);
-        } catch (e) { 
-            Logger.error('AuditLog', 'Gagal merekam log aktivitas ke Cloud.', e);
-        }
+        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log aktivitas ke Cloud.', e); }
     },
     
     saveTransaction: async function(data, isFromAI = false) { 
@@ -203,45 +167,30 @@ export const FirebaseService = {
         try {
             data.user_id = AuraState.data.settings?.profile?.nickname || "User";
             data.nominal = Math.max(0, Number(data.nominal) || 0); 
-            
-            if (!data.createdAt) {
-                data.createdAt = new Date().toISOString();
-            }
+            if (!data.createdAt) data.createdAt = new Date().toISOString();
             
             await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
             await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
-        } catch (e) { 
-            throw e;
-        }
+        } catch (e) { throw e; }
     },
 
     updateTransaction: async function(id, data) { 
         this._checkAuth();
-        if (!id) {
-            throw new Error("ID Referensi Transaksi tidak terdefinisi.");
-        }
+        if (!id) throw new Error("ID Referensi Transaksi tidak terdefinisi.");
         try {
             const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
             const snapshot = await get(pathRef);
-            
-            if (!snapshot.exists()) {
-                throw new Error("Objek transaksi ini sudah tidak ada.");
-            }
+            if (!snapshot.exists()) throw new Error("Objek transaksi ini sudah tidak ada.");
             
             data.updatedAt = new Date().toISOString();
             await update(pathRef, data);
             await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
-        } catch (e) { 
-            throw e;
-        }
+        } catch (e) { throw e; }
     },
 
     moveToTrash: async function(id) { 
         this._checkAuth();
-        await this.updateTransaction(id, { 
-            is_deleted: true, 
-            deletedAt: new Date().toISOString() 
-        });
+        await this.updateTransaction(id, { is_deleted: true, deletedAt: new Date().toISOString() });
         await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
     },
 
@@ -276,12 +225,7 @@ export const FirebaseService = {
 
     saveGroqKey: async function(encryptedKey) { 
         this._checkAuth();
-        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/groqApiKeys`), { 
-            encryptedKey: encryptedKey, 
-            createdAt: new Date().toISOString(), 
-            active: true, 
-            usageCount: 0 
-        });
+        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/groqApiKeys`), { encryptedKey: encryptedKey, createdAt: new Date().toISOString(), active: true, usageCount: 0 });
     },
 
     deleteGroqKey: async function(keyId) { 
