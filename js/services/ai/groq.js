@@ -6,33 +6,32 @@
 import { AuraState } from '../../core/state.js';
 
 export const GroqAPI = {
-    currentIndex: 0, // Mengingat kunci mana yang sedang dipakai
+    currentIndex: 0,
     
     callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
         
-        // 1. Tarik Pool API Key
-        const encKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        // Penjinak Format Firebase: Pastikan datanya berbentuk Array
+        let encKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
         
-        if (!Array.isArray(encKeys) || encKeys.length === 0) {
+        if (encKeys.length === 0) {
             throw new Error("API Key Groq kosong! Silakan pasang minimal 1 Key di menu Pengaturan.");
         }
 
-        // 2. Dekripsi semua kunci yang ada di Pool
         const secret = AuraState.user?.uid || "aura_secret_fallback";
-        let rawKeys = [];
+        let rawKeysDecrypted = [];
         
         for (let k of encKeys) {
             try {
-                let text = atob(k);
-                let result = '';
+                let text = atob(k); let result = '';
                 for (let i = 0; i < text.length; i++) {
                     result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
                 }
-                if (result.startsWith('gsk_')) rawKeys.push(result);
+                if (result.startsWith('gsk_')) rawKeysDecrypted.push(result);
             } catch(e) {}
         }
 
-        if (rawKeys.length === 0) {
+        if (rawKeysDecrypted.length === 0) {
             throw new Error("Kunci Groq di Cloud korup atau tidak valid.");
         }
 
@@ -40,54 +39,36 @@ export const GroqAPI = {
             console.warn('GroqAPI: Gambar terdeteksi. Groq murni teks, gambar diabaikan.');
         }
 
-        // 3. Persiapan Payload
         const modelName = requireJson ? "llama-3.1-8b-instant" : "openai/gpt-oss-120b";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
         const groqMessages = [{ role: "system", content: systemPrompt }];
         messages.forEach(msg => {
             if (msg.role !== 'system') {
-                groqMessages.push({
-                    role: msg.role === 'ai' || msg.role === 'assistant' ? 'assistant' : 'user',
-                    content: msg.content
-                });
+                groqMessages.push({ role: msg.role === 'ai' || msg.role === 'assistant' ? 'assistant' : 'user', content: msg.content });
             }
         });
 
-        const payload = {
-            model: modelName,
-            messages: groqMessages,
-            temperature: requireJson ? 0.0 : 0.7,
-        };
+        const payload = { model: modelName, messages: groqMessages, temperature: requireJson ? 0.0 : 0.7 };
+        if (requireJson) payload.response_format = { type: "json_object" };
 
-        if (requireJson) {
-            payload.response_format = { type: "json_object" };
-        }
-
-        // 4. MESIN FAILOVER (Otomatis ganti kunci jika error 429/Limit)
         let attempt = 0;
-        const maxLimit = Math.min(rawKeys.length, 3); // Coba maksimal 3 kali ganti kunci
+        const maxLimit = Math.min(rawKeysDecrypted.length, 3);
         
         while (attempt < maxLimit) {
-            const activeKey = rawKeys[this.currentIndex % rawKeys.length];
+            const activeKey = rawKeysDecrypted[this.currentIndex % rawKeysDecrypted.length];
             
             try {
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: { 
-                        'Authorization': `Bearer ${activeKey}`,
-                        'Content-Type': 'application/json' 
-                    },
+                    headers: { 'Authorization': `Bearer ${activeKey}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
                 const data = await response.json();
 
-                // Jika terkena Rate Limit atau Server Error, lompat ke kunci berikutnya
                 if (response.status === 429 || response.status >= 500) {
-                    this.currentIndex++;
-                    attempt++;
-                    continue;
+                    this.currentIndex++; attempt++; continue;
                 }
 
                 if (!response.ok) {
@@ -97,8 +78,7 @@ export const GroqAPI = {
 
                 return data.choices[0].message.content;
             } catch (err) {
-                this.currentIndex++;
-                attempt++;
+                this.currentIndex++; attempt++;
                 if (attempt >= maxLimit) throw err;
             }
         }
