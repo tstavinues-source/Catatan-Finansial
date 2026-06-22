@@ -67,34 +67,47 @@ try {
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
             // ================================================================
-            // 🚀 MESIN REAL-TIME STREAMING FIREBASE (CCTV ABADI)
+            // 🚀 MESIN REAL-TIME STREAMING FIREBASE (VERSI PRESISI)
             // ================================================================
             
-            // 1. STREAM TRANSAKSI
+            // FUNGSI PINTAR: Menunggu semua data terkumpul sebelum merender UI (Debounce)
+            let renderTimeout = null;
+            function triggerUIRender() {
+                if (renderTimeout) clearTimeout(renderTimeout);
+                renderTimeout = setTimeout(() => {
+                    if (typeof window.renderDashboard === 'function') window.renderDashboard();
+                    if (typeof window.renderTransactions === 'function') window.renderTransactions();
+                    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+                    if (typeof window.renderBudgets === 'function') window.renderBudgets();
+                }, 150); // Menunggu 150 milidetik agar tidak ada data yang tumpang tindih
+            }
+
+            // 1. STREAM TRANSAKSI (DENGAN FILTER ANTI-SAMPAH)
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
                 const arr = [];
                 if (data) {
-                    for (const key in data) arr.push({ id: key, ...data[key] });
+                    for (const key in data) {
+                        // SANGAT PENTING: Saring transaksi yang sudah dihapus agar saldo tidak error
+                        if (!data[key].is_deleted) {
+                            arr.push({ id: key, ...data[key] });
+                        }
+                    }
                 }
-                AuraState.data.transactions = arr;
                 
-                // Render ulang otomatis ke semua layar!
-                if (typeof window.renderDashboard === 'function') window.renderDashboard();
-                if (typeof window.renderTransactions === 'function') window.renderTransactions();
-                if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+                // Urutkan transaksi dari yang paling baru ke paling lama
+                arr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
+                
+                AuraState.data.transactions = arr;
+                triggerUIRender();
             });
 
             // 2. STREAM PENGATURAN (Limit Budget, Tracker, Profil, Groq Keys)
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                
-                // Render ulang layar yang bergantung pada Pengaturan
-                if (typeof window.renderDashboard === 'function') window.renderDashboard();
-                if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-                if (typeof window.renderBudgets === 'function') window.renderBudgets();
+                triggerUIRender();
             });
 
             // 3. STREAM GOALS (Misi Tabungan)
@@ -106,8 +119,7 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                
-                if (typeof window.renderBudgets === 'function') window.renderBudgets();
+                triggerUIRender();
             });
             
             // ================================================================
@@ -132,6 +144,22 @@ try {
         }
     }, 2000);
 }
+
+// MENGAMBIL ALIH TOMBOL REFRESH MANUAL
+// Karena aplikasi sudah 100% Real-Time, tombol refresh di atas kita ubah 
+// fungsinya hanya untuk memastikan/menyegarkan UI secara instan.
+window.loadRealtimeDatabaseData = function() {
+    if (AuraState.user.uid) {
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if (typeof window.renderBudgets === 'function') window.renderBudgets();
+        
+        if (typeof window.showToast === 'function') {
+            window.showToast("Sinkronisasi Real-Time Aktif & Data Akurat!");
+        }
+    }
+};
 
 export const FirebaseService = {
     loginWithEmail: async function(email, password) {
