@@ -1,3 +1,6 @@
+/* Mengimpor Google Fonts secara langsung ke dalam CSS agar tidak bergantung pada HTML */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght=300;400;500;600;700;800;900&family=Space+Grotesk:wght=500;700&display=swap');
+
 .hidden { display: none !important; }
 
 :root {
@@ -49,7 +52,8 @@
 }
 
 body { 
-    font-family: var(--font-main); 
+    /* DITAMBAHKAN !important AGAR TAILWIND TIDAK BISA MENIMPA FONT INI */
+    font-family: var(--font-main) !important; 
     background-color: var(--bg-base); 
     color: var(--text-main); 
     transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
@@ -60,7 +64,8 @@ body {
     background-image: radial-gradient(circle at 50% 0%, var(--bg-glass) 0%, transparent 70%);
 }
 
-.font-display { font-family: var(--font-display); }
+/* DITAMBAHKAN !important AGAR TAILWIND TIDAK BISA MENIMPA FONT INI */
+.font-display { font-family: var(--font-display) !important; }
 
 .glass-panel { 
     background: var(--bg-glass); 
