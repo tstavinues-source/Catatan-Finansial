@@ -1,7 +1,7 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
  * Menggunakan Arsitektur "Reactive Pre-load" dengan "Isolated Try-Catch" 
- * untuk menjamin render instan tanpa Domino Crash.
+ * dan Metode Kas Apato (Optimistic Update) untuk respon UI instan.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -30,7 +30,6 @@ Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 let isInitialLoadComplete = false;
 let initialDataArrived = { transactions: false, settings: false, goals: false };
 
-// Fungsi Pelukis Kebal Badai: Jika 1 layar gagal, layar lain tetap dilukis!
 const forceUIRender = () => {
     const renderers = ['renderDashboard', 'renderTransactions', 'renderAnalytics', 'renderBudgets', 'renderTrash'];
     renderers.forEach(fn => {
@@ -50,11 +49,9 @@ const smartRender = () => {
             isInitialLoadComplete = true;
             if (typeof window.hideLoading === 'function') window.hideLoading();
         } else {
-            return; // Tahan render jika data muatan awal belum lengkap
+            return; 
         }
     }
-    
-    // Lukis dengan sangat mulus
     requestAnimationFrame(() => forceUIRender());
 };
 
@@ -87,7 +84,6 @@ try {
             
             const uid = user.uid;
 
-            // 1. STREAM TRANSAKSI REAL-TIME
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
@@ -112,7 +108,6 @@ try {
                 smartRender();
             });
 
-            // 2. STREAM PENGATURAN REAL-TIME
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
@@ -120,7 +115,6 @@ try {
                 smartRender();
             });
 
-            // 3. STREAM MISSION GOALS REAL-TIME
             const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const data = snapshot.val();
@@ -149,7 +143,6 @@ try {
     Logger.error('Core', 'Gagal memuat arsitektur Firebase.', error);
 }
 
-// Fitur Refresh Manual kini menggunakan pelukis kebal badai
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
         requestAnimationFrame(() => forceUIRender());
@@ -187,36 +180,54 @@ export const FirebaseService = {
         
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
         await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
-        forceUIRender(); // <--- Tembakan Instan
+        forceUIRender();
     },
 
     updateTransaction: async function(id, data) { 
         this._checkAuth();
         if (!id) throw new Error("ID Referensi Transaksi tidak terdefinisi.");
         
+        // [METODE KAS APATO] Update state lokal secara instan!
+        if (AuraState.data.transactions) {
+            const idx = AuraState.data.transactions.findIndex(t => t.id === id);
+            if (idx !== -1) AuraState.data.transactions[idx] = { ...AuraState.data.transactions[idx], ...data };
+        }
+        forceUIRender();
+
         const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
         data.updatedAt = new Date().toISOString();
         
         await update(pathRef, data);
         await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
-        forceUIRender(); // <--- Tembakan Instan
     },
 
     moveToTrash: async function(id) { 
         this._checkAuth();
+
+        // [METODE KAS APATO] Saring dan buang item dari memori lokal seketika!
+        if (AuraState.data.transactions) {
+            AuraState.data.transactions = AuraState.data.transactions.filter(t => t.id !== id);
+        }
+        forceUIRender(); 
+
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`), { 
             is_deleted: true, 
             deletedAt: new Date().toISOString() 
         });
         await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
-        forceUIRender(); // <--- Tembakan Instan (Data akan langsung lenyap dari layar)
     },
 
     deleteTransactionPermanently: async function(id) { 
         this._checkAuth();
+
+        // [METODE KAS APATO] Lenyapkan dari layar tempat sampah seketika!
+        if (AuraState.data.trash) {
+            AuraState.data.trash = AuraState.data.trash.filter(t => t.id !== id);
+        }
+        forceUIRender();
+
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`));
         await this.saveAuditLog("SYS.DESTROY", `Pembersihan permanen ID: ${id}`);
-        forceUIRender(); // <--- Tembakan Instan
     },
 
     saveGoal: async function(data) { 
@@ -228,22 +239,35 @@ export const FirebaseService = {
 
     updateGoal: async function(id, data) {
         this._checkAuth();
+
+        // [METODE KAS APATO] Update target di layar seketika!
+        if (AuraState.data.goals) {
+            const idx = AuraState.data.goals.findIndex(g => g.id === id);
+            if (idx !== -1) AuraState.data.goals[idx] = { ...AuraState.data.goals[idx], ...data };
+        }
+        forceUIRender();
+
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals/${id}`), data);
         await this.saveAuditLog("GOAL.EDIT", `Update tujuan finansial ID: ${id}`);
-        forceUIRender();
     },
 
     deleteGoal: async function(id) { 
         this._checkAuth();
+
+        // [METODE KAS APATO] Hapus target misi dari layar seketika!
+        if (AuraState.data.goals) {
+            AuraState.data.goals = AuraState.data.goals.filter(g => g.id !== id);
+        }
+        forceUIRender();
+
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals/${id}`));
         await this.saveAuditLog("GOAL.DELETE", `Hapus tujuan finansial ID: ${id}`);
-        forceUIRender();
     },
 
     updateSettings: async function(data) { 
         this._checkAuth();
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), data); 
-        forceUIRender();
+        // Settings diurus oleh onValue listener otomatis
     },
 
     saveGroqKey: async function(encryptedKey) { 
