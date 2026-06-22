@@ -1,6 +1,5 @@
 /**
  * Utility & Security Functions
- * Kumpulan fungsi bantuan yang digunakan di seluruh aplikasi.
  */
 import { AuraState } from './state.js';
 import { Logger } from './logger.js';
@@ -47,14 +46,15 @@ export const AuraUtils = {
         }
     },
 
+    // KUNCI PERBAIKAN KURS DI SINI! (Hanya dikali satu kali di fungsi ini)
     formatCurrency: function(amount) {
         try {
             const currency = AuraState.system.displayCurrency || 'JPY';
             const val = Number(amount) || 0;
             
             if (currency === 'IDR') {
-                // HANYA MENCETAK STRING, TIDAK MENGALIKAN RATE LAGI (Mencegah Double Math)
-                return 'Rp ' + Math.round(val).toLocaleString('id-ID');
+                const rate = AuraState.system.exchangeRate || 105;
+                return 'Rp ' + Math.round(val * rate).toLocaleString('id-ID');
             } else {
                 return '¥' + Math.round(val).toLocaleString('ja-JP');
             }
@@ -71,7 +71,6 @@ export const AuraUtils = {
         if (!fromCurrency || fromCurrency === currentDisplay) return numAmount;
         
         const rate = AuraState.system.exchangeRate || 105;
-        
         if (fromCurrency === 'JPY' && currentDisplay === 'IDR') return numAmount * rate;
         if (fromCurrency === 'IDR' && currentDisplay === 'JPY') return numAmount / rate;
         return numAmount; 
@@ -125,7 +124,8 @@ export const AuraUtils = {
 
     getPeriodRange: function() {
         const now = new Date();
-        const mode = AuraState.filters.periodMode;
+        // PERBAIKAN CRASH: Gunakan optional chaining agar aman saat booting
+        const mode = AuraState.filters?.periodMode || 'period';
         let start, end;
         
         if (mode === 'period') {
