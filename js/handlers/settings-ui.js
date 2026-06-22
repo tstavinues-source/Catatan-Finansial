@@ -81,7 +81,6 @@ window.addGroqKey = async function() {
         return;
     }
     
-    // Perbaikan: Tambahkan window. agar aman
     const encrypted = window.EncryptionService.encryptApiKey(key, groqSecretKey);
     if (!encrypted) {
         if (window.showToast) window.showToast("Sistem enkripsi gagal memproses kunci.", true);
@@ -89,7 +88,6 @@ window.addGroqKey = async function() {
     }
     
     try {
-        // PAKSA UPDATE ARRAY LOKAL AGAR LANGSUNG MUNCUL DI LAYAR
         if(!window.AuraState.data.groqKeys) window.AuraState.data.groqKeys = [];
         window.AuraState.data.groqKeys.push({ 
             id: 'groq_' + Date.now(), 
@@ -97,7 +95,6 @@ window.addGroqKey = async function() {
             active: true 
         });
 
-        // Simpan ke Firebase
         if (window.FirebaseService && typeof window.FirebaseService.saveGroqKey === 'function') {
             await window.FirebaseService.saveGroqKey(encrypted);
         } else {
@@ -107,7 +104,6 @@ window.addGroqKey = async function() {
         input.value = '';
         if (window.showToast) window.showToast("Kunci API Groq berhasil diamankan ke dalam brankas.");
         
-        // Render ulang UI
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
         
         const badge = document.getElementById('groq-status-badge');
@@ -298,8 +294,58 @@ window.renderRecurringUIForBudget = function() {
 };
 
 // ============================================================================
-// LANJUTAN: TRACKER, FAMILY, & AUDIT LOGS
+// LANJUTAN: TRACKER DINAMIS (DILENGKAPI AI FORM FILLER)
 // ============================================================================
+
+// --- FUNGSI BARU: ASISTEN AI PENGISI FORM TRACKER ---
+window.autoFillTrackerWithAI = async function() {
+    const topic = prompt("Tracker apa yang ingin kamu buat? (Misal: Skincare, Kopi, Kucing)");
+    if (!topic || topic.trim() === '') return;
+    
+    // Tampilkan status loading pada tombol
+    const btn = document.getElementById('btn-ai-tracker');
+    const originalText = btn.innerHTML;
+    if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...';
+        btn.disabled = true;
+    }
+
+    try {
+        const systemPrompt = `Kamu adalah ahli pembuat kata kunci untuk sistem Tracker Keuangan. 
+TUGAS: Buat konfigurasi untuk melacak pengeluaran pengguna yang berkaitan dengan topik: "${topic}".
+1. "id": satu kata pendek huruf kecil (contoh: kopi, kucing, skincare).
+2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe, Anabul, Perawatan Wajah).
+3. "keywords": array minimal 10 kata yang merupakan sinonim, merek terkenal, atau benda terkait topik tersebut. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi", "cafe", "latte", "espresso", "americano"]).
+
+WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG \`\`\`json:
+{
+    "id": "string",
+    "name": "string",
+    "keywords": ["string1", "string2", "string3"]
+}`;
+        const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
+        
+        // Memanggil AI Orchestrator
+        const responseText = await window.executeAIWithFallback(messages, systemPrompt, true, null);
+        const aiJson = AuraUtils.parseCleanJSON(responseText);
+
+        // Mengisi Form
+        AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || '');
+        AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || '');
+        AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
+        
+        if (window.showToast) window.showToast("Berhasil! AI telah mengisi form untukmu.");
+
+    } catch (e) {
+        if (window.showToast) window.showToast("AI gagal memproses permintaan: " + e.message, true);
+    } finally {
+        // Kembalikan tombol ke keadaan semula
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+};
 
 window.openTrackerManager = function() {
     const listContainer = document.getElementById('tracker-list-container');
@@ -317,12 +363,23 @@ window.openTrackerManager = function() {
         <div class="glass-panel p-3 border-l-2 border-l-amber-400 flex justify-between items-center mb-2">
             <div>
                 <p class="text-xs font-bold text-amber-400">${AuraUtils.escapeHtml(t.name)}</p>
-                <p class="text-[9px] text-[var(--text-muted)] uppercase mt-0.5">Keys: ${AuraUtils.escapeHtml(t.keywords.join(', '))}</p>
+                <p class="text-[9px] text-[var(--text-muted)] uppercase mt-0.5 leading-relaxed">Keys: ${AuraUtils.escapeHtml(t.keywords.join(', '))}</p>
             </div>
             <button onclick="window.removeTracker('${id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
         </div>`;
     }
     listContainer.innerHTML = html;
+    
+    // MENYISIPKAN TOMBOL AI DI ATAS FORM TAMBAH TRACKER
+    const formContainer = document.getElementById('new-tracker-form-container');
+    if (formContainer && !document.getElementById('btn-ai-tracker')) {
+        const aiBtnHtml = `
+        <button id="btn-ai-tracker" onclick="window.autoFillTrackerWithAI()" class="w-full bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 font-bold text-[10px] py-2 rounded-lg mb-3 transition active:scale-[0.98]">
+            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Isi Otomatis dengan AI
+        </button>`;
+        formContainer.insertAdjacentHTML('afterbegin', aiBtnHtml);
+    }
+
     if (typeof window.showModal === 'function') window.showModal('modal-edit-tracker');
 };
 
