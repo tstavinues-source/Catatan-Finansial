@@ -489,12 +489,19 @@
             </div>
             <div id="tracker-list-container" class="space-y-3 mb-5"></div>
             <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
-                <h4 class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Tambah Tracker Baru</h4>
-                <input type="text" id="new-track-id" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="ID (Contoh: kopi)">
-                <input type="text" id="new-track-name" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Nama Label (Cth: Ngopi)">
-                <input type="text" id="new-track-keywords" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Kata Kunci (Cth: starbucks, kopi, janji jiwa)">
-                <button onclick="window.saveNewTracker()" class="w-full py-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs uppercase tracking-wider hover:bg-amber-500/40 transition">Simpan Tracker</button>
-            </div>
+    <h4 class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Tambah Tracker Baru</h4>
+    
+    <div id="new-tracker-form-container" class="space-y-3">
+        <input type="text" id="new-track-id" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="ID (Contoh: kopi)">
+        
+        <input type="text" id="new-track-name" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Nama Label (Cth: Ngopi)">
+        
+        <input type="text" id="new-track-keywords" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Kata Kunci (Cth: starbucks, kopi, janji jiwa)">
+        
+        <button onclick="window.saveNewTracker()" class="w-full py-3 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs uppercase tracking-wider hover:bg-amber-500/40 transition">Simpan Tracker</button>
+    </div>
+</div>
+
         </div>
     </div>
 
