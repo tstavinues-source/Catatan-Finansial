@@ -1,6 +1,7 @@
 /**
- * Firebase Core Service & Audit Logging Module
- * Mengelola koneksi database realtime, status sinkronisasi, otentikasi, dan operasi CRUD.
+ * Firebase Core Service & Real-Time Sync Engine
+ * Mengelola koneksi database realtime, status sinkronisasi, dan operasi CRUD.
+ * Dilengkapi dengan "Triple-Shot Renderer" untuk mencegah UI kosong saat refresh.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -24,30 +25,25 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 CCTV PELUKIS LAYAR (ANTI RACE-CONDITION)
+// 🚀 TRIPLE-SHOT RENDERER (Senjata Pamungkas Anti Layar Kosong)
 // ============================================================================
-AuraState.system.dataVersion = 0; // Penanda jika ada data baru masuk
-let lastRenderedVersion = -1;     // Penanda versi data yang terakhir dilukis di layar
+window.forceSyncUI = function() {
+    const executeRender = () => {
+        if (typeof window.renderDashboard === 'function') window.renderDashboard();
+        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if (typeof window.renderBudgets === 'function') window.renderBudgets();
+    };
 
-setInterval(() => {
-    // Jika ada data baru (version berbeda) DAN user sudah login
-    if (AuraState.user.uid && AuraState.system.dataVersion !== lastRenderedVersion) {
-        
-        // SANGAT PENTING: Pastikan fungsi pelukis sudah diunduh browser DAN elemen HTML utamanya sudah siap di layar!
-        const isUIReady = typeof window.renderDashboard === 'function' && document.getElementById('dash-total-balance');
-        
-        if (isUIReady) {
-            window.renderDashboard();
-            if (typeof window.renderTransactions === 'function') window.renderTransactions();
-            if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-            if (typeof window.renderBudgets === 'function') window.renderBudgets();
-            
-            // Catat bahwa data versi ini sudah berhasil dilukis, jadi CCTV bisa istirahat
-            lastRenderedVersion = AuraState.system.dataVersion;
-        }
-        // Jika UI belum siap, biarkan interval ini berputar lagi dalam 300ms sampai berhasil!
-    }
-}, 300); 
+    // Tembakan 1: Dieksekusi Instan
+    executeRender();
+
+    // Tembakan 2: Jeda 300ms (Menunggu DOM HTML selesai dimuat)
+    setTimeout(executeRender, 300);
+
+    // Tembakan 3: Jeda 1 detik (Jaring pengaman jika HP/Browser sedang lemot)
+    setTimeout(executeRender, 1000);
+};
 
 try {
     firebaseAppInstance = initializeApp(FIREBASE_CONFIG);
@@ -62,13 +58,7 @@ try {
     
     const connectionRef = ref(dbInstance, ".info/connected");
     onValue(connectionRef, function(snap) {
-        if (snap.val() === true) {
-            AuraState.system.isOnline = true;
-            Logger.success('Core', 'Sinkronisasi Cloud Firebase AKTIF.');
-        } else {
-            AuraState.system.isOnline = false;
-            Logger.warn('Core', 'Mode Offline (Koneksi Terputus).');
-        }
+        AuraState.system.isOnline = snap.val() === true;
     });
 
     onAuthStateChanged(authInstance, (user) => {
@@ -86,20 +76,23 @@ try {
                 const arr = [];
                 if (data) {
                     for (const key in data) {
-                        if (!data[key].is_deleted) arr.push({ id: key, ...data[key] }); // Saring sampah
+                        if (!data[key].is_deleted) arr.push({ id: key, ...data[key] });
                     }
                 }
                 arr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
-                
                 AuraState.data.transactions = arr;
-                AuraState.system.dataVersion++; // 🔔 Pancing CCTV untuk melukis!
+                
+                // 💥 Tembak UI
+                window.forceSyncUI();
             });
 
             // 2. STREAM PENGATURAN
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                AuraState.system.dataVersion++; // 🔔 Pancing CCTV untuk melukis!
+                
+                // 💥 Tembak UI
+                window.forceSyncUI();
             });
 
             // 3. STREAM GOALS
@@ -111,7 +104,9 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                AuraState.system.dataVersion++; // 🔔 Pancing CCTV untuk melukis!
+                
+                // 💥 Tembak UI
+                window.forceSyncUI();
             });
             
         } else {
@@ -119,7 +114,6 @@ try {
             AuraState.data.transactions = [];
             AuraState.data.settings = {};
             AuraState.data.goals = [];
-            lastRenderedVersion = -1; // Reset CCTV
             
             Logger.info('Auth', 'Sesi kosong. Menunggu login...');
             if (typeof window.showModal === 'function') window.showModal('modal-login');
@@ -135,9 +129,9 @@ try {
 // ----------------------------------------------------------------------------
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
-        AuraState.system.dataVersion++; // Cukup manipulasi angkanya, CCTV akan otomatis menyegarkan layarmu!
+        window.forceSyncUI();
         if (!silent && typeof window.showToast === 'function') {
-            window.showToast("Antarmuka disegarkan (UI Sync).");
+            window.showToast("Menyegarkan antarmuka... UI Synchronized.");
         }
     }
 };
