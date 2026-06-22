@@ -1,6 +1,6 @@
 /**
  * Navigation & UI State Handlers
- * Mengelola perpindahan tab halaman, tema, filter pencarian, toggle mata uang, dan prompt UI dasar.
+ * Mengelola perpindahan tab, tema (Serenity), filter, dan mata uang.
  */
 
 import { AuraState } from '../core/state.js';
@@ -14,7 +14,6 @@ import { Logger } from '../core/logger.js';
 window.switchView = function(viewId) {
     const views = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash'];
     
-    // Sembunyikan semua view
     for (let i = 0; i < views.length; i++) {
         AuraUtils.safeDOM(`view-${views[i]}`, function(el) {
             el.classList.add('hidden');
@@ -22,7 +21,6 @@ window.switchView = function(viewId) {
         });
     }
     
-    // Tampilkan view target
     AuraUtils.safeDOM(`view-${viewId}`, function(el) {
         el.classList.remove('hidden');
         el.classList.add('block');
@@ -30,7 +28,6 @@ window.switchView = function(viewId) {
 
     AuraState.system.activeView = viewId;
     
-    // Update styling tombol navigasi bawah
     const navBtns = document.querySelectorAll('.nav-btn');
     for (let i = 0; i < navBtns.length; i++) {
         const btn = navBtns[i];
@@ -43,7 +40,6 @@ window.switchView = function(viewId) {
         }
     }
 
-    // Trigger pembaruan UI otomatis saat halaman tertentu dibuka
     if (viewId === 'dashboard' || viewId === 'analytics') {
         if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
     } else if (viewId === 'transactions') {
@@ -56,12 +52,13 @@ window.switchView = function(viewId) {
 };
 
 // ============================================================================
-// KONTROL TEMA VISUAL
+// KONTROL TEMA VISUAL (SERENITY MODE)
 // ============================================================================
 
 window.toggleTheme = function() {
-    const themes = ['midnight', 'sakura', 'neon'];
-    const currentTheme = AuraState.system.theme;
+    // Daftar tema diperbarui: Neon diganti dengan Serenity
+    const themes = ['midnight', 'sakura', 'serenity']; 
+    let currentTheme = AuraState.system.theme || document.documentElement.getAttribute('data-theme') || 'midnight';
     
     let currentIndex = themes.indexOf(currentTheme);
     if (currentIndex === -1) currentIndex = 0;
@@ -72,18 +69,17 @@ window.toggleTheme = function() {
     document.documentElement.setAttribute('data-theme', nextTheme);
     AuraState.system.theme = nextTheme;
     
-    // Simpan ke database jika user sudah login
     if (AuraState.user.uid && window.FirebaseService) {
         window.FirebaseService.updateSettings({ theme: nextTheme }).catch(err => {
             Logger.warn('Navigation', 'Gagal menyimpan preferensi tema ke Cloud', err);
         });
     }
     
-    if (window.showToast) window.showToast(`Tema diubah ke mode: ${nextTheme.toUpperCase()}`);
+    if (window.showToast) window.showToast(`Tampilan berganti ke mode: ${nextTheme.toUpperCase()}`);
 };
 
 // ============================================================================
-// FILTER, MULTI-USER & MODE PERIODE WAKTU (KAS APATO)
+// FILTER, MULTI-USER & MODE PERIODE WAKTU
 // ============================================================================
 
 window.changeViewMode = function(mode) {
@@ -104,15 +100,9 @@ window.changeViewMode = function(mode) {
 };
 
 window.applyFilters = function() {
-    AuraUtils.safeDOM('filter-search', function(el) {
-        AuraState.filters.search = el.value || '';
-    });
-    AuraUtils.safeDOM('filter-category', function(el) {
-        AuraState.filters.category = el.value || 'ALL';
-    });
-    AuraUtils.safeDOM('filter-user', function(el) {
-        AuraState.filters.user = el.value || 'ALL';
-    });
+    AuraUtils.safeDOM('filter-search', el => AuraState.filters.search = el.value || '');
+    AuraUtils.safeDOM('filter-category', el => AuraState.filters.category = el.value || 'ALL');
+    AuraUtils.safeDOM('filter-user', el => AuraState.filters.user = el.value || 'ALL');
     
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 };
@@ -123,40 +113,27 @@ window.populateUserFilterDropdown = function() {
         const membersSettings = AuraState.data.settings?.familyMembers || [];
         const uniqueUsers = new Set();
         
-        for (let i = 0; i < transactions.length; i++) {
-            if (transactions[i].user_id) {
-                uniqueUsers.add(transactions[i].user_id);
-            }
-        }
-        
-        for (let i = 0; i < membersSettings.length; i++) {
-            uniqueUsers.add(membersSettings[i]);
-        }
+        transactions.forEach(t => t.user_id && uniqueUsers.add(t.user_id));
+        membersSettings.forEach(m => uniqueUsers.add(m));
 
         let htmlOpts = `<option value="ALL">SEMUA PENGGUNA</option>`;
-        const usersArray = Array.from(uniqueUsers);
-        
-        for (let i = 0; i < usersArray.length; i++) {
-            const userNm = AuraUtils.escapeHtml(usersArray[i]);
+        Array.from(uniqueUsers).forEach(user => {
+            const userNm = AuraUtils.escapeHtml(user);
             htmlOpts += `<option value="${userNm}">${userNm}</option>`;
-        }
+        });
         
         const currentVal = el.value;
         el.innerHTML = htmlOpts;
-        
-        if (currentVal && uniqueUsers.has(currentVal)) {
-            el.value = currentVal;
-        }
+        if (currentVal && uniqueUsers.has(currentVal)) el.value = currentVal;
     });
 };
 
 // ============================================================================
-// KONTROL MATA UANG (CURRENCY TOGGLE)
+// KONTROL MATA UANG
 // ============================================================================
 
 window.setCurrency = function(curr) {
     if (curr !== 'JPY' && curr !== 'IDR') return;
-    
     AuraState.system.displayCurrency = curr;
     
     const btnJpy = document.getElementById('btn-curr-jpy');
@@ -173,48 +150,35 @@ window.setCurrency = function(curr) {
     }
     
     if (AuraState.user.uid && window.FirebaseService) {
-        window.FirebaseService.updateSettings({ currency: curr }).catch(err => {
-            Logger.warn('Navigation', 'Gagal menyimpan preferensi mata uang', err);
-        });
+        window.FirebaseService.updateSettings({ currency: curr }).catch(err => Logger.warn('Navigation', 'Gagal menyimpan mata uang', err));
     }
     
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 };
 
 // ============================================================================
-// UI TOGGLES & PROMPTS (Goal & Budget)
+// UI TOGGLES
 // ============================================================================
 
 window.toggleGoalForm = function() {
-    AuraUtils.safeDOM('goal-form', function(el) {
-        el.classList.toggle('hidden');
-    });
+    AuraUtils.safeDOM('goal-form', el => el.classList.toggle('hidden'));
 };
 
 window.promptBudget = function() {
-    const currentBudget = AuraState.data.monthlyBudget || 100000;
-    const amt = prompt("Ubah Batas Anggaran (Nominal Angka):", currentBudget);
-    if (amt !== null) {
-        const parsedAmt = parseFloat(amt);
-        if (!isNaN(parsedAmt) && parsedAmt >= 0) {
-            AuraState.data.monthlyBudget = parsedAmt;
-            
-            if (AuraState.user.uid && window.FirebaseService) {
-                window.FirebaseService.updateSettings({ 
-                    monthlyBudget: { limit: parsedAmt } 
-                }).catch(err => {
-                    Logger.warn('Navigation', 'Gagal simpan budget ke Cloud', err);
-                });
+    // Menggunakan AURA ALERT PROMPT untuk UI yang lebih premium
+    window.AuraAlert.prompt("Ubah Batas Anggaran (Nominal Angka):", "Masukkan nominal...", (amt) => {
+        if (amt !== null) {
+            const parsedAmt = parseFloat(amt);
+            if (!isNaN(parsedAmt) && parsedAmt >= 0) {
+                AuraState.data.monthlyBudget = parsedAmt;
+                if (AuraState.user.uid && window.FirebaseService) {
+                    window.FirebaseService.updateSettings({ monthlyBudget: { limit: parsedAmt } });
+                }
+                if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+                if (window.showToast) window.showToast(`Anggaran diperbarui!`);
+            } else {
+                if (window.showToast) window.showToast("Input tidak valid!", true);
             }
-            
-            if (typeof window.debouncedCalculateAll === 'function') {
-                window.debouncedCalculateAll();
-            }
-            if (window.showToast) {
-                window.showToast(`Anggaran diperbarui menjadi ${AuraUtils.formatCurrency(parsedAmt)}`);
-            }
-        } else {
-            if (window.showToast) window.showToast("Input anggaran tidak valid!", true);
         }
-    }
+    });
 };
