@@ -1,54 +1,39 @@
 /**
  * Analytics & Statistics Module
  * Mengelola kalkulasi pengeluaran dengan sistem Induk-Anak (Accordion), 
- * rendering grafik, Pie Chart, eksport data (CSV), dan Smart Grouper.
+ * rendering grafik, eksport CSV, dan Hierarki Mapping Manual (Human-in-the-loop).
  */
 
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
 import { CategoryManager } from './categories.js';
+import { APP_CONFIG } from '../config/constants.js';
+import { ref, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// === MESIN PENYORTIR PINTAR (SMART GROUPER) ===
-// Mencegat kategori buatan AI dan memaksanya masuk ke folder Induk yang tepat
+// === MESIN PENYORTIR PINTAR (GABUNGAN MANUAL + AI) ===
 function getParentCategory(catName) {
+    // 1. Cek Memori Manual User (Prioritas Tertinggi)
+    const customMap = AuraState.data.settings?.categoryMappings || {};
+    if (customMap[catName]) return customMap[catName];
+
+    // 2. Cerdas Otomatis AI (Fallback)
     const n = catName.toLowerCase();
-    
-    // Rumpun Minuman
-    if (n.includes('minum') || n.includes('kopi') || n.includes('teh') || n.includes('kafe')) {
-        return 'Minuman';
-    }
-    // Rumpun Makanan (Termasuk bahan mentah, camilan, dan susu)
-    if (n.match(/makan|camilan|snack|susu|telur|daging|ayam|ikan|sayur|buah|bumbu|roti|kue|instan|kaleng|mie|jajanan/)) {
-        return 'Makanan';
-    }
-    // Rumpun Elektronik & Digital
-    if (n.match(/elektronik|pulsa|data|internet|listrik|gadget|game|wifi|topup/)) {
-        return 'Elektronik';
-    }
-    // Rumpun Bahan Pokok
-    if (n.match(/pokok|beras|minyak|gula|sembako/)) {
-        return 'Bahan Pokok';
-    }
-    // Rumpun Rumah Tangga & Utilitas
-    if (n.match(/rumah|alat|sabun|deterjen|sampo|odol|mandi|cuci/)) {
-        return 'Peralatan Rumah Tangga';
-    }
-    // Rumpun Transportasi
-    if (n.match(/transport|bensin|parkir|kereta|bus|gojek|grab|tol/)) {
-        return 'Transportasi';
-    }
-    // Rumpun Pakaian & Kesehatan
+    if (n.match(/makan|camilan|snack|susu|telur|daging|ayam|ikan|sayur|buah|bumbu|bahan|roti|kue|instan|kaleng|mie|jajanan/)) return 'Makanan';
+    if (n.match(/minum|kopi|teh|kafe|cair|jus/)) return 'Minuman';
+    if (n.match(/elektronik|pulsa|data|internet|listrik|gadget|game|wifi|topup/)) return 'Elektronik';
+    if (n.match(/pokok|beras|minyak|gula|sembako/)) return 'Bahan Pokok';
+    if (n.match(/rumah|alat|sabun|deterjen|sampo|odol|mandi|cuci|bersih/)) return 'Peralatan Rumah Tangga';
+    if (n.match(/transport|bensin|parkir|kereta|bus|gojek|grab|tol/)) return 'Transportasi';
     if (n.match(/pakaian|baju|celana|sepatu|fashion/)) return 'Pakaian';
-    if (n.match(/sehat|obat|medis|dokter|apotek/)) return 'Kesehatan';
+    if (n.match(/sehat|obat|medis|dokter|apotek|klinik/)) return 'Kesehatan';
     
-    // Jika AI membuat kategori yang sangat asing, buang ke Lainnya
     return 'Lainnya';
 }
 
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
     
-    // 1. FILTER WAKTU (Siklus 16-15 vs Bulanan)
+    // 1. FILTER WAKTU
     let startDate = 0, endDate = Infinity;
     const now = new Date();
     const mode = AuraState.system.viewMode || 'period';
@@ -69,51 +54,38 @@ window.renderAnalytics = function() {
         startDate = 0; 
     }
 
-    // Variabel Penyimpanan Hierarki
     let catMap = {}; 
     let merchantMap = {};
     let totalExpense = 0;
     const trend7Days = [0, 0, 0, 0, 0, 0, 0];
 
-    // 2. PROSES & FILTER DATA TRANSAKSI
+    // 2. PROSES DATA TRANSAKSI
     transactions.forEach(trx => {
         if (trx.is_deleted || trx.tipe !== 'pengeluaran') return;
         
         const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
-
-        if (daysDiff >= 0 && daysDiff < 7) {
-            trend7Days[6 - daysDiff] += (trx.nominal || 0);
-        }
+        const daysDiff = Math.floor((now.getTime() - trxTime) / (1000 * 3600 * 24));
+        
+        if (daysDiff >= 0 && daysDiff < 7) trend7Days[6 - daysDiff] += (trx.nominal || 0);
 
         if (trxTime >= startDate && trxTime <= endDate) {
             const safeMerchant = (trx.merchantName || trx.storeName || 'Tidak Diketahui').trim().toUpperCase();
             let trxExpense = 0;
 
             (trx.items || []).forEach(it => {
-                // Pembersih Kategori
                 let rawCat = (it.kategori_barang || 'Lainnya').trim();
-                let cleanCat = rawCat.split(' ').map(word => 
-                    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                ).join(' ');
-
+                let cleanCat = rawCat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                 
-                // Panggil Penyortir Pintar untuk menentukan Induknya
                 const parentName = getParentCategory(cleanCat);
                 const styleInfo = CategoryManager.resolveStyle(parentName);
 
                 if (!catMap[parentName]) {
-                    catMap[parentName] = { 
-                        total: 0, 
-                        style: styleInfo, 
-                        subs: {} 
-                    };
+                    catMap[parentName] = { total: 0, style: styleInfo, subs: {} };
                 }
 
-                // Masukkan ke Induk dan Sub-kategorinya
                 catMap[parentName].total += val;
                 catMap[parentName].subs[cleanCat] = (catMap[parentName].subs[cleanCat] || 0) + val;
-                
                 trxExpense += val;
             });
 
@@ -122,23 +94,17 @@ window.renderAnalytics = function() {
         }
     });
 
-    // 3. RENDER DISTRIBUSI KATEGORI (ACCORDION UI)
+    // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
     AuraUtils.safeDOM('pie-total-label', el => el.innerText = AuraUtils.formatCurrency(totalExpense));
     
     const sortedParents = Object.keys(catMap).map(k => ({
-        name: k, 
-        total: catMap[k].total,
-        style: catMap[k].style,
-        subs: catMap[k].subs
+        name: k, total: catMap[k].total, style: catMap[k].style, subs: catMap[k].subs
     })).sort((a,b) => b.total - a.total);
 
-    // Pie Chart Renderer
     AuraUtils.safeDOM('category-pie-chart', el => {
         if (totalExpense > 0 && sortedParents.length > 0) {
-            let conicStops = []; 
-            let currentAngle = 0;
-            
+            let conicStops = []; let currentAngle = 0;
             for (let i = 0; i < sortedParents.length; i++) {
                 let pct = (sortedParents[i].total / totalExpense) * 100; 
                 let hex = sortedParents[i].style.hex;
@@ -146,33 +112,31 @@ window.renderAnalytics = function() {
                 currentAngle += pct;
             }
             el.style.background = `conic-gradient(${conicStops.join(', ')})`;
-        } else { 
-            el.style.background = `conic-gradient(var(--border-glass) 0% 100%)`; 
-        }
+        } else { el.style.background = `conic-gradient(var(--border-glass) 0% 100%)`; }
     });
     
     if (catContainer) {
-        catContainer.innerHTML = '';
+        catContainer.innerHTML = `
+        <div class="flex justify-between items-center mb-4">
+            <span class="text-xs font-bold text-[var(--text-muted)]"><i class="fa-solid fa-layer-group mr-1"></i> Hierarki Data</span>
+            <button onclick="window.openCategoryMapper()" class="bg-accent/20 border border-accent/50 hover:bg-accent hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider text-accent transition flex items-center gap-1.5 active:scale-95">
+                <i class="fa-solid fa-sliders"></i> ATUR INDUK
+            </button>
+        </div>`;
         
         if (sortedParents.length === 0) {
-            catContainer.innerHTML = '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada pengeluaran di siklus ini.</p>';
+            catContainer.innerHTML += '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada pengeluaran di siklus ini.</p>';
         } else {
             sortedParents.forEach((p, idx) => {
                 let percent = totalExpense > 0 ? Math.round((p.total / totalExpense) * 100) : 0;
-                
-                const sortedSubs = Object.keys(p.subs).map(subK => ({
-                    name: subK,
-                    total: p.subs[subK]
-                })).sort((a,b) => b.total - a.total);
+                const sortedSubs = Object.keys(p.subs).map(subK => ({ name: subK, total: p.subs[subK] })).sort((a,b) => b.total - a.total);
 
                 let subsHtml = '';
                 const hasSpecificSubs = sortedSubs.some(sub => sub.name !== p.name);
 
                 if (hasSpecificSubs) {
                     sortedSubs.forEach(sub => {
-                        // Jangan tampilkan sub-kategori jika namanya persis sama dengan induknya (mencegah redundansi visual)
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
-                        
                         subsHtml += `
                         <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/5 transition">
                             <span class="text-[10px] text-slate-300 flex items-center gap-2">
@@ -183,10 +147,7 @@ window.renderAnalytics = function() {
                         </div>`;
                     });
                 } else {
-                    subsHtml += `
-                        <div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center">
-                            Seluruhnya adalah item umum ${p.name}.
-                        </div>`;
+                    subsHtml += `<div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center">Seluruhnya adalah item umum ${p.name}.</div>`;
                 }
 
                 catContainer.innerHTML += `
@@ -216,12 +177,11 @@ window.renderAnalytics = function() {
         }
     }
 
-    // 4. RENDER TOP MERCHANTS
+    // 4. RENDER TOP MERCHANTS & STATS...
     const merchantContainer = document.getElementById('top-merchants-list');
     if (merchantContainer) {
         merchantContainer.innerHTML = '';
         const sortedMerchants = Object.keys(merchantMap).map(k => ({name: k, total: merchantMap[k]})).sort((a,b) => b.total - a.total).slice(0, 5);
-        
         if (sortedMerchants.length === 0) {
             merchantContainer.innerHTML = '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada toko yang dikunjungi.</p>';
         } else {
@@ -239,61 +199,124 @@ window.renderAnalytics = function() {
         }
     }
 
-    // 5. RENDER STATISTIK & PROYEKSI
     const daysElapsed = Math.max(1, Math.ceil((now.getTime() - startDate) / (1000 * 3600 * 24)));
     const totalDays = Math.max(1, Math.ceil((endDate - startDate) / (1000 * 3600 * 24)));
-    
     const dailyAvg = totalExpense / daysElapsed;
     const projected = dailyAvg * totalDays;
 
     AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = AuraUtils.formatCurrency(dailyAvg));
     AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = AuraUtils.formatCurrency(projected));
-
     drawCanvasChart(trend7Days);
 };
 
+// === FUNGSI MANAJER KATEGORI (MODAL DINAMIS) ===
+window.openCategoryMapper = function() {
+    let modal = document.getElementById('modal-category-mapper');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-category-mapper';
+        modal.className = 'fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        document.body.appendChild(modal);
+    }
+
+    // Ambil semua sub-kategori unik dari riwayat transaksi
+    const tx = AuraState.data.transactions || [];
+    const uniqueSubs = new Set();
+    tx.forEach(t => {
+        if(t.is_deleted || t.tipe !== 'pengeluaran') return;
+        (t.items || []).forEach(it => {
+            let cleanCat = (it.kategori_barang || 'Lainnya').trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            uniqueSubs.add(cleanCat);
+        });
+    });
+
+    const parentOptions = [
+        'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok',
+        'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya'
+    ];
+
+    let listHtml = '';
+    Array.from(uniqueSubs).sort().forEach(sub => {
+        const currentParent = getParentCategory(sub);
+        let opts = parentOptions.map(p => `<option value="${p}" ${p === currentParent ? 'selected' : ''}>${p}</option>`).join('');
+        
+        listHtml += `
+        <div class="flex justify-between items-center bg-black/30 p-2.5 border-b border-[var(--border-glass)] group hover:bg-white/5 transition">
+            <span class="text-xs font-bold text-slate-200 group-hover:text-accent truncate pr-2">${sub}</span>
+            <select class="bg-black/60 border border-[var(--border-glass)] text-[10px] rounded p-1.5 outline-none focus:border-accent text-[var(--text-muted)] cursor-pointer" onchange="window.updateCategoryMapping('${sub}', this.value)">
+                ${opts}
+            </select>
+        </div>`;
+    });
+
+    if (listHtml === '') listHtml = '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada data sub-kategori.</p>';
+
+    modal.innerHTML = `
+    <div class="glass-panel w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent">
+        <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
+            <div>
+                <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-folder-tree mr-1"></i> Manajer Hierarki</h3>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5">Pindahkan item salah alamat ke Induk yang benar.</p>
+            </div>
+            <button onclick="window.closeCategoryMapper()" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 space-y-1 relative hide-scrollbar">
+            ${listHtml}
+        </div>
+    </div>`;
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+};
+
+window.closeCategoryMapper = function() {
+    const modal = document.getElementById('modal-category-mapper');
+    if (modal) {
+        modal.classList.add('opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+};
+
+window.updateCategoryMapping = async function(subCat, newParent) {
+    if (!AuraState.user.uid) return;
+    const db = AuraState.instances.db;
+    const updates = {};
+    updates[`${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/categoryMappings/${subCat}`] = newParent;
+
+    try {
+        await update(ref(db), updates);
+        if (window.showToast) window.showToast(`Sukses: ${subCat} dipindahkan ke ${newParent}`);
+        // Render ulang UI Analytics secara instan agar efeknya langsung terlihat
+        window.renderAnalytics();
+    } catch(e) {
+        if (window.showToast) window.showToast("Gagal menyimpan mapping ke server.", true);
+    }
+};
+
+// === FUNGSI CHART & EXPORT ===
 function drawCanvasChart(dataArray) {
     const canvas = document.getElementById('canvas-7days');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    
-    const width = canvas.offsetWidth || 350;
-    const height = canvas.offsetHeight || 150;
-    
-    canvas.width = width * 2;
-    canvas.height = height * 2;
-    ctx.scale(2, 2);
-    ctx.clearRect(0, 0, width, height);
-
-    const maxVal = Math.max(...dataArray, 100); 
-    const padding = 15;
+    const width = canvas.offsetWidth || 350; const height = canvas.offsetHeight || 150;
+    canvas.width = width * 2; canvas.height = height * 2;
+    ctx.scale(2, 2); ctx.clearRect(0, 0, width, height);
+    const maxVal = Math.max(...dataArray, 100); const padding = 15;
     const barWidth = (width - padding * 2) / 7 - 10;
 
     dataArray.forEach((val, i) => {
         const barHeight = (val / maxVal) * (height - padding * 2.5);
         const x = padding + i * (barWidth + 10);
         const y = height - padding - barHeight;
-        
-        ctx.fillStyle = '#f43f5e';
-        ctx.globalAlpha = i === 6 ? 1.0 : 0.4;
-        
-        if (typeof ctx.roundRect === 'function') {
-            ctx.beginPath();
-            ctx.roundRect(x, y, barWidth, barHeight, 6);
-            ctx.fill();
-        } else {
-            ctx.fillRect(x, y, barWidth, barHeight);
-        }
-        
+        ctx.fillStyle = '#f43f5e'; ctx.globalAlpha = i === 6 ? 1.0 : 0.4;
+        if (typeof ctx.roundRect === 'function') { ctx.beginPath(); ctx.roundRect(x, y, barWidth, barHeight, 6); ctx.fill(); } 
+        else { ctx.fillRect(x, y, barWidth, barHeight); }
         if (val > 0) {
-            ctx.globalAlpha = 1.0;
-            ctx.fillStyle = '#9ca3af';
-            ctx.font = "bold 9px 'Space Grotesk', monospace";
-            ctx.textAlign = "center";
-            
+            ctx.globalAlpha = 1.0; ctx.fillStyle = '#9ca3af'; ctx.font = "bold 9px 'Space Grotesk', monospace"; ctx.textAlign = "center";
             const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRate || 105) : 1;
             const convertedVal = val * rate;
-            
             const displayStr = AuraState.system.displayCurrency === 'IDR' ? (convertedVal / 1000).toFixed(0) + 'k' : (convertedVal / 1000).toFixed(1) + 'k';
             ctx.fillText(displayStr, x + barWidth / 2, y - 5);
         }
@@ -301,41 +324,24 @@ function drawCanvasChart(dataArray) {
 }
 
 window.downloadCSV = function() {
-    // Biarkan fungsi export CSV ini tetap utuh
     const transactions = AuraState.data.transactions || [];
-    if (transactions.length === 0) {
-        if (window.showToast) window.showToast("Tidak ada data untuk diunduh.", true);
-        return;
-    }
-
+    if (transactions.length === 0) { if (window.showToast) window.showToast("Tidak ada data untuk diunduh.", true); return; }
     let csvContent = "TANGGAL,WAKTU,TIPE,METODE,MATA_UANG,MERCHANT,ITEM,KATEGORI,HARGA_SATUAN,QTY,TOTAL_BARANG\n";
-    
     transactions.forEach(trx => {
         if (trx.is_deleted) return;
-        
         const dateObj = new Date(trx.tanggal || trx.createdAt);
-        const dateStr = dateObj.toLocaleDateString('id-ID');
-        const timeStr = dateObj.toLocaleTimeString('id-ID');
+        const dateStr = dateObj.toLocaleDateString('id-ID'); const timeStr = dateObj.toLocaleTimeString('id-ID');
         const safeMerchant = `"${(trx.merchantName || trx.storeName || 'Unknown').replace(/"/g, '""')}"`;
-        
         (trx.items || []).forEach(it => {
             const safeItemName = `"${(it.nama_barang || 'Item').replace(/"/g, '""')}"`;
             const safeCat = `"${(it.kategori_barang || 'Lainnya').replace(/"/g, '""')}"`;
-            const harga = Number(it.harga) || 0;
-            const qty = Number(it.qty) || 1;
-            const subtotal = harga * qty;
-            
+            const harga = Number(it.harga) || 0; const qty = Number(it.qty) || 1; const subtotal = harga * qty;
             csvContent += `${dateStr},${timeStr},${trx.tipe.toUpperCase()},${trx.metode_pembayaran},${trx.mata_uang},${safeMerchant},${safeItemName},${safeCat},${harga},${qty},${subtotal}\n`;
         });
     });
-
     const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    const link = document.createElement("a"); link.setAttribute("href", encodedUri);
     link.setAttribute("download", `AuraFi_Export_${new Date().getTime()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
     if (window.showToast) window.showToast("Data CSV berhasil diunduh!");
 };
