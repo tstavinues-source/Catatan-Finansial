@@ -1,7 +1,7 @@
 /**
  * Super Render Engine
  */
-import { ref, onValue } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js)";
+import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
