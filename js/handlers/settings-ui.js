@@ -1,6 +1,5 @@
 /**
  * Settings UI Handlers & Renderers
- * Mengelola semua form di dalam Modal Settings: Profil, Preferensi AI, API Keys (XOR Cloud Sync), dll.
  */
 
 import { AuraState } from '../core/state.js';
@@ -9,10 +8,6 @@ import { APP_CONFIG } from '../config/constants.js';
 import { DEFAULT_STAPLES_TRACKERS } from '../config/categories.js';
 import { FirebaseService } from '../services/firebase.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-
-// ============================================================================
-// PROFIL & PREFERENSI AI
-// ============================================================================
 
 window.saveUserProfile = async function() {
     const nameEl = document.getElementById('user-fullname');
@@ -33,18 +28,12 @@ window.saveUserProfile = async function() {
     }
     try {
         await FirebaseService.updateSettings({ 
-            profile: { 
-                fullName: name, 
-                nickname: nick,
-                country: country,
-                defaultCurrency: currency
-            } 
+            profile: { fullName: name, nickname: nick, country: country, defaultCurrency: currency } 
         });
         
         if (typeof window.setCurrency === 'function' && AuraState.system.displayCurrency !== currency) {
             window.setCurrency(currency);
         }
-        
         if (window.showToast) window.showToast("Profil, Negara & Mata Uang berhasil disimpan!");
     } catch (e) {
         if (window.showToast) window.showToast("Gagal menyimpan profil.", true);
@@ -72,10 +61,6 @@ window.saveAIPreferences = async function() {
     }
 };
 
-// ============================================================================
-// MANAJEMEN API KEYS (GROQ CLOUD CIPHER & GEMINI)
-// ============================================================================
-
 window.addGroqKey = async function() {
     const input = document.getElementById('new-groq-key');
     if (!input) return;
@@ -86,7 +71,6 @@ window.addGroqKey = async function() {
         return;
     }
     
-    // SISTEM ENKRIPSI XOR DENGAN UID (Aman & Tidak Terbaca di Firebase)
     const secret = AuraState.user?.uid || "aura_secret_fallback";
     let result = '';
     for (let i = 0; i < key.length; i++) {
@@ -96,13 +80,11 @@ window.addGroqKey = async function() {
     
     try {
         await FirebaseService.updateSettings({ groqApiKeyEncrypted: encryptedBase64 });
-        
         if(!AuraState.data.settings) AuraState.data.settings = {};
         AuraState.data.settings.groqApiKeyEncrypted = encryptedBase64;
         
         input.value = '';
         if (window.showToast) window.showToast("Kunci Groq dienkripsi dan diamankan ke Cloud Firebase!");
-        
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
     } catch(e) {
         if (window.showToast) window.showToast("Gagal mengunggah kunci ke Cloud.", true);
@@ -135,7 +117,6 @@ window.renderGroqKeysUI = function() {
             return;
         }
 
-        // Dekripsi Visual untuk ditampilkan
         const secret = AuraState.user?.uid || "aura_secret_fallback";
         let dec = null;
         try {
@@ -195,10 +176,6 @@ window.syncGeminiEngine = async function(silent = false) {
         if (!silent && window.showToast) window.showToast("Dekripsi Gagal: PIN Salah.", true);
     }
 };
-
-// ============================================================================
-// MANAJEMEN TAGIHAN RUTIN (RECURRING)
-// ============================================================================
 
 window.addRecurringPayment = async function() {
     const nameEl = document.getElementById('new-rec-name');
@@ -270,16 +247,12 @@ window.renderRecurringUIForBudget = function() {
     });
 };
 
-// ============================================================================
-// LANJUTAN: TRACKER DINAMIS & FITUR LAINNYA
-// ============================================================================
-
 window.autoFillTrackerWithAI = async function() {
     const topic = prompt("Tracker apa yang ingin kamu buat? (Misal: Skincare, Kopi, Kucing)");
     if (!topic || topic.trim() === '') return;
     
     const btn = document.getElementById('btn-ai-tracker');
-    const originalText = btn.innerHTML;
+    const originalText = btn ? btn.innerHTML : '';
     if (btn) { btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...'; btn.disabled = true; }
 
     try {
@@ -288,7 +261,7 @@ TUGAS: Buat konfigurasi untuk melacak pengeluaran pengguna yang berkaitan dengan
 1. "id": satu kata pendek huruf kecil (contoh: kopi).
 2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe).
 3. "keywords": array minimal 10 kata bersinonim/merek. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi"]).
-WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG \`\`\`json:
+WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG:
 {"id": "string", "name": "string", "keywords": ["string1", "string2"]}`;
         const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
         
