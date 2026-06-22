@@ -40,19 +40,24 @@
     --invert-contrast: #4c0519;
 }
 
-[data-theme="neon"] {
-    --bg-base: #09090b; 
-    --bg-surface: rgba(20, 20, 23, 0.85); 
-    --bg-glass: rgba(34, 34, 38, 0.6);
-    --text-main: #f4f4f5; 
-    --text-muted: #a1a1aa; 
-    --accent-primary: #84cc16; 
-    --accent-glow: rgba(132, 204, 22, 0.35);
-    --color-income: #22c55e; 
-    --color-expense: #ef4444; 
-    --border-glass: rgba(132, 204, 22, 0.2);
-    --invert-contrast: #ffffff;
+/* ============================================================
+   TEMA BARU: SERENITY (GANTI NEON)
+   Perpaduan Pastel Lembut dari Referensi Pengguna
+   ============================================================ */
+[data-theme="serenity"] {
+    --bg-base: #fffcf8; /* Sangat pucat foundational cream (ekstraksi #ffecd2) */
+    --bg-surface: rgba(251, 194, 235, 0.5); /* Soft Lavender/Pink translucent (ekstraksi #fbc2eb) */
+    --bg-glass: rgba(166, 193, 238, 0.4); /* Soft Pastel Blue translucent (ekstraksi #a6c1ee) */
+    --text-main: #334155; /* Slate dark gray - kontras tinggi untuk light theme */
+    --text-muted: #64748b; /* Muted Slate gray */
+    --accent-primary: #ff9a9e; /* Vibrant Soft Pink/Peach dari referensi Anda */
+    --accent-glow: rgba(255, 154, 158, 0.3); /* Glow efph */
+    --color-income: #0d9488; /* Soft Teal green untuk pemasukan */
+    --color-expense: #e11d48; /* Soft Deep Rose red untuk pengeluaran */
+    --border-glass: rgba(0, 0, 0, 0.08); /* Border tipis gelap untuk panel kaca di bg terang */
+    --invert-contrast: #f8fafc; /* Off-white untuk teks di atas accent-primary */
 }
+
 
 body { 
     /* DITAMBAHKAN !important AGAR TAILWIND TIDAK BISA MENIMPA FONT INI */
