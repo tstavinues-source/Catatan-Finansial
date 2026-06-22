@@ -1,6 +1,6 @@
 /**
  * Groq AI Service Engine
- * Mengelola komunikasi ke Groq API menggunakan model tercepat dan terpintar.
+ * Mengelola komunikasi ke Groq API. Dilengkapi sistem Auto-Decryption Cloud Key.
  */
 
 import { AuraState } from '../../core/state.js';
@@ -8,30 +8,42 @@ import { Logger } from '../../core/logger.js';
 
 export const GroqAPI = {
     callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
-        // 1. Tarik API Key dari pengaturan lokal atau memori statis
-        const apiKey = AuraState.data.settings?.groqApiKey || localStorage.getItem('aurafi_groq_key');
         
-        if (!apiKey) {
-            throw new Error("API Key Groq kosong! Silakan isi di menu Pengaturan.");
+        // 1. Tarik API Key yang dienkripsi dari Cloud Firebase
+        const encKey = AuraState.data.settings?.groqApiKeyEncrypted;
+        
+        if (!encKey) {
+            throw new Error("API Key Groq kosong! Silakan pasang Key di menu Pengaturan.");
+        }
+
+        // 2. SISTEM DEKRIPSI OTOMATIS MENGGUNAKAN UID
+        const secret = AuraState.user?.uid || "aura_secret_fallback";
+        let apiKey = null;
+        try {
+            let text = atob(encKey);
+            let result = '';
+            for (let i = 0; i < text.length; i++) {
+                result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+            }
+            apiKey = result;
+        } catch(e) {
+            throw new Error("Gagal membuka brankas Cloud Groq Key.");
+        }
+
+        if (!apiKey || !apiKey.startsWith('gsk_')) {
+            throw new Error("Groq API Key di Cloud korup atau tidak valid.");
         }
 
         if (imgBase64) {
             Logger.warn('GroqAPI', 'Gambar terdeteksi. Groq murni mengandalkan teks, data gambar akan diabaikan.');
         }
 
-        // 2. PEMILIHAN MODEL MUTAKHIR (Data Juni 2026)
-        // Kualitas Tertinggi & Penalaran Oracle: openai/gpt-oss-120b
-        // Kecepatan Super Kilat & JSON (Struk): llama-3.1-8b-instant
+        // 3. Eksekusi Model Mutakhir (Llama 3.1 8B Instant untuk Kecepatan JSON)
         const modelName = requireJson ? "llama-3.1-8b-instant" : "openai/gpt-oss-120b";
-        
-        // Groq menggunakan arsitektur endpoint standar yang kompatibel dengan OpenAI
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
-        const groqMessages = [
-            { role: "system", content: systemPrompt }
-        ];
+        const groqMessages = [{ role: "system", content: systemPrompt }];
         
-        // 3. Konversi format Role dari standar UI ke standar Groq/OpenAI
         messages.forEach(msg => {
             if (msg.role !== 'system') {
                 groqMessages.push({
@@ -41,19 +53,16 @@ export const GroqAPI = {
             }
         });
 
-        // 4. Rakit Payload Final
         const payload = {
             model: modelName,
             messages: groqMessages,
             temperature: requireJson ? 0.0 : 0.7,
         };
 
-        // 5. PAKSAAN JSON MURNI (Wajib untuk ekstraksi struk Staging)
         if (requireJson) {
             payload.response_format = { type: "json_object" };
         }
 
-        // 6. Tembak ke Server LPU Groq
         const response = await fetch(url, {
             method: 'POST',
             headers: { 
@@ -74,5 +83,4 @@ export const GroqAPI = {
     }
 };
 
-// Global Binding agar bisa dipanggil oleh Orchestrator
 window.GroqAPI = GroqAPI;
