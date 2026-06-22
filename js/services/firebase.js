@@ -1,5 +1,6 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
+ * Dioptimalkan menggunakan metode "Pure Reactive" ala Kas Apato.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -23,34 +24,24 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 THE ULTIMATE DEBOUNCER (DENGAN REQUEST ANIMATION FRAME)
+// 🚀 THE "KAS APATO" RENDER INVOKER (REAKTIF MURNI)
 // ============================================================================
-let syncTimeout = null;
-window.forceSyncUI = function() {
-    if (syncTimeout) clearTimeout(syncTimeout);
+const invokeRenderers = () => {
+    // PELINDUNG ES MODULES: Jika file UI belum selesai di-load browser (hanya terjadi di detik pertama buka web), tunggu 50ms.
+    if (typeof window.renderDashboard !== 'function') {
+        setTimeout(invokeRenderers, 50);
+        return;
+    }
     
-    // Kombinasi timeout ringan dan requestAnimationFrame untuk UI yang super mulus
-    syncTimeout = setTimeout(() => {
-        requestAnimationFrame(() => {
-            const renderers = [
-                'renderDashboard', 
-                'renderTransactions', 
-                'renderAnalytics', 
-                'renderBudgets', 
-                'renderTrash'
-            ];
-
-            renderers.forEach(fn => {
-                try {
-                    if (typeof window[fn] === 'function') {
-                        window[fn]();
-                    }
-                } catch (e) {
-                    console.warn(`Peringatan: Gagal menyinkronkan UI pada modul ${fn}`, e);
-                }
-            });
-        });
-    }, 100); // Latensi diturunkan untuk responsivitas maksimal
+    // Jika fungsi sudah siap, langsung HAJAR eksekusi tanpa delay! (Metode Kas Apato)
+    try {
+        window.renderDashboard();
+        if (typeof window.renderTransactions === 'function') window.renderTransactions();
+        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if (typeof window.renderBudgets === 'function') window.renderBudgets();
+    } catch(e) {
+        console.error("UI Render Error:", e);
+    }
 };
 
 try {
@@ -76,7 +67,7 @@ try {
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // 1. STREAM TRANSAKSI MURNI (Tanpa duplikasi get())
+            // 1. STREAM TRANSAKSI (Sama persis seperti Kas Apato db.ref(path).on('value'))
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
@@ -86,11 +77,8 @@ try {
                 if (data) {
                     for (const key in data) {
                         const item = { id: key, ...data[key] };
-                        if (item.is_deleted) {
-                            trashArr.push(item);
-                        } else {
-                            activeArr.push(item);
-                        }
+                        if (item.is_deleted) trashArr.push(item);
+                        else activeArr.push(item);
                     }
                 }
                 
@@ -100,14 +88,14 @@ try {
                 AuraState.data.transactions = activeArr;
                 AuraState.data.trash = trashArr; 
                 
-                window.forceSyncUI();
+                invokeRenderers(); // Panggil langsung!
             });
 
             // 2. STREAM PENGATURAN
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                window.forceSyncUI();
+                invokeRenderers(); // Panggil langsung!
             });
 
             // 3. STREAM GOALS
@@ -119,7 +107,7 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                window.forceSyncUI();
+                invokeRenderers(); // Panggil langsung!
             });
             
         } else {
@@ -137,11 +125,12 @@ try {
     Logger.error('Core', 'Gagal memuat Firebase.', error);
 }
 
+// Fungsi manual dipangkas hanya untuk memanggil invoker
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
-        window.forceSyncUI();
+        invokeRenderers();
         if (!silent && typeof window.showToast === 'function') {
-            window.showToast("Data Disinkronisasi Secara Paksa!");
+            window.showToast("Data Disinkronisasi!");
         }
     }
 };
@@ -172,6 +161,7 @@ export const FirebaseService = {
         data.nominal = Math.max(0, Number(data.nominal) || 0); 
         if (!data.createdAt) data.createdAt = new Date().toISOString();
         
+        // Seperti Kas Apato: Push data, biarkan onValue yang merender UI.
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
         await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
     },
@@ -183,24 +173,23 @@ export const FirebaseService = {
         const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
         data.updatedAt = new Date().toISOString();
         
-        // Optimasi latensi: Langsung tembak update tanpa 'get'
         await update(pathRef, data);
         await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
     },
 
     moveToTrash: async function(id) { 
         this._checkAuth();
-        // Langsung eksekusi pembaruan status ke Firebase. onValue akan otomatis menyegarkan antarmuka!
+        // Langsung hajar update ke Firebase, tidak perlu memanggil UI secara manual!
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`), { 
             is_deleted: true, 
             deletedAt: new Date().toISOString() 
         });
         await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
-        window.forceSyncUI();
     },
 
     deleteTransactionPermanently: async function(id) { 
         this._checkAuth();
+        [span_3](start_span)[span_4](start_span)// Seperti Kas Apato: Langsung remove, biarkan onValue yang bereaksi[span_3](end_span)[span_4](end_span)
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`));
         await this.saveAuditLog("SYS.DESTROY", `Pembersihan permanen ID: ${id}`);
     },
