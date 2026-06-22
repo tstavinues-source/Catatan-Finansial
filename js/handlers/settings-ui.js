@@ -1,5 +1,6 @@
 /**
  * Settings UI Handlers & Renderers
+ * Mengelola Form Profil, Preferensi AI, Kunci API (Groq Pool & Gemini), Tracker Dinamis AI, Keluarga, & Audit.
  */
 
 import { AuraState } from '../core/state.js';
@@ -8,6 +9,10 @@ import { APP_CONFIG } from '../config/constants.js';
 import { DEFAULT_STAPLES_TRACKERS } from '../config/categories.js';
 import { FirebaseService } from '../services/firebase.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+// ============================================================================
+// 1. PROFIL & PREFERENSI AI (TERMASUK DOMISILI PAJAK & MATA UANG)
+// ============================================================================
 
 window.saveUserProfile = async function() {
     const nameEl = document.getElementById('user-fullname');
@@ -26,14 +31,17 @@ window.saveUserProfile = async function() {
         if (window.showToast) window.showToast("Nama dan Panggilan tidak boleh kosong!", true);
         return;
     }
+    
     try {
         await FirebaseService.updateSettings({ 
             profile: { fullName: name, nickname: nick, country: country, defaultCurrency: currency } 
         });
         
+        // Paksa UI berganti mata uang jika user mengubah defaultnya
         if (typeof window.setCurrency === 'function' && AuraState.system.displayCurrency !== currency) {
             window.setCurrency(currency);
         }
+        
         if (window.showToast) window.showToast("Profil, Negara & Mata Uang berhasil disimpan!");
     } catch (e) {
         if (window.showToast) window.showToast("Gagal menyimpan profil.", true);
@@ -61,6 +69,10 @@ window.saveAIPreferences = async function() {
     }
 };
 
+// ============================================================================
+// 2. MANAJEMEN KUNCI API (GROQ POOL CLOUD & GEMINI VISION)
+// ============================================================================
+
 window.addGroqKey = async function() {
     const input = document.getElementById('new-groq-key');
     if (!input) return;
@@ -71,6 +83,7 @@ window.addGroqKey = async function() {
         return;
     }
     
+    // Enkripsi XOR menggunakan UID Firebase agar aman di Cloud
     const secret = AuraState.user?.uid || "aura_secret_fallback";
     let result = '';
     for (let i = 0; i < key.length; i++) {
@@ -79,24 +92,32 @@ window.addGroqKey = async function() {
     const encryptedBase64 = btoa(result);
     
     try {
-        await FirebaseService.updateSettings({ groqApiKeyEncrypted: encryptedBase64 });
+        let currentKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        if (!Array.isArray(currentKeys)) currentKeys = [];
+        currentKeys.push(encryptedBase64); // Tambah ke Array Pool
+        
+        await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
         if(!AuraState.data.settings) AuraState.data.settings = {};
-        AuraState.data.settings.groqApiKeyEncrypted = encryptedBase64;
+        AuraState.data.settings.groqKeysEncrypted = currentKeys;
         
         input.value = '';
-        if (window.showToast) window.showToast("Kunci Groq dienkripsi dan diamankan ke Cloud Firebase!");
+        if (window.showToast) window.showToast(`Kunci Groq Ke-${currentKeys.length} ditambahkan ke Pool Cloud!`);
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
     } catch(e) {
         if (window.showToast) window.showToast("Gagal mengunggah kunci ke Cloud.", true);
     }
 };
 
-window.removeGroqKey = async function() {
-    if(!confirm("Yakin ingin mencabut LPU Master Key Groq dari Cloud?")) return;
+window.removeGroqKey = async function(index) {
+    if(!confirm("Yakin ingin mencabut LPU Master Key Groq ini dari Cloud?")) return;
     try {
-        await FirebaseService.updateSettings({ groqApiKeyEncrypted: null });
-        if(AuraState.data.settings) AuraState.data.settings.groqApiKeyEncrypted = null;
-        if (window.showToast) window.showToast("Kunci berhasil dihancurkan dari Cloud.");
+        let currentKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        currentKeys.splice(index, 1); // Hapus kunci spesifik
+        
+        await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
+        if(AuraState.data.settings) AuraState.data.settings.groqKeysEncrypted = currentKeys;
+        
+        if (window.showToast) window.showToast("Kunci berhasil dihancurkan dari Pool.");
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
     } catch(e) {
         if (window.showToast) window.showToast("Gagal mencabut kunci.", true);
@@ -105,10 +126,10 @@ window.removeGroqKey = async function() {
 
 window.renderGroqKeysUI = function() {
     AuraUtils.safeDOM('groq-keys-container', function(el) {
-        const encKey = AuraState.data.settings?.groqApiKeyEncrypted;
+        const keys = AuraState.data.settings?.groqKeysEncrypted || [];
         const badge = document.getElementById('groq-status-badge');
 
-        if (!encKey) {
+        if (!Array.isArray(keys) || keys.length === 0) {
             el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Groq terpasang. Mesin Offline.</p>';
             if(badge) {
                 badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
@@ -117,34 +138,40 @@ window.renderGroqKeysUI = function() {
             return;
         }
 
-        const secret = AuraState.user?.uid || "aura_secret_fallback";
-        let dec = null;
-        try {
-            let text = atob(encKey);
-            let result = '';
-            for (let i = 0; i < text.length; i++) {
-                result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-            }
-            dec = result;
-        } catch(e) {}
-
-        const isValid = dec && dec.startsWith('gsk_');
-        const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
-        const statusColor = isValid ? 'text-emerald-400' : 'text-rose-400';
-
-        if(badge && isValid) {
+        if(badge) {
              badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]";
-             badge.innerText = "ONLINE";
+             badge.innerText = `ONLINE (${keys.length})`;
         }
 
-        el.innerHTML = `
-        <div class="flex justify-between items-center bg-[var(--bg-base)] p-2.5 rounded-xl border border-emerald-900/30 bg-emerald-900/10">
-            <div class="flex flex-col">
-                <span class="font-mono text-xs font-bold ${statusColor} flex items-center gap-2"><i class="fa-solid fa-cloud-check"></i> ${display}</span>
-                <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Tersinkronisasi dengan Firebase Cloud</span>
-            </div>
-            <button onclick="window.removeGroqKey()" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-        </div>`;
+        let html = '';
+        const secret = AuraState.user?.uid || "aura_secret_fallback";
+        
+        keys.forEach((encKey, index) => {
+            let dec = null;
+            try {
+                let text = atob(encKey);
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+                }
+                dec = result;
+            } catch(e) {}
+
+            const isValid = dec && dec.startsWith('gsk_');
+            const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
+            const statusColor = isValid ? 'text-emerald-400' : 'text-rose-400';
+
+            html += `
+            <div class="flex justify-between items-center bg-[var(--bg-base)] p-2.5 rounded-xl border border-emerald-900/30 bg-emerald-900/10 mb-2 last:mb-0">
+                <div class="flex flex-col">
+                    <span class="font-mono text-xs font-bold ${statusColor} flex items-center gap-2"><i class="fa-solid fa-cloud-check"></i> ${display}</span>
+                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">Pool Ke-${index + 1} • Tersinkronisasi Firebase</span>
+                </div>
+                <button onclick="window.removeGroqKey(${index})" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>`;
+        });
+        
+        el.innerHTML = html;
     });
 };
 
@@ -176,6 +203,10 @@ window.syncGeminiEngine = async function(silent = false) {
         if (!silent && window.showToast) window.showToast("Dekripsi Gagal: PIN Salah.", true);
     }
 };
+
+// ============================================================================
+// 3. MANAJEMEN TAGIHAN RUTIN (RECURRING PAYMENTS)
+// ============================================================================
 
 window.addRecurringPayment = async function() {
     const nameEl = document.getElementById('new-rec-name');
@@ -246,6 +277,10 @@ window.renderRecurringUIForBudget = function() {
         el.innerHTML = compiledBudgets;
     });
 };
+
+// ============================================================================
+// 4. TRACKER DINAMIS (DENGAN AI AUTO-FILLER)
+// ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
     const topic = prompt("Tracker apa yang ingin kamu buat? (Misal: Skincare, Kopi, Kucing)");
@@ -327,6 +362,10 @@ window.removeTracker = async function(id) {
         catch(e) { if (window.showToast) window.showToast("Gagal menghapus Tracker.", true); }
     }
 };
+
+// ============================================================================
+// 5. MANAJEMEN ANGGOTA KELUARGA & AUDIT LOG
+// ============================================================================
 
 window.openFamilyManager = function() {
     const listContainer = document.getElementById('family-list-container');
