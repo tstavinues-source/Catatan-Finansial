@@ -145,11 +145,16 @@ window.setCurrency = function(curr) {
         }
     }
     
-    // 3. PAKSA SEMUA LAYAR ME-REFRESH ANGKA DAN LAMBANG UANG!
-    if(typeof window.renderDashboard === 'function') window.renderDashboard();
-    if(typeof window.renderTransactions === 'function') window.renderTransactions();
-    if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
-    if(typeof window.renderBudgets === 'function') window.renderBudgets();
+    // 3. PAKSA SEMUA LAYAR ME-REFRESH ANGKA DAN LAMBANG UANG SECARA INSTAN!
+    if (typeof window.loadRealtimeDatabaseData === 'function') {
+        window.loadRealtimeDatabaseData(true); // Memanggil fungsi refresh rahasia tanpa notif
+    } else {
+        // Jaring pengaman jika fungsi Realtime belum dimuat
+        if(typeof window.renderDashboard === 'function') window.renderDashboard();
+        if(typeof window.renderTransactions === 'function') window.renderTransactions();
+        if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if(typeof window.renderBudgets === 'function') window.renderBudgets();
+    }
 };
 
 window.fetchLiveExchangeRate = async function() {
@@ -175,6 +180,7 @@ window.fetchLiveExchangeRate = async function() {
         display.innerText = "Kurs Offline (Gagal memuat)";
     }
 };
+
 
 // ============================================================================
 // BOOTSTRAPPING SYSTEM & PWA REGISTRATION
