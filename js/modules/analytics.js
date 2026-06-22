@@ -1,7 +1,7 @@
 /**
  * Analytics & Statistics Module
- * Mengelola kalkulasi pengeluaran, pembersihan kategori (anti-duplikat), 
- * rendering grafik, dan eksport data (CSV).
+ * Mengelola kalkulasi pengeluaran dengan sistem Induk-Anak (Accordion), 
+ * rendering grafik, Pie Chart, dan eksport data (CSV).
  */
 
 import { AuraState } from '../core/state.js';
@@ -32,8 +32,8 @@ window.renderAnalytics = function() {
         startDate = 0; 
     }
 
-    // Variabel Penyimpanan
-    let catMap = {};
+    // Variabel Penyimpanan Hierarki
+    let catMap = {}; 
     let merchantMap = {};
     let totalExpense = 0;
     const trend7Days = [0, 0, 0, 0, 0, 0, 0];
@@ -63,7 +63,24 @@ window.renderAnalytics = function() {
                 ).join(' ');
 
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
-                catMap[cleanCat] = (catMap[cleanCat] || 0) + val;
+                
+                // === SISTEM PENCARIAN INDUK KATEGORI ===
+                // AI akan menebak kategori ini masuk ke rumpun mana (Misal: Mie Instan -> Makanan)
+                const styleInfo = CategoryManager.resolveStyle(cleanCat);
+                const parentName = styleInfo.name;
+
+                if (!catMap[parentName]) {
+                    catMap[parentName] = { 
+                        total: 0, 
+                        style: styleInfo, 
+                        subs: {} 
+                    };
+                }
+
+                // Tambahkan nilai ke Induk dan ke Sub-kategori
+                catMap[parentName].total += val;
+                catMap[parentName].subs[cleanCat] = (catMap[parentName].subs[cleanCat] || 0) + val;
+                
                 trxExpense += val;
             });
 
@@ -72,33 +89,96 @@ window.renderAnalytics = function() {
         }
     });
 
-    // 3. RENDER DISTRIBUSI KATEGORI
+    // 3. RENDER DISTRIBUSI KATEGORI (ACCORDION UI)
     const catContainer = document.getElementById('top-categories-list');
-    AuraUtils.safeDOM('pie-total-label', el => el.innerText = AuraUtils.formatCurrency(AuraUtils.convertCurrency(totalExpense, 'JPY')));
+    AuraUtils.safeDOM('pie-total-label', el => el.innerText = AuraUtils.formatCurrency(totalExpense));
+    
+    // Sortir Induk Kategori dari pengeluaran terbesar
+    const sortedParents = Object.keys(catMap).map(k => ({
+        name: k, 
+        total: catMap[k].total,
+        style: catMap[k].style,
+        subs: catMap[k].subs
+    })).sort((a,b) => b.total - a.total);
+
+    // === MENGHIDUPKAN KEMBALI PIE CHART / DONUT CHART ===
+    AuraUtils.safeDOM('category-pie-chart', el => {
+        if (totalExpense > 0 && sortedParents.length > 0) {
+            let conicStops = []; 
+            let currentAngle = 0;
+            
+            for (let i = 0; i < sortedParents.length; i++) {
+                let pct = (sortedParents[i].total / totalExpense) * 100; 
+                let hex = sortedParents[i].style.hex;
+                conicStops.push(`${hex} ${currentAngle}% ${currentAngle + pct}%`); 
+                currentAngle += pct;
+            }
+            el.style.background = `conic-gradient(${conicStops.join(', ')})`;
+        } else { 
+            el.style.background = `conic-gradient(var(--border-glass) 0% 100%)`; 
+        }
+    });
     
     if (catContainer) {
         catContainer.innerHTML = '';
-        const sortedCats = Object.keys(catMap).map(k => ({name: k, total: catMap[k]})).sort((a,b) => b.total - a.total);
         
-        if (sortedCats.length === 0) {
+        if (sortedParents.length === 0) {
             catContainer.innerHTML = '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada pengeluaran di siklus ini.</p>';
         } else {
-            sortedCats.forEach(c => {
-                let percent = totalExpense > 0 ? Math.round((c.total / totalExpense) * 100) : 0;
-                const style = CategoryManager.resolveStyle(c.name); // MENGAMBIL IKON & WARNA ASLI
+            sortedParents.forEach((p, idx) => {
+                let percent = totalExpense > 0 ? Math.round((p.total / totalExpense) * 100) : 0;
                 
+                // Sortir Anak Kategori dari pengeluaran terbesar
+                const sortedSubs = Object.keys(p.subs).map(subK => ({
+                    name: subK,
+                    total: p.subs[subK]
+                })).sort((a,b) => b.total - a.total);
+
+                let subsHtml = '';
+                // Cek apakah ada sub-kategori spesifik buatan AI
+                const hasSpecificSubs = sortedSubs.some(sub => sub.name !== p.name);
+
+                if (hasSpecificSubs) {
+                    sortedSubs.forEach(sub => {
+                        subsHtml += `
+                        <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/5 transition">
+                            <span class="text-[10px] text-slate-300 flex items-center gap-2">
+                                <div class="w-1 h-1 rounded-full" style="background-color: ${p.style.hex};"></div> 
+                                ${sub.name}
+                            </span>
+                            <span class="text-[10px] font-mono font-bold text-slate-300">${AuraUtils.formatCurrency(sub.total)}</span>
+                        </div>`;
+                    });
+                } else {
+                    subsHtml += `
+                        <div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center">
+                            Seluruhnya adalah item umum ${p.name}.
+                        </div>`;
+                }
+
+                // Inject HTML ke DOM dengan sistem klik (Toggle Sembunyi/Tampil)
                 catContainer.innerHTML += `
-                <div class="flex items-center justify-between p-3 rounded-xl bg-black/20 border border-[var(--border-glass)] hover:border-white/10 transition mb-2">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background-color: ${style.hex}20;">
-                            <i class="fa-solid ${style.icon}" style="color: ${style.hex};"></i>
+                <div class="mb-2 bg-black/20 border border-[var(--border-glass)] rounded-xl overflow-hidden group">
+                    <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition active:scale-[0.99]" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.fa-chevron-down').classList.toggle('rotate-180');">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${p.style.hex}20;">
+                                <i class="fa-solid ${p.style.icon}" style="color: ${p.style.hex};"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-white">${p.name}</p>
+                                <p class="text-[9px] text-[var(--text-muted)]">${percent}% dari total pengeluaran</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xs font-bold text-white">${c.name}</p>
-                            <p class="text-[9px] text-[var(--text-muted)]">${percent}% dari total pengeluaran</p>
+                        <div class="flex items-center gap-3">
+                            <p class="text-xs font-bold font-mono text-white">${AuraUtils.formatCurrency(p.total)}</p>
+                            <div class="w-5 h-5 flex items-center justify-center bg-black/30 rounded-full shrink-0">
+                                <i class="fa-solid fa-chevron-down text-[9px] text-[var(--text-muted)] transition-transform duration-300"></i>
+                            </div>
                         </div>
                     </div>
-                    <p class="text-xs font-bold font-mono text-white">${AuraUtils.formatCurrency(AuraUtils.convertCurrency(c.total, 'JPY'))}</p>
+                    <div class="hidden border-t border-[var(--border-glass)] bg-black/40 py-1">
+                        ${subsHtml}
+                    </div>
                 </div>`;
             });
         }
@@ -121,7 +201,7 @@ window.renderAnalytics = function() {
                         <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
                         <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
                     </div>
-                    <span class="text-[10px] font-mono text-accent font-bold">${AuraUtils.formatCurrency(AuraUtils.convertCurrency(m.total, 'JPY'))}</span>
+                    <span class="text-[10px] font-mono text-accent font-bold">${AuraUtils.formatCurrency(m.total)}</span>
                 </div>`;
             });
         }
@@ -134,8 +214,8 @@ window.renderAnalytics = function() {
     const dailyAvg = totalExpense / daysElapsed;
     const projected = dailyAvg * totalDays;
 
-    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = AuraUtils.formatCurrency(AuraUtils.convertCurrency(dailyAvg, 'JPY')));
-    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = AuraUtils.formatCurrency(AuraUtils.convertCurrency(projected, 'JPY')));
+    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = AuraUtils.formatCurrency(dailyAvg));
+    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = AuraUtils.formatCurrency(projected));
 
     drawCanvasChart(trend7Days);
 };
@@ -178,8 +258,11 @@ function drawCanvasChart(dataArray) {
             ctx.fillStyle = '#9ca3af';
             ctx.font = "bold 9px 'Space Grotesk', monospace";
             ctx.textAlign = "center";
-            // Hitung konversi untuk chart
-            const convertedVal = AuraUtils.convertCurrency(val, 'JPY');
+            
+            // Konversi manual hanya untuk label atas grafik batang (karena dibatasi 'k')
+            const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRate || 105) : 1;
+            const convertedVal = val * rate;
+            
             const displayStr = AuraState.system.displayCurrency === 'IDR' ? (convertedVal / 1000).toFixed(0) + 'k' : (convertedVal / 1000).toFixed(1) + 'k';
             ctx.fillText(displayStr, x + barWidth / 2, y - 5);
         }
