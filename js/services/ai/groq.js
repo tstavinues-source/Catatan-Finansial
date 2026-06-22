@@ -4,7 +4,6 @@
  */
 
 import { AuraState } from '../../core/state.js';
-import { Logger } from '../../core/logger.js';
 
 export const GroqAPI = {
     callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
@@ -35,10 +34,10 @@ export const GroqAPI = {
         }
 
         if (imgBase64) {
-            Logger.warn('GroqAPI', 'Gambar terdeteksi. Groq murni mengandalkan teks, data gambar akan diabaikan.');
+            console.warn('GroqAPI: Gambar terdeteksi. Groq murni mengandalkan teks, data gambar akan diabaikan.');
         }
 
-        // 3. Eksekusi Model Mutakhir (Llama 3.1 8B Instant untuk Kecepatan JSON)
+        // 3. Eksekusi Model Mutakhir
         const modelName = requireJson ? "llama-3.1-8b-instant" : "openai/gpt-oss-120b";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
@@ -75,7 +74,7 @@ export const GroqAPI = {
         const data = await response.json();
 
         if (!response.ok) {
-            Logger.error('GroqAPI', 'Groq API Error', data);
+            console.error('GroqAPI Error', data);
             throw new Error(data.error?.message || "Gagal terkoneksi ke otak supercepat Groq.");
         }
 
