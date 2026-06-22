@@ -1,48 +1,50 @@
 /**
  * Groq AI Service Engine
- * Mengelola komunikasi ke Groq API. Dilengkapi sistem Auto-Decryption Cloud Key.
+ * Mengelola komunikasi ke Groq API. Dilengkapi sistem Auto-Decryption dan Failover Pool.
  */
 
 import { AuraState } from '../../core/state.js';
 
 export const GroqAPI = {
+    currentIndex: 0, // Mengingat kunci mana yang sedang dipakai
+    
     callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
         
-        // 1. Tarik API Key yang dienkripsi dari Cloud Firebase
-        const encKey = AuraState.data.settings?.groqApiKeyEncrypted;
+        // 1. Tarik Pool API Key
+        const encKeys = AuraState.data.settings?.groqKeysEncrypted || [];
         
-        if (!encKey) {
-            throw new Error("API Key Groq kosong! Silakan pasang Key di menu Pengaturan.");
+        if (!Array.isArray(encKeys) || encKeys.length === 0) {
+            throw new Error("API Key Groq kosong! Silakan pasang minimal 1 Key di menu Pengaturan.");
         }
 
-        // 2. SISTEM DEKRIPSI OTOMATIS MENGGUNAKAN UID
+        // 2. Dekripsi semua kunci yang ada di Pool
         const secret = AuraState.user?.uid || "aura_secret_fallback";
-        let apiKey = null;
-        try {
-            let text = atob(encKey);
-            let result = '';
-            for (let i = 0; i < text.length; i++) {
-                result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-            }
-            apiKey = result;
-        } catch(e) {
-            throw new Error("Gagal membuka brankas Cloud Groq Key.");
+        let rawKeys = [];
+        
+        for (let k of encKeys) {
+            try {
+                let text = atob(k);
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+                }
+                if (result.startsWith('gsk_')) rawKeys.push(result);
+            } catch(e) {}
         }
 
-        if (!apiKey || !apiKey.startsWith('gsk_')) {
-            throw new Error("Groq API Key di Cloud korup atau tidak valid.");
+        if (rawKeys.length === 0) {
+            throw new Error("Kunci Groq di Cloud korup atau tidak valid.");
         }
 
         if (imgBase64) {
-            console.warn('GroqAPI: Gambar terdeteksi. Groq murni mengandalkan teks, data gambar akan diabaikan.');
+            console.warn('GroqAPI: Gambar terdeteksi. Groq murni teks, gambar diabaikan.');
         }
 
-        // 3. Eksekusi Model Mutakhir
+        // 3. Persiapan Payload
         const modelName = requireJson ? "llama-3.1-8b-instant" : "openai/gpt-oss-120b";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
         const groqMessages = [{ role: "system", content: systemPrompt }];
-        
         messages.forEach(msg => {
             if (msg.role !== 'system') {
                 groqMessages.push({
@@ -62,23 +64,46 @@ export const GroqAPI = {
             payload.response_format = { type: "json_object" };
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json' 
-            },
-            body: JSON.stringify(payload)
-        });
+        // 4. MESIN FAILOVER (Otomatis ganti kunci jika error 429/Limit)
+        let attempt = 0;
+        const maxLimit = Math.min(rawKeys.length, 3); // Coba maksimal 3 kali ganti kunci
+        
+        while (attempt < maxLimit) {
+            const activeKey = rawKeys[this.currentIndex % rawKeys.length];
+            
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${activeKey}`,
+                        'Content-Type': 'application/json' 
+                    },
+                    body: JSON.stringify(payload)
+                });
 
-        const data = await response.json();
+                const data = await response.json();
 
-        if (!response.ok) {
-            console.error('GroqAPI Error', data);
-            throw new Error(data.error?.message || "Gagal terkoneksi ke otak supercepat Groq.");
+                // Jika terkena Rate Limit atau Server Error, lompat ke kunci berikutnya
+                if (response.status === 429 || response.status >= 500) {
+                    this.currentIndex++;
+                    attempt++;
+                    continue;
+                }
+
+                if (!response.ok) {
+                    console.error('GroqAPI Error', data);
+                    throw new Error(data.error?.message || "Gagal terkoneksi ke otak Groq.");
+                }
+
+                return data.choices[0].message.content;
+            } catch (err) {
+                this.currentIndex++;
+                attempt++;
+                if (attempt >= maxLimit) throw err;
+            }
         }
-
-        return data.choices[0].message.content;
+        
+        throw new Error("Semua kunci Groq di pool sibuk (Limit Terlampaui) atau jaringan offline.");
     }
 };
 
