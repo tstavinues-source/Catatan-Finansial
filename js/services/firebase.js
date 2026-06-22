@@ -1,6 +1,6 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
- * Dioptimalkan menggunakan metode "Pure Reactive" ala Kas Apato.
+ * Dioptimalkan menggunakan metode "Pure Reactive" + "Carpet Bombing" untuk mencegah Blank UI.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -24,24 +24,28 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 THE "KAS APATO" RENDER INVOKER (REAKTIF MURNI)
+// 🚀 THE "CARPET BOMBING" RENDER INVOKER (ANTI KOSONG SAAT REFRESH)
 // ============================================================================
 const invokeRenderers = () => {
-    // PELINDUNG ES MODULES: Jika file UI belum selesai di-load browser (hanya terjadi di detik pertama buka web), tunggu 50ms.
-    if (typeof window.renderDashboard !== 'function') {
-        setTimeout(invokeRenderers, 50);
-        return;
-    }
-    
-    // Jika fungsi sudah siap, langsung HAJAR eksekusi tanpa delay! (Metode Kas Apato)
-    try {
-        window.renderDashboard();
-        if (typeof window.renderTransactions === 'function') window.renderTransactions();
-        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-        if (typeof window.renderBudgets === 'function') window.renderBudgets();
-    } catch(e) {
-        console.error("UI Render Error:", e);
-    }
+    const fire = () => {
+        try {
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            if (typeof window.renderTransactions === 'function') window.renderTransactions();
+            if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+            if (typeof window.renderBudgets === 'function') window.renderBudgets();
+        } catch(e) {
+            // Abaikan error diam-diam jika elemen HTML memang belum siap dilukis
+        }
+    };
+
+    // Tembakan 1: Reaktif Murni (Sekarang juga!)
+    fire();
+
+    // Tembakan Susulan (Jaring Pengaman): Menjamin UI menangkap data 
+    // meskipun browser / HP sedang lambat memuat elemen HTML.
+    setTimeout(fire, 100);
+    setTimeout(fire, 500);
+    setTimeout(fire, 1500);
 };
 
 try {
@@ -67,7 +71,7 @@ try {
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // 1. STREAM TRANSAKSI (Sama persis seperti Kas Apato db.ref(path).on('value'))
+            // 1. STREAM TRANSAKSI
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
@@ -88,14 +92,14 @@ try {
                 AuraState.data.transactions = activeArr;
                 AuraState.data.trash = trashArr; 
                 
-                invokeRenderers(); // Panggil langsung!
+                invokeRenderers(); // Hajar!
             });
 
             // 2. STREAM PENGATURAN
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                invokeRenderers(); // Panggil langsung!
+                invokeRenderers(); // Hajar!
             });
 
             // 3. STREAM GOALS
@@ -107,7 +111,7 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                invokeRenderers(); // Panggil langsung!
+                invokeRenderers(); // Hajar!
             });
             
         } else {
@@ -161,7 +165,6 @@ export const FirebaseService = {
         data.nominal = Math.max(0, Number(data.nominal) || 0); 
         if (!data.createdAt) data.createdAt = new Date().toISOString();
         
-        // Seperti Kas Apato: Push data, biarkan onValue yang merender UI.
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
         await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
     },
@@ -189,7 +192,7 @@ export const FirebaseService = {
 
     deleteTransactionPermanently: async function(id) { 
         this._checkAuth();
-        [span_3](start_span)[span_4](start_span)// Seperti Kas Apato: Langsung remove, biarkan onValue yang bereaksi[span_3](end_span)[span_4](end_span)
+        // Langsung remove, biarkan onValue yang bereaksi
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`));
         await this.saveAuditLog("SYS.DESTROY", `Pembersihan permanen ID: ${id}`);
     },
