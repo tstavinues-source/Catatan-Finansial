@@ -23,6 +23,32 @@ let googleAuthProviderInstance = null;
 
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
+// ============================================================================
+// 🚀 CCTV PELUKIS LAYAR (ANTI RACE-CONDITION)
+// ============================================================================
+AuraState.system.dataVersion = 0; // Penanda jika ada data baru masuk
+let lastRenderedVersion = -1;     // Penanda versi data yang terakhir dilukis di layar
+
+setInterval(() => {
+    // Jika ada data baru (version berbeda) DAN user sudah login
+    if (AuraState.user.uid && AuraState.system.dataVersion !== lastRenderedVersion) {
+        
+        // SANGAT PENTING: Pastikan fungsi pelukis sudah diunduh browser DAN elemen HTML utamanya sudah siap di layar!
+        const isUIReady = typeof window.renderDashboard === 'function' && document.getElementById('dash-total-balance');
+        
+        if (isUIReady) {
+            window.renderDashboard();
+            if (typeof window.renderTransactions === 'function') window.renderTransactions();
+            if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+            if (typeof window.renderBudgets === 'function') window.renderBudgets();
+            
+            // Catat bahwa data versi ini sudah berhasil dilukis, jadi CCTV bisa istirahat
+            lastRenderedVersion = AuraState.system.dataVersion;
+        }
+        // Jika UI belum siap, biarkan interval ini berputar lagi dalam 300ms sampai berhasil!
+    }
+}, 300); 
+
 try {
     firebaseAppInstance = initializeApp(FIREBASE_CONFIG);
     dbInstance = getDatabase(firebaseAppInstance);
@@ -53,28 +79,6 @@ try {
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // ================================================================
-            // 🚀 MESIN REAL-TIME STREAMING (ANTI RACE-CONDITION)
-            // ================================================================
-            
-            // FUNGSI PINTAR: Memastikan fungsi pelukis benar-benar sudah siap
-            let renderTimeout = null;
-            function triggerUIRender() {
-                if (renderTimeout) clearTimeout(renderTimeout);
-                renderTimeout = setTimeout(() => {
-                    // Cek apakah fungsi pelukis sudah di-load oleh browser
-                    if (typeof window.renderDashboard === 'function') {
-                        window.renderDashboard();
-                        if (typeof window.renderTransactions === 'function') window.renderTransactions();
-                        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-                        if (typeof window.renderBudgets === 'function') window.renderBudgets();
-                    } else {
-                        // Jika belum siap (karena browser telat memuat file), coba lagi dalam 150ms!
-                        triggerUIRender();
-                    }
-                }, 150);
-            }
-
             // 1. STREAM TRANSAKSI
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
@@ -82,21 +86,20 @@ try {
                 const arr = [];
                 if (data) {
                     for (const key in data) {
-                        if (!data[key].is_deleted) { // Anti-Sampah
-                            arr.push({ id: key, ...data[key] });
-                        }
+                        if (!data[key].is_deleted) arr.push({ id: key, ...data[key] }); // Saring sampah
                     }
                 }
                 arr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
+                
                 AuraState.data.transactions = arr;
-                triggerUIRender();
+                AuraState.system.dataVersion++; // 🔔 Pancing CCTV untuk melukis!
             });
 
             // 2. STREAM PENGATURAN
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                triggerUIRender();
+                AuraState.system.dataVersion++; // 🔔 Pancing CCTV untuk melukis!
             });
 
             // 3. STREAM GOALS
@@ -108,7 +111,7 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                triggerUIRender();
+                AuraState.system.dataVersion++; // 🔔 Pancing CCTV untuk melukis!
             });
             
         } else {
@@ -116,6 +119,7 @@ try {
             AuraState.data.transactions = [];
             AuraState.data.settings = {};
             AuraState.data.goals = [];
+            lastRenderedVersion = -1; // Reset CCTV
             
             Logger.info('Auth', 'Sesi kosong. Menunggu login...');
             if (typeof window.showModal === 'function') window.showModal('modal-login');
@@ -123,19 +127,17 @@ try {
     });
 
 } catch (error) {
-    Logger.error('Core', 'FATAL: Gagal melakukan bootstrap koneksi Firebase SDK.', error);
+    Logger.error('Core', 'FATAL: Gagal melakukan bootstrap koneksi Firebase.', error);
 }
 
-// Fungsi manual untuk refresh UI jika user menekan tombol putar di pojok
+// ----------------------------------------------------------------------------
+// Trik Pintar untuk Tombol Refresh Manual di Layar
+// ----------------------------------------------------------------------------
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
-        if (typeof window.renderTransactions === 'function') window.renderTransactions();
-        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-        if (typeof window.renderBudgets === 'function') window.renderBudgets();
-        
+        AuraState.system.dataVersion++; // Cukup manipulasi angkanya, CCTV akan otomatis menyegarkan layarmu!
         if (!silent && typeof window.showToast === 'function') {
-            window.showToast("UI Disegarkan. Mode Real-Time Aktif!");
+            window.showToast("Antarmuka disegarkan (UI Sync).");
         }
     }
 };
@@ -147,9 +149,7 @@ export const FirebaseService = {
     logout: async function() { return await signOut(authInstance); },
 
     _checkAuth: function() {
-        if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) {
-            throw new Error("Sesi pengguna tidak valid. Anda harus masuk akun terlebih dahulu.");
-        }
+        if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) throw new Error("Sesi pengguna tidak valid.");
     },
 
     saveAuditLog: async function(action, detail) {
@@ -159,7 +159,7 @@ export const FirebaseService = {
             const userName = profile.fullName || profile.nickname || "Anonymous User";
             const payload = { action: action, detail: AuraUtils.escapeHtml(detail), user: AuraUtils.escapeHtml(userName), ts: Date.now() };
             await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/audit_logs`), payload);
-        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log aktivitas ke Cloud.', e); }
+        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log.', e); }
     },
     
     saveTransaction: async function(data, isFromAI = false) { 
