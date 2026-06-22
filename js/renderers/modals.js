@@ -100,7 +100,28 @@ export const injectMissingModals = function() {
         </div>`;
         body.insertAdjacentHTML('beforeend', auditHTML);
     }
+
+    // ============================================================================
+    // MODAL BARU: CUSTOM PROMPT (Pengganti prompt() bawaan browser)
+    // ============================================================================
+    if (!document.getElementById('modal-custom-prompt')) {
+        const promptHTML = `
+        <div id="modal-custom-prompt" class="fixed inset-0 z-[250] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+            <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-indigo-400 shadow-2xl relative overflow-hidden">
+                <div class="w-16 h-16 rounded-full bg-indigo-500/10 flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
+                    <i class="fa-solid fa-keyboard text-2xl text-indigo-400"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2 font-display text-white">Input Diperlukan</h3>
+                <p class="text-sm text-[var(--text-muted)] mb-6 leading-relaxed" id="prompt-msg"></p>
+                <input type="text" id="prompt-input" class="v-input w-full rounded-2xl p-4 text-sm outline-none mb-6 text-center font-bold text-indigo-300 placeholder-indigo-900/50" autocomplete="off" onkeydown="if(event.key==='Enter') window.executeCustomPrompt()">
+                <div class="flex gap-3">
+                    <button onclick="window.closePromptModal()" class="flex-1 py-3.5 rounded-2xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-sm transition text-[var(--text-muted)]">Batal</button>
+                    <button onclick="window.executeCustomPrompt()" class="flex-1 py-3.5 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/50 font-bold text-sm shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:bg-indigo-500/40 transition">Konfirmasi</button>
+                </div>
+            </div>
+        </div>`;
+        body.insertAdjacentHTML('beforeend', promptHTML);
+    }
 };
 
 window.injectMissingModals = injectMissingModals;
-
