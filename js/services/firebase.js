@@ -1,6 +1,7 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
- * Menggunakan Arsitektur "Smart Render Flagging" untuk mencegah Double-Fetching & UI Kosong.
+ * Menggunakan Arsitektur "Reactive Pre-load" dengan "Isolated Try-Catch" 
+ * untuk menjamin render instan tanpa Domino Crash.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -24,34 +25,37 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 SMART RENDERER (MENUNGGU SEMUA DATA SIAP TANPA DOUBLE-FETCH)
+// 🔧 SINKRONISASI PINTAR DENGAN ISOLASI ERROR (ANTI DOMINO CRASH)
 // ============================================================================
+let isInitialLoadComplete = false;
+let initialDataArrived = { transactions: false, settings: false, goals: false };
 
-// Ceklis Kehadiran Data
-let dataReady = {
-    transactions: false,
-    settings: false,
-    goals: false
+// Fungsi Pelukis Kebal Badai: Jika 1 layar gagal, layar lain tetap dilukis!
+const forceUIRender = () => {
+    const renderers = ['renderDashboard', 'renderTransactions', 'renderAnalytics', 'renderBudgets', 'renderTrash'];
+    renderers.forEach(fn => {
+        try {
+            if (typeof window[fn] === 'function') {
+                window[fn]();
+            }
+        } catch(e) {
+            console.warn(`Peringatan: Render tertahan di modul ${fn}`);
+        }
+    });
 };
 
 const smartRender = () => {
-    // JIKA SALAH SATU DATA BELUM SIAP, BATALKAN PELUKISAN! (Tunggu sampai ketiganya True)
-    if (!dataReady.transactions || !dataReady.settings || !dataReady.goals) {
-        return; 
+    if (!isInitialLoadComplete) {
+        if (initialDataArrived.transactions && initialDataArrived.settings && initialDataArrived.goals) {
+            isInitialLoadComplete = true;
+            if (typeof window.hideLoading === 'function') window.hideLoading();
+        } else {
+            return; // Tahan render jika data muatan awal belum lengkap
+        }
     }
     
-    // Jika semua data sudah siap, gunakan requestAnimationFrame agar transisi sangat mulus
-    requestAnimationFrame(() => {
-        try {
-            if (typeof window.renderDashboard === 'function') window.renderDashboard();
-            if (typeof window.renderTransactions === 'function') window.renderTransactions();
-            if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-            if (typeof window.renderBudgets === 'function') window.renderBudgets();
-            if (typeof window.renderTrash === 'function') window.renderTrash();
-        } catch(e) {
-            console.warn('Smart Render error:', e);
-        }
-    });
+    // Lukis dengan sangat mulus
+    requestAnimationFrame(() => forceUIRender());
 };
 
 try {
@@ -74,14 +78,17 @@ try {
         if (user) {
             AuraState.user.uid = user.uid;
             
-            // Reset Ceklis setiap kali login
-            dataReady = { transactions: false, settings: false, goals: false };
+            isInitialLoadComplete = false;
+            initialDataArrived = { transactions: false, settings: false, goals: false };
             
+            if (typeof window.showLoading === 'function') window.showLoading();
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // 1. STREAM TRANSAKSI
-            const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
+            const uid = user.uid;
+
+            // 1. STREAM TRANSAKSI REAL-TIME
+            const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
                 const activeArr = [];
@@ -101,21 +108,20 @@ try {
                 AuraState.data.transactions = activeArr;
                 AuraState.data.trash = trashArr; 
                 
-                dataReady.transactions = true; // ✔️ Ceklis Transaksi Hadir
-                smartRender(); // Coba lukis
+                initialDataArrived.transactions = true; 
+                smartRender();
             });
 
-            // 2. STREAM PENGATURAN
-            const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
+            // 2. STREAM PENGATURAN REAL-TIME
+            const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                
-                dataReady.settings = true; // ✔️ Ceklis Pengaturan Hadir
-                smartRender(); // Coba lukis
+                initialDataArrived.settings = true; 
+                smartRender();
             });
 
-            // 3. STREAM GOALS
-            const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/goals`);
+            // 3. STREAM MISSION GOALS REAL-TIME
+            const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const data = snapshot.val();
                 const arr = [];
@@ -123,9 +129,8 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                
-                dataReady.goals = true; // ✔️ Ceklis Goals Hadir
-                smartRender(); // Coba lukis
+                initialDataArrived.goals = true; 
+                smartRender();
             });
             
         } else {
@@ -134,26 +139,22 @@ try {
             AuraState.data.settings = {};
             AuraState.data.goals = [];
             AuraState.data.trash = [];
+            isInitialLoadComplete = false;
             
             if (typeof window.showModal === 'function') window.showModal('modal-login');
         }
     });
 
 } catch (error) {
-    Logger.error('Core', 'Gagal memuat Firebase.', error);
+    Logger.error('Core', 'Gagal memuat arsitektur Firebase.', error);
 }
 
-// Fitur Refresh Manual
+// Fitur Refresh Manual kini menggunakan pelukis kebal badai
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
-        requestAnimationFrame(() => {
-            if (typeof window.renderDashboard === 'function') window.renderDashboard();
-            if (typeof window.renderTransactions === 'function') window.renderTransactions();
-            if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-            if (typeof window.renderBudgets === 'function') window.renderBudgets();
-        });
+        requestAnimationFrame(() => forceUIRender());
         if (!silent && typeof window.showToast === 'function') {
-            window.showToast("Data Disinkronisasi Secara Paksa!");
+            window.showToast("Sinkronisasi paksa antarmuka berhasil.");
         }
     }
 };
@@ -186,6 +187,7 @@ export const FirebaseService = {
         
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
         await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
+        forceUIRender(); // <--- Tembakan Instan
     },
 
     updateTransaction: async function(id, data) { 
@@ -197,6 +199,7 @@ export const FirebaseService = {
         
         await update(pathRef, data);
         await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
+        forceUIRender(); // <--- Tembakan Instan
     },
 
     moveToTrash: async function(id) { 
@@ -206,35 +209,41 @@ export const FirebaseService = {
             deletedAt: new Date().toISOString() 
         });
         await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
+        forceUIRender(); // <--- Tembakan Instan (Data akan langsung lenyap dari layar)
     },
 
     deleteTransactionPermanently: async function(id) { 
         this._checkAuth();
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`));
         await this.saveAuditLog("SYS.DESTROY", `Pembersihan permanen ID: ${id}`);
+        forceUIRender(); // <--- Tembakan Instan
     },
 
     saveGoal: async function(data) { 
         this._checkAuth();
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals`), data); 
         await this.saveAuditLog("GOAL.ADD", `Tujuan finansial baru.`);
+        forceUIRender();
     },
 
     updateGoal: async function(id, data) {
         this._checkAuth();
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals/${id}`), data);
         await this.saveAuditLog("GOAL.EDIT", `Update tujuan finansial ID: ${id}`);
+        forceUIRender();
     },
 
     deleteGoal: async function(id) { 
         this._checkAuth();
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals/${id}`));
         await this.saveAuditLog("GOAL.DELETE", `Hapus tujuan finansial ID: ${id}`);
+        forceUIRender();
     },
 
     updateSettings: async function(data) { 
         this._checkAuth();
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), data); 
+        forceUIRender();
     },
 
     saveGroqKey: async function(encryptedKey) { 
