@@ -66,41 +66,58 @@ try {
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
             
-            // --- PELATUK SINKRONISASI DATA INSTAN SAAT LOGIN ---
-            // Dengarkan perubahan data pada node transaksi pengguna ini
-            const userTransactionsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
+            // ================================================================
+            // 🚀 MESIN REAL-TIME STREAMING FIREBASE (CCTV ABADI)
+            // ================================================================
             
-            // onValue akan terus berjalan dan memperbarui State setiap ada perubahan di Firebase
-            onValue(userTransactionsRef, (snapshot) => {
+            // 1. STREAM TRANSAKSI
+            const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
+            onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
-                const transactionsArray = [];
-                
+                const arr = [];
                 if (data) {
-                    for (const key in data) {
-                        if (Object.prototype.hasOwnProperty.call(data, key)) {
-                            transactionsArray.push({ id: key, ...data[key] });
-                        }
-                    }
+                    for (const key in data) arr.push({ id: key, ...data[key] });
                 }
+                AuraState.data.transactions = arr;
                 
-                // Simpan data terbaru ke Global State
-                AuraState.data.transactions = transactionsArray;
-                
-                // Bangunkan UI untuk menggambar ulang dengan data baru
+                // Render ulang otomatis ke semua layar!
                 if (typeof window.renderDashboard === 'function') window.renderDashboard();
                 if (typeof window.renderTransactions === 'function') window.renderTransactions();
-                if (typeof window.renderLog === 'function') window.renderLog();
-                
-                Logger.info('Sync', `Berhasil menarik ${transactionsArray.length} transaksi dari Cloud.`);
-            }, (error) => {
-                 Logger.error('Sync', 'Gagal menarik data transaksi dari Cloud.', error);
+                if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
             });
-            // ----------------------------------------------------
+
+            // 2. STREAM PENGATURAN (Limit Budget, Tracker, Profil, Groq Keys)
+            const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
+            onValue(settingsRef, (snapshot) => {
+                AuraState.data.settings = snapshot.val() || {};
+                
+                // Render ulang layar yang bergantung pada Pengaturan
+                if (typeof window.renderDashboard === 'function') window.renderDashboard();
+                if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+                if (typeof window.renderBudgets === 'function') window.renderBudgets();
+            });
+
+            // 3. STREAM GOALS (Misi Tabungan)
+            const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/goals`);
+            onValue(goalsRef, (snapshot) => {
+                const data = snapshot.val();
+                const arr = [];
+                if (data) {
+                    for (const key in data) arr.push({ id: key, ...data[key] });
+                }
+                AuraState.data.goals = arr;
+                
+                if (typeof window.renderBudgets === 'function') window.renderBudgets();
+            });
+            
+            // ================================================================
 
         } else {
             // Bersihkan State jika user logout
             AuraState.user.uid = null;
             AuraState.data.transactions = [];
+            AuraState.data.settings = {};
+            AuraState.data.goals = [];
             
             Logger.info('Auth', 'Sesi kosong. Menunggu login...');
             if (typeof window.showModal === 'function') window.showModal('modal-login');
