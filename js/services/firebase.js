@@ -1,7 +1,5 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
- * Mengelola koneksi database realtime, status sinkronisasi, dan operasi CRUD.
- * Dilengkapi dengan "Triple-Shot Renderer" untuk mencegah UI kosong saat refresh.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -25,24 +23,35 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 TRIPLE-SHOT RENDERER (Senjata Pamungkas Anti Layar Kosong)
+// 🚀 THE ULTIMATE DEBOUNCER (PELINDUNG ANIMASI & ANTI-CRASH)
 // ============================================================================
+let syncTimeout = null;
 window.forceSyncUI = function() {
-    const executeRender = () => {
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
-        if (typeof window.renderTransactions === 'function') window.renderTransactions();
-        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-        if (typeof window.renderBudgets === 'function') window.renderBudgets();
-    };
+    if (syncTimeout) clearTimeout(syncTimeout);
+    
+    // Kita beri jeda 250ms. Ini mengizinkan Firebase mengumpulkan SEMUA data 
+    // sebelum menyuruh browser melukis layar. Mencegah animasi bertabrakan!
+    syncTimeout = setTimeout(() => {
+        const renderers = [
+            'renderDashboard', 
+            'renderTransactions', 
+            'renderAnalytics', 
+            'renderBudgets', 
+            'renderTrash' // Memanggil fungsi pembaruan log sampah (jika ada)
+        ];
 
-    // Tembakan 1: Dieksekusi Instan
-    executeRender();
-
-    // Tembakan 2: Jeda 300ms (Menunggu DOM HTML selesai dimuat)
-    setTimeout(executeRender, 300);
-
-    // Tembakan 3: Jeda 1 detik (Jaring pengaman jika HP/Browser sedang lemot)
-    setTimeout(executeRender, 1000);
+        renderers.forEach(fn => {
+            // SANGAT PENTING: Gunakan try-catch per fungsi. 
+            // Jika satu layar gagal dilukis, layar lain tetap akan dilukis dengan sukses!
+            try {
+                if (typeof window[fn] === 'function') {
+                    window[fn]();
+                }
+            } catch (e) {
+                console.warn(`Peringatan: Gagal menyinkronkan UI pada modul ${fn}`, e);
+            }
+        });
+    }, 250); 
 };
 
 try {
@@ -64,7 +73,6 @@ try {
     onAuthStateChanged(authInstance, (user) => {
         if (user) {
             AuraState.user.uid = user.uid;
-            Logger.success('Auth', `Sesi pengguna dikonfirmasi: ${user.uid}`);
             
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
@@ -73,16 +81,27 @@ try {
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
-                const arr = [];
+                const activeArr = [];
+                const trashArr = [];
+                
                 if (data) {
                     for (const key in data) {
-                        if (!data[key].is_deleted) arr.push({ id: key, ...data[key] });
+                        const item = { id: key, ...data[key] };
+                        if (item.is_deleted) {
+                            trashArr.push(item);
+                        } else {
+                            activeArr.push(item);
+                        }
                     }
                 }
-                arr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
-                AuraState.data.transactions = arr;
                 
-                // 💥 Tembak UI
+                // Urutkan dari yang terbaru
+                activeArr.sort((a, b) => new Date(b.tanggal || b.createdAt) - new Date(a.tanggal || a.createdAt));
+                trashArr.sort((a, b) => new Date(b.deletedAt || b.createdAt) - new Date(a.deletedAt || a.createdAt));
+                
+                AuraState.data.transactions = activeArr;
+                AuraState.data.trash = trashArr; // Simpan data sampah
+                
                 window.forceSyncUI();
             });
 
@@ -90,8 +109,6 @@ try {
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                
-                // 💥 Tembak UI
                 window.forceSyncUI();
             });
 
@@ -104,8 +121,6 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                
-                // 💥 Tembak UI
                 window.forceSyncUI();
             });
             
@@ -114,24 +129,22 @@ try {
             AuraState.data.transactions = [];
             AuraState.data.settings = {};
             AuraState.data.goals = [];
+            AuraState.data.trash = [];
             
-            Logger.info('Auth', 'Sesi kosong. Menunggu login...');
             if (typeof window.showModal === 'function') window.showModal('modal-login');
         }
     });
 
 } catch (error) {
-    Logger.error('Core', 'FATAL: Gagal melakukan bootstrap koneksi Firebase.', error);
+    Logger.error('Core', 'Gagal memuat Firebase.', error);
 }
 
-// ----------------------------------------------------------------------------
-// Trik Pintar untuk Tombol Refresh Manual di Layar
-// ----------------------------------------------------------------------------
+// Trik Manual Refresh
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
         window.forceSyncUI();
         if (!silent && typeof window.showToast === 'function') {
-            window.showToast("Menyegarkan antarmuka... UI Synchronized.");
+            window.showToast("Data Disinkronisasi Secara Paksa!");
         }
     }
 };
@@ -153,37 +166,35 @@ export const FirebaseService = {
             const userName = profile.fullName || profile.nickname || "Anonymous User";
             const payload = { action: action, detail: AuraUtils.escapeHtml(detail), user: AuraUtils.escapeHtml(userName), ts: Date.now() };
             await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/audit_logs`), payload);
-        } catch (e) { Logger.error('AuditLog', 'Gagal merekam log.', e); }
+        } catch (e) { console.error('Audit Log gagal disimpan', e); }
     },
     
     saveTransaction: async function(data, isFromAI = false) { 
         this._checkAuth();
-        try {
-            data.user_id = AuraState.data.settings?.profile?.nickname || "User";
-            data.nominal = Math.max(0, Number(data.nominal) || 0); 
-            if (!data.createdAt) data.createdAt = new Date().toISOString();
-            
-            await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
-            await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
-        } catch (e) { throw e; }
+        data.user_id = AuraState.data.settings?.profile?.nickname || "User";
+        data.nominal = Math.max(0, Number(data.nominal) || 0); 
+        if (!data.createdAt) data.createdAt = new Date().toISOString();
+        
+        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
+        await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
     },
 
     updateTransaction: async function(id, data) { 
         this._checkAuth();
         if (!id) throw new Error("ID Referensi Transaksi tidak terdefinisi.");
-        try {
-            const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
-            const snapshot = await get(pathRef);
-            if (!snapshot.exists()) throw new Error("Objek transaksi ini sudah tidak ada.");
-            
-            data.updatedAt = new Date().toISOString();
-            await update(pathRef, data);
-            await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
-        } catch (e) { throw e; }
+        
+        const pathRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`);
+        const snapshot = await get(pathRef);
+        if (!snapshot.exists()) throw new Error("Objek transaksi ini sudah tidak ada.");
+        
+        data.updatedAt = new Date().toISOString();
+        await update(pathRef, data);
+        await this.saveAuditLog("SYS.MODIFY", `Update ID Transaksi: ${id}`);
     },
 
     moveToTrash: async function(id) { 
         this._checkAuth();
+        // Cukup perbarui data di Firebase. onValue Stream akan menangkap perubahannya secara otomatis!
         await this.updateTransaction(id, { is_deleted: true, deletedAt: new Date().toISOString() });
         await this.saveAuditLog("SYS.TRASH", `Arsip Sampah ID: ${id}`);
     },
