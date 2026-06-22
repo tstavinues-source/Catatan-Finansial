@@ -1,6 +1,6 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
- * Dioptimalkan menggunakan metode "Pure Reactive" + "Carpet Bombing" untuk mencegah Blank UI.
+ * Menggunakan Arsitektur "Smart Render Flagging" untuk mencegah Double-Fetching & UI Kosong.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -24,28 +24,34 @@ let googleAuthProviderInstance = null;
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
 // ============================================================================
-// 🚀 THE "CARPET BOMBING" RENDER INVOKER (ANTI KOSONG SAAT REFRESH)
+// 🚀 SMART RENDERER (MENUNGGU SEMUA DATA SIAP TANPA DOUBLE-FETCH)
 // ============================================================================
-const invokeRenderers = () => {
-    const fire = () => {
+
+// Ceklis Kehadiran Data
+let dataReady = {
+    transactions: false,
+    settings: false,
+    goals: false
+};
+
+const smartRender = () => {
+    // JIKA SALAH SATU DATA BELUM SIAP, BATALKAN PELUKISAN! (Tunggu sampai ketiganya True)
+    if (!dataReady.transactions || !dataReady.settings || !dataReady.goals) {
+        return; 
+    }
+    
+    // Jika semua data sudah siap, gunakan requestAnimationFrame agar transisi sangat mulus
+    requestAnimationFrame(() => {
         try {
             if (typeof window.renderDashboard === 'function') window.renderDashboard();
             if (typeof window.renderTransactions === 'function') window.renderTransactions();
             if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
             if (typeof window.renderBudgets === 'function') window.renderBudgets();
+            if (typeof window.renderTrash === 'function') window.renderTrash();
         } catch(e) {
-            // Abaikan error diam-diam jika elemen HTML memang belum siap dilukis
+            console.warn('Smart Render error:', e);
         }
-    };
-
-    // Tembakan 1: Reaktif Murni (Sekarang juga!)
-    fire();
-
-    // Tembakan Susulan (Jaring Pengaman): Menjamin UI menangkap data 
-    // meskipun browser / HP sedang lambat memuat elemen HTML.
-    setTimeout(fire, 100);
-    setTimeout(fire, 500);
-    setTimeout(fire, 1500);
+    });
 };
 
 try {
@@ -67,6 +73,9 @@ try {
     onAuthStateChanged(authInstance, (user) => {
         if (user) {
             AuraState.user.uid = user.uid;
+            
+            // Reset Ceklis setiap kali login
+            dataReady = { transactions: false, settings: false, goals: false };
             
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
@@ -92,14 +101,17 @@ try {
                 AuraState.data.transactions = activeArr;
                 AuraState.data.trash = trashArr; 
                 
-                invokeRenderers(); // Hajar!
+                dataReady.transactions = true; // ✔️ Ceklis Transaksi Hadir
+                smartRender(); // Coba lukis
             });
 
             // 2. STREAM PENGATURAN
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${user.uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
-                invokeRenderers(); // Hajar!
+                
+                dataReady.settings = true; // ✔️ Ceklis Pengaturan Hadir
+                smartRender(); // Coba lukis
             });
 
             // 3. STREAM GOALS
@@ -111,7 +123,9 @@ try {
                     for (const key in data) arr.push({ id: key, ...data[key] });
                 }
                 AuraState.data.goals = arr;
-                invokeRenderers(); // Hajar!
+                
+                dataReady.goals = true; // ✔️ Ceklis Goals Hadir
+                smartRender(); // Coba lukis
             });
             
         } else {
@@ -129,12 +143,17 @@ try {
     Logger.error('Core', 'Gagal memuat Firebase.', error);
 }
 
-// Fungsi manual dipangkas hanya untuk memanggil invoker
+// Fitur Refresh Manual
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
-        invokeRenderers();
+        requestAnimationFrame(() => {
+            if (typeof window.renderDashboard === 'function') window.renderDashboard();
+            if (typeof window.renderTransactions === 'function') window.renderTransactions();
+            if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+            if (typeof window.renderBudgets === 'function') window.renderBudgets();
+        });
         if (!silent && typeof window.showToast === 'function') {
-            window.showToast("Data Disinkronisasi!");
+            window.showToast("Data Disinkronisasi Secara Paksa!");
         }
     }
 };
@@ -182,7 +201,6 @@ export const FirebaseService = {
 
     moveToTrash: async function(id) { 
         this._checkAuth();
-        // Langsung hajar update ke Firebase, tidak perlu memanggil UI secara manual!
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`), { 
             is_deleted: true, 
             deletedAt: new Date().toISOString() 
@@ -192,7 +210,6 @@ export const FirebaseService = {
 
     deleteTransactionPermanently: async function(id) { 
         this._checkAuth();
-        // Langsung remove, biarkan onValue yang bereaksi
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions/${id}`));
         await this.saveAuditLog("SYS.DESTROY", `Pembersihan permanen ID: ${id}`);
     },
