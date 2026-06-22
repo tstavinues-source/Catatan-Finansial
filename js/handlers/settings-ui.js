@@ -661,24 +661,26 @@ window.openAuditLogs = async function() {
 };
 
 // ============================================================================
-// 6. AUTO-SYNC OBSERVER (MEMPERBAIKI BUG REFRESH UI)
+// 6. AUTO-SYNC OBSERVER (CCTV PEMANTAU DATA FIREBASE)
 // ============================================================================
-let isSettingsAutoRendered = false;
+let lastGroqKeysStr = null;
+let lastRecStr = null;
 
-const syncInterval = setInterval(() => {
-    if (AuraState.data && AuraState.data.settings && !isSettingsAutoRendered) {
-        
-        // Memastikan UI Kunci Groq digambar ulang begitu data Firebase tiba
-        if (typeof window.renderGroqKeysUI === 'function') {
-            window.renderGroqKeysUI();
-        }
-        
-        // Memastikan UI Tagihan Rutin digambar ulang
-        if (typeof window.renderRecurringUI === 'function') {
-            window.renderRecurringUI();
-        }
-        
-        isSettingsAutoRendered = true;
-        clearInterval(syncInterval);
+setInterval(() => {
+    // Pastikan sistem state sudah siap
+    if (!AuraState.data || !AuraState.data.settings) return;
+    
+    // 1. Pantau Perubahan pada Kunci Groq
+    const currentGroqKeys = JSON.stringify(AuraState.data.settings.groqKeysEncrypted || []);
+    if (currentGroqKeys !== lastGroqKeysStr) {
+        if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+        lastGroqKeysStr = currentGroqKeys;
     }
-}, 500);
+
+    // 2. Pantau Perubahan pada Tagihan Rutin
+    const currentRec = JSON.stringify(AuraState.data.settings.recurringPayments || {});
+    if (currentRec !== lastRecStr) {
+        if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
+        lastRecStr = currentRec;
+    }
+}, 1000); // Sistem akan mengecek perubahan setiap 1 detik secara real-time
