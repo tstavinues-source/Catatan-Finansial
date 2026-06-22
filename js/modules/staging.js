@@ -22,30 +22,39 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT PAMUNGKAS: LOGIKA PAJAK BERSYARAT & AUTO-LEARN KATEGORI
+        // === SUNTIKAN WAKTU LOKAL (MENCEGAH BUG JAM 09:00 UTC) ===
+        const now = new Date();
+        const localDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        const localTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
+WAKTU SAAT INI: Tanggal ${localDate}, Jam ${localTime}
+
 FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
+
+ATURAN TANGGAL & WAKTU:
+1. Cari tanggal dan jam di struk. Jika di teks/struk TIDAK ADA informasi tanggal, WAJIB gunakan Waktu Saat Ini (${localDate} dan ${localTime}).
+2. Format "tanggal" wajib YYYY-MM-DD. Format "waktu" wajib HH:MM.
 
 ATURAN KATEGORI (SMART LEARNING):
 Prioritaskan memilih "kategori_barang" dari daftar ini: [${categoryListStr}]. 
-NAMUN, jika barangnya sangat spesifik, KAMU DIIZINKAN membuat kategori baru (Maksimal 1-2 kata, Contoh: "Camilan", "Produk Daging", "Sayuran", "Bumbu Dapur", dll). Jangan gunakan kata "Lainnya" kecuali benar-benar terpaksa.
+NAMUN, jika barangnya sangat spesifik, KAMU DIIZINKAN membuat kategori baru (Maksimal 1-2 kata, Contoh: "Camilan", "Sayuran", dll). Jangan gunakan "Lainnya" kecuali terpaksa.
 
 ATURAN PAJAK BERSYARAT (SANGAT KRITIKAL!):
 Hitung dulu ada berapa jumlah barang di struk ini.
-1. JIKA JUMLAH BARANG <= 10 (1 sampai 10 item): 
-   Bagikan nilai persen pajak (8% atau 10%) ke harga masing-masing item secara proporsional. Masukkan harga final ini ke field 'harga'.
-2. JIKA JUMLAH BARANG > 10 (11 item ke atas): 
-   JANGAN membagikan pecahan pajak ke masing-masing item (untuk mencegah timeout). Masukkan harga item SAMA PERSIS dengan harga dasar di struk. LALU, buat item baru secara terpisah di bagian bawah untuk pajaknya (Contoh: nama_barang: "Pajak Konsumsi 8%", harga: nominal_pajaknya).
-3. Pengecualian: JIKA total harga barang sudah sama dengan Grand Total (Tax-Inclusive), JANGAN tambahkan/hitung pajak apa pun, tulis harga apa adanya.
-4. Total nominal dari semua item di JSON WAJIB sama persis dengan Total Akhir Pembayaran (Grand Total).
+1. JIKA JUMLAH BARANG <= 10: Bagikan nilai persen pajak ke harga masing-masing item proporsional. Masukkan harga final ke field 'harga'.
+2. JIKA JUMLAH BARANG > 10: JANGAN membagikan pajak. Masukkan harga item SAMA PERSIS dengan struk. LALU, buat item terpisah di bawah untuk pajaknya (Contoh: nama_barang: "Pajak Konsumsi", harga: nominal_pajaknya).
+3. Pengecualian: JIKA total harga barang sudah sama dengan Grand Total, JANGAN hitung pajak lagi.
+4. Total nominal item di JSON WAJIB sama persis dengan Total Akhir Pembayaran.
 
 ATURAN TRANSLASI:
-- Wajib TERJEMAHKAN nama toko (merchantName) dan nama barang (nama_barang) ke BAHASA INDONESIA yang lazim.
+Wajib TERJEMAHKAN nama toko (merchantName) dan nama barang (nama_barang) ke BAHASA INDONESIA.
 
 Struktur Output Target JSON MURNI:
 {
     "merchantName": "string", 
     "tanggal": "YYYY-MM-DD", 
+    "waktu": "HH:MM",
     "mata_uang": "string", 
     "metode_pembayaran": "tunai/cashless", 
     "tipe": "pengeluaran", 
@@ -67,14 +76,23 @@ Struktur Output Target JSON MURNI:
             { role: "user", content: userContent } 
         ];
         
+        // Panggil AI (Gemini / Groq)
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, imgData);
         const jsonResult = AuraUtils.parseCleanJSON(aiOutput);
 
-        const timestamp = new Date().toISOString();
+        // === PERAKITAN WAKTU FINAL (MENGUNCI ZONA WAKTU LOKAL) ===
+        const parsedDate = jsonResult.tanggal || localDate;
+        const parsedTime = jsonResult.waktu || localTime;
+        let finalDateObj = new Date(`${parsedDate}T${parsedTime}:00`);
+        if (isNaN(finalDateObj.getTime())) {
+            finalDateObj = new Date(); // Fallback jika format AI hancur
+        }
+        const finalISO = finalDateObj.toISOString();
+
         AuraState.temp.aiStaging = {
-            items: AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, timestamp),
+            items: AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, finalISO),
             merchantName: jsonResult.merchantName || jsonResult.storeName || jsonResult.kategori || "Toko/Merchant",
-            tanggal: jsonResult.tanggal || timestamp.split('T')[0],
+            tanggal: finalISO, // Simpan sebagai ISO penuh berisikan Jam & Menit
             mata_uang: jsonResult.mata_uang || activeCurrency,
             metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
             tipe: jsonResult.tipe || 'pengeluaran',
@@ -85,7 +103,7 @@ Struktur Output Target JSON MURNI:
         
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
-        if (window.showToast) window.showToast("Selesai diproses! Strategi komputasi pajak disesuaikan otomatis.");
+        if (window.showToast) window.showToast("Selesai diproses! Waktu disesuaikan otomatis.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
@@ -202,16 +220,14 @@ window.saveStagingToDatabase = async function() {
     }
     
     stagingData.nominal = finalSum + Number(stagingData.admin_fee || 0); 
-    stagingData.createdAt = new Date().toISOString();
+    stagingData.createdAt = new Date().toISOString(); // Waktu tombol ditekan
     stagingData.is_deleted = false;
 
     try {
-        // === PELATUK AUTO-LEARN CATEGORY: BIARKAN SISTEM MEMPELAJARI KATEGORI BARU ===
         if (typeof CategoryManager.autoLearnCategories === 'function') {
             await CategoryManager.autoLearnCategories(stagingData.items);
         }
         
-        // Simpan transaksi utamanya ke Firebase
         await FirebaseService.saveTransaction(stagingData, true);
         
         if (typeof window.closeModal === 'function') window.closeModal('modal-ai-staging');
@@ -219,8 +235,7 @@ window.saveStagingToDatabase = async function() {
         AuraState.temp.aiStaging = null;
         if (window.showToast) window.showToast("Berkas Staging Area dikonfirmasi ke server Cloud!");
 
-        // PELATUK REFRESH MENGGUNAKAN MESIN ASLI
-        if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 
     } catch(e) { 
         if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
