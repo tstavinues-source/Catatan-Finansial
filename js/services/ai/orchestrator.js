@@ -4,7 +4,8 @@
  */
 
 import { AuraState } from '../../core/state.js';
-import { GroqService } from './groq.js';
+// PERBAIKAN: Menggunakan nama export yang benar dari groq.js yang baru
+import { GroqAPI } from './groq.js';
 
 window.getOraclePromptConfigs = function() {
     const prefs = AuraState.data.settings?.aiPreferences || {};
@@ -19,7 +20,7 @@ window.getOraclePromptConfigs = function() {
     else if (userPersona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
     else if (userPersona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
     else if (userPersona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
-    else if (userPersona === "Formal") personaStr = "sangt formal, baku, dan analitis";
+    else if (userPersona === "Formal") personaStr = "sangat formal, baku, dan analitis";
     else if (userPersona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
     
     let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
@@ -50,38 +51,32 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     let fallbackToGemini = false;
     
     if (useGroq) {
-        if (GroqService.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
-            GroqService.init(AuraState.data.groqKeys);
-        }
-
-        if (GroqService.keysPool.length > 0) {
-            try { 
-                const result = await GroqService.fetch(messages, requireJson);
-                lastError = null; 
-                return result;
-            } catch(e) { 
-                lastError = e;
-                if (useGemini) fallbackToGemini = true;
-                else throw e;
-            }
-        } else if (!useGemini) {
-            throw new Error("Tidak ada kuota konfigurasi Key untuk engine Groq.");
-        } else {
-            fallbackToGemini = true;
+        try { 
+            // PERBAIKAN: Memanggil GroqAPI dengan parameter yang benar sesuai arsitektur baru
+            const result = await GroqAPI.callGroq(messages, systemPrompt, requireJson, base64Image);
+            lastError = null; 
+            return result;
+        } catch(e) { 
+            lastError = e;
+            if (useGemini) fallbackToGemini = true;
+            else throw e;
         }
     }
     
     if (useGemini || fallbackToGemini) {
         if (AuraState.instances.geminiEngine && AuraState.instances.geminiEngine.keysPool.length > 0) {
             try {
+                // PERBAIKAN: Membangun payload Gemini sesuai arsitektur Gembok Nexus yang baru
                 const userPrompt = messages[messages.length - 1].content;
                 const geminiPayload = { 
                     contents: [{ role: "user", parts: [{ text: userPrompt }] }], 
-                    systemInstruction: { parts: [{ text: systemPrompt }] } 
+                    system_instruction: { parts: [{ text: systemPrompt }] } 
                 };
                 
+                // Orchestrator akan menyuntikkan instruksi JSON ke payload agar ditangkap oleh GeminiFailoverEngine
                 if (requireJson) {
-                    geminiPayload.generationConfig = { responseMimeType: "application/json" };
+                    if (!geminiPayload.system_instruction) geminiPayload.system_instruction = { parts: [{ text: "" }] };
+                    geminiPayload.system_instruction.parts[0].text += " FORMAT WAJIB: JSON.";
                 }
                 
                 const result = await AuraState.instances.geminiEngine.fetch(geminiPayload, base64Image);
