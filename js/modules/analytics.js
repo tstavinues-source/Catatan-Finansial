@@ -1,6 +1,7 @@
 /**
  * Analytics & Statistics Module
- * Mengelola kalkulasi pengeluaran, UI Accordion, Chart, CSV, Tracker Dinamis, dan Smart Grouper.
+ * Mengelola kalkulasi pengeluaran, UI Accordion, Chart, CSV, Tracker Dinamis, Smart Grouper,
+ * dan fitur Drill-Down (Rincian Item Sub-Kategori).
  */
 
 import { AuraState } from '../core/state.js';
@@ -51,7 +52,6 @@ window.renderAnalytics = function() {
         startDate = 0; 
     }
 
-    // === PANGGIL RENDERER TRACKER DINAMIS (YANG SEMPAT HILANG) ===
     if (typeof window.renderDynamicTrackers === 'function') {
         window.renderDynamicTrackers(startDate, endDate);
     }
@@ -136,20 +136,31 @@ window.renderAnalytics = function() {
                 let subsHtml = '';
                 const hasSpecificSubs = sortedSubs.some(sub => sub.name !== p.name);
 
+                // --- SUNTIKAN KLIK DRILL-DOWN PADA SUB-KATEGORI ---
+                const safeParent = p.name.replace(/'/g, "\\'");
+
                 if (hasSpecificSubs) {
                     sortedSubs.forEach(sub => {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
+                        const safeSub = sub.name.replace(/'/g, "\\'");
+                        
                         subsHtml += `
-                        <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/5 transition">
-                            <span class="text-[10px] text-slate-300 flex items-center gap-2">
+                        <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/10 transition cursor-pointer active:scale-[0.99] group" onclick="window.openSubCategoryItems('${safeParent}', '${safeSub}')">
+                            <span class="text-[10px] text-slate-300 flex items-center gap-2 group-hover:text-white transition">
                                 <div class="w-1.5 h-1.5 rounded-full" style="background-color: ${p.style.hex};"></div> 
                                 ${displayName}
                             </span>
-                            <span class="text-[10px] font-mono font-bold text-slate-300">${AuraUtils.formatCurrency(sub.total)}</span>
+                            <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
+                                ${AuraUtils.formatCurrency(sub.total)}
+                                <i class="fa-solid fa-chevron-right text-[8px] text-[var(--text-muted)] opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
+                            </span>
                         </div>`;
                     });
                 } else {
-                    subsHtml += `<div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center">Seluruhnya adalah item umum ${p.name}.</div>`;
+                    subsHtml += `
+                    <div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center cursor-pointer hover:bg-white/10 hover:text-white transition active:scale-[0.99]" onclick="window.openSubCategoryItems('${safeParent}', '${safeParent}')">
+                        Seluruhnya adalah item umum ${p.name}. <span class="text-accent underline decoration-accent/50 ml-1">Lihat Rincian</span>
+                    </div>`;
                 }
 
                 catContainer.innerHTML += `
@@ -211,9 +222,95 @@ window.renderAnalytics = function() {
     drawCanvasChart(trend7Days);
 };
 
-// === FUNGSI RENDER TRACKER DINAMIS (BARU) ===
+// === FUNGSI BARU: MODAL DRILL-DOWN RINCIAN ITEM ===
+window.openSubCategoryItems = function(parentName, subName) {
+    let modal = document.getElementById('modal-subcat-items');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-subcat-items';
+        modal.className = 'fixed inset-0 bg-black/90 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        document.body.appendChild(modal);
+    }
+
+    // Ambil Filter Tanggal Saat Ini (Agar sesuai dengan layar Stats)
+    let startDate = 0, endDate = Infinity;
+    const now = new Date();
+    const mode = AuraState.system.viewMode || 'period';
+    
+    if (mode === 'period') {
+        const y = now.getFullYear(); const m = now.getMonth(); const d = now.getDate();
+        if (d >= 16) { startDate = new Date(y, m, 16, 0, 0, 0).getTime(); endDate = new Date(y, m + 1, 15, 23, 59, 59).getTime(); } 
+        else { startDate = new Date(y, m - 1, 16, 0, 0, 0).getTime(); endDate = new Date(y, m, 15, 23, 59, 59).getTime(); }
+    } else if (mode === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).getTime(); endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
+    }
+
+    const tx = AuraState.data.transactions || [];
+    let itemsHtml = '';
+    let totalVal = 0;
+
+    // Saring data untuk mencari item yang cocok
+    tx.forEach(t => {
+        if (t.is_deleted || t.tipe !== 'pengeluaran') return;
+        const tTime = new Date(t.tanggal || t.createdAt).getTime();
+        
+        if (tTime >= startDate && tTime <= endDate) {
+            const safeMerchant = (t.merchantName || t.storeName || 'Unknown').trim();
+            
+            (t.items || []).forEach(it => {
+                let rawCat = (it.kategori_barang || 'Lainnya').trim();
+                let cleanCat = rawCat.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+                const currentParent = getParentCategory(cleanCat);
+                
+                // Jika Induk dan Sub-nya cocok dengan yang diklik user
+                if (currentParent === parentName && cleanCat === subName) {
+                    const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+                    totalVal += val;
+                    
+                    const tDate = new Date(t.tanggal || t.createdAt);
+                    const dateStr = `${tDate.getDate().toString().padStart(2,'0')}/${(tDate.getMonth()+1).toString().padStart(2,'0')}`;
+
+                    itemsHtml += `
+                    <div class="flex justify-between items-center p-3 border-b border-[var(--border-glass)] hover:bg-white/5 transition">
+                        <div class="flex-1 min-w-0 pr-3">
+                            <p class="text-xs font-bold text-white truncate">${AuraUtils.escapeHtml(it.nama_barang || 'Item')}</p>
+                            <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="text-xs font-mono font-bold text-accent">${AuraUtils.formatCurrency(val)}</p>
+                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${AuraUtils.formatCurrency(it.harga || 0)}</p>
+                        </div>
+                    </div>`;
+                }
+            });
+        }
+    });
+
+    if (itemsHtml === '') itemsHtml = '<p class="text-xs text-center text-[var(--text-muted)] py-6">Tidak ada rincian item ditemukan.</p>';
+    const displayName = subName === parentName ? `Item Umum ${parentName}` : subName;
+
+    modal.innerHTML = `
+    <div class="glass-panel w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent">
+        <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
+            <div>
+                <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(displayName)}</h3>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${AuraUtils.formatCurrency(totalVal)}</p>
+            </div>
+            <button onclick="document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-0 space-y-0 relative hide-scrollbar bg-black/20">
+            ${itemsHtml}
+        </div>
+    </div>`;
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+};
+
+
 window.renderDynamicTrackers = function(startDate, endDate) {
-    // Cari kontainer berdasarkan ID, atau cari manual berdasarkan tag h4 (Kebutuhan Pokok)
     let container = document.getElementById('staples-container');
     if (!container) {
         const headers = document.querySelectorAll('h4, h3');
@@ -224,7 +321,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
         }
     }
     
-    if (!container) return; // Keluar jika kontainer tetap tidak ditemukan di HTML
+    if (!container) return; 
 
     const trackers = AuraState.data.settings?.staplesTrackers || {};
     const entries = Object.entries(trackers);
@@ -258,7 +355,6 @@ window.renderDynamicTrackers = function(startDate, endDate) {
 
     let html = '';
     entries.forEach(([id, tracker]) => {
-        // SISTEM IKON OTOMATIS BERDASARKAN NAMA TRACKER
         let icon = 'fa-box-open'; let color = 'text-amber-400';
         const nameLower = tracker.name.toLowerCase();
         
