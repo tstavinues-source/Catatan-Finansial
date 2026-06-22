@@ -1,17 +1,63 @@
 /**
- * Confirmation Modal Handler
- * Mengelola eksekusi aksi destruktif (soft-delete, hard-delete, hapus item/goal) via Modal Konfirmasi.
+ * AuraAlert & Confirmation Handler
+ * Menggantikan pop-up bawaan browser dengan Custom Modal.
+ * Mengelola eksekusi aksi destruktif via Modal Konfirmasi.
  */
 
 import { AuraState } from '../core/state.js';
-import { AuraUtils } from '../core/utils.js'; // Memastikan AuraUtils diimpor
+import { AuraUtils } from '../core/utils.js';
 import { FirebaseService } from '../services/firebase.js';
 
+// ============================================================================
+// 1. ENGINE AURA ALERT (Pengganti alert, confirm, prompt)
+// ============================================================================
+window.AuraAlert = {
+    confirm: function(message, onConfirmCallback) {
+        document.getElementById('confirm-msg').innerText = message;
+        AuraState.temp.deleteTarget = null; // Kosongkan target transaksi agar tidak bertabrakan
+        AuraState.temp.confirmCallback = onConfirmCallback;
+        if (typeof window.showModal === 'function') window.showModal('modal-confirm');
+    },
+    prompt: function(message, placeholder, onConfirmCallback) {
+        document.getElementById('prompt-msg').innerText = message;
+        const input = document.getElementById('prompt-input');
+        if(input) {
+            input.placeholder = placeholder || "Ketik jawaban di sini...";
+            input.value = "";
+        }
+        AuraState.temp.promptCallback = onConfirmCallback;
+        if (typeof window.showModal === 'function') window.showModal('modal-custom-prompt');
+        // Auto-focus ke input box setelah animasi modal selesai
+        setTimeout(() => input?.focus(), 300);
+    }
+};
+
+// ============================================================================
+// 2. HANDLER MODAL PROMPT
+// ============================================================================
+window.closePromptModal = function() {
+    if (typeof window.closeModal === 'function') window.closeModal('modal-custom-prompt');
+    AuraState.temp.promptCallback = null;
+};
+
+window.executeCustomPrompt = function() {
+    const inputVal = document.getElementById('prompt-input')?.value.trim();
+    if (typeof AuraState.temp.promptCallback === 'function') {
+        AuraState.temp.promptCallback(inputVal); // Kirim nilai ke fungsi pemanggil
+        AuraState.temp.promptCallback = null;
+    }
+    window.closePromptModal();
+};
+
+// ============================================================================
+// 3. HANDLER MODAL CONFIRM (Hybrid: Untuk Custom dan Hapus Transaksi)
+// ============================================================================
 window.closeConfirmModal = function() { 
     if (typeof window.closeModal === 'function') {
         window.closeModal('modal-confirm');
     }
     AuraState.temp.deleteTarget = null; 
+    AuraState.temp.confirmCallback = null; // Bersihkan memori titipan
 };
 
 window.addEventListener('load', function() {
@@ -19,8 +65,16 @@ window.addEventListener('load', function() {
     
     if (executeConfirmDeleteBtn) {
         executeConfirmDeleteBtn.addEventListener('click', async function() {
-            const target = AuraState.temp.deleteTarget;
             
+            // SKENARIO A: Jika ini adalah confirm custom dari AuraAlert
+            if (typeof AuraState.temp.confirmCallback === 'function') {
+                AuraState.temp.confirmCallback(); // Eksekusi fungsi yang dititipkan
+                window.closeConfirmModal();
+                return;
+            }
+
+            // SKENARIO B: Jika ini adalah perintah hapus transaksi (Logika Lama)
+            const target = AuraState.temp.deleteTarget;
             if (!target) return;
             
             try {
@@ -62,7 +116,6 @@ window.addEventListener('load', function() {
                         } else { 
                             const upd = { items: nItems, nominal: sum };
                             if (!trx.isCustomDescription) { 
-                                // SUDAH DIPERBAIKI: Menggunakan AuraUtils secara langsung tanpa window.
                                 upd.description = `[Auto-Update] Item dihapus. Total terbaru: ${AuraUtils.formatCurrency(sum)}.`; 
                                 upd.catatan_ai = upd.description; 
                             } 
