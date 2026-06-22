@@ -1,18 +1,12 @@
 /**
- * Super Render Engine (Calculations & DOM Updates)
- * Mengkalkulasi seluruh status finansial, merender ulang UI, dan memuat data Realtime Firebase.
+ * Super Render Engine
  */
-
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { ref, onValue } from "[https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js](https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js)";
 import { Logger } from '../core/logger.js';
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
-
-// ============================================================================
-// SUPER RENDER ENGINE (CALCULATIONS & DOM UPDATES)
-// ============================================================================
 
 window.reCalculateAll = function() {
     const allTx = AuraState.data.transactions || [];
@@ -23,7 +17,6 @@ window.reCalculateAll = function() {
 
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
-        // Hapus convertCurrency di sini agar tidak dikali 2x lipat
         const val = trx.nominal || 0; 
         const isCash = (trx.metode_pembayaran === 'tunai');
 
@@ -50,14 +43,16 @@ window.reCalculateAll = function() {
     }
 
     const periodRange = AuraUtils.getPeriodRange();
-    const fSearch = AuraState.filters.search ? AuraState.filters.search.toLowerCase() : "";
-    const fCat = AuraState.filters.category || "ALL";
-    const fUser = AuraState.filters.user || "ALL";
+    
+    // PERBAIKAN CRASH: Pengecekan aman untuk filter
+    const fSearch = (AuraState.filters && AuraState.filters.search) ? AuraState.filters.search.toLowerCase() : "";
+    const fCat = (AuraState.filters && AuraState.filters.category) ? AuraState.filters.category : "ALL";
+    const fUser = (AuraState.filters && AuraState.filters.user) ? AuraState.filters.user : "ALL";
 
     let periodSpent = 0, periodIncome = 0;
     let groupedTrx = {};
-
     let filteredTx = [];
+
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
         const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
@@ -100,7 +95,7 @@ window.reCalculateAll = function() {
 
     for (let i = 0; i < filteredTx.length; i++) {
         const trx = filteredTx[i];
-        const val = trx.nominal || 0; // Hapus convertCurrency ganda
+        const val = trx.nominal || 0; 
         const dStrRaw = trx.tanggal || trx.createdAt;
         const dStr = dStrRaw.split('T')[0];
         const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
@@ -115,7 +110,7 @@ window.reCalculateAll = function() {
         } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
             let actualSpend = val;
             if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
-                actualSpend = Number(trx.admin_fee || 0); // Hapus convertCurrency ganda
+                actualSpend = Number(trx.admin_fee || 0);
             }
             groupedTrx[dStr].total -= actualSpend; 
             periodSpent += actualSpend; 
@@ -125,7 +120,6 @@ window.reCalculateAll = function() {
         groupedTrx[dStr].items.push(trx);
     }
 
-    // UPDATE UI DASHBOARD (Angka akan diformat otomatis oleh formatCurrency dari utils)
     AuraUtils.safeDOM('dash-total-balance', el => el.innerText = AuraUtils.formatCurrency(cumulativeBalance));
     AuraUtils.safeDOM('dash-cash', el => el.innerText = AuraUtils.formatCurrency(totalCashBal));
     AuraUtils.safeDOM('dash-cashless', el => el.innerText = AuraUtils.formatCurrency(totalCashlessBal));
@@ -169,7 +163,6 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('period-progress-text', el => el.innerText = `PROGRES SIKLUS: ${periodPct.toFixed(0)}%`);
     AuraUtils.safeDOM('period-days-left', el => el.innerText = `${daysLeft} HARI TERSISA`);
 
-    // TRANSACTIONS LIST RENDERING
     AuraUtils.safeDOM('trx-list-container', el => {
         const groupedKeys = Object.keys(groupedTrx).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
         
@@ -224,7 +217,6 @@ window.reCalculateAll = function() {
                         const itCatHex = CategoryManager.resolveStyle(it.kategori_barang).hex;
                         const taxBadge = it.tax_rate ? `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : '';
                         
-                        // Menghilangkan convertCurrency karena formatCurrency sudah menanganinya
                         const totalItemHarga = it.harga * (it.qty || 1);
 
                         receiptLines += `
@@ -300,10 +292,8 @@ window.reCalculateAll = function() {
         el.innerHTML = compiledTrxHtml;
     });
 
-    // Panggil renderAnalytics agar halaman stats juga diperbarui
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
 
-    // RENDERING UNTUK MODUL LAINNYA
     AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
@@ -314,7 +304,7 @@ window.reCalculateAll = function() {
         let glHtml = '';
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
-            const targetVal = g.targetAmount || 0; // Hapus konversi ganda
+            const targetVal = g.targetAmount || 0; 
             const diffDays = Math.ceil((new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
             const dailyReq = diffDays > 0 ? targetVal / diffDays : 0;
             
@@ -350,7 +340,7 @@ window.reCalculateAll = function() {
         for (let i = 0; i < trashList.length; i++) {
             const t = trashList[i]; 
             const delDate = t.deletedAt ? t.deletedAt.split('T')[0] : 'Unknown'; 
-            const val = t.nominal || 0; // Hapus konversi ganda
+            const val = t.nominal || 0; 
             
             trashHtml += `
             <div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition">
@@ -374,3 +364,99 @@ window.reCalculateAll = function() {
 };
 
 window.debouncedCalculateAll = AuraUtils.debounce(window.reCalculateAll, APP_CONFIG.THROTTLE_MS);
+
+window.addEventListener('resize', function() {
+    if (AuraState.system.activeView === 'dashboard' || AuraState.system.activeView === 'analytics') {
+        if (typeof window.debouncedCalculateAll === 'function') {
+            window.debouncedCalculateAll();
+        }
+    }
+});
+
+window.toggleExpandedReceipt = function(trxId) {
+    if (!AuraState.temp.expandedReceipts) AuraState.temp.expandedReceipts = {};
+    AuraState.temp.expandedReceipts[trxId] = !AuraState.temp.expandedReceipts[trxId];
+    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+};
+
+window.loadRealtimeDatabaseData = function() {
+    if (!AuraState.user.uid) {
+        Logger.warn('Dashboard', 'loadRealtimeDatabaseData: Tidak ada user UID aktif');
+        return;
+    }
+    
+    const uid = AuraState.user.uid;
+    const db = AuraState.instances.db;
+    const ledgerNode = APP_CONFIG.LEDGER_NODE;
+    const listeners = AuraState.listeners || [];
+    
+    for (let i = 0; i < listeners.length; i++) {
+        if (typeof listeners[i] === 'function') listeners[i]();
+    }
+    AuraState.listeners = [];
+    
+    Logger.info('Dashboard', 'Membangun koneksi listener Realtime Firebase...');
+    
+    const txRef = ref(db, `${ledgerNode}/${uid}/transactions`);
+    const txUnsubscribe = onValue(txRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        const transactions = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        AuraState.data.transactions = transactions.filter(t => !t.is_deleted);
+        AuraState.data.trash = transactions.filter(t => t.is_deleted);
+        
+        if (typeof window.populateUserFilterDropdown === 'function') window.populateUserFilterDropdown();
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    });
+    AuraState.listeners.push(txUnsubscribe);
+    
+    const goalsRef = ref(db, `${ledgerNode}/${uid}/goals`);
+    const goalsUnsubscribe = onValue(goalsRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        AuraState.data.goals = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    });
+    AuraState.listeners.push(goalsUnsubscribe);
+    
+    const settingsRef = ref(db, `${ledgerNode}/${uid}/settings`);
+    const settingsUnsubscribe = onValue(settingsRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        AuraState.data.settings = data;
+        
+        if (data.monthlyBudget?.limit !== undefined) {
+            AuraState.data.monthlyBudget = data.monthlyBudget.limit;
+        }
+        
+        if (data.groqApiKeys) {
+            AuraState.data.groqKeys = Object.keys(data.groqApiKeys).map(key => ({ id: key, ...data.groqApiKeys[key] }));
+            if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+        }
+        
+        if (data.aiPreferences) {
+            AuraUtils.safeDOM('setting-ai-chat', el => el.value = data.aiPreferences.modelChat || 'Auto');
+            AuraUtils.safeDOM('setting-ai-vision', el => el.value = data.aiPreferences.modelVision || 'Auto');
+            AuraUtils.safeDOM('setting-ai-persona', el => el.value = data.aiPreferences.persona || 'Kombinasi Humble + Jenius + Profesional');
+            AuraUtils.safeDOM('setting-ai-style', el => el.value = data.aiPreferences.style || 'Normal');
+        }
+        
+        if (data.profile) {
+            AuraUtils.safeDOM('user-fullname', el => el.value = data.profile.fullName || '');
+            AuraUtils.safeDOM('user-nickname', el => el.value = data.profile.nickname || '');
+        }
+        
+        if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
+        if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
+        if (typeof window.renderCategoryDropdowns === 'function') window.renderCategoryDropdowns();
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    });
+    AuraState.listeners.push(settingsUnsubscribe);
+    
+    const chatRef = ref(db, `${ledgerNode}/${uid}/oracleChats`);
+    const chatUnsubscribe = onValue(chatRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        AuraState.data.oracleChats = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        if (typeof window.renderOracleChats === 'function') window.renderOracleChats();
+    });
+    AuraState.listeners.push(chatUnsubscribe);
+    
+    Logger.success('Dashboard', 'Pipa koneksi data realtime telah dikunci rapat.');
+};
