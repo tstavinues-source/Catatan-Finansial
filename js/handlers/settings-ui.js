@@ -11,7 +11,7 @@ import { FirebaseService } from '../services/firebase.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 // ============================================================================
-// 1. PROFIL & PREFERENSI AI (TERMASUK DOMISILI PAJAK & MATA UANG)
+// 1. PROFIL & PREFERENSI AI 
 // ============================================================================
 
 window.saveUserProfile = async function() {
@@ -22,51 +22,29 @@ window.saveUserProfile = async function() {
     
     if (!nameEl || !nickEl) return;
     
-    const name = nameEl.value.trim();
-    const nick = nickEl.value.trim();
+    const name = nameEl.value.trim(); const nick = nickEl.value.trim();
     const country = countryEl ? countryEl.value : 'Jepang';
     const currency = currEl ? currEl.value : 'JPY';
     
-    if (!name || !nick) {
-        if (window.showToast) window.showToast("Nama dan Panggilan tidak boleh kosong!", true);
-        return;
-    }
+    if (!name || !nick) { if (window.showToast) window.showToast("Nama dan Panggilan tidak boleh kosong!", true); return; }
     
     try {
-        await FirebaseService.updateSettings({ 
-            profile: { fullName: name, nickname: nick, country: country, defaultCurrency: currency } 
-        });
-        
-        // Paksa UI berganti mata uang jika user mengubah defaultnya
-        if (typeof window.setCurrency === 'function' && AuraState.system.displayCurrency !== currency) {
-            window.setCurrency(currency);
-        }
-        
+        await FirebaseService.updateSettings({ profile: { fullName: name, nickname: nick, country: country, defaultCurrency: currency } });
+        if (typeof window.setCurrency === 'function' && AuraState.system.displayCurrency !== currency) window.setCurrency(currency);
         if (window.showToast) window.showToast("Profil, Negara & Mata Uang berhasil disimpan!");
-    } catch (e) {
-        if (window.showToast) window.showToast("Gagal menyimpan profil.", true);
-    }
+    } catch (e) { if (window.showToast) window.showToast("Gagal menyimpan profil.", true); }
 };
 
 window.saveAIPreferences = async function() {
-    const chatEl = document.getElementById('setting-ai-chat');
-    const visionEl = document.getElementById('setting-ai-vision');
-    const personaEl = document.getElementById('setting-ai-persona');
-    const styleEl = document.getElementById('setting-ai-style');
+    const chatEl = document.getElementById('setting-ai-chat'); const visionEl = document.getElementById('setting-ai-vision');
+    const personaEl = document.getElementById('setting-ai-persona'); const styleEl = document.getElementById('setting-ai-style');
     
     try {
         await FirebaseService.updateSettings({ 
-            aiPreferences: { 
-                modelChat: chatEl ? chatEl.value : 'Auto',
-                modelVision: visionEl ? visionEl.value : 'Auto',
-                persona: personaEl ? personaEl.value : 'Kombinasi Humble + Jenius + Profesional',
-                style: styleEl ? styleEl.value : 'Normal'
-            } 
+            aiPreferences: { modelChat: chatEl ? chatEl.value : 'Auto', modelVision: visionEl ? visionEl.value : 'Auto', persona: personaEl ? personaEl.value : 'Kombinasi Humble + Jenius + Profesional', style: styleEl ? styleEl.value : 'Normal' } 
         });
         if (window.showToast) window.showToast("Preferensi AI berhasil disimpan.");
-    } catch (e) {
-        if (window.showToast) window.showToast("Gagal menyimpan preferensi AI.", true);
-    }
+    } catch (e) { if (window.showToast) window.showToast("Gagal menyimpan preferensi AI.", true); }
 };
 
 // ============================================================================
@@ -74,74 +52,62 @@ window.saveAIPreferences = async function() {
 // ============================================================================
 
 window.addGroqKey = async function() {
-    const input = document.getElementById('new-groq-key');
-    if (!input) return;
+    const input = document.getElementById('new-groq-key'); if (!input) return;
     const key = input.value.trim();
+    if (!key || !key.startsWith('gsk_')) { if (window.showToast) window.showToast("Format API Key tidak valid!", true); return; }
     
-    if (!key || !key.startsWith('gsk_')) {
-        if (window.showToast) window.showToast("Format API Key tidak valid (harus gsk_...)", true);
-        return;
-    }
-    
-    // Enkripsi XOR menggunakan UID Firebase agar aman di Cloud
     const secret = AuraState.user?.uid || "aura_secret_fallback";
     let result = '';
-    for (let i = 0; i < key.length; i++) {
-        result += String.fromCharCode(key.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-    }
+    for (let i = 0; i < key.length; i++) { result += String.fromCharCode(key.charCodeAt(i) ^ secret.charCodeAt(i % secret.length)); }
     const encryptedBase64 = btoa(result);
     
     try {
-        let currentKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-        if (!Array.isArray(currentKeys)) currentKeys = [];
-        currentKeys.push(encryptedBase64); // Tambah ke Array Pool
+        let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        // Penjinak Array Firebase: Ubah Objek kembali menjadi Array murni
+        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
+        currentKeys.push(encryptedBase64);
         
         await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
         if(!AuraState.data.settings) AuraState.data.settings = {};
         AuraState.data.settings.groqKeysEncrypted = currentKeys;
         
         input.value = '';
-        if (window.showToast) window.showToast(`Kunci Groq Ke-${currentKeys.length} ditambahkan ke Pool Cloud!`);
-        if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
-    } catch(e) {
-        if (window.showToast) window.showToast("Gagal mengunggah kunci ke Cloud.", true);
-    }
+        if (window.showToast) window.showToast(`Kunci Groq Ke-${currentKeys.length} diamankan ke Cloud!`);
+        window.renderGroqKeysUI();
+    } catch(e) { if (window.showToast) window.showToast("Gagal mengunggah kunci ke Cloud.", true); }
 };
 
 window.removeGroqKey = async function(index) {
-    if(!confirm("Yakin ingin mencabut LPU Master Key Groq ini dari Cloud?")) return;
+    if(!confirm("Yakin ingin mencabut Key Groq ini dari Cloud?")) return;
     try {
-        let currentKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-        currentKeys.splice(index, 1); // Hapus kunci spesifik
+        let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
+        currentKeys.splice(index, 1);
         
         await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
         if(AuraState.data.settings) AuraState.data.settings.groqKeysEncrypted = currentKeys;
         
-        if (window.showToast) window.showToast("Kunci berhasil dihancurkan dari Pool.");
-        if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
-    } catch(e) {
-        if (window.showToast) window.showToast("Gagal mencabut kunci.", true);
-    }
+        if (window.showToast) window.showToast("Kunci dihancurkan dari Pool.");
+        window.renderGroqKeysUI();
+    } catch(e) { if (window.showToast) window.showToast("Gagal mencabut kunci.", true); }
 };
 
 window.renderGroqKeysUI = function() {
     AuraUtils.safeDOM('groq-keys-container', function(el) {
-        const keys = AuraState.data.settings?.groqKeysEncrypted || [];
+        let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        let keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
         const badge = document.getElementById('groq-status-badge');
 
-        if (!Array.isArray(keys) || keys.length === 0) {
+        if (keys.length === 0) {
             el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Groq terpasang. Mesin Offline.</p>';
-            if(badge) {
-                badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono";
-                badge.innerText = "OFFLINE";
-            }
+            if(badge) { badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono"; badge.innerText = "OFFLINE"; }
             return;
         }
 
-        if(badge) {
-             badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded uppercase tracking-[0.1em] font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]";
-             badge.innerText = `ONLINE (${keys.length})`;
-        }
+        if(badge) { badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]"; badge.innerText = `ONLINE (${keys.length})`; }
 
         let html = '';
         const secret = AuraState.user?.uid || "aura_secret_fallback";
@@ -149,11 +115,8 @@ window.renderGroqKeysUI = function() {
         keys.forEach((encKey, index) => {
             let dec = null;
             try {
-                let text = atob(encKey);
-                let result = '';
-                for (let i = 0; i < text.length; i++) {
-                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-                }
+                let text = atob(encKey); let result = '';
+                for (let i = 0; i < text.length; i++) { result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length)); }
                 dec = result;
             } catch(e) {}
 
@@ -170,20 +133,14 @@ window.renderGroqKeysUI = function() {
                 <button onclick="window.removeGroqKey(${index})" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition"><i class="fa-solid fa-trash text-xs"></i></button>
             </div>`;
         });
-        
         el.innerHTML = html;
     });
 };
 
 window.syncGeminiEngine = async function(silent = false) {
-    const pinEl = document.getElementById('gemini-pin-input');
-    const pinInput = pinEl ? pinEl.value.trim() : '';
+    const pinEl = document.getElementById('gemini-pin-input'); const pinInput = pinEl ? pinEl.value.trim() : '';
     const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
-    
-    if (!pin || pin.length < 3) { 
-        if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI!", true); return; 
-    }
-
+    if (!pin || pin.length < 3) { if (!silent && window.showToast) window.showToast("HARAP MASUKKAN PIN GEMINI!", true); return; }
     const gBadge = document.getElementById('gemini-status-badge');
     if (gBadge) { gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-mono animate-pulse"; gBadge.innerText = "DECRYPTING..."; }
     
@@ -191,10 +148,8 @@ window.syncGeminiEngine = async function(silent = false) {
         if(typeof window.GeminiFailoverEngine !== 'function') throw new Error("Modul AI belum siap.");
         const geminiEngine = new window.GeminiFailoverEngine(pin);
         const gCount = await geminiEngine.init();
-        
         if (gCount > 0) {
-            AuraState.instances.geminiEngine = geminiEngine;
-            localStorage.setItem('aurafi_gemini_pin', pin);
+            AuraState.instances.geminiEngine = geminiEngine; localStorage.setItem('aurafi_gemini_pin', pin);
             if (gBadge) { gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono"; gBadge.innerText = `ACTIVE (${gCount})`; }
             if (!silent && window.showToast) window.showToast("Gemini Vision Di-Unlock.");
         } else { throw new Error("0 Keys"); }
@@ -209,22 +164,14 @@ window.syncGeminiEngine = async function(silent = false) {
 // ============================================================================
 
 window.addRecurringPayment = async function() {
-    const nameEl = document.getElementById('new-rec-name');
-    const amtEl = document.getElementById('new-rec-amt');
-    const dateEl = document.getElementById('new-rec-date');
-    const methodEl = document.getElementById('new-rec-method');
-    
+    const nameEl = document.getElementById('new-rec-name'); const amtEl = document.getElementById('new-rec-amt'); const dateEl = document.getElementById('new-rec-date'); const methodEl = document.getElementById('new-rec-method');
     if(!nameEl || !amtEl || !dateEl) return;
     const name = nameEl.value.trim(); const amt = parseFloat(amtEl.value); const date = parseInt(dateEl.value); const method = methodEl ? methodEl.value : 'cashless';
     if(!name || isNaN(amt) || isNaN(date) || date < 1 || date > 31) { if(window.showToast) window.showToast("Form tidak valid!", true); return; }
     
-    const recId = `rec_${Date.now()}`;
-    const updates = {}; updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method };
-    try {
-        await FirebaseService.updateSettings(updates);
-        nameEl.value = ''; amtEl.value = ''; dateEl.value = '';
-        if(window.showToast) window.showToast("Tagihan otomatis ditambahkan.");
-    } catch(e) { if(window.showToast) window.showToast("Gagal menambah.", true); }
+    const recId = `rec_${Date.now()}`; const updates = {}; updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method };
+    try { await FirebaseService.updateSettings(updates); nameEl.value = ''; amtEl.value = ''; dateEl.value = ''; if(window.showToast) window.showToast("Tagihan otomatis ditambahkan."); } 
+    catch(e) { if(window.showToast) window.showToast("Gagal menambah.", true); }
 };
 
 window.removeRecurringPayment = async function(id) {
@@ -238,17 +185,9 @@ window.renderRecurringUI = function() {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
         if (entries.length === 0) { el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2">Mesin belum diajarkan mengenai rutinitas bulanan Anda.</p>'; return; }
-
         let htmlCompiled = '';
         entries.forEach(([id, rp]) => {
-            htmlCompiled += `
-            <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-                <div class="flex flex-col">
-                    <span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span>
-                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)}</span>
-                </div>
-                <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90"><i class="fa-solid fa-trash-can text-xs"></i></button>
-            </div>`;
+            htmlCompiled += `<div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]"><div class="flex flex-col"><span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span><span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)}</span></div><button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90"><i class="fa-solid fa-trash-can text-xs"></i></button></div>`;
         });
         el.innerHTML = htmlCompiled;
     });
@@ -259,20 +198,9 @@ window.renderRecurringUIForBudget = function() {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
         if (entries.length === 0) { el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Konfigurasi Tagihan Kosong.</p>'; return; }
-
         let compiledBudgets = '';
         entries.forEach(([id, rp]) => {
-            compiledBudgets += `
-            <div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
-                <div>
-                    <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
-                        ${AuraUtils.escapeHtml(rp.name)} 
-                        <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                    </h4>
-                    <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">Tgl Eksekusi: ${rp.date} / Bulan</p>
-                </div>
-                <p class="font-bold text-sm font-mono text-[var(--text-main)]">${AuraUtils.formatCurrency(rp.amount)}</p>
-            </div>`;
+            compiledBudgets += `<div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group"><div><h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">${AuraUtils.escapeHtml(rp.name)} <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100"><i class="fa-solid fa-trash text-[10px]"></i></button></h4><p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">Tgl Eksekusi: ${rp.date} / Bulan</p></div><p class="font-bold text-sm font-mono text-[var(--text-main)]">${AuraUtils.formatCurrency(rp.amount)}</p></div>`;
         });
         el.innerHTML = compiledBudgets;
     });
@@ -283,74 +211,40 @@ window.renderRecurringUIForBudget = function() {
 // ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
-    const topic = prompt("Tracker apa yang ingin kamu buat? (Misal: Skincare, Kopi, Kucing)");
-    if (!topic || topic.trim() === '') return;
-    
-    const btn = document.getElementById('btn-ai-tracker');
-    const originalText = btn ? btn.innerHTML : '';
+    const topic = prompt("Tracker apa yang ingin kamu buat? (Misal: Skincare, Kopi, Kucing)"); if (!topic || topic.trim() === '') return;
+    const btn = document.getElementById('btn-ai-tracker'); const originalText = btn ? btn.innerHTML : '';
     if (btn) { btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...'; btn.disabled = true; }
-
     try {
-        const systemPrompt = `Kamu adalah ahli pembuat kata kunci untuk sistem Tracker Keuangan. 
-TUGAS: Buat konfigurasi untuk melacak pengeluaran pengguna yang berkaitan dengan topik: "${topic}".
-1. "id": satu kata pendek huruf kecil (contoh: kopi).
-2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe).
-3. "keywords": array minimal 10 kata bersinonim/merek. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi"]).
-WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG:
-{"id": "string", "name": "string", "keywords": ["string1", "string2"]}`;
+        const systemPrompt = `Kamu adalah ahli pembuat kata kunci untuk sistem Tracker Keuangan. \nTUGAS: Buat konfigurasi untuk melacak pengeluaran pengguna yang berkaitan dengan topik: "${topic}".\n1. "id": satu kata pendek huruf kecil (contoh: kopi).\n2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe).\n3. "keywords": array minimal 10 kata bersinonim/merek. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi"]).\nWAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG:\n{"id": "string", "name": "string", "keywords": ["string1", "string2"]}`;
         const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
-        
         const responseText = await window.executeAIWithFallback(messages, systemPrompt, true, null);
         const aiJson = AuraUtils.parseCleanJSON(responseText);
-
-        AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || '');
-        AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || '');
-        AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
+        AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || ''); AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || ''); AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
         if (window.showToast) window.showToast("Berhasil! AI telah mengisi form untukmu.");
-    } catch (e) {
-        if (window.showToast) window.showToast("AI gagal memproses permintaan: " + e.message, true);
-    } finally {
-        if (btn) { btn.innerHTML = originalText; btn.disabled = false; }
-    }
+    } catch (e) { if (window.showToast) window.showToast("AI gagal memproses permintaan: " + e.message, true); } 
+    finally { if (btn) { btn.innerHTML = originalText; btn.disabled = false; } }
 };
 
 window.openTrackerManager = function() {
-    const listContainer = document.getElementById('tracker-list-container');
-    if (!listContainer) return;
-    
-    const trackers = AuraState.data.settings?.staplesTrackers || DEFAULT_STAPLES_TRACKERS;
-    let html = '';
-    
+    const listContainer = document.getElementById('tracker-list-container'); if (!listContainer) return;
+    const trackers = AuraState.data.settings?.staplesTrackers || DEFAULT_STAPLES_TRACKERS; let html = '';
     Object.entries(trackers).forEach(([id, t]) => {
-        html += `
-        <div class="glass-panel p-3 border-l-2 border-l-amber-400 flex justify-between items-center mb-2">
-            <div>
-                <p class="text-xs font-bold text-amber-400">${AuraUtils.escapeHtml(t.name)}</p>
-                <p class="text-[9px] text-[var(--text-muted)] uppercase mt-0.5 leading-relaxed">Keys: ${AuraUtils.escapeHtml(t.keywords.join(', '))}</p>
-            </div>
-            <button onclick="window.removeTracker('${id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button>
-        </div>`;
+        html += `<div class="glass-panel p-3 border-l-2 border-l-amber-400 flex justify-between items-center mb-2"><div><p class="text-xs font-bold text-amber-400">${AuraUtils.escapeHtml(t.name)}</p><p class="text-[9px] text-[var(--text-muted)] uppercase mt-0.5 leading-relaxed">Keys: ${AuraUtils.escapeHtml(t.keywords.join(', '))}</p></div><button onclick="window.removeTracker('${id}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button></div>`;
     });
     listContainer.innerHTML = html;
-    
     const formContainer = document.getElementById('new-tracker-form-container');
     if (formContainer && !document.getElementById('btn-ai-tracker')) {
-        const aiBtnHtml = `<button id="btn-ai-tracker" onclick="window.autoFillTrackerWithAI()" class="w-full bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 font-bold text-[10px] py-2 rounded-lg mb-3 transition active:scale-[0.98]"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Isi Otomatis dengan AI</button>`;
-        formContainer.insertAdjacentHTML('afterbegin', aiBtnHtml);
+        formContainer.insertAdjacentHTML('afterbegin', `<button id="btn-ai-tracker" onclick="window.autoFillTrackerWithAI()" class="w-full bg-indigo-500/20 hover:bg-indigo-500/40 text-indigo-300 border border-indigo-500/30 font-bold text-[10px] py-2 rounded-lg mb-3 transition active:scale-[0.98]"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Isi Otomatis dengan AI</button>`);
     }
-
     if (typeof window.showModal === 'function') window.showModal('modal-edit-tracker');
 };
 
 window.saveNewTracker = async function() {
     const idInput = document.getElementById('new-track-id'); const nameInput = document.getElementById('new-track-name'); const keyInput = document.getElementById('new-track-keywords');
     if (!idInput || !nameInput || !keyInput) return;
-    
     const id = idInput.value.trim().toLowerCase().replace(/[^a-z0-9]/g, ''); const name = nameInput.value.trim();
     const keywords = keyInput.value.split(',').map(k => k.trim().toLowerCase()).filter(k => k);
-    
     if (!id || !name || keywords.length === 0) { if (window.showToast) window.showToast("Isi ID, Nama, dan minimal 1 kata kunci!", true); return; }
-    
     const updates = {}; updates[`staplesTrackers/${id}`] = { name: name, keywords: keywords };
     try { await FirebaseService.updateSettings(updates); idInput.value = ''; nameInput.value = ''; keyInput.value = ''; window.openTrackerManager(); } 
     catch(e) { if (window.showToast) window.showToast("Gagal menyimpan Tracker.", true); }
@@ -368,15 +262,9 @@ window.removeTracker = async function(id) {
 // ============================================================================
 
 window.openFamilyManager = function() {
-    const listContainer = document.getElementById('family-list-container');
-    if (!listContainer) return;
-    const members = AuraState.data.settings?.familyMembers || [];
-    let html = '';
-    
-    members.forEach((m, i) => {
-        html += `<div class="glass-panel p-3 border-l-2 border-l-indigo-400 flex justify-between items-center mb-2"><p class="text-xs font-bold text-indigo-400"><i class="fa-solid fa-user mr-2"></i>${AuraUtils.escapeHtml(m)}</p><button onclick="window.removeFamilyMember('${i}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button></div>`;
-    });
-    
+    const listContainer = document.getElementById('family-list-container'); if (!listContainer) return;
+    const members = AuraState.data.settings?.familyMembers || []; let html = '';
+    members.forEach((m, i) => { html += `<div class="glass-panel p-3 border-l-2 border-l-indigo-400 flex justify-between items-center mb-2"><p class="text-xs font-bold text-indigo-400"><i class="fa-solid fa-user mr-2"></i>${AuraUtils.escapeHtml(m)}</p><button onclick="window.removeFamilyMember('${i}')" class="text-rose-500 hover:text-rose-400 p-2"><i class="fa-solid fa-trash"></i></button></div>`; });
     if (members.length === 0) html = '<p class="text-[10px] text-[var(--text-muted)] text-center">Belum ada tanggungan keluarga.</p>';
     listContainer.innerHTML = html;
     if (typeof window.showModal === 'function') window.showModal('modal-family');
@@ -387,7 +275,6 @@ window.addFamilyMember = async function() {
     const name = input.value.trim(); if (!name) return;
     const members = AuraState.data.settings?.familyMembers || [];
     if (members.includes(name)) { if (window.showToast) window.showToast("Anggota ini sudah terdaftar.", true); return; }
-    
     try { await FirebaseService.updateSettings({ familyMembers: [...members, name] }); input.value = ''; window.openFamilyManager(); } 
     catch (e) { if (window.showToast) window.showToast("Gagal menambah anggota.", true); }
 };
@@ -405,7 +292,6 @@ window.openAuditLogs = async function() {
     const container = document.getElementById('audit-log-content'); if (!container) return;
     if (typeof window.showModal === 'function') window.showModal('modal-audit-log');
     container.innerHTML = '<div class="text-center p-8"><i class="fa-solid fa-circle-notch animate-spin text-2xl text-white mb-2 block"></i><p class="text-[10px] text-[var(--text-muted)]">Mengunduh blok rantai...</p></div>';
-    
     try {
         const snapshot = await get(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/audit_logs`));
         if (snapshot.exists()) {
@@ -419,3 +305,16 @@ window.openAuditLogs = async function() {
         } else { container.innerHTML = '<p class="text-center text-xs text-[var(--text-muted)] p-5">Tidak ada riwayat aktivitas.</p>'; }
     } catch(e) { container.innerHTML = '<p class="text-center text-xs text-rose-500 p-5">Gagal membaca log dari Cloud.</p>'; }
 };
+
+// ============================================================================
+// 6. AUTO-SYNC OBSERVER (MEMPERBAIKI BUG REFRESH UI)
+// ============================================================================
+let isSettingsAutoRendered = false;
+const syncInterval = setInterval(() => {
+    if (AuraState.data && AuraState.data.settings && !isSettingsAutoRendered) {
+        if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+        if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
+        isSettingsAutoRendered = true;
+        clearInterval(syncInterval);
+    }
+}, 500);
