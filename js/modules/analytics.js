@@ -1,7 +1,6 @@
 /**
  * Analytics & Statistics Module
- * Mengelola kalkulasi pengeluaran dengan sistem Induk-Anak (Accordion), 
- * rendering grafik, eksport CSV, dan Hierarki Mapping Manual (Human-in-the-loop).
+ * Mengelola kalkulasi pengeluaran, UI Accordion, Chart, CSV, Tracker Dinamis, dan Smart Grouper.
  */
 
 import { AuraState } from '../core/state.js';
@@ -12,11 +11,9 @@ import { ref, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-
 
 // === MESIN PENYORTIR PINTAR (GABUNGAN MANUAL + AI) ===
 function getParentCategory(catName) {
-    // 1. Cek Memori Manual User (Prioritas Tertinggi)
     const customMap = AuraState.data.settings?.categoryMappings || {};
     if (customMap[catName]) return customMap[catName];
 
-    // 2. Cerdas Otomatis AI (Fallback)
     const n = catName.toLowerCase();
     if (n.match(/makan|camilan|snack|susu|telur|daging|ayam|ikan|sayur|buah|bumbu|bahan|roti|kue|instan|kaleng|mie|jajanan/)) return 'Makanan';
     if (n.match(/minum|kopi|teh|kafe|cair|jus/)) return 'Minuman';
@@ -52,6 +49,11 @@ window.renderAnalytics = function() {
         endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
     } else {
         startDate = 0; 
+    }
+
+    // === PANGGIL RENDERER TRACKER DINAMIS (YANG SEMPAT HILANG) ===
+    if (typeof window.renderDynamicTrackers === 'function') {
+        window.renderDynamicTrackers(startDate, endDate);
     }
 
     let catMap = {}; 
@@ -177,7 +179,7 @@ window.renderAnalytics = function() {
         }
     }
 
-    // 4. RENDER TOP MERCHANTS & STATS...
+    // 4. RENDER TOP MERCHANTS & STATS
     const merchantContainer = document.getElementById('top-merchants-list');
     if (merchantContainer) {
         merchantContainer.innerHTML = '';
@@ -209,17 +211,90 @@ window.renderAnalytics = function() {
     drawCanvasChart(trend7Days);
 };
 
-// === FUNGSI MANAJER KATEGORI (MODAL DINAMIS) ===
+// === FUNGSI RENDER TRACKER DINAMIS (BARU) ===
+window.renderDynamicTrackers = function(startDate, endDate) {
+    // Cari kontainer berdasarkan ID, atau cari manual berdasarkan tag h4 (Kebutuhan Pokok)
+    let container = document.getElementById('staples-container');
+    if (!container) {
+        const headers = document.querySelectorAll('h4, h3');
+        for (let el of headers) {
+            if (el.innerText.toUpperCase().includes('KEBUTUHAN POKOK')) {
+                container = el.nextElementSibling; break;
+            }
+        }
+    }
+    
+    if (!container) return; // Keluar jika kontainer tetap tidak ditemukan di HTML
+
+    const trackers = AuraState.data.settings?.staplesTrackers || {};
+    const entries = Object.entries(trackers);
+    
+    if (entries.length === 0) {
+        container.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center w-full py-4 bg-black/20 rounded-xl">Belum ada Tracker Dinamis yang aktif. Tambahkan di Pengaturan.</p>';
+        container.className = "mt-3";
+        return;
+    }
+
+    const tx = AuraState.data.transactions || [];
+    const totals = {};
+    entries.forEach(([id, t]) => totals[id] = 0);
+
+    tx.forEach(t => {
+        if (t.is_deleted || t.tipe !== 'pengeluaran') return;
+        const tTime = new Date(t.tanggal || t.createdAt).getTime();
+        if (tTime >= startDate && tTime <= endDate) {
+            (t.items || []).forEach(it => {
+                const itemName = (it.nama_barang || '').toLowerCase();
+                const itemCat = (it.kategori_barang || '').toLowerCase();
+                const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+                
+                entries.forEach(([id, tracker]) => {
+                    const match = tracker.keywords.some(kw => itemName.includes(kw) || itemCat.includes(kw));
+                    if (match) totals[id] += val;
+                });
+            });
+        }
+    });
+
+    let html = '';
+    entries.forEach(([id, tracker]) => {
+        // SISTEM IKON OTOMATIS BERDASARKAN NAMA TRACKER
+        let icon = 'fa-box-open'; let color = 'text-amber-400';
+        const nameLower = tracker.name.toLowerCase();
+        
+        if (nameLower.match(/sayur|buah|segar|tani/)) { icon = 'fa-carrot'; color = 'text-emerald-400'; }
+        else if (nameLower.match(/kopi|minum|cafe|kafe|boba/)) { icon = 'fa-mug-hot'; color = 'text-amber-600'; }
+        else if (nameLower.match(/listrik|token|pln/)) { icon = 'fa-bolt'; color = 'text-yellow-400'; }
+        else if (nameLower.match(/air|pdam/)) { icon = 'fa-droplet'; color = 'text-blue-400'; }
+        else if (nameLower.match(/kucing|anjing|anabul|hewan/)) { icon = 'fa-cat'; color = 'text-orange-400'; }
+        else if (nameLower.match(/skincare|wajah|cantik|makeup/)) { icon = 'fa-spa'; color = 'text-pink-400'; }
+        else if (nameLower.match(/beras|nasi|pokok/)) { icon = 'fa-bowl-rice'; color = 'text-amber-200'; }
+        else if (nameLower.match(/minyak|goreng/)) { icon = 'fa-bottle-droplet'; color = 'text-yellow-500'; }
+        else if (nameLower.match(/sabun|mandi|cuci/)) { icon = 'fa-pump-soap'; color = 'text-sky-300'; }
+        else if (nameLower.match(/rokok|cigar/)) { icon = 'fa-smoking'; color = 'text-slate-400'; }
+        else if (nameLower.match(/bensin|bbm|pertamina/)) { icon = 'fa-gas-pump'; color = 'text-rose-400'; }
+
+        html += `
+        <div class="bg-black/30 p-3 rounded-xl min-w-[100px] flex-1 flex flex-col items-center justify-center text-center border border-[var(--border-glass)] border-t-2 shadow-lg" style="border-top-color: currentColor; color: inherit;">
+            <i class="fa-solid ${icon} ${color} text-xl mb-2"></i>
+            <span class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 truncate w-full px-1">${AuraUtils.escapeHtml(tracker.name)}</span>
+            <span class="font-mono font-bold text-sm text-white">${AuraUtils.formatCurrency(totals[id])}</span>
+        </div>`;
+    });
+
+    container.className = "flex gap-3 overflow-x-auto hide-scrollbar snap-x mt-3 pb-2";
+    container.innerHTML = html;
+};
+
+// === FUNGSI MANAJER KATEGORI ===
 window.openCategoryMapper = function() {
     let modal = document.getElementById('modal-category-mapper');
     if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'modal-category-mapper';
+        modal = document.createElement('div'); modal.id = 'modal-category-mapper';
         modal.className = 'fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
         document.body.appendChild(modal);
     }
 
-    // Ambil semua sub-kategori unik dari riwayat transaksi
     const tx = AuraState.data.transactions || [];
     const uniqueSubs = new Set();
     tx.forEach(t => {
@@ -230,16 +305,12 @@ window.openCategoryMapper = function() {
         });
     });
 
-    const parentOptions = [
-        'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok',
-        'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya'
-    ];
-
+    const parentOptions = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
     let listHtml = '';
+    
     Array.from(uniqueSubs).sort().forEach(sub => {
         const currentParent = getParentCategory(sub);
         let opts = parentOptions.map(p => `<option value="${p}" ${p === currentParent ? 'selected' : ''}>${p}</option>`).join('');
-        
         listHtml += `
         <div class="flex justify-between items-center bg-black/30 p-2.5 border-b border-[var(--border-glass)] group hover:bg-white/5 transition">
             <span class="text-xs font-bold text-slate-200 group-hover:text-accent truncate pr-2">${sub}</span>
@@ -262,37 +333,26 @@ window.openCategoryMapper = function() {
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
-        <div class="flex-1 overflow-y-auto p-2 space-y-1 relative hide-scrollbar">
-            ${listHtml}
-        </div>
+        <div class="flex-1 overflow-y-auto p-2 space-y-1 relative hide-scrollbar">${listHtml}</div>
     </div>`;
 
-    modal.classList.remove('hidden');
-    requestAnimationFrame(() => modal.classList.remove('opacity-0'));
+    modal.classList.remove('hidden'); requestAnimationFrame(() => modal.classList.remove('opacity-0'));
 };
 
 window.closeCategoryMapper = function() {
     const modal = document.getElementById('modal-category-mapper');
-    if (modal) {
-        modal.classList.add('opacity-0');
-        setTimeout(() => modal.classList.add('hidden'), 300);
-    }
+    if (modal) { modal.classList.add('opacity-0'); setTimeout(() => modal.classList.add('hidden'), 300); }
 };
 
 window.updateCategoryMapping = async function(subCat, newParent) {
     if (!AuraState.user.uid) return;
-    const db = AuraState.instances.db;
     const updates = {};
     updates[`${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/categoryMappings/${subCat}`] = newParent;
-
     try {
-        await update(ref(db), updates);
+        await update(ref(AuraState.instances.db), updates);
         if (window.showToast) window.showToast(`Sukses: ${subCat} dipindahkan ke ${newParent}`);
-        // Render ulang UI Analytics secara instan agar efeknya langsung terlihat
         window.renderAnalytics();
-    } catch(e) {
-        if (window.showToast) window.showToast("Gagal menyimpan mapping ke server.", true);
-    }
+    } catch(e) { if (window.showToast) window.showToast("Gagal menyimpan mapping ke server.", true); }
 };
 
 // === FUNGSI CHART & EXPORT ===
@@ -301,15 +361,13 @@ function drawCanvasChart(dataArray) {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const width = canvas.offsetWidth || 350; const height = canvas.offsetHeight || 150;
-    canvas.width = width * 2; canvas.height = height * 2;
-    ctx.scale(2, 2); ctx.clearRect(0, 0, width, height);
+    canvas.width = width * 2; canvas.height = height * 2; ctx.scale(2, 2); ctx.clearRect(0, 0, width, height);
     const maxVal = Math.max(...dataArray, 100); const padding = 15;
     const barWidth = (width - padding * 2) / 7 - 10;
 
     dataArray.forEach((val, i) => {
         const barHeight = (val / maxVal) * (height - padding * 2.5);
-        const x = padding + i * (barWidth + 10);
-        const y = height - padding - barHeight;
+        const x = padding + i * (barWidth + 10); const y = height - padding - barHeight;
         ctx.fillStyle = '#f43f5e'; ctx.globalAlpha = i === 6 ? 1.0 : 0.4;
         if (typeof ctx.roundRect === 'function') { ctx.beginPath(); ctx.roundRect(x, y, barWidth, barHeight, 6); ctx.fill(); } 
         else { ctx.fillRect(x, y, barWidth, barHeight); }
