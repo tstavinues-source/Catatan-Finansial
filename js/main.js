@@ -664,26 +664,27 @@ window.openAIIconSearch = async function() {
     Format wajib persis seperti ini: {"icons": ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]}`;
 
     try {
-        // BYPASS ORCHESTRATOR: Kita tembak langsung ke mesin Groq (GroqService)
-        // Pastikan Anda sudah mengatur API Key Groq di menu Pengaturan
-        const { GroqService } = await import('./services/ai/groq.js');
+        // PERBAIKAN FATAL: Menarik paksa API Key Groq langsung dari Brankas Database
+        const { get, ref } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js");
+        const db = window.AuraState.instances.db;
+        const uid = window.AuraState.user.uid;
         
-        if (!GroqService || GroqService.keysPool.length === 0) {
-            throw new Error("API Key Groq kosong atau belum diatur di menu Settings.");
+        // Membuka brankas Firebase untuk mengambil kunci Groq yang "terlupakan"
+        const snap = await get(ref(db, `aurafi_ledger/${uid}/groqApiKeys`));
+        
+        if (snap.exists()) {
+            const data = snap.val();
+            // Suntikkan kembali kunci tersebut ke memori aktif aplikasi
+            window.AuraState.data.groqKeys = Object.keys(data).map(k => ({ id: k, ...data[k] }));
         }
 
-        const messages = [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: `Carikan ikon untuk: ${keyword}` }
-        ];
-
-        // Paksa mode JSON false (Bypass strict mode)
-        const result = await GroqService.fetch(messages, false);
+        const messages = [{ role: 'user', content: `Carikan ikon untuk: ${keyword}` }];
         
-        // Pembersihan format dari Markdown (kalau-kalau AI nakal)
+        // Jalankan AI (Otomatis memakai Groq yang super cepat karena kuncinya sudah disuntikkan)
+        const result = await window.executeAIWithFallback(messages, systemPrompt, false);
+        
         let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
         let parsedData = JSON.parse(cleanResult);
-        
         let iconArray = Array.isArray(parsedData) ? parsedData : (parsedData.icons || []);
 
         if (!Array.isArray(iconArray) || iconArray.length === 0) {
@@ -693,16 +694,13 @@ window.openAIIconSearch = async function() {
         window.renderAIIconSuggestions(iconArray);
 
     } catch (e) {
-        console.error("Direct AI Icon Search Error:", e);
+        console.error("AI Icon Search Error:", e);
         if (window.showToast) {
-            if (e.message.includes("API Key Groq kosong")) {
-                window.showToast("Gagal: API Key Groq belum diatur di menu Pengaturan.", true);
-            } else {
-                window.showToast("Gagal mencari ikon. Coba kata kunci lain atau cek API Key Groq Anda.", true);
-            }
+            window.showToast("Gagal mencari ikon. Pastikan API Key Groq benar atau cek koneksi Anda.", true);
         }
     }
 };
+
 
 
 window.renderAIIconSuggestions = function(icons) {
