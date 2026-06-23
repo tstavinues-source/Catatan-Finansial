@@ -299,8 +299,7 @@ const AURA_ICONS = RAW_ICONS.map((iconStr, index) => ({ icon: iconStr, color: AU
 let currentCatTab = 'expense';
 
 // ============================================================================
-// MESIN PEMANEN DATA (HARVESTER) FINAL
-// HANYA membaca kategori asli (kategori_barang), abaikan storeName.
+// MESIN PEMANEN DATA (HARVESTER) SAPU JAGAT
 // ============================================================================
 window.syncCategoriesData = async function() {
     let rawCats = AuraState.data.settings?.customCategories || {};
@@ -308,10 +307,8 @@ window.syncCategoriesData = async function() {
     const transactions = AuraState.data.transactions || [];
     
     transactions.forEach(trx => {
-        const pName = trx.kategori; 
-        
-        // Lewati jika kategori kosong, Uncategorized, atau Lainnya
-        if (!pName || pName.trim() === '' || pName.toLowerCase() === 'uncategorized' || pName.toLowerCase() === 'lainnya') return;
+        let pName = trx.kategori; 
+        if (!pName || pName.trim() === '' || pName.toLowerCase() === 'uncategorized') pName = 'Lainnya';
         
         const type = (trx.tipe === 'pemasukan' || trx.jenis === 'pemasukan' || trx.tipe === 'income') ? 'income' : 'expense';
         
@@ -324,7 +321,8 @@ window.syncCategoriesData = async function() {
         
         if (trx.items && Array.isArray(trx.items)) {
             trx.items.forEach(item => {
-                const cName = item.kategori_barang || item.kategori; 
+                if(!item || typeof item !== 'object') return;
+                const cName = item.kategori_barang || item.kategori || item.category || item.sub_kategori; 
                 
                 if (cName && cName.toLowerCase() !== pName.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
                     let cId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase() && rawCats[id].parentId === pId);
@@ -340,7 +338,13 @@ window.syncCategoriesData = async function() {
 
     if (isUpdated) {
         if (AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
-        if (window.FirebaseService) await window.FirebaseService.updateSettings({ customCategories: rawCats });
+        if (window.FirebaseService) {
+            try {
+                await window.FirebaseService.updateSettings({ customCategories: rawCats });
+            } catch(e) {
+                console.error("Harvester sync failed to save to Firebase:", e);
+            }
+        }
     }
 };
 
@@ -430,7 +434,7 @@ window.renderCategoryList = function() {
 };
 
 // ============================================================================
-// AURA CUSTOM CATEGORY PICKER (REVISI KETAT & BEBAS DUPLIKAT)
+// AURA CUSTOM CATEGORY PICKER (BEBAS DUPLIKAT VARIABEL)
 // ============================================================================
 let activePickerTargetVal = '';
 let activePickerTargetDisplay = '';
@@ -444,7 +448,6 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
     const rawCategories = AuraState.data.settings?.customCategories || {};
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     
-    // 🛡️ PENYARINGAN KETAT ANTI-MELESET
     let mappedType = 'expense'; 
     if (trxType) {
         const tStr = String(trxType).toLowerCase().trim();
@@ -466,9 +469,10 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
     } else {
         parents.forEach(parent => {
             const mySubs = children.filter(sub => sub.parentId === parent.id);
+            const safeParentName = parent.name.replace(/'/g, "\\'");
             
             html += `
-            <button onclick="window.selectCategoryFromPicker('${parent.name}')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group border border-transparent hover:border-[var(--border-glass)]">
+            <button onclick="window.selectCategoryFromPicker('${safeParentName}', '${safeParentName}')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group border border-transparent hover:border-[var(--border-glass)]">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${parent.color}20; color: ${parent.color}">
                     <i class="fa-solid ${parent.icon || 'fa-tag'} text-sm"></i>
                 </div>
@@ -480,8 +484,9 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
             if (mySubs.length > 0) {
                 html += `<div class="ml-4 pl-4 border-l border-[var(--border-glass)] space-y-1 mb-2">`;
                 mySubs.forEach(sub => {
+                    const safeSubName = sub.name.replace(/'/g, "\\'");
                     html += `
-                    <button onclick="window.selectCategoryFromPicker('${sub.name}')" class="w-full text-left p-2.5 rounded-lg hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group">
+                    <button onclick="window.selectCategoryFromPicker('${safeSubName}', '${safeParentName}')" class="w-full text-left p-2.5 rounded-lg hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group">
                         <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sub.color || parent.color}">
                             <i class="fa-solid ${sub.icon || 'fa-tag'} text-[10px]"></i>
                         </div>
@@ -516,12 +521,23 @@ window.closeCategoryPicker = function() {
     setTimeout(() => { el.classList.add('hidden'); }, 300);
 };
 
-window.selectCategoryFromPicker = function(catName) {
-    document.getElementById(activePickerTargetVal).value = catName;
+window.selectCategoryFromPicker = function(catName, parentName) {
+    const valEl = document.getElementById(activePickerTargetVal);
+    if(valEl) {
+        valEl.value = catName;
+        if (parentName) valEl.setAttribute('data-parent', parentName);
+    }
+    
     const displayEl = document.getElementById(activePickerTargetDisplay);
-    displayEl.innerText = catName;
-    displayEl.classList.remove('text-[var(--text-muted)]');
-    displayEl.classList.add('text-accent', 'font-bold');
+    if(displayEl) {
+        if (parentName && parentName !== catName) {
+            displayEl.innerHTML = `<span class="opacity-50">${AuraUtils.escapeHtml(parentName)} &rsaquo;</span> ${AuraUtils.escapeHtml(catName)}`;
+        } else {
+            displayEl.innerText = catName;
+        }
+        displayEl.classList.remove('text-[var(--text-muted)]');
+        displayEl.classList.add('text-accent', 'font-bold');
+    }
     window.closeCategoryPicker();
 };
 
@@ -585,26 +601,148 @@ window.editCategory = function(id) {
     if(typeof window.showModal === 'function') window.showModal('modal-category-form');
 };
 
+// ============================================================================
+// SISTEM PEMILIHAN IKON & AI ICON FETCHER (UPGRADE FINAL)
+// ============================================================================
+
 window.renderIconPickerGrid = function(activeIcon, activeColor) {
     const grid = document.getElementById('icon-picker-grid');
     document.getElementById('cat-form-icon').value = activeIcon;
     document.getElementById('cat-form-color').value = activeColor;
     
-    let html = '';
-    AURA_ICONS.forEach(item => {
+    const customIcons = AuraState.data.settings?.customIcons || [];
+    
+    const ALL_ICONS = [
+        ...RAW_ICONS.map((iconStr, i) => ({ icon: iconStr, color: AURA_PALETTE[i % AURA_PALETTE.length], isCustom: false })),
+        ...customIcons.map((iconStr, i) => ({ icon: iconStr, color: AURA_PALETTE[(RAW_ICONS.length + i) % AURA_PALETTE.length], isCustom: true }))
+    ];
+    
+    let html = `
+        <button type="button" onclick="window.openAIIconSearch()" class="w-10 h-10 rounded-full flex items-center justify-center border-2 border-dashed border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse hover:animate-none" title="Minta AI carikan ikon baru">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+        </button>
+    `;
+    
+    ALL_ICONS.forEach(item => {
         const isActive = item.icon === activeIcon;
         const baseClass = isActive ? 'scale-110 ring-2 ring-white shadow-lg' : 'hover:scale-110 opacity-70 hover:opacity-100';
         
-        html += `
-        <button onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
-                class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
-                style="background-color: ${item.color}30; color: ${item.color}">
-            <i class="fa-solid ${item.icon}"></i>
-        </button>`;
+        if (item.isCustom) {
+            html += `
+            <div class="relative group">
+                <button type="button" onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
+                        class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
+                        style="background-color: ${item.color}30; color: ${item.color}">
+                    <i class="fa-solid ${item.icon}"></i>
+                </button>
+                <button type="button" onclick="window.deleteCustomIcon('${item.icon}', event)" class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center text-[8px] text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" title="Hapus Ikon Ini">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>`;
+        } else {
+            html += `
+            <button type="button" onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
+                    class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
+                    style="background-color: ${item.color}30; color: ${item.color}">
+                <i class="fa-solid ${item.icon}"></i>
+            </button>`;
+        }
     });
     grid.innerHTML = html;
 };
 
+window.openAIIconSearch = async function() {
+    const keyword = prompt("🔍 Ikon apa yang ingin Anda cari? \n(Contoh: hewan, mobil sport, sekolah, komputer, api)");
+    if (!keyword || keyword.trim() === '') return;
+
+    if (window.showToast) window.showToast("AI sedang membongkar perpustakaan ikon...", false);
+
+    const systemPrompt = `Anda adalah asisten UI/UX. User sedang mencari ikon dari FontAwesome v6 Free Solid dengan kata kunci: "${keyword}".
+    Tugas Anda adalah membalas dengan MAKSIMAL 5 nama class FontAwesome yang paling akurat.
+    ATURAN MUTLAK: Output HARUS berupa array JSON murni tanpa markdown, tanpa penjelasan apa pun.
+    Contoh Output Valid: ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]`;
+
+    try {
+        const messages = [{ role: 'user', content: `Beri saya ikon untuk: ${keyword}` }];
+        const result = await window.executeAIWithFallback(messages, systemPrompt, true);
+        
+        let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
+        let iconArray = JSON.parse(cleanResult);
+
+        if (!Array.isArray(iconArray) || iconArray.length === 0) throw new Error("AI tidak menemukan kecocokan.");
+
+        window.renderAIIconSuggestions(iconArray);
+    } catch (e) {
+        console.error(e);
+        if (window.showToast) window.showToast("Gagal mencari ikon. Pastikan koneksi AI stabil.", true);
+    }
+};
+
+window.renderAIIconSuggestions = function(icons) {
+    const grid = document.getElementById('icon-picker-grid');
+    
+    let html = `
+    <div class="col-span-full mb-3 p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-xl animate-[fadeIn_0.3s_ease-out]">
+        <p class="text-[10px] text-emerald-400 font-bold mb-3 text-center uppercase tracking-widest"><i class="fa-solid fa-robot mr-1"></i> Ikon Ditemukan (Klik untuk Simpan):</p>
+        <div class="flex justify-center gap-3 flex-wrap">`;
+
+    icons.forEach(iconClass => {
+        let safeClass = iconClass.startsWith('fa-') ? iconClass : `fa-${iconClass}`;
+        html += `
+        <button type="button" onclick="window.saveCustomIcon('${safeClass}')" class="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all flex items-center justify-center shadow-md hover:scale-110" title="${safeClass}">
+            <i class="fa-solid ${safeClass}"></i>
+        </button>`;
+    });
+
+    html += `
+        </div>
+        <button type="button" onclick="window.renderIconPickerGrid(document.getElementById('cat-form-icon').value, document.getElementById('cat-form-color').value)" class="w-full mt-3 py-1.5 text-[10px] bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-colors">Batal / Tutup</button>
+    </div>`;
+
+    grid.insertAdjacentHTML('afterbegin', html);
+};
+
+window.saveCustomIcon = async function(iconClass) {
+    let customIcons = AuraState.data.settings?.customIcons || [];
+    
+    if (!customIcons.includes(iconClass) && !RAW_ICONS.includes(iconClass)) {
+        customIcons.push(iconClass);
+        try {
+            await window.FirebaseService.updateSettings({ customIcons: customIcons });
+            if(AuraState.data.settings) AuraState.data.settings.customIcons = customIcons;
+            if(window.showToast) window.showToast(`Ikon ${iconClass} berhasil disimpan ke menu!`);
+        } catch (e) {
+            if(window.showToast) window.showToast("Gagal menyimpan ikon ke Cloud.", true);
+            return;
+        }
+    }
+    
+    window.renderIconPickerGrid(iconClass, '#10b981'); 
+};
+
+window.deleteCustomIcon = async function(iconClass, event) {
+    event.stopPropagation(); 
+    
+    const isConfirmed = confirm("Hapus ikon custom ini dari menu Anda?");
+    if (!isConfirmed) return;
+
+    let customIcons = AuraState.data.settings?.customIcons || [];
+    customIcons = customIcons.filter(i => i !== iconClass);
+
+    try {
+        await window.FirebaseService.updateSettings({ customIcons: customIcons });
+        if(AuraState.data.settings) AuraState.data.settings.customIcons = customIcons;
+        if(window.showToast) window.showToast("Ikon berhasil dihapus dari menu.");
+        
+        window.renderIconPickerGrid(document.getElementById('cat-form-icon').value, document.getElementById('cat-form-color').value);
+    } catch (e) {
+        if(window.showToast) window.showToast("Gagal menghapus ikon dari Cloud.", true);
+    }
+};
+
+// ============================================================================
+// SIMPAN & HAPUS KATEGORI FINAL
+// ============================================================================
 window.saveCategoryData = async function() {
     const id = document.getElementById('cat-form-id').value || `cat_${Date.now()}`;
     const type = document.getElementById('cat-form-type').value;
