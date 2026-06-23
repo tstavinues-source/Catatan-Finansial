@@ -657,24 +657,34 @@ window.openAIIconSearch = async function() {
 
     if (window.showToast) window.showToast("AI sedang membongkar perpustakaan ikon...", false);
 
-    const systemPrompt = `Anda adalah asisten UI/UX. User sedang mencari ikon dari FontAwesome v6 Free Solid dengan kata kunci: "${keyword}".
-    Tugas Anda adalah membalas dengan MAKSIMAL 5 nama class FontAwesome yang paling akurat.
-    ATURAN MUTLAK: Output HARUS berupa array JSON murni tanpa markdown, tanpa penjelasan apa pun.
-    Contoh Output Valid: ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]`;
+    // KOREKSI PROMPT: Kita minta JSON Object (pakai {}), bukan Array langsung. Ini agar Groq/Gemini tidak ngambek.
+    const systemPrompt = `Anda adalah asisten UI/UX. User mencari ikon FontAwesome v6 Free Solid untuk kata kunci: "${keyword}".
+    Tugas Anda membalas dengan MAKSIMAL 5 nama class FontAwesome yang valid.
+    ATURAN MUTLAK: Output HARUS berupa JSON murni tanpa markdown, tanpa teks pengantar.
+    Format wajib persis seperti ini: {"icons": ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]}`;
 
     try {
-        const messages = [{ role: 'user', content: `Beri saya ikon untuk: ${keyword}` }];
-        const result = await window.executeAIWithFallback(messages, systemPrompt, true);
+        const messages = [{ role: 'user', content: `Carikan ikon untuk: ${keyword}` }];
         
+        // KOREKSI FATAL: Ubah parameter 'true' menjadi 'false' 
+        // Ini mematikan Strict JSON Mode di API agar tidak terkena Error 400 Bad Request
+        const result = await window.executeAIWithFallback(messages, systemPrompt, false);
+        
+        // Bersihkan balasan dari markdown (jika AI bandel menambahkan ```json)
         let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
-        let iconArray = JSON.parse(cleanResult);
+        let parsedData = JSON.parse(cleanResult);
+        
+        // Tangkap isi array-nya (baik AI balas pakai object maupun array langsung)
+        let iconArray = Array.isArray(parsedData) ? parsedData : (parsedData.icons || []);
 
-        if (!Array.isArray(iconArray) || iconArray.length === 0) throw new Error("AI tidak menemukan kecocokan.");
+        if (!Array.isArray(iconArray) || iconArray.length === 0) {
+            throw new Error("AI membalas dengan format yang salah.");
+        }
 
         window.renderAIIconSuggestions(iconArray);
     } catch (e) {
-        console.error(e);
-        if (window.showToast) window.showToast("Gagal mencari ikon. Pastikan koneksi AI stabil.", true);
+        console.error("AI Icon Search Error:", e);
+        if (window.showToast) window.showToast("Gagal mencari ikon. Coba kata kunci lain atau periksa kuota AI.", true);
     }
 };
 
