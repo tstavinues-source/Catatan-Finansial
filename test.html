@@ -3,85 +3,352 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Isolasi Test Login</title>
+    <title>AuraFi - Raw API Isolation Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-        .box { background: white; padding: 20px; border-radius: 8px; max-width: 300px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        input, button { width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; }
-        button { cursor: pointer; font-weight: bold; }
-        #status { font-family: monospace; color: blue; font-weight: bold; margin-top: 15px; word-break: break-all; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #1f2937; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
     </style>
 </head>
-<body>
+<body class="bg-gray-950 text-gray-200 font-sans min-h-screen p-4 md:p-8 flex justify-center items-start">
 
-    <div class="box">
-        <h3>Test Koneksi Firebase</h3>
-        
-        <input type="email" id="email" placeholder="Ketik Email">
-        <input type="password" id="pass" placeholder="Ketik Password">
-        
-        <button id="btnEmail" style="background: #10b981; color: white; border: none;">1. Login Email</button>
-        <button id="btnGoogle" style="background: #ef4444; color: white; border: none;">2. Login Google</button>
-        <button id="btnAnon" style="background: #3b82f6; color: white; border: none;">3. Login Tamu</button>
+    <div class="w-full max-w-3xl glass-panel rounded-3xl shadow-2xl p-6 md:p-8 relative overflow-hidden">
+        <!-- Accent Glows -->
+        <div class="absolute -top-40 -left-40 w-80 h-40 bg-blue-500 rounded-full blur-[120px] opacity-15 pointer-events-none"></div>
+        <div class="absolute -bottom-40 -right-40 w-80 h-40 bg-emerald-500 rounded-full blur-[120px] opacity-15 pointer-events-none"></div>
 
-        <div id="status">Status: Menunggu aksi...</div>
+        <!-- Header -->
+        <div class="border-b border-white/5 pb-5 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 z-10 relative">
+            <div>
+                <h1 class="text-2xl font-display font-black tracking-tight text-white flex items-center gap-2.5">
+                    <i class="fa-solid fa-flask-vial text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.3)]"></i> Raw API Key Tester
+                </h1>
+                <p class="text-xs text-gray-400 mt-1">Isolasi pengujian konektivitas langsung untuk memeriksa status limit, kuota, dan respons HTTP.</p>
+            </div>
+            <button onclick="clearLog()" class="px-3.5 py-2 bg-white/5 hover:bg-white/10 text-xs font-bold rounded-xl border border-white/10 transition-all active:scale-95 flex items-center gap-1.5">
+                <i class="fa-solid fa-eraser text-gray-400"></i> Bersihkan Log
+            </button>
+        </div>
+
+        <!-- Inputs Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5 z-10 relative">
+            <!-- Engine Type -->
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Engine / Provider</label>
+                <div class="relative">
+                    <select id="apiType" onchange="onEngineChange()" class="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-sm outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all appearance-none cursor-pointer text-white font-medium">
+                        <option value="gemini">Google Gemini AI</option>
+                        <option value="groq">Groq Cloud (OpenAI Format)</option>
+                        <option value="openai">Custom OpenAI Proxy</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400 text-xs">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Key Input -->
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">API Key Manual</label>
+                <div class="relative">
+                    <input type="password" id="apiKey" class="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 pr-10 text-sm outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all font-mono tracking-wide text-emerald-300" placeholder="Masukkan API Key (AIzaSy... / gsk_...)">
+                    <button onclick="toggleKeyVisibility()" class="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-white transition-colors text-xs">
+                        <i id="keyVisibilityIcon" class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dynamic Configurations -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5 z-10 relative">
+            <!-- Model Name Selection -->
+            <div class="md:col-span-1">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Model AI</label>
+                <div class="relative">
+                    <select id="modelName" class="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-sm outline-none focus:border-emerald-500/50 transition-all appearance-none cursor-pointer font-medium">
+                        <!-- Options injected via JavaScript -->
+                    </select>
+                    <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none text-gray-400 text-xs">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Endpoint URL Input -->
+            <div class="md:col-span-2">
+                <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">API Endpoint URL</label>
+                <input type="text" id="endpointUrl" class="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-sm outline-none focus:border-emerald-500/50 transition-all font-mono text-gray-300" placeholder="URL Endpoint">
+            </div>
+        </div>
+
+        <!-- Prompt Area -->
+        <div class="mb-6 z-10 relative">
+            <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 pl-1">Prompt Test</label>
+            <textarea id="promptText" rows="2" class="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-sm outline-none focus:border-emerald-500/50 transition-all resize-none leading-relaxed" placeholder="Ketik pesan uji coba di sini...">Halo, ini koneksi uji coba terisolasi. Balas dengan teks singkat: "Status: OK - Engine Siap!".</textarea>
+        </div>
+
+        <!-- Submit Button -->
+        <button id="submitBtn" onclick="executeRawTest()" class="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-[0_4px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] active:scale-[0.99] flex items-center justify-center gap-2 text-sm z-10 relative">
+            <i class="fa-solid fa-paper-plane-launch" id="btnIcon"></i> Tembakkan Koneksi Ke Server AI
+        </button>
+
+        <!-- Diagnostics Console -->
+        <div class="mt-8 z-10 relative">
+            <div class="flex justify-between items-center mb-2.5 px-1">
+                <div class="flex items-center gap-2">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">Diagnostic Live Terminal</label>
+                </div>
+                <span id="latencyDisplay" class="text-[10px] font-mono font-bold text-gray-500">Latency: --</span>
+            </div>
+            <div id="terminalLog" class="w-full h-72 bg-gray-950 border border-white/5 rounded-xl p-4 overflow-y-auto font-mono text-xs leading-relaxed whitespace-pre-wrap break-words text-emerald-400 shadow-inner">=== AURAFI LIVE DIAGNOSTIC ISOLATOR READY ===
+[Sistem]: Masukkan API Key Anda, lalu tembakkan request untuk menganalisis respons jaringan.</div>
+        </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-
-        // Konfigurasi langsung dari file milikmu
-        const firebaseConfig = {
-            apiKey: "AIzaSyDuGNM793lZOUJEX_LAEaxCipFOw6TT35E",
-            authDomain: "agrivision-574be.firebaseapp.com",
-            databaseURL: "https://agrivision-574be-default-rtdb.firebaseio.com",
-            projectId: "agrivision-574be",
-            storageBucket: "agrivision-574be.firebasestorage.app",
-            messagingSenderId: "732120986243",
-            appId: "1:732120986243:web:d025c9a2908b1ca892a1b6"
+    <script>
+        const MODEL_PRESETS = {
+            gemini: {
+                models: [
+                    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (Terbaru)' },
+                    { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Bawaan)' },
+                    { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro (Heavy)' }
+                ],
+                defaultUrl: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+            },
+            groq: {
+                models: [
+                    { value: 'llama3-8b-8192', label: 'Llama 3 8B (Super Fast)' },
+                    { value: 'llama3-70b-8192', label: 'Llama 3 70B (Smart)' },
+                    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' }
+                ],
+                defaultUrl: 'https://api.groq.com/openai/v1/chat/completions'
+            },
+            openai: {
+                models: [
+                    { value: 'gpt-3.5-turbo', label: 'GPT-3.5 Turbo' },
+                    { value: 'gpt-4o-mini', label: 'GPT-4o Mini' }
+                ],
+                defaultUrl: 'https://api.openai.com/v1/chat/completions'
+            }
         };
 
-        // Inisialisasi Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
-        const statusEl = document.getElementById('status');
+        function onEngineChange() {
+            const engine = document.getElementById('apiType').value;
+            const modelSelect = document.getElementById('modelName');
+            const urlInput = document.getElementById('endpointUrl');
+            
+            // Render Model Drops
+            const preset = MODEL_PRESETS[engine];
+            modelSelect.innerHTML = preset.models.map(m => `<option value="${m.value}">${m.label}</option>`).join('');
+            
+            // Set Default URL
+            updateUrlTemplate();
+        }
 
-        // FUNGSI 1: LOGIN EMAIL
-        document.getElementById('btnEmail').addEventListener('click', async () => {
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('pass').value;
-            statusEl.innerText = "Status: Memproses Email...";
-            try {
-                const credential = await signInWithEmailAndPassword(auth, email, pass);
-                statusEl.innerText = "BERHASIL! UID Anda: " + credential.user.uid;
-            } catch (error) {
-                statusEl.innerText = "GAGAL: " + error.message;
+        function updateUrlTemplate() {
+            const engine = document.getElementById('apiType').value;
+            const model = document.getElementById('modelName').value;
+            const urlInput = document.getElementById('endpointUrl');
+            
+            let template = MODEL_PRESETS[engine].defaultUrl;
+            if (engine === 'gemini') {
+                template = template.replace('{model}', model);
             }
+            urlInput.value = template;
+        }
+
+        document.getElementById('modelName').addEventListener('change', () => {
+            const engine = document.getElementById('apiType').value;
+            if (engine === 'gemini') updateUrlTemplate();
         });
 
-        // FUNGSI 2: LOGIN GOOGLE
-        document.getElementById('btnGoogle').addEventListener('click', async () => {
-            statusEl.innerText = "Status: Membuka Popup Google...";
-            try {
-                const credential = await signInWithPopup(auth, provider);
-                statusEl.innerText = "BERHASIL! UID Anda: " + credential.user.uid;
-            } catch (error) {
-                statusEl.innerText = "GAGAL: " + error.message;
+        function toggleKeyVisibility() {
+            const input = document.getElementById('apiKey');
+            const icon = document.getElementById('keyVisibilityIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fa-solid fa-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'fa-solid fa-eye';
             }
-        });
+        }
 
-        // FUNGSI 3: LOGIN TAMU
-        document.getElementById('btnAnon').addEventListener('click', async () => {
-            statusEl.innerText = "Status: Meminta Sesi Tamu...";
-            try {
-                const credential = await signInAnonymously(auth);
-                statusEl.innerText = "BERHASIL! UID Anda: " + credential.user.uid;
-            } catch (error) {
-                statusEl.innerText = "GAGAL: " + error.message;
+        function appendLog(message, type = 'info') {
+            const logBox = document.getElementById('terminalLog');
+            const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
+            let style = 'text-emerald-400'; 
+            
+            if (type === 'error') style = 'text-rose-400 font-bold';
+            if (type === 'success') style = 'text-cyan-400 font-bold';
+            if (type === 'warn') style = 'text-yellow-400';
+            if (type === 'meta') style = 'text-gray-500';
+
+            const entry = `<span class="text-gray-600">[${time}]</span> <span class="${style}">${message}</span>
+`;
+            logBox.innerHTML += entry;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('terminalLog').innerHTML = '';
+            document.getElementById('latencyDisplay').innerText = 'Latency: --';
+            appendLog('Terminal diagnostik dibersihkan.', 'meta');
+        }
+
+        async function executeRawTest() {
+            const engine = document.getElementById('apiType').value;
+            const key = document.getElementById('apiKey').value.trim();
+            const url = document.getElementById('endpointUrl').value.trim();
+            const prompt = document.getElementById('promptText').value.trim();
+            const model = document.getElementById('modelName').value;
+
+            const btn = document.getElementById('submitBtn');
+            const icon = document.getElementById('btnIcon');
+
+            if (!key) {
+                alert('Peringatan: API Key tidak boleh kosong!');
+                appendLog('GAGAL: Eksekusi dibatalkan karena API Key kosong.', 'error');
+                return;
             }
-        });
+            if (!url) {
+                alert('Peringatan: Endpoint URL wajib diisi!');
+                return;
+            }
+
+            // Lock UI & State Loading
+            btn.disabled = true;
+            btn.className = "w-full py-4 bg-gray-800 text-gray-500 font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-2 text-sm z-10 relative";
+            icon.className = "fa-solid fa-circle-notch animate-spin";
+            document.getElementById('latencyDisplay').innerText = 'Loading...';
+
+            appendLog(`--------------------------------------------------`, 'meta');
+            appendLog(`Membuka jembatan raw ke: ${engine.toUpperCase()} (${model})`, 'meta');
+            appendLog(`Target URL: ${url}`, 'meta');
+
+            const startTime = Date.now();
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => { controller.abort(); }, 25000); // 30s max timeout guard
+
+            try {
+                let targetUrl = url;
+                let response;
+
+                // 1. STRUKTUR REQUEST UNTUK GOOGLE GEMINI
+                if (engine === 'gemini') {
+                    targetUrl = `${url}?key=${key}`;
+                    appendLog('Mengompilasi JSON Payload format Google AI Studio...', 'warn');
+                    
+                    response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }]
+                        }),
+                        signal: controller.signal
+                    });
+                } 
+                // 2. STRUKTUR REQUEST UNTUK OPENAI FORMAT (GROQ / PROXY)
+                else {
+                    appendLog('Mengompilasi JSON Payload format OpenAI/Bearer...', 'warn');
+                    response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${key}`
+                        },
+                        body: JSON.stringify({
+                            model: model,
+                            messages: [{ role: 'user', content: prompt }]
+                        }),
+                        signal: controller.signal
+                    });
+                }
+
+                clearTimeout(timeoutId);
+                const latency = Date.now() - startTime;
+                document.getElementById('latencyDisplay').innerText = `Latency: ${latency}ms`;
+
+                appendLog(`Koneksi menerima respons. Status HTTP: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+
+                if (!response.ok) {
+                    const rawError = await response.text();
+                    appendLog(`🚨 ERROR DITERIMA DARI SERVER AI:`, 'error');
+                    appendLog(rawError, 'error');
+                    
+                    if(response.status === 429) {
+                        appendLog('👉 Diagnosis: Kode 429 berarti Anda terkena RATE LIMIT. Batasan menit/hari akun gratis Anda habis.', 'warn');
+                    } else if(response.status === 400) {
+                        appendLog('👉 Diagnosis: Kode 400 berarti bad request. Model tidak didukung atau endpoint URL keliru.', 'warn');
+                    } else if(response.status === 403 || response.status === 401) {
+                        appendLog('👉 Diagnosis: API Key Anda salah, tidak valid, atau diblokir oleh provider.', 'warn');
+                    }
+                    return;
+                }
+
+                const jsonResult = await response.json();
+                appendLog(`Data JSON berhasil di-parsing dengan sukses (${latency}ms).`, 'success');
+
+                // Ekstrak respons teks berdasarkan jenis provider
+                let finalReply = "";
+                if (engine === 'gemini') {
+                    finalReply = jsonResult.candidates?.[0]?.content?.parts?.[0]?.text || "Format respons Gemini kosong.";
+                } else {
+                    finalReply = jsonResult.choices?.[0]?.message?.content || "Format respons OpenAI kosong.";
+                }
+
+                appendLog(`
+🤖 [RESPONS AI]:
+"${finalReply}"
+`, 'info');
+
+            } catch (err) {
+                clearTimeout(timeoutId);
+                const latency = Date.now() - startTime;
+                document.getElementById('latencyDisplay').innerText = 'Timeout/Fail';
+                
+                if (err.name === 'AbortError') {
+                    appendLog(`❌ REQUEST BATAL: Jaringan memutus koneksi karena TIMEOUT (di atas 25 detik). Server AI macet.`, 'error');
+                } else {
+                    appendLog(`❌ KONEKSI GAGAL CRITICAL (${latency}ms): ${err.message}`, 'error');
+                    appendLog('Periksa apakah kuota internet Anda aktif, atau server AI sedang mengalami kendala regional.', 'warn');
+                }
+            } finally {
+                // Kembalikan Tombol UI
+                btn.disabled = false;
+                btn.className = "w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-[0_4px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] active:scale-[0.99] flex items-center justify-center gap-2 text-sm z-10 relative";
+                icon.className = "fa-solid fa-paper-plane";
+            }
+        }
+
+        // Jalankan setup awal
+        onEngineChange();
     </script>
 </body>
 </html>
