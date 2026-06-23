@@ -1,8 +1,6 @@
 /**
  * Firebase Core Service & Real-Time Sync Engine
- * Menggunakan Arsitektur "Reactive Pre-load" dengan "Isolated Try-Catch" 
- * dan Metode Kas Apato (Optimistic Update) untuk respon UI instan.
- * Dilengkapi dengan Auto-Category Catcher untuk AI.
+ * Dilengkapi dengan Auto-Registrar & Dynamic Learning Smart Mapper
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -25,9 +23,6 @@ let googleAuthProviderInstance = null;
 
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
-// ============================================================================
-// 🔧 SINKRONISASI PINTAR DENGAN ISOLASI ERROR (ANTI DOMINO CRASH)
-// ============================================================================
 let isInitialLoadComplete = false;
 let initialDataArrived = { transactions: false, settings: false, goals: false };
 
@@ -35,9 +30,7 @@ const forceUIRender = () => {
     const renderers = ['renderDashboard', 'renderTransactions', 'renderAnalytics', 'renderBudgets', 'renderTrash'];
     renderers.forEach(fn => {
         try {
-            if (typeof window[fn] === 'function') {
-                window[fn]();
-            }
+            if (typeof window[fn] === 'function') window[fn]();
         } catch(e) {
             console.warn(`Peringatan: Render tertahan di modul ${fn}`);
         }
@@ -85,7 +78,6 @@ try {
             
             const uid = user.uid;
 
-            // 1. STREAM TRANSAKSI REAL-TIME
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
@@ -105,12 +97,10 @@ try {
                 
                 AuraState.data.transactions = activeArr;
                 AuraState.data.trash = trashArr; 
-                
                 initialDataArrived.transactions = true; 
                 smartRender();
             });
 
-            // 2. STREAM PENGATURAN REAL-TIME
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
@@ -118,7 +108,6 @@ try {
                 smartRender();
             });
 
-            // 3. STREAM MISSION GOALS REAL-TIME
             const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const data = snapshot.val();
@@ -138,7 +127,6 @@ try {
             AuraState.data.goals = [];
             AuraState.data.trash = [];
             isInitialLoadComplete = false;
-            
             if (typeof window.showModal === 'function') window.showModal('modal-login');
         }
     });
@@ -150,9 +138,7 @@ try {
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
         requestAnimationFrame(() => forceUIRender());
-        if (!silent && typeof window.showToast === 'function') {
-            window.showToast("Sinkronisasi paksa antarmuka berhasil.");
-        }
+        if (!silent && typeof window.showToast === 'function') window.showToast("Sinkronisasi antarmuka berhasil.");
     }
 };
 
@@ -167,43 +153,98 @@ export const FirebaseService = {
     },
 
     // ========================================================================
-    // 🛡️ JARING PENANGKAP KATEGORI AI (Category Catcher)
+    // 🛡️ GUDANG OTOMATIS & AURA DYNAMIC LEARNING MAPPER
     // ========================================================================
-    _ensureCategoryExists: async function(catName, trxType) {
-        if (!catName || catName === 'Uncategorized' || catName === 'Lainnya') return;
+    _autoRegisterToVault: async function(trxData) {
+        if (!trxData) return;
+        let rawCats = AuraState.data.settings?.customCategories || {};
+        let isUpdated = false;
 
-        const rawCats = AuraState.data.settings?.customCategories || {};
+        let pName = trxData.kategori;
+        if (!pName || pName.trim() === '' || pName.toLowerCase() === 'uncategorized') pName = 'Lainnya';
         
-        // Cek apakah nama kategori ini sudah terdaftar (Case-Insensitive)
-        const exists = Object.values(rawCats).some(c => c.name.toLowerCase() === catName.toLowerCase());
-        
-        if (!exists) {
-            // Jika belum ada, daftarkan otomatis secara diam-diam!
-            const newId = `cat_auto_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            
-            // Ambil warna acak dari palet Serenity agar terlihat cantik
-            const AURA_PALETTE = ['#ff9a9e', '#ffb199', '#f6d365', '#a1c4fd', '#84fab0', '#fbc2eb', '#a6c1ee', '#fccb90', '#e0c3fc', '#d4fc79', '#10b981', '#38bdf8'];
-            const randomColor = AURA_PALETTE[Math.floor(Math.random() * AURA_PALETTE.length)];
-            
-            const payload = {
-                name: catName,
-                type: trxType || 'expense', 
-                icon: 'fa-tag', // Beri ikon label default
-                color: randomColor,
-                parentId: null // Jadikan kategori utama
-            };
+        // --- 🧠 AURA SMART MAPPER (Kamus Bawaan) ---
+        const pNameLower = pName.toLowerCase();
+        let targetParent = pName; 
+        let forcedChild = null;
 
-            const updates = {};
-            updates[`customCategories/${newId}`] = payload;
-            
-            // Simpan ke Firebase
-            await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), updates);
-            
-            // Optimistic Update ke state lokal
-            if(AuraState.data.settings) {
-                if(!AuraState.data.settings.customCategories) AuraState.data.settings.customCategories = {};
-                AuraState.data.settings.customCategories[newId] = payload;
+        const PARENT_ALIASES = {
+            "Makanan": ["makan", "makanan", "sarapan", "siang", "malam", "jajan", "kuliner", "restoran", "snack", "cemilan", "buah", "sayur", "daging", "bumbu"],
+            "Minuman": ["minum", "minuman", "kafe", "kopi", "teh", "susu", "jus", "sirup", "air"],
+            "Transportasi": ["transportasi", "transport", "kendaraan", "bensin", "parkir", "tol", "gojek", "grab", "ojol", "kereta", "bus", "pesawat", "tiket"],
+            "Tagihan & Utilitas": ["tagihan", "utilitas", "listrik", "air", "internet", "wifi", "pulsa", "kuota", "pajak", "bpjs", "asuransi"],
+            "Kesehatan & Medis": ["kesehatan", "medis", "obat", "dokter", "sakit", "klinik", "apotek", "perawatan", "vitamin"],
+            "Belanja Pribadi": ["belanja", "pakaian", "baju", "sepatu", "skincare", "kosmetik", "fashion", "elektronik", "gadget", "kebutuhan"],
+            "Hiburan & Hobi": ["hiburan", "hobi", "game", "bioskop", "langganan", "streaming", "netflix", "spotify", "rekreasi", "liburan", "mainan"],
+            "Pemasukan": ["gaji", "bonus", "upah", "investasi", "laba", "pemasukan", "pendapatan", "jual", "thr"]
+        };
+
+        // 🧠 DYNAMIC LEARNING: Jika user membuat kategori induk manual di luar script,
+        // sistem akan menambahkannya otomatis ke dalam memori kamusnya!
+        Object.values(rawCats).forEach(cat => {
+            if (!cat.parentId && !PARENT_ALIASES[cat.name]) {
+                PARENT_ALIASES[cat.name] = [cat.name.toLowerCase()];
             }
+        });
+
+        // Proses penyaringan (Matching)
+        for (const [stdParent, keywords] of Object.entries(PARENT_ALIASES)) {
+            if (keywords.some(kw => pNameLower.includes(kw))) {
+                if (pNameLower !== stdParent.toLowerCase()) {
+                    targetParent = stdParent; 
+                    forcedChild = pName; 
+                }
+                break;
+            }
+        }
+
+        // KOREKSI TRANSAKSI SEBELUM DISIMPAN
+        trxData.kategori = targetParent;
+        if (forcedChild && trxData.items && trxData.items.length > 0) {
+            trxData.items.forEach(item => {
+                if (!item.kategori_barang || item.kategori_barang.toLowerCase() === targetParent.toLowerCase() || item.kategori_barang.toLowerCase() === 'uncategorized' || item.kategori_barang.toLowerCase() === 'lainnya') {
+                    item.kategori_barang = forcedChild;
+                }
+            });
+        }
+        // --------------------------------------------------------------
+
+        const type = (trxData.tipe === 'pemasukan' || trxData.jenis === 'pemasukan' || trxData.tipe === 'income') ? 'income' : 'expense';
+
+        // 1. Daftarkan Induk ke Gudang
+        let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === targetParent.toLowerCase() && !rawCats[id].parentId);
+        if (!pId) {
+            pId = `cat_auto_p_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+            
+            let icon = 'fa-layer-group';
+            if(targetParent === 'Makanan') icon = 'fa-burger';
+            if(targetParent === 'Minuman') icon = 'fa-mug-hot';
+            if(targetParent === 'Transportasi') icon = 'fa-car';
+            
+            rawCats[pId] = { name: targetParent, type: type, icon: icon, color: '#818cf8', parentId: null };
+            isUpdated = true;
+        }
+
+        // 2. Daftarkan Sub-Kategori (Anak) ke Gudang
+        if (trxData.items && Array.isArray(trxData.items)) {
+            trxData.items.forEach(item => {
+                if (!item || typeof item !== 'object') return;
+                const cName = item.kategori_barang || item.kategori || item.category || item.sub_kategori;
+                
+                if (cName && cName.toLowerCase() !== targetParent.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
+                    let cId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase() && rawCats[id].parentId === pId);
+                    if (!cId) {
+                        cId = `cat_auto_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+                        rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
+                        isUpdated = true;
+                    }
+                }
+            });
+        }
+
+        if (isUpdated) {
+            if (AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
+            await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), { customCategories: rawCats });
         }
     },
 
@@ -220,19 +261,15 @@ export const FirebaseService = {
     saveTransaction: async function(data, isFromAI = false) { 
         this._checkAuth();
 
-        // 1. TANGKAP KATEGORI DARI AI
-        if (data.kategori) {
-            const trxType = (data.jenis === 'pemasukan' || data.jenis === 'income') ? 'income' : 'expense';
-            await this._ensureCategoryExists(data.kategori, trxType);
-        }
+        // Tembuskan data ke filter Smart Mapper
+        await this._autoRegisterToVault(data);
 
-        // 2. Simpan Transaksi
         data.user_id = AuraState.data.settings?.profile?.nickname || "User";
         data.nominal = Math.max(0, Number(data.nominal) || 0); 
         if (!data.createdAt) data.createdAt = new Date().toISOString();
         
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
-        await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName} (${AuraUtils.formatCurrency(data.nominal)})`);
+        await this.saveAuditLog(isFromAI ? "AI.PARSE" : "MANUAL.ADD", `Transaksi: ${data.merchantName || data.storeName || 'Sistem'} (${AuraUtils.formatCurrency(data.nominal)})`);
         forceUIRender();
     },
 
@@ -240,7 +277,8 @@ export const FirebaseService = {
         this._checkAuth();
         if (!id) throw new Error("ID Referensi Transaksi tidak terdefinisi.");
         
-        // [METODE KAS APATO] Update state lokal secara instan!
+        await this._autoRegisterToVault(data);
+
         if (AuraState.data.transactions) {
             const idx = AuraState.data.transactions.findIndex(t => t.id === id);
             if (idx !== -1) AuraState.data.transactions[idx] = { ...AuraState.data.transactions[idx], ...data };
@@ -257,7 +295,6 @@ export const FirebaseService = {
     moveToTrash: async function(id) { 
         this._checkAuth();
 
-        // [METODE KAS APATO] Saring dan buang item dari memori lokal seketika!
         if (AuraState.data.transactions) {
             AuraState.data.transactions = AuraState.data.transactions.filter(t => t.id !== id);
         }
@@ -273,7 +310,6 @@ export const FirebaseService = {
     deleteTransactionPermanently: async function(id) { 
         this._checkAuth();
 
-        // [METODE KAS APATO] Lenyapkan dari layar tempat sampah seketika!
         if (AuraState.data.trash) {
             AuraState.data.trash = AuraState.data.trash.filter(t => t.id !== id);
         }
@@ -293,7 +329,6 @@ export const FirebaseService = {
     updateGoal: async function(id, data) {
         this._checkAuth();
 
-        // [METODE KAS APATO] Update target di layar seketika!
         if (AuraState.data.goals) {
             const idx = AuraState.data.goals.findIndex(g => g.id === id);
             if (idx !== -1) AuraState.data.goals[idx] = { ...AuraState.data.goals[idx], ...data };
@@ -307,7 +342,6 @@ export const FirebaseService = {
     deleteGoal: async function(id) { 
         this._checkAuth();
 
-        // [METODE KAS APATO] Hapus target misi dari layar seketika!
         if (AuraState.data.goals) {
             AuraState.data.goals = AuraState.data.goals.filter(g => g.id !== id);
         }
@@ -320,7 +354,6 @@ export const FirebaseService = {
     updateSettings: async function(data) { 
         this._checkAuth();
         await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), data); 
-        // Settings diurus oleh onValue listener otomatis
     },
 
     saveGroqKey: async function(encryptedKey) { 
