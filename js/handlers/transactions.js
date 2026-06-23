@@ -11,13 +11,44 @@ import { FirebaseService } from '../services/firebase.js';
 import { CategoryManager } from '../modules/categories.js';
 
 // ============================================================================
+// EVENT LISTENER GLOBAL UNTUK CUSTOM PICKER
+// ============================================================================
+document.addEventListener('DOMContentLoaded', () => {
+    const typeSelect = document.getElementById('manual-trx-type');
+    if (typeSelect) {
+        // Reset kategori setiap kali jenis transaksi (Pemasukan/Pengeluaran) diubah
+        typeSelect.addEventListener('change', function() {
+            const valEl = document.getElementById('manual-trx-category-val');
+            const displayEl = document.getElementById('manual-trx-category-display');
+            if (valEl && displayEl) {
+                valEl.value = "";
+                displayEl.innerText = "Pilih Kategori...";
+                displayEl.classList.add('text-[var(--text-muted)]');
+                displayEl.classList.remove('text-accent', 'font-bold');
+            }
+        });
+    }
+});
+
+// ============================================================================
 // INPUT TRANSAKSI MANUAL UTAMA
 // ============================================================================
 
 window.openManualTrxModal = function() {
     if (typeof CategoryManager.renderDropdowns === 'function') {
-        CategoryManager.renderDropdowns();
+        CategoryManager.renderDropdowns(); // Untuk select kategori di item-item lain
     }
+    
+    // Pastikan Custom Picker selalu dalam keadaan kosong/reset saat modal dibuka
+    const valEl = document.getElementById('manual-trx-category-val');
+    const displayEl = document.getElementById('manual-trx-category-display');
+    if (valEl && displayEl) {
+        valEl.value = "";
+        displayEl.innerText = "Pilih Kategori...";
+        displayEl.classList.add('text-[var(--text-muted)]');
+        displayEl.classList.remove('text-accent', 'font-bold');
+    }
+
     if (typeof window.showModal === 'function') {
         window.showModal('modal-manual-trx');
     }
@@ -29,7 +60,9 @@ window.saveManualTransaction = async function() {
     const methodInput = document.getElementById('manual-trx-method');
     const currInput = document.getElementById('manual-trx-curr');
     const amtInput = document.getElementById('manual-trx-amount');
-    const catInput = document.getElementById('manual-trx-category');
+    
+    // PERBAIKAN: Mengambil nilai dari Hidden Input milik Custom Picker
+    const catInput = document.getElementById('manual-trx-category-val');
 
     if (!storeInput || !amtInput) return;
     
@@ -38,7 +71,9 @@ window.saveManualTransaction = async function() {
     const method = methodInput ? methodInput.value : 'cashless';
     const currency = currInput ? currInput.value : 'JPY';
     const amount = parseFloat(amtInput.value);
-    const category = catInput ? catInput.value || 'Lainnya' : 'Lainnya';
+    
+    // Jika tidak ada kategori yang dipilih, set default ke 'Lainnya'
+    const category = (catInput && catInput.value.trim() !== '') ? catInput.value : 'Lainnya';
 
     if (!store) {
         if (window.showToast) window.showToast("Nama toko/merchant wajib diisi!", true);
@@ -76,21 +111,15 @@ window.saveManualTransaction = async function() {
         }]
     };
 
-        try {
+    try {
         await FirebaseService.saveTransaction(data, false);
         if (typeof window.closeModal === 'function') window.closeModal('modal-manual-trx');
         if (window.showToast) window.showToast("✅ Transaksi manual berhasil disimpan!");
         
+        // Reset form setelah simpan
         storeInput.value = '';
         amtInput.value = '';
-
-        // --- PELATUK SINKRONISASI UI INSTAN ---
-        if (typeof window.loadRealtimeDatabaseData === 'function') window.loadRealtimeDatabaseData();
-        if (typeof window.renderDashboard === 'function') window.renderDashboard();
-        if (typeof window.renderTransactions === 'function') window.renderTransactions();
-        if (typeof window.renderLog === 'function') window.renderLog();
-        // --------------------------------------
-
+        if(catInput) catInput.value = '';
     } catch (e) {
         if (window.showToast) window.showToast("❌ Gagal menyimpan transaksi manual.", true);
     }
