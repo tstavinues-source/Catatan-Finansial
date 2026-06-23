@@ -2,6 +2,7 @@
  * Firebase Core Service & Real-Time Sync Engine
  * Menggunakan Arsitektur "Reactive Pre-load" dengan "Isolated Try-Catch" 
  * dan Metode Kas Apato (Optimistic Update) untuk respon UI instan.
+ * Dilengkapi dengan Auto-Category Catcher untuk AI.
  */
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -84,6 +85,7 @@ try {
             
             const uid = user.uid;
 
+            // 1. STREAM TRANSAKSI REAL-TIME
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/transactions`);
             onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
@@ -108,6 +110,7 @@ try {
                 smartRender();
             });
 
+            // 2. STREAM PENGATURAN REAL-TIME
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/settings`);
             onValue(settingsRef, (snapshot) => {
                 AuraState.data.settings = snapshot.val() || {};
@@ -115,6 +118,7 @@ try {
                 smartRender();
             });
 
+            // 3. STREAM MISSION GOALS REAL-TIME
             const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/goals`);
             onValue(goalsRef, (snapshot) => {
                 const data = snapshot.val();
@@ -162,6 +166,47 @@ export const FirebaseService = {
         if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) throw new Error("Sesi pengguna tidak valid.");
     },
 
+    // ========================================================================
+    // 🛡️ JARING PENANGKAP KATEGORI AI (Category Catcher)
+    // ========================================================================
+    _ensureCategoryExists: async function(catName, trxType) {
+        if (!catName || catName === 'Uncategorized' || catName === 'Lainnya') return;
+
+        const rawCats = AuraState.data.settings?.customCategories || {};
+        
+        // Cek apakah nama kategori ini sudah terdaftar (Case-Insensitive)
+        const exists = Object.values(rawCats).some(c => c.name.toLowerCase() === catName.toLowerCase());
+        
+        if (!exists) {
+            // Jika belum ada, daftarkan otomatis secara diam-diam!
+            const newId = `cat_auto_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+            
+            // Ambil warna acak dari palet Serenity agar terlihat cantik
+            const AURA_PALETTE = ['#ff9a9e', '#ffb199', '#f6d365', '#a1c4fd', '#84fab0', '#fbc2eb', '#a6c1ee', '#fccb90', '#e0c3fc', '#d4fc79', '#10b981', '#38bdf8'];
+            const randomColor = AURA_PALETTE[Math.floor(Math.random() * AURA_PALETTE.length)];
+            
+            const payload = {
+                name: catName,
+                type: trxType || 'expense', 
+                icon: 'fa-tag', // Beri ikon label default
+                color: randomColor,
+                parentId: null // Jadikan kategori utama
+            };
+
+            const updates = {};
+            updates[`customCategories/${newId}`] = payload;
+            
+            // Simpan ke Firebase
+            await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings`), updates);
+            
+            // Optimistic Update ke state lokal
+            if(AuraState.data.settings) {
+                if(!AuraState.data.settings.customCategories) AuraState.data.settings.customCategories = {};
+                AuraState.data.settings.customCategories[newId] = payload;
+            }
+        }
+    },
+
     saveAuditLog: async function(action, detail) {
         if (!AuraState.user.uid || !dbInstance) return;
         try {
@@ -174,6 +219,14 @@ export const FirebaseService = {
     
     saveTransaction: async function(data, isFromAI = false) { 
         this._checkAuth();
+
+        // 1. TANGKAP KATEGORI DARI AI
+        if (data.kategori) {
+            const trxType = (data.jenis === 'pemasukan' || data.jenis === 'income') ? 'income' : 'expense';
+            await this._ensureCategoryExists(data.kategori, trxType);
+        }
+
+        // 2. Simpan Transaksi
         data.user_id = AuraState.data.settings?.profile?.nickname || "User";
         data.nominal = Math.max(0, Number(data.nominal) || 0); 
         if (!data.createdAt) data.createdAt = new Date().toISOString();
