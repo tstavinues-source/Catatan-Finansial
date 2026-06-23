@@ -300,48 +300,52 @@ window.startVoice = function() {
 // SISTEM MANAJEMEN KATEGORI VISUAL & HIERARKI (AURA STUDIO)
 // ============================================================================
 
-// 1. Daftar Warna Pastel Serenity untuk rotasi dinamis
 const AURA_PALETTE = [
     '#ff9a9e', '#ffb199', '#f6d365', '#a1c4fd', '#84fab0', '#fbc2eb', 
     '#a6c1ee', '#fccb90', '#e0c3fc', '#d4fc79', '#10b981', '#38bdf8', 
     '#f59e0b', '#fb7185', '#818cf8', '#34d399', '#f472b6', '#c084fc'
 ];
 
-// 2. Koleksi 150+ Ikon Premium (Generator Dinamis)
 const RAW_ICONS = [
-    // Makanan & Minuman
     'fa-utensils', 'fa-burger', 'fa-pizza-slice', 'fa-bowl-food', 'fa-ice-cream', 'fa-apple-whole', 'fa-carrot', 'fa-cheese', 'fa-bread-slice', 'fa-mug-hot', 'fa-wine-glass', 'fa-beer-mug-empty', 'fa-cupcake', 'fa-martini-glass-citrus', 'fa-cake-candles',
-    // Belanja & Ritel
     'fa-basket-shopping', 'fa-cart-shopping', 'fa-bag-shopping', 'fa-store', 'fa-shop', 'fa-gifts', 'fa-box', 'fa-boxes-stacked', 'fa-tag', 'fa-tags', 'fa-barcode',
-    // Transportasi & Perjalanan
     'fa-car', 'fa-gas-pump', 'fa-motorcycle', 'fa-bus', 'fa-train', 'fa-train-subway', 'fa-plane', 'fa-plane-departure', 'fa-ship', 'fa-ferry', 'fa-bicycle', 'fa-taxi', 'fa-truck', 'fa-route', 'fa-map-location-dot',
-    // Rumah & Kebutuhan (Utilitas)
     'fa-house', 'fa-bolt', 'fa-droplet', 'fa-wifi', 'fa-couch', 'fa-bed', 'fa-bath', 'fa-broom', 'fa-fan', 'fa-fire', 'fa-plug', 'fa-key', 'fa-lightbulb', 'fa-toilet-paper', 'fa-trash-can',
-    // Gadget & Teknologi
     'fa-mobile-screen', 'fa-tv', 'fa-laptop', 'fa-headphones', 'fa-camera', 'fa-gamepad', 'fa-desktop', 'fa-mouse', 'fa-keyboard', 'fa-print', 'fa-satellite-dish', 'fa-server',
-    // Kesehatan, Olahraga & Perawatan
     'fa-heart-pulse', 'fa-pills', 'fa-stethoscope', 'fa-scissors', 'fa-tooth', 'fa-eye', 'fa-spa', 'fa-dumbbell', 'fa-person-running', 'fa-bottle-droplet', 'fa-weight-scale', 'fa-virus-covid',
-    // Pendidikan & Pekerjaan
     'fa-graduation-cap', 'fa-book', 'fa-pen-nib', 'fa-briefcase', 'fa-building', 'fa-paperclip', 'fa-chalkboard', 'fa-school', 'fa-laptop-file', 'fa-calculator', 'fa-scale-balanced',
-    // Hiburan & Hobi
     'fa-ticket', 'fa-music', 'fa-film', 'fa-video', 'fa-masks-theater', 'fa-palette', 'fa-dice', 'fa-puzzle-piece', 'fa-bowling-ball', 'fa-microphone', 'fa-campground', 'fa-tree', 'fa-volleyball', 'fa-guitar', 'fa-book-open',
-    // Keuangan, Investasi & Pajak
     'fa-piggy-bank', 'fa-building-columns', 'fa-wallet', 'fa-hand-holding-dollar', 'fa-sack-dollar', 'fa-money-bill-trend-up', 'fa-money-bill', 'fa-coins', 'fa-credit-card', 'fa-chart-line', 'fa-chart-pie', 'fa-vault', 'fa-receipt', 'fa-file-invoice-dollar', 'fa-file-signature',
-    // Keluarga, Sosial & Peliharaan
     'fa-children', 'fa-baby', 'fa-child', 'fa-person', 'fa-users', 'fa-user-group', 'fa-ring', 'fa-paw', 'fa-cat', 'fa-dog', 'fa-bone', 'fa-fish',
-    // Pakaian & Aksesoris
     'fa-shirt', 'fa-gem', 'fa-glasses', 'fa-hat-cowboy', 'fa-shoe-prints', 'fa-socks', 'fa-crown',
-    // Lain-lain & Perkakas Dasar
     'fa-wrench', 'fa-hammer', 'fa-screwdriver', 'fa-screwdriver-wrench', 'fa-envelope', 'fa-box-archive', 'fa-calendar', 'fa-bell', 'fa-star', 'fa-heart', 'fa-thumbs-up', 'fa-gear', 'fa-lock', 'fa-magnifying-glass'
 ];
 
-// Mapping otomatis ikon dengan warna agar memori aplikasi tetap ringan
-const AURA_ICONS = RAW_ICONS.map((iconStr, index) => ({
-    icon: iconStr,
-    color: AURA_PALETTE[index % AURA_PALETTE.length]
-}));
+const AURA_ICONS = RAW_ICONS.map((iconStr, index) => ({ icon: iconStr, color: AURA_PALETTE[index % AURA_PALETTE.length] }));
 
-// (Sisa kode di bawah ini seperti currentCatTab, window.openCategoryManager, dst. biarkan UTUH)
+// DATA KATEGORI BAWAAN (AUTO-SEEDER)
+const DEFAULT_CATEGORIES = {
+    "cat_exp_food": { name: "Makanan & Minuman", type: "expense", icon: "fa-utensils", color: "#ff9a9e", parentId: null },
+    "cat_exp_food_1": { name: "Makan di Luar", type: "expense", icon: "fa-burger", color: "#ffb199", parentId: "cat_exp_food" },
+    "cat_exp_food_2": { name: "Belanja Dapur", type: "expense", icon: "fa-basket-shopping", color: "#f6d365", parentId: "cat_exp_food" },
+    "cat_exp_food_3": { name: "Kopi & Kafe", type: "expense", icon: "fa-mug-hot", color: "#a1c4fd", parentId: "cat_exp_food" },
+    
+    "cat_exp_transport": { name: "Transportasi", type: "expense", icon: "fa-car", color: "#84fab0", parentId: null },
+    "cat_exp_transport_1": { name: "Bensin / Tol", type: "expense", icon: "fa-gas-pump", color: "#fbc2eb", parentId: "cat_exp_transport" },
+    "cat_exp_transport_2": { name: "Angkutan Umum", type: "expense", icon: "fa-train", color: "#a6c1ee", parentId: "cat_exp_transport" },
+    
+    "cat_exp_bills": { name: "Tagihan & Utilitas", type: "expense", icon: "fa-bolt", color: "#fccb90", parentId: null },
+    "cat_exp_bills_1": { name: "Listrik & Air", type: "expense", icon: "fa-droplet", color: "#e0c3fc", parentId: "cat_exp_bills" },
+    "cat_exp_bills_2": { name: "Internet & Pulsa", type: "expense", icon: "fa-wifi", color: "#d4fc79", parentId: "cat_exp_bills" },
+    
+    "cat_exp_shopping": { name: "Belanja Pribadi", type: "expense", icon: "fa-bag-shopping", color: "#10b981", parentId: null },
+    "cat_exp_health": { name: "Kesehatan & Medis", type: "expense", icon: "fa-heart-pulse", color: "#fb7185", parentId: null },
+    "cat_exp_entertainment": { name: "Hiburan & Hobi", type: "expense", icon: "fa-gamepad", color: "#818cf8", parentId: null },
+
+    "cat_inc_salary": { name: "Gaji & Upah", type: "income", icon: "fa-sack-dollar", color: "#34d399", parentId: null },
+    "cat_inc_bonus": { name: "Bonus & THR", type: "income", icon: "fa-gifts", color: "#38bdf8", parentId: "cat_inc_salary" },
+    "cat_inc_invest": { name: "Pencairan Investasi", type: "income", icon: "fa-chart-line", color: "#f59e0b", parentId: null },
+};
 
 let currentCatTab = 'expense';
 
@@ -366,15 +370,25 @@ window.switchCatTab = function(type) {
     window.renderCategoryList();
 };
 
-window.renderCategoryList = function() {
-    // Ambil data kategori dari Firebase Settings (Fallback kosong jika belum ada)
-    const rawCategories = AuraState.data.settings?.customCategories || {};
-    
-    // Konversi object ke array dan filter berdasarkan tab aktif
+window.renderCategoryList = async function() {
+    let rawCategories = AuraState.data.settings?.customCategories;
+
+    // AUTO SEEDER: Jika kosong, inject default seketika
+    if (!rawCategories || Object.keys(rawCategories).length === 0) {
+        try {
+            await window.FirebaseService.updateSettings({ customCategories: DEFAULT_CATEGORIES });
+            rawCategories = DEFAULT_CATEGORIES;
+            if(AuraState.data.settings) AuraState.data.settings.customCategories = DEFAULT_CATEGORIES;
+            if(window.showToast) window.showToast("Kategori standar AI telah dimuat.");
+        } catch(e) {
+            console.warn("Gagal menanamkan kategori default", e);
+            rawCategories = {};
+        }
+    }
+
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     const filteredCats = allCats.filter(c => c.type === currentCatTab);
     
-    // Pisahkan Induk dan Anak
     const parents = filteredCats.filter(c => !c.parentId);
     const children = filteredCats.filter(c => c.parentId);
 
@@ -387,13 +401,11 @@ window.renderCategoryList = function() {
     }
 
     let html = '';
-    
     parents.forEach(parent => {
-        // Cari sub-kategori milik induk ini
         const mySubs = children.filter(sub => sub.parentId === parent.id);
         
         html += `
-        <div class="glass-panel p-3 flex flex-col mb-3">
+        <div class="glass-panel p-3 flex flex-col mb-3 animate-[fadeIn_0.3s_ease-out]">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border border-white/10 shadow-lg" style="background-color: ${parent.color}20; color: ${parent.color}">
@@ -410,7 +422,6 @@ window.renderCategoryList = function() {
                 </div>
             </div>`;
         
-        // Render Sub-kategori jika ada (Bentuk L-Shape Hierarki)
         if (mySubs.length > 0) {
             html += `<div class="ml-5 mt-2 pl-4 border-l-2 border-[var(--border-glass)] space-y-2">`;
             mySubs.forEach(sub => {
@@ -430,11 +441,153 @@ window.renderCategoryList = function() {
             });
             html += `</div>`;
         }
-        
         html += `</div>`;
     });
     
     container.innerHTML = html;
+};
+
+// ============================================================================
+// LOGIKA FORM EDIT & TAMBAH
+// ============================================================================
+
+window.openAddCategoryForm = function() {
+    document.getElementById('cat-form-id').value = '';
+    document.getElementById('cat-form-type').value = currentCatTab;
+    document.getElementById('cat-form-name').value = '';
+    document.getElementById('cat-form-title').innerText = "Kategori Baru";
+    
+    const rawCategories = AuraState.data.settings?.customCategories || {};
+    const parents = Object.entries(rawCategories)
+                          .map(([id, data]) => ({ id, ...data }))
+                          .filter(c => c.type === currentCatTab && !c.parentId);
+    
+    let parentOpts = `<option value="">-- Menjadi Kategori Utama --</option>`;
+    parents.forEach(p => parentOpts += `<option value="${p.id}">${p.name}</option>`);
+    
+    const selectEl = document.getElementById('cat-form-parent');
+    selectEl.innerHTML = parentOpts;
+    selectEl.disabled = false;
+
+    window.renderIconPickerGrid(AURA_ICONS[0].icon, AURA_ICONS[0].color);
+    if(typeof window.showModal === 'function') window.showModal('modal-category-form');
+};
+
+window.editCategory = function(id) {
+    const rawCategories = AuraState.data.settings?.customCategories || {};
+    const cat = rawCategories[id];
+    if (!cat) return;
+
+    document.getElementById('cat-form-id').value = id;
+    document.getElementById('cat-form-type').value = cat.type;
+    document.getElementById('cat-form-name').value = cat.name;
+    document.getElementById('cat-form-title').innerText = "Edit Kategori";
+    
+    // Cek apakah kategori ini sudah punya anak. Jika punya, dia tidak boleh diubah jadi sub-kategori
+    const hasChildren = Object.values(rawCategories).some(c => c.parentId === id);
+    const selectEl = document.getElementById('cat-form-parent');
+
+    if (hasChildren) {
+        selectEl.innerHTML = `<option value="">Kategori Utama (Memiliki Sub-Kategori)</option>`;
+        selectEl.disabled = true; // Kunci pilihan
+    } else {
+        const parents = Object.entries(rawCategories)
+                              .map(([cid, data]) => ({ id: cid, ...data }))
+                              .filter(c => c.type === cat.type && !c.parentId && c.id !== id);
+        
+        let parentOpts = `<option value="">-- Menjadi Kategori Utama --</option>`;
+        parents.forEach(p => {
+            const selected = (cat.parentId === p.id) ? 'selected' : '';
+            parentOpts += `<option value="${p.id}" ${selected}>${p.name}</option>`;
+        });
+        selectEl.innerHTML = parentOpts;
+        selectEl.disabled = false;
+    }
+
+    window.renderIconPickerGrid(cat.icon, cat.color);
+    if(typeof window.showModal === 'function') window.showModal('modal-category-form');
+};
+
+window.renderIconPickerGrid = function(activeIcon, activeColor) {
+    const grid = document.getElementById('icon-picker-grid');
+    document.getElementById('cat-form-icon').value = activeIcon;
+    document.getElementById('cat-form-color').value = activeColor;
+    
+    let html = '';
+    AURA_ICONS.forEach(item => {
+        const isActive = item.icon === activeIcon;
+        const baseClass = isActive ? 'scale-110 ring-2 ring-white shadow-lg' : 'hover:scale-110 opacity-70 hover:opacity-100';
+        
+        html += `
+        <button onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
+                class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
+                style="background-color: ${item.color}30; color: ${item.color}">
+            <i class="fa-solid ${item.icon}"></i>
+        </button>`;
+    });
+    grid.innerHTML = html;
+};
+
+window.saveCategoryData = async function() {
+    const id = document.getElementById('cat-form-id').value || `cat_${Date.now()}`;
+    const type = document.getElementById('cat-form-type').value;
+    const name = document.getElementById('cat-form-name').value.trim();
+    const parentId = document.getElementById('cat-form-parent').value;
+    const icon = document.getElementById('cat-form-icon').value;
+    const color = document.getElementById('cat-form-color').value;
+
+    if (!name) {
+        if(window.showToast) window.showToast("Nama kategori tidak boleh kosong!", true);
+        return;
+    }
+
+    const payload = { name, type, icon, color, parentId: parentId || null };
+    const updates = {};
+    updates[`customCategories/${id}`] = payload;
+
+    try {
+        await window.FirebaseService.updateSettings(updates);
+        // Optimistic UI Update untuk respon super instan
+        if(AuraState.data.settings) {
+            if(!AuraState.data.settings.customCategories) AuraState.data.settings.customCategories = {};
+            AuraState.data.settings.customCategories[id] = payload;
+        }
+        
+        if(window.showToast) window.showToast("Kategori berhasil disimpan!");
+        window.closeModal('modal-category-form');
+        window.renderCategoryList();
+    } catch(e) {
+        if(window.showToast) window.showToast("Gagal menyimpan kategori.", true);
+    }
+};
+
+window.deleteCategory = function(id) {
+    window.AuraAlert.confirm("Hapus kategori ini? (Sub-kategori di dalamnya juga akan terhapus)", async () => {
+        try {
+            const updates = {};
+            updates[`customCategories/${id}`] = null;
+            
+            const rawCategories = AuraState.data.settings?.customCategories || {};
+            Object.entries(rawCategories).forEach(([childId, data]) => {
+                if(data.parentId === id) updates[`customCategories/${childId}`] = null;
+            });
+
+            await window.FirebaseService.updateSettings(updates);
+            
+            // Optimistic UI Delete
+            if(AuraState.data.settings?.customCategories) {
+                delete AuraState.data.settings.customCategories[id];
+                Object.entries(rawCategories).forEach(([childId, data]) => {
+                    if(data.parentId === id) delete AuraState.data.settings.customCategories[childId];
+                });
+            }
+
+            if(window.showToast) window.showToast("Kategori dihapus.");
+            window.renderCategoryList();
+        } catch(e) {
+            if(window.showToast) window.showToast("Gagal menghapus.", true);
+        }
+    });
 };
 
 // ============================================================================
