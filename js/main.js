@@ -430,7 +430,7 @@ window.renderCategoryList = function() {
 };
 
 // ============================================================================
-// AURA CUSTOM CATEGORY PICKER
+// AURA CUSTOM CATEGORY PICKER (REVISI KETAT & BEBAS DUPLIKAT)
 // ============================================================================
 let activePickerTargetVal = '';
 let activePickerTargetDisplay = '';
@@ -444,11 +444,16 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
     const rawCategories = AuraState.data.settings?.customCategories || {};
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     
-    let mappedType = trxType;
-    if (trxType === 'pengeluaran') mappedType = 'expense';
-    if (trxType === 'pemasukan') mappedType = 'income';
+    // 🛡️ PENYARINGAN KETAT ANTI-MELESET
+    let mappedType = 'expense'; 
+    if (trxType) {
+        const tStr = String(trxType).toLowerCase().trim();
+        if (tStr === 'pemasukan' || tStr === 'income' || tStr === 'setor_tunai') {
+            mappedType = 'income';
+        }
+    }
 
-    const filteredCats = allCats.filter(c => c.type === mappedType);
+    const filteredCats = allCats.filter(c => c.type === mappedType || !c.type);
     
     const parents = filteredCats.filter(c => !c.parentId);
     const children = filteredCats.filter(c => c.parentId);
@@ -465,7 +470,7 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
             html += `
             <button onclick="window.selectCategoryFromPicker('${parent.name}')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group border border-transparent hover:border-[var(--border-glass)]">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${parent.color}20; color: ${parent.color}">
-                    <i class="fa-solid ${parent.icon} text-sm"></i>
+                    <i class="fa-solid ${parent.icon || 'fa-tag'} text-sm"></i>
                 </div>
                 <div class="flex-1">
                     <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-white transition">${AuraUtils.escapeHtml(parent.name)}</h4>
@@ -477,8 +482,8 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
                 mySubs.forEach(sub => {
                     html += `
                     <button onclick="window.selectCategoryFromPicker('${sub.name}')" class="w-full text-left p-2.5 rounded-lg hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sub.color}">
-                            <i class="fa-solid ${sub.icon} text-[10px]"></i>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sub.color || parent.color}">
+                            <i class="fa-solid ${sub.icon || 'fa-tag'} text-[10px]"></i>
                         </div>
                         <span class="text-xs text-[var(--text-muted)] group-hover:text-white transition">${AuraUtils.escapeHtml(sub.name)}</span>
                     </button>`;
@@ -633,25 +638,21 @@ window.saveCategoryData = async function() {
 };
 
 window.deleteCategory = async function(id) {
-    // Gunakan konfirmasi native bawaan browser yang dijamin 100% kebal error
     const isConfirmed = confirm("Yakin ingin menghapus kategori ini? (Sub-kategori di dalamnya juga akan ikut terhapus secara permanen)");
     
-    if (!isConfirmed) return; // Jika user menekan 'Cancel', hentikan proses.
+    if (!isConfirmed) return; 
 
     try {
         const updates = {};
         updates[`customCategories/${id}`] = null;
         
-        // Cari dan siapkan sub-kategori untuk ikut dihapus
         const rawCategories = AuraState.data.settings?.customCategories || {};
         Object.entries(rawCategories).forEach(([childId, data]) => {
             if(data.parentId === id) updates[`customCategories/${childId}`] = null;
         });
 
-        // 1. Eksekusi hapus ke Database Firebase
         await window.FirebaseService.updateSettings(updates);
         
-        // 2. Eksekusi hapus dari memori layar seketika (Optimistic Delete)
         if(AuraState.data.settings && AuraState.data.settings.customCategories) {
             delete AuraState.data.settings.customCategories[id];
             Object.entries(rawCategories).forEach(([childId, data]) => {
@@ -660,10 +661,9 @@ window.deleteCategory = async function(id) {
         }
 
         if(window.showToast) window.showToast("Kategori berhasil dihapus.");
-        window.renderCategoryList(); // Render ulang layarnya
+        window.renderCategoryList(); 
     } catch(e) {
         console.error("Error Delete Category:", e);
         if(window.showToast) window.showToast("Gagal menghapus kategori.", true);
     }
 };
-
