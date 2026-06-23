@@ -727,23 +727,55 @@ window.renderAIIconSuggestions = function(icons) {
     grid.insertAdjacentHTML('afterbegin', html);
 };
 
+// 1. GANTI fungsi saveCustomIcon menjadi ini agar warna bisa diatur
 window.saveCustomIcon = async function(iconClass) {
+    // Tanyakan warna favorit user saat ikon baru disimpan
+    const pickedColor = prompt("🎨 Masukkan kode warna (HEX) untuk ikon ini (Contoh: #ff9a9e):", "#10b981");
+    
     let customIcons = AuraState.data.settings?.customIcons || [];
+    let customColors = AuraState.data.settings?.customColors || {}; // Objek baru untuk simpan warna
     
     if (!customIcons.includes(iconClass) && !RAW_ICONS.includes(iconClass)) {
         customIcons.push(iconClass);
+        customColors[iconClass] = pickedColor; // Simpan warna berdasarkan ikon
+        
         try {
-            await window.FirebaseService.updateSettings({ customIcons: customIcons });
-            if(AuraState.data.settings) AuraState.data.settings.customIcons = customIcons;
-            if(window.showToast) window.showToast(`Ikon ${iconClass} berhasil disimpan ke menu!`);
+            await window.FirebaseService.updateSettings({ 
+                customIcons: customIcons,
+                customColors: customColors 
+            });
+            if(AuraState.data.settings) {
+                AuraState.data.settings.customIcons = customIcons;
+                AuraState.data.settings.customColors = customColors;
+            }
+            if(window.showToast) window.showToast(`Ikon & Warna berhasil disimpan!`);
         } catch (e) {
-            if(window.showToast) window.showToast("Gagal menyimpan ikon ke Cloud.", true);
+            if(window.showToast) window.showToast("Gagal menyimpan ke Cloud.", true);
             return;
         }
     }
     
-    window.renderIconPickerGrid(iconClass, '#10b981'); 
+    window.renderIconPickerGrid(iconClass, pickedColor); 
 };
+
+// 2. PERBAIKAN: Update renderIconPickerGrid agar membaca warna custom
+window.renderIconPickerGrid = function(activeIcon, activeColor) {
+    const grid = document.getElementById('icon-picker-grid');
+    document.getElementById('cat-form-icon').value = activeIcon;
+    document.getElementById('cat-form-color').value = activeColor;
+    
+    const customIcons = AuraState.data.settings?.customIcons || [];
+    const customColors = AuraState.data.settings?.customColors || {};
+    
+    const ALL_ICONS = [
+        ...RAW_ICONS.map((iconStr, i) => ({ icon: iconStr, color: AURA_PALETTE[i % AURA_PALETTE.length], isCustom: false })),
+        ...customIcons.map((iconStr) => ({ 
+            icon: iconStr, 
+            color: customColors[iconStr] || '#10b981', // Baca warna custom, fallback ke hijau
+            isCustom: true 
+        }))
+    ];
+    // ... (sisa logika render grid tetap sama)
 
 window.deleteCustomIcon = async function(iconClass, event) {
     event.stopPropagation(); 
