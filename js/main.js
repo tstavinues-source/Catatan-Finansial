@@ -333,39 +333,39 @@ const DEFAULT_CATEGORIES = {
 
 let currentCatTab = 'expense';
 
-// MESIN PEMANEN DATA LAMA (HARVESTER)
-window.syncLegacyAndDefaultCategories = function() {
+// ============================================================================
+// MESIN PEMANEN DATA (HARVESTER) DIPERBAIKI
+// ============================================================================
+window.syncCategoriesData = async function() {
     let rawCats = AuraState.data.settings?.customCategories || {};
     let isUpdated = false;
     const transactions = AuraState.data.transactions || [];
     
-    // TAHAP 1: Ekstrak Induk & Anak dari Riwayat Transaksi Lama
+    // 1. PANEN TRANSAKSI LAMA
     transactions.forEach(trx => {
-        if (!trx.kategori) return;
-        const type = (trx.jenis === 'pemasukan' || trx.jenis === 'income') ? 'income' : 'expense';
-        const parentName = trx.kategori;
+        const pName = trx.kategori || trx.storeName;
+        if (!pName) return;
         
-        let parentId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === parentName.toLowerCase() && !rawCats[id].parentId);
+        // Membaca tipe lama (pengeluaran) jadi expense
+        const type = (trx.tipe === 'pemasukan' || trx.jenis === 'pemasukan' || trx.tipe === 'income') ? 'income' : 'expense';
         
-        if (!parentId) {
-            parentId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-            rawCats[parentId] = {
-                name: parentName, type: type, icon: 'fa-folder', 
-                color: AURA_PALETTE[Math.floor(Math.random() * AURA_PALETTE.length)], parentId: null
-            };
+        let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pName.toLowerCase() && !rawCats[id].parentId);
+        if (!pId) {
+            pId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+            rawCats[pId] = { name: pName, type: type, icon: 'fa-folder', color: '#a1a1aa', parentId: null };
             isUpdated = true;
         }
         
         if (trx.items && Array.isArray(trx.items)) {
             trx.items.forEach(item => {
-                const childName = item.kategori; 
-                if (childName && childName.toLowerCase() !== parentName.toLowerCase() && childName.toLowerCase() !== 'uncategorized' && childName.toLowerCase() !== 'lainnya') {
-                    let childId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === childName.toLowerCase() && rawCats[id].parentId === parentId);
-                    if (!childId) {
-                        childId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-                        rawCats[childId] = {
-                            name: childName, type: type, icon: 'fa-tag', color: rawCats[parentId].color, parentId: parentId
-                        };
+                // PERBAIKAN: Tangkap kategori_barang dari sistem lama Anda!
+                const cName = item.kategori_barang || item.kategori; 
+                
+                if (cName && cName.toLowerCase() !== pName.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
+                    let cId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase() && rawCats[id].parentId === pId);
+                    if (!cId) {
+                        cId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+                        rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
                         isUpdated = true;
                     }
                 }
@@ -373,7 +373,7 @@ window.syncLegacyAndDefaultCategories = function() {
         }
     });
 
-    // TAHAP 2: Gabungkan Kategori Default (Tanpa Duplikasi)
+    // 2. GABUNGKAN DENGAN DEFAULT
     Object.keys(DEFAULT_CATEGORIES).forEach(defId => {
         const defCat = DEFAULT_CATEGORIES[defId];
         if (!defCat.parentId) {
@@ -385,16 +385,14 @@ window.syncLegacyAndDefaultCategories = function() {
         }
     });
 
-    // Simpan hasil panen secara instan
     if (isUpdated) {
         if (AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
-        if(window.FirebaseService) {
-            window.FirebaseService.updateSettings({ customCategories: rawCats }).catch(e => console.warn(e));
-        }
+        if (window.FirebaseService) await window.FirebaseService.updateSettings({ customCategories: rawCats });
     }
 };
 
-window.openCategoryManager = function() {
+window.openCategoryManager = async function() {
+    await window.syncCategoriesData();
     window.switchCatTab('expense');
     if(typeof window.showModal === 'function') window.showModal('modal-category-manager');
 };
@@ -416,9 +414,6 @@ window.switchCatTab = function(type) {
 };
 
 window.renderCategoryList = function() {
-    // 1. Panen data lama sebelum merender HTML
-    window.syncLegacyAndDefaultCategories();
-    
     const rawCategories = AuraState.data.settings?.customCategories || {};
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     const filteredCats = allCats.filter(c => c.type === currentCatTab);
@@ -482,77 +477,26 @@ window.renderCategoryList = function() {
 };
 
 // ============================================================================
-// MESIN PEMANEN DATA AGRESIF (Memperbaiki Poin 2)
-// ============================================================================
-window.forceHarvestLegacyCategories = async function() {
-    const transactions = AuraState.data.transactions || [];
-    let rawCats = AuraState.data.settings?.customCategories || {};
-    let isUpdated = false;
-
-    if (transactions.length === 0) return; // Jangan panen jika transaksi belum diunduh
-
-    transactions.forEach(trx => {
-        if (!trx.kategori) return;
-        const type = (trx.jenis === 'pemasukan' || trx.jenis === 'income') ? 'income' : 'expense';
-        const pName = trx.kategori;
-        
-        // Cek Induk
-        let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pName.toLowerCase() && !rawCats[id].parentId);
-        if (!pId) {
-            pId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            rawCats[pId] = { name: pName, type: type, icon: 'fa-folder', color: '#a1a1aa', parentId: null };
-            isUpdated = true;
-        }
-        
-        // Cek Anak/Sub-Kategori (seperti Buah, Sayuran, Daging)
-        if (trx.items && Array.isArray(trx.items)) {
-            trx.items.forEach(item => {
-                const cName = item.kategori; 
-                if (cName && cName.toLowerCase() !== pName.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
-                    let cId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase() && rawCats[id].parentId === pId);
-                    if (!cId) {
-                        cId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-                        rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
-                        isUpdated = true;
-                    }
-                }
-            });
-        }
-    });
-
-    if (isUpdated) {
-        if (AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
-        if(window.FirebaseService) await window.FirebaseService.updateSettings({ customCategories: rawCats });
-        console.log("AuraFi Harvester: Berhasil memanen data lama secara paksa!");
-    }
-};
-
-// Tembak harvester tiap kali manager kategori dibuka
-window.openCategoryManager = async function() {
-    await window.forceHarvestLegacyCategories();
-    window.switchCatTab('expense');
-    if(typeof window.showModal === 'function') window.showModal('modal-category-manager');
-};
-
-
-// ============================================================================
-// AURA CUSTOM CATEGORY PICKER (Memperbaiki Poin 1 & 3)
+// AURA CUSTOM CATEGORY PICKER
 // ============================================================================
 let activePickerTargetVal = '';
 let activePickerTargetDisplay = '';
 
-window.openCategoryPicker = function(targetValId, trxType, targetDisplayId) {
+window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId) {
     activePickerTargetVal = targetValId;
     activePickerTargetDisplay = targetDisplayId;
     
-    // Sinkronisasi data lama secara diam-diam sebelum memunculkan picker
-    window.forceHarvestLegacyCategories();
+    await window.syncCategoriesData();
 
     const rawCategories = AuraState.data.settings?.customCategories || {};
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     
-    // FILTER: Hanya tampilkan kategori yang sesuai dengan jenis (Pemasukan/Pengeluaran)
-    const filteredCats = allCats.filter(c => c.type === trxType);
+    // PERBAIKAN: MAPPING TIPE PENGELUARAN/PEMASUKAN -> EXPENSE/INCOME
+    let mappedType = trxType;
+    if (trxType === 'pengeluaran') mappedType = 'expense';
+    if (trxType === 'pemasukan') mappedType = 'income';
+
+    const filteredCats = allCats.filter(c => c.type === mappedType);
     
     const parents = filteredCats.filter(c => !c.parentId);
     const children = filteredCats.filter(c => c.parentId);
@@ -566,7 +510,6 @@ window.openCategoryPicker = function(targetValId, trxType, targetDisplayId) {
         parents.forEach(parent => {
             const mySubs = children.filter(sub => sub.parentId === parent.id);
             
-            // Induk bisa diklik jika tidak punya anak, atau jika user ingin memilih induknya secara umum
             html += `
             <button onclick="window.selectCategoryFromPicker('${parent.name}')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group border border-transparent hover:border-[var(--border-glass)]">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${parent.color}20; color: ${parent.color}">
@@ -577,7 +520,6 @@ window.openCategoryPicker = function(targetValId, trxType, targetDisplayId) {
                 </div>
             </button>`;
             
-            // Susun Sub-kategori dengan hierarki rapi
             if (mySubs.length > 0) {
                 html += `<div class="ml-4 pl-4 border-l border-[var(--border-glass)] space-y-1 mb-2">`;
                 mySubs.forEach(sub => {
@@ -596,7 +538,6 @@ window.openCategoryPicker = function(targetValId, trxType, targetDisplayId) {
 
     container.innerHTML = html;
 
-    // Munculkan Modal Picker
     const el = document.getElementById('modal-category-picker');
     const panel = document.getElementById('cat-picker-panel');
     el.classList.remove('hidden');
@@ -620,13 +561,10 @@ window.closeCategoryPicker = function() {
 
 window.selectCategoryFromPicker = function(catName) {
     document.getElementById(activePickerTargetVal).value = catName;
-    
-    // Tampilkan tulisan tebal warna aksen jika sudah terpilih
     const displayEl = document.getElementById(activePickerTargetDisplay);
     displayEl.innerText = catName;
     displayEl.classList.remove('text-[var(--text-muted)]');
     displayEl.classList.add('text-accent', 'font-bold');
-    
     window.closeCategoryPicker();
 };
 
@@ -666,7 +604,6 @@ window.editCategory = function(id) {
     document.getElementById('cat-form-name').value = cat.name;
     document.getElementById('cat-form-title').innerText = "Edit Kategori";
     
-    // Cegah kategori Induk turun tahta jadi Sub-kategori jika ia sudah punya anak
     const hasChildren = Object.values(rawCategories).some(c => c.parentId === id);
     const selectEl = document.getElementById('cat-form-parent');
 
@@ -744,7 +681,7 @@ window.saveCategoryData = async function() {
 };
 
 window.deleteCategory = function(id) {
-    window.AuraAlert.confirm("Hapus kategori ini? (Sub-kategori di dalamnya juga akan terhapus)", async () => {
+    window.AuraAlert.confirm("Hapus kategori ini? (Sub-kategori di dalamnya juga akan ikut terhapus)", async () => {
         try {
             const updates = {};
             updates[`customCategories/${id}`] = null;
@@ -755,14 +692,6 @@ window.deleteCategory = function(id) {
             });
 
             await window.FirebaseService.updateSettings(updates);
-            
-            if(AuraState.data.settings?.customCategories) {
-                delete AuraState.data.settings.customCategories[id];
-                Object.entries(rawCategories).forEach(([childId, data]) => {
-                    if(data.parentId === id) delete AuraState.data.settings.customCategories[childId];
-                });
-            }
-
             if(window.showToast) window.showToast("Kategori dihapus.");
             window.renderCategoryList();
         } catch(e) {
@@ -770,6 +699,7 @@ window.deleteCategory = function(id) {
         }
     });
 };
+
 
 
 // ============================================================================
