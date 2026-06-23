@@ -632,22 +632,38 @@ window.saveCategoryData = async function() {
     }
 };
 
-window.deleteCategory = function(id) {
-    window.AuraAlert.confirm("Hapus kategori ini? (Sub-kategori di dalamnya juga akan ikut terhapus)", async () => {
-        try {
-            const updates = {};
-            updates[`customCategories/${id}`] = null;
-            
-            const rawCategories = AuraState.data.settings?.customCategories || {};
-            Object.entries(rawCategories).forEach(([childId, data]) => {
-                if(data.parentId === id) updates[`customCategories/${childId}`] = null;
-            });
+window.deleteCategory = async function(id) {
+    // Gunakan konfirmasi native bawaan browser yang dijamin 100% kebal error
+    const isConfirmed = confirm("Yakin ingin menghapus kategori ini? (Sub-kategori di dalamnya juga akan ikut terhapus secara permanen)");
+    
+    if (!isConfirmed) return; // Jika user menekan 'Cancel', hentikan proses.
 
-            await window.FirebaseService.updateSettings(updates);
-            if(window.showToast) window.showToast("Kategori dihapus.");
-            window.renderCategoryList();
-        } catch(e) {
-            if(window.showToast) window.showToast("Gagal menghapus.", true);
+    try {
+        const updates = {};
+        updates[`customCategories/${id}`] = null;
+        
+        // Cari dan siapkan sub-kategori untuk ikut dihapus
+        const rawCategories = AuraState.data.settings?.customCategories || {};
+        Object.entries(rawCategories).forEach(([childId, data]) => {
+            if(data.parentId === id) updates[`customCategories/${childId}`] = null;
+        });
+
+        // 1. Eksekusi hapus ke Database Firebase
+        await window.FirebaseService.updateSettings(updates);
+        
+        // 2. Eksekusi hapus dari memori layar seketika (Optimistic Delete)
+        if(AuraState.data.settings && AuraState.data.settings.customCategories) {
+            delete AuraState.data.settings.customCategories[id];
+            Object.entries(rawCategories).forEach(([childId, data]) => {
+                if(data.parentId === id) delete AuraState.data.settings.customCategories[childId];
+            });
         }
-    });
+
+        if(window.showToast) window.showToast("Kategori berhasil dihapus.");
+        window.renderCategoryList(); // Render ulang layarnya
+    } catch(e) {
+        console.error("Error Delete Category:", e);
+        if(window.showToast) window.showToast("Gagal menghapus kategori.", true);
+    }
 };
+
