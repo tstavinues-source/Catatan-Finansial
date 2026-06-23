@@ -323,31 +323,76 @@ const RAW_ICONS = [
 
 const AURA_ICONS = RAW_ICONS.map((iconStr, index) => ({ icon: iconStr, color: AURA_PALETTE[index % AURA_PALETTE.length] }));
 
-// DATA KATEGORI BAWAAN (AUTO-SEEDER)
 const DEFAULT_CATEGORIES = {
-    "cat_exp_food": { name: "Makanan & Minuman", type: "expense", icon: "fa-utensils", color: "#ff9a9e", parentId: null },
-    "cat_exp_food_1": { name: "Makan di Luar", type: "expense", icon: "fa-burger", color: "#ffb199", parentId: "cat_exp_food" },
-    "cat_exp_food_2": { name: "Belanja Dapur", type: "expense", icon: "fa-basket-shopping", color: "#f6d365", parentId: "cat_exp_food" },
-    "cat_exp_food_3": { name: "Kopi & Kafe", type: "expense", icon: "fa-mug-hot", color: "#a1c4fd", parentId: "cat_exp_food" },
-    
-    "cat_exp_transport": { name: "Transportasi", type: "expense", icon: "fa-car", color: "#84fab0", parentId: null },
-    "cat_exp_transport_1": { name: "Bensin / Tol", type: "expense", icon: "fa-gas-pump", color: "#fbc2eb", parentId: "cat_exp_transport" },
-    "cat_exp_transport_2": { name: "Angkutan Umum", type: "expense", icon: "fa-train", color: "#a6c1ee", parentId: "cat_exp_transport" },
-    
-    "cat_exp_bills": { name: "Tagihan & Utilitas", type: "expense", icon: "fa-bolt", color: "#fccb90", parentId: null },
-    "cat_exp_bills_1": { name: "Listrik & Air", type: "expense", icon: "fa-droplet", color: "#e0c3fc", parentId: "cat_exp_bills" },
-    "cat_exp_bills_2": { name: "Internet & Pulsa", type: "expense", icon: "fa-wifi", color: "#d4fc79", parentId: "cat_exp_bills" },
-    
-    "cat_exp_shopping": { name: "Belanja Pribadi", type: "expense", icon: "fa-bag-shopping", color: "#10b981", parentId: null },
-    "cat_exp_health": { name: "Kesehatan & Medis", type: "expense", icon: "fa-heart-pulse", color: "#fb7185", parentId: null },
-    "cat_exp_entertainment": { name: "Hiburan & Hobi", type: "expense", icon: "fa-gamepad", color: "#818cf8", parentId: null },
-
+    "cat_def_trans": { name: "Transportasi", type: "expense", icon: "fa-car", color: "#84fab0", parentId: null },
+    "cat_def_bills": { name: "Tagihan & Utilitas", type: "expense", icon: "fa-bolt", color: "#fccb90", parentId: null },
+    "cat_def_health": { name: "Kesehatan & Medis", type: "expense", icon: "fa-heart-pulse", color: "#fb7185", parentId: null },
     "cat_inc_salary": { name: "Gaji & Upah", type: "income", icon: "fa-sack-dollar", color: "#34d399", parentId: null },
-    "cat_inc_bonus": { name: "Bonus & THR", type: "income", icon: "fa-gifts", color: "#38bdf8", parentId: "cat_inc_salary" },
     "cat_inc_invest": { name: "Pencairan Investasi", type: "income", icon: "fa-chart-line", color: "#f59e0b", parentId: null },
 };
 
 let currentCatTab = 'expense';
+
+// MESIN PEMANEN DATA LAMA (HARVESTER)
+window.syncLegacyAndDefaultCategories = function() {
+    let rawCats = AuraState.data.settings?.customCategories || {};
+    let isUpdated = false;
+    const transactions = AuraState.data.transactions || [];
+    
+    // TAHAP 1: Ekstrak Induk & Anak dari Riwayat Transaksi Lama
+    transactions.forEach(trx => {
+        if (!trx.kategori) return;
+        const type = (trx.jenis === 'pemasukan' || trx.jenis === 'income') ? 'income' : 'expense';
+        const parentName = trx.kategori;
+        
+        let parentId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === parentName.toLowerCase() && !rawCats[id].parentId);
+        
+        if (!parentId) {
+            parentId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+            rawCats[parentId] = {
+                name: parentName, type: type, icon: 'fa-folder', 
+                color: AURA_PALETTE[Math.floor(Math.random() * AURA_PALETTE.length)], parentId: null
+            };
+            isUpdated = true;
+        }
+        
+        if (trx.items && Array.isArray(trx.items)) {
+            trx.items.forEach(item => {
+                const childName = item.kategori; 
+                if (childName && childName.toLowerCase() !== parentName.toLowerCase() && childName.toLowerCase() !== 'uncategorized' && childName.toLowerCase() !== 'lainnya') {
+                    let childId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === childName.toLowerCase() && rawCats[id].parentId === parentId);
+                    if (!childId) {
+                        childId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+                        rawCats[childId] = {
+                            name: childName, type: type, icon: 'fa-tag', color: rawCats[parentId].color, parentId: parentId
+                        };
+                        isUpdated = true;
+                    }
+                }
+            });
+        }
+    });
+
+    // TAHAP 2: Gabungkan Kategori Default (Tanpa Duplikasi)
+    Object.keys(DEFAULT_CATEGORIES).forEach(defId => {
+        const defCat = DEFAULT_CATEGORIES[defId];
+        if (!defCat.parentId) {
+            let existingParentId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === defCat.name.toLowerCase() && !rawCats[id].parentId);
+            if (!existingParentId) {
+                rawCats[defId] = defCat;
+                isUpdated = true;
+            }
+        }
+    });
+
+    // Simpan hasil panen secara instan
+    if (isUpdated) {
+        if (AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
+        if(window.FirebaseService) {
+            window.FirebaseService.updateSettings({ customCategories: rawCats }).catch(e => console.warn(e));
+        }
+    }
+};
 
 window.openCategoryManager = function() {
     window.switchCatTab('expense');
@@ -370,22 +415,11 @@ window.switchCatTab = function(type) {
     window.renderCategoryList();
 };
 
-window.renderCategoryList = async function() {
-    let rawCategories = AuraState.data.settings?.customCategories;
-
-    // AUTO SEEDER: Jika kosong, inject default seketika
-    if (!rawCategories || Object.keys(rawCategories).length === 0) {
-        try {
-            await window.FirebaseService.updateSettings({ customCategories: DEFAULT_CATEGORIES });
-            rawCategories = DEFAULT_CATEGORIES;
-            if(AuraState.data.settings) AuraState.data.settings.customCategories = DEFAULT_CATEGORIES;
-            if(window.showToast) window.showToast("Kategori standar AI telah dimuat.");
-        } catch(e) {
-            console.warn("Gagal menanamkan kategori default", e);
-            rawCategories = {};
-        }
-    }
-
+window.renderCategoryList = function() {
+    // 1. Panen data lama sebelum merender HTML
+    window.syncLegacyAndDefaultCategories();
+    
+    const rawCategories = AuraState.data.settings?.customCategories || {};
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     const filteredCats = allCats.filter(c => c.type === currentCatTab);
     
@@ -483,13 +517,13 @@ window.editCategory = function(id) {
     document.getElementById('cat-form-name').value = cat.name;
     document.getElementById('cat-form-title').innerText = "Edit Kategori";
     
-    // Cek apakah kategori ini sudah punya anak. Jika punya, dia tidak boleh diubah jadi sub-kategori
+    // Cegah kategori Induk turun tahta jadi Sub-kategori jika ia sudah punya anak
     const hasChildren = Object.values(rawCategories).some(c => c.parentId === id);
     const selectEl = document.getElementById('cat-form-parent');
 
     if (hasChildren) {
         selectEl.innerHTML = `<option value="">Kategori Utama (Memiliki Sub-Kategori)</option>`;
-        selectEl.disabled = true; // Kunci pilihan
+        selectEl.disabled = true; 
     } else {
         const parents = Object.entries(rawCategories)
                               .map(([cid, data]) => ({ id: cid, ...data }))
@@ -547,7 +581,6 @@ window.saveCategoryData = async function() {
 
     try {
         await window.FirebaseService.updateSettings(updates);
-        // Optimistic UI Update untuk respon super instan
         if(AuraState.data.settings) {
             if(!AuraState.data.settings.customCategories) AuraState.data.settings.customCategories = {};
             AuraState.data.settings.customCategories[id] = payload;
@@ -574,7 +607,6 @@ window.deleteCategory = function(id) {
 
             await window.FirebaseService.updateSettings(updates);
             
-            // Optimistic UI Delete
             if(AuraState.data.settings?.customCategories) {
                 delete AuraState.data.settings.customCategories[id];
                 Object.entries(rawCategories).forEach(([childId, data]) => {
@@ -589,6 +621,7 @@ window.deleteCategory = function(id) {
         }
     });
 };
+
 
 // ============================================================================
 // LOGIKA FORM ICON STUDIO
