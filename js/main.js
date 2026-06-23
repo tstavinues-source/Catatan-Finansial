@@ -15,7 +15,7 @@ import { AuraUtils } from './core/utils.js';
 // 2. Services & Modules Imports
 import './services/firebase.js';
 import './modules/categories.js';
-import './modules/analytics.js'; // Inject file analytics yang baru kita buat
+import './modules/analytics.js';
 
 // 3. Renderers Imports
 import './renderers/dashboard.js';
@@ -119,19 +119,17 @@ window.closeModal = function(id) {
 };
 
 // ==========================================
-// 3. FUNGSI PREFERENSI MATA UANG & KURS REALTIME
+// FUNGSI PREFERENSI MATA UANG & KURS REALTIME
 // ==========================================
 
 window.setCurrency = function(curr) {
-    // 1. Simpan pilihan ke memori HP agar tidak reset saat refresh
     localStorage.setItem('aurafi_active_currency', curr);
     
     if (window.AuraState) {
-        window.AuraState.system.displayCurrency = curr; // Sinkronisasi variabel untuk utils.js
+        window.AuraState.system.displayCurrency = curr; 
         window.AuraState.system.currency = curr;
     }
     
-    // 2. Update warna tombol JPY / IDR di Header
     const btnJpy = document.getElementById('btn-curr-jpy');
     const btnIdr = document.getElementById('btn-curr-idr');
     
@@ -145,11 +143,9 @@ window.setCurrency = function(curr) {
         }
     }
     
-    // 3. PAKSA SEMUA LAYAR ME-REFRESH ANGKA DAN LAMBANG UANG SECARA INSTAN!
     if (typeof window.loadRealtimeDatabaseData === 'function') {
-        window.loadRealtimeDatabaseData(true); // Memanggil fungsi refresh rahasia tanpa notif
+        window.loadRealtimeDatabaseData(true); 
     } else {
-        // Jaring pengaman jika fungsi Realtime belum dimuat
         if(typeof window.renderDashboard === 'function') window.renderDashboard();
         if(typeof window.renderTransactions === 'function') window.renderTransactions();
         if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
@@ -163,15 +159,12 @@ window.fetchLiveExchangeRate = async function() {
 
     try {
         display.innerText = "Menarik data kurs dunia...";
-
-        // Mengambil kurs JPY ke IDR secara langsung dan gratis
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
         const data = await response.json();
         const idrRate = data.rates.IDR;
         
         display.innerText = `1 JPY = Rp ${idrRate.toLocaleString('id-ID')}`;
 
-        // Simpan rate di state agar kalkulasi total aset menjadi akurat
         if (window.AuraState) {
             window.AuraState.data.exchangeRate = idrRate;
             window.AuraState.system.exchangeRate = idrRate;
@@ -181,7 +174,6 @@ window.fetchLiveExchangeRate = async function() {
     }
 };
 
-
 // ============================================================================
 // BOOTSTRAPPING SYSTEM & PWA REGISTRATION
 // ============================================================================
@@ -190,17 +182,14 @@ window.addEventListener('DOMContentLoaded', () => {
     
     if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
     
-    // Tarik memori mata uang terakhir yang dipilih user (Default: JPY)
     const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
     window.setCurrency(savedCurr);
     
-    // Jalankan penarik kurs
     window.fetchLiveExchangeRate();
     
-    // Buka Gemini secara diam-diam jika PIN-nya sudah pernah disimpan
     setTimeout(() => {
         if(typeof window.syncGeminiEngine === 'function') {
-            window.syncGeminiEngine(true); // true = mode silent (tanpa notif)
+            window.syncGeminiEngine(true); 
         }
     }, 1500);
 
@@ -227,7 +216,6 @@ window.startVoice = function() {
     const btnVoice = document.getElementById('btn-voice');
     const inputField = document.getElementById('main-input-field');
 
-    // 1. Cek apakah browser mendukung fitur pengenalan suara
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
@@ -236,43 +224,30 @@ window.startVoice = function() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'id-ID'; // Mengatur bahasa pendengaran ke Bahasa Indonesia
-    recognition.interimResults = false; // Hanya ambil hasil akhir yang sudah pasti
+    recognition.lang = 'id-ID'; 
+    recognition.interimResults = false; 
     recognition.maxAlternatives = 1;
 
-    // 2. Saat mesin mulai mendengarkan
     recognition.onstart = function() {
-        // Ubah tombol mikrofon menjadi merah berkedip sebagai indikator
         btnVoice.classList.add('text-rose-500', 'animate-pulse');
         btnVoice.classList.remove('text-[var(--text-muted)]', 'hover:text-accent');
         inputField.placeholder = "Mendengarkan suara Anda...";
     };
 
-    // 3. Saat user selesai berbicara
     recognition.onspeechend = function() {
         recognition.stop();
     };
 
-    // 4. Saat mesin berhasil menerjemahkan suara menjadi teks
     recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
-        
-        // Tambahkan teks hasil suara ke dalam kolom input (ditambah spasi jika sudah ada teks sebelumnya)
         inputField.value = (inputField.value + ' ' + transcript).trim();
-        
-        // Kembalikan tampilan tombol ke bentuk semula
         resetVoiceUI();
-        
-        // Otomatis menyesuaikan tinggi kolom input agar teksnya tidak terpotong
         inputField.style.height = 'auto';
         inputField.style.height = (inputField.scrollHeight) + 'px';
-        
         if (window.showToast) window.showToast("Suara berhasil diterjemahkan!");
     };
 
-    // 5. Jika terjadi error (misal: tidak ada suara atau izin mikrofon ditolak)
     recognition.onerror = function(event) {
-        console.error("Kesalahan Speech API:", event.error);
         if (event.error === 'not-allowed') {
             if (window.showToast) window.showToast("Izin mikrofon ditolak oleh browser.", true);
         } else {
@@ -281,14 +256,12 @@ window.startVoice = function() {
         resetVoiceUI();
     };
 
-    // Fungsi bantuan untuk mereset tampilan UI
     function resetVoiceUI() {
         btnVoice.classList.remove('text-rose-500', 'animate-pulse');
         btnVoice.classList.add('text-[var(--text-muted)]', 'hover:text-accent');
         inputField.placeholder = "Ketik transaksi / chat AI...";
     }
 
-    // Eksekusi: Nyalakan mikrofon!
     try {
         recognition.start();
     } catch(e) {
@@ -323,42 +296,34 @@ const RAW_ICONS = [
 
 const AURA_ICONS = RAW_ICONS.map((iconStr, index) => ({ icon: iconStr, color: AURA_PALETTE[index % AURA_PALETTE.length] }));
 
-const DEFAULT_CATEGORIES = {
-    "cat_def_trans": { name: "Transportasi", type: "expense", icon: "fa-car", color: "#84fab0", parentId: null },
-    "cat_def_bills": { name: "Tagihan & Utilitas", type: "expense", icon: "fa-bolt", color: "#fccb90", parentId: null },
-    "cat_def_health": { name: "Kesehatan & Medis", type: "expense", icon: "fa-heart-pulse", color: "#fb7185", parentId: null },
-    "cat_inc_salary": { name: "Gaji & Upah", type: "income", icon: "fa-sack-dollar", color: "#34d399", parentId: null },
-    "cat_inc_invest": { name: "Pencairan Investasi", type: "income", icon: "fa-chart-line", color: "#f59e0b", parentId: null },
-};
-
 let currentCatTab = 'expense';
 
 // ============================================================================
-// MESIN PEMANEN DATA (HARVESTER) DIPERBAIKI
+// MESIN PEMANEN DATA (HARVESTER) FINAL
+// HANYA membaca kategori asli (kategori_barang), abaikan storeName.
 // ============================================================================
 window.syncCategoriesData = async function() {
     let rawCats = AuraState.data.settings?.customCategories || {};
     let isUpdated = false;
     const transactions = AuraState.data.transactions || [];
     
-    // 1. PANEN TRANSAKSI LAMA
     transactions.forEach(trx => {
-        const pName = trx.kategori || trx.storeName;
-        if (!pName) return;
+        const pName = trx.kategori; 
         
-        // Membaca tipe lama (pengeluaran) jadi expense
+        // Lewati jika kategori kosong, Uncategorized, atau Lainnya
+        if (!pName || pName.trim() === '' || pName.toLowerCase() === 'uncategorized' || pName.toLowerCase() === 'lainnya') return;
+        
         const type = (trx.tipe === 'pemasukan' || trx.jenis === 'pemasukan' || trx.tipe === 'income') ? 'income' : 'expense';
         
         let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pName.toLowerCase() && !rawCats[id].parentId);
         if (!pId) {
             pId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-            rawCats[pId] = { name: pName, type: type, icon: 'fa-folder', color: '#a1a1aa', parentId: null };
+            rawCats[pId] = { name: pName, type: type, icon: 'fa-box-archive', color: '#a1a1aa', parentId: null };
             isUpdated = true;
         }
         
         if (trx.items && Array.isArray(trx.items)) {
             trx.items.forEach(item => {
-                // PERBAIKAN: Tangkap kategori_barang dari sistem lama Anda!
                 const cName = item.kategori_barang || item.kategori; 
                 
                 if (cName && cName.toLowerCase() !== pName.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
@@ -370,18 +335,6 @@ window.syncCategoriesData = async function() {
                     }
                 }
             });
-        }
-    });
-
-    // 2. GABUNGKAN DENGAN DEFAULT
-    Object.keys(DEFAULT_CATEGORIES).forEach(defId => {
-        const defCat = DEFAULT_CATEGORIES[defId];
-        if (!defCat.parentId) {
-            let existingParentId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === defCat.name.toLowerCase() && !rawCats[id].parentId);
-            if (!existingParentId) {
-                rawCats[defId] = defCat;
-                isUpdated = true;
-            }
         }
     });
 
@@ -491,7 +444,6 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
     const rawCategories = AuraState.data.settings?.customCategories || {};
     const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
     
-    // PERBAIKAN: MAPPING TIPE PENGELUARAN/PEMASUKAN -> EXPENSE/INCOME
     let mappedType = trxType;
     if (trxType === 'pengeluaran') mappedType = 'expense';
     if (trxType === 'pemasukan') mappedType = 'income';
@@ -569,7 +521,7 @@ window.selectCategoryFromPicker = function(catName) {
 };
 
 // ============================================================================
-// LOGIKA FORM EDIT & TAMBAH
+// LOGIKA FORM EDIT & TAMBAH KATEGORI
 // ============================================================================
 
 window.openAddCategoryForm = function() {
@@ -699,99 +651,3 @@ window.deleteCategory = function(id) {
         }
     });
 };
-
-
-
-// ============================================================================
-// LOGIKA FORM ICON STUDIO
-// ============================================================================
-
-window.openAddCategoryForm = function() {
-    document.getElementById('cat-form-id').value = '';
-    document.getElementById('cat-form-type').value = currentCatTab;
-    document.getElementById('cat-form-name').value = '';
-    document.getElementById('cat-form-title').innerText = "Kategori Baru";
-    
-    // Render Opsi Induk
-    const rawCategories = AuraState.data.settings?.customCategories || {};
-    const parents = Object.entries(rawCategories)
-                          .map(([id, data]) => ({ id, ...data }))
-                          .filter(c => c.type === currentCatTab && !c.parentId);
-    
-    let parentOpts = `<option value="">-- Menjadi Kategori Utama --</option>`;
-    parents.forEach(p => parentOpts += `<option value="${p.id}">${p.name}</option>`);
-    document.getElementById('cat-form-parent').innerHTML = parentOpts;
-
-    window.renderIconPickerGrid(AURA_ICONS[0].icon, AURA_ICONS[0].color);
-    if(typeof window.showModal === 'function') window.showModal('modal-category-form');
-};
-
-window.renderIconPickerGrid = function(activeIcon, activeColor) {
-    const grid = document.getElementById('icon-picker-grid');
-    document.getElementById('cat-form-icon').value = activeIcon;
-    document.getElementById('cat-form-color').value = activeColor;
-    
-    let html = '';
-    AURA_ICONS.forEach(item => {
-        const isActive = item.icon === activeIcon;
-        const baseClass = isActive ? 'scale-110 ring-2 ring-white shadow-lg' : 'hover:scale-110 opacity-70 hover:opacity-100';
-        
-        html += `
-        <button onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
-                class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
-                style="background-color: ${item.color}30; color: ${item.color}">
-            <i class="fa-solid ${item.icon}"></i>
-        </button>`;
-    });
-    grid.innerHTML = html;
-};
-
-window.saveCategoryData = async function() {
-    const id = document.getElementById('cat-form-id').value || `cat_${Date.now()}`;
-    const type = document.getElementById('cat-form-type').value;
-    const name = document.getElementById('cat-form-name').value.trim();
-    const parentId = document.getElementById('cat-form-parent').value;
-    const icon = document.getElementById('cat-form-icon').value;
-    const color = document.getElementById('cat-form-color').value;
-
-    if (!name) {
-        if(window.showToast) window.showToast("Nama kategori tidak boleh kosong!", true);
-        return;
-    }
-
-    const payload = { name, type, icon, color, parentId: parentId || null };
-    const updates = {};
-    updates[`customCategories/${id}`] = payload;
-
-    try {
-        await window.FirebaseService.updateSettings(updates);
-        if(window.showToast) window.showToast("Kategori berhasil disimpan!");
-        window.closeModal('modal-category-form');
-        window.renderCategoryList();
-    } catch(e) {
-        if(window.showToast) window.showToast("Gagal menyimpan kategori.", true);
-    }
-};
-
-window.deleteCategory = function(id) {
-    window.AuraAlert.confirm("Hapus kategori ini? (Sub-kategori di dalamnya juga akan ikut terhapus)", async () => {
-        try {
-            // Hapus Kategori tersebut
-            const updates = {};
-            updates[`customCategories/${id}`] = null;
-            
-            // Cari dan hapus semua anaknya jika dia adalah induk
-            const rawCategories = AuraState.data.settings?.customCategories || {};
-            Object.entries(rawCategories).forEach(([childId, data]) => {
-                if(data.parentId === id) updates[`customCategories/${childId}`] = null;
-            });
-
-            await window.FirebaseService.updateSettings(updates);
-            if(window.showToast) window.showToast("Kategori dihapus.");
-            window.renderCategoryList();
-        } catch(e) {
-            if(window.showToast) window.showToast("Gagal menghapus.", true);
-        }
-    });
-};
-
