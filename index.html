@@ -230,9 +230,9 @@
                     <select id="manual-trx-category" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black category-dropdown">
                     </select>
                     <div class="text-right mt-2">
-                        <button onclick="window.showModal('modal-add-category')" class="text-[10px] font-bold text-accent hover:text-white transition">
-                            <i class="fa-solid fa-plus"></i> Buat Kategori Baru
-                        </button>
+                        <button onclick="window.openCategoryManager()" class="text-[10px] font-bold text-accent hover:text-white transition">
+    <i class="fa-solid fa-layer-group"></i> Kelola Kategori
+</button>
                     </div>
                 </div>
             </div>
@@ -482,11 +482,14 @@
             <div class="space-y-3 mb-6 pt-5 border-t border-[var(--border-glass)]">
                 <h4 class="text-xs font-bold text-white flex items-center gap-1.5"><i class="fa-solid fa-wrench"></i> KONFIGURASI LANJUTAN</h4>
                 <div class="grid grid-cols-2 gap-2">
-                    <button onclick="window.openTrackerManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-box-open text-amber-400 mb-1 block text-lg"></i> Trackers</button>
-                    <button onclick="window.openFamilyManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-users text-indigo-400 mb-1 block text-lg"></i> Keluarga</button>
-                    <button id="btn-show-audit" onclick="window.openAuditLogs()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-shield-halved text-gray-300 mb-1 block text-lg"></i> Audit Log</button>
-                    <button onclick="window.showModal('modal-import-data')" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-file-import text-emerald-400 mb-1 block text-lg"></i> Impor Data</button>
-                </div>
+    <button onclick="window.openCategoryManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-layer-group text-sky-400 mb-1 block text-lg"></i> Kategori</button>
+    
+    <button onclick="window.openTrackerManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-box-open text-amber-400 mb-1 block text-lg"></i> Trackers</button>
+    <button onclick="window.openFamilyManager()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-users text-indigo-400 mb-1 block text-lg"></i> Keluarga</button>
+    <button id="btn-show-audit" onclick="window.openAuditLogs()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-shield-halved text-gray-300 mb-1 block text-lg"></i> Audit Log</button>
+    
+    <button onclick="window.showModal('modal-import-data')" class="col-span-2 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)]"><i class="fa-solid fa-file-import text-emerald-400 mb-1 block text-lg"></i> Impor Data</button>
+</div>
             </div>
 
             <div class="mt-6 pt-5 border-t border-[var(--border-glass)]">
