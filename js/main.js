@@ -651,42 +651,59 @@ window.renderIconPickerGrid = function(activeIcon, activeColor) {
     grid.innerHTML = html;
 };
 
+// --- FUNGSI PENCARIAN IKON (DIRECT CONNECT KE GROQ) ---
 window.openAIIconSearch = async function() {
     const keyword = prompt("🔍 Ikon apa yang ingin Anda cari? \n(Contoh: hewan, mobil sport, sekolah, komputer, api)");
     if (!keyword || keyword.trim() === '') return;
 
     if (window.showToast) window.showToast("AI sedang membongkar perpustakaan ikon...", false);
 
-    // KOREKSI PROMPT: Kita minta JSON Object (pakai {}), bukan Array langsung. Ini agar Groq/Gemini tidak ngambek.
     const systemPrompt = `Anda adalah asisten UI/UX. User mencari ikon FontAwesome v6 Free Solid untuk kata kunci: "${keyword}".
     Tugas Anda membalas dengan MAKSIMAL 5 nama class FontAwesome yang valid.
-    ATURAN MUTLAK: Output HARUS berupa JSON murni tanpa markdown, tanpa teks pengantar.
+    ATURAN MUTLAK: Output HARUS berupa JSON murni.
     Format wajib persis seperti ini: {"icons": ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]}`;
 
     try {
-        const messages = [{ role: 'user', content: `Carikan ikon untuk: ${keyword}` }];
+        // BYPASS ORCHESTRATOR: Kita tembak langsung ke mesin Groq (GroqService)
+        // Pastikan Anda sudah mengatur API Key Groq di menu Pengaturan
+        const { GroqService } = await import('./services/ai/groq.js');
         
-        // KOREKSI FATAL: Ubah parameter 'true' menjadi 'false' 
-        // Ini mematikan Strict JSON Mode di API agar tidak terkena Error 400 Bad Request
-        const result = await window.executeAIWithFallback(messages, systemPrompt, false);
+        if (!GroqService || GroqService.keysPool.length === 0) {
+            throw new Error("API Key Groq kosong atau belum diatur di menu Settings.");
+        }
+
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Carikan ikon untuk: ${keyword}` }
+        ];
+
+        // Paksa mode JSON false (Bypass strict mode)
+        const result = await GroqService.fetch(messages, false);
         
-        // Bersihkan balasan dari markdown (jika AI bandel menambahkan ```json)
+        // Pembersihan format dari Markdown (kalau-kalau AI nakal)
         let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
         let parsedData = JSON.parse(cleanResult);
         
-        // Tangkap isi array-nya (baik AI balas pakai object maupun array langsung)
         let iconArray = Array.isArray(parsedData) ? parsedData : (parsedData.icons || []);
 
         if (!Array.isArray(iconArray) || iconArray.length === 0) {
-            throw new Error("AI membalas dengan format yang salah.");
+            throw new Error("Format JSON balasan AI tidak sesuai.");
         }
 
         window.renderAIIconSuggestions(iconArray);
+
     } catch (e) {
-        console.error("AI Icon Search Error:", e);
-        if (window.showToast) window.showToast("Gagal mencari ikon. Coba kata kunci lain atau periksa kuota AI.", true);
+        console.error("Direct AI Icon Search Error:", e);
+        if (window.showToast) {
+            if (e.message.includes("API Key Groq kosong")) {
+                window.showToast("Gagal: API Key Groq belum diatur di menu Pengaturan.", true);
+            } else {
+                window.showToast("Gagal mencari ikon. Coba kata kunci lain atau cek API Key Groq Anda.", true);
+            }
+        }
     }
 };
+
 
 window.renderAIIconSuggestions = function(icons) {
     const grid = document.getElementById('icon-picker-grid');
