@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Polyglot OCR + Groq AI</title>
+    <title>Gemini Vision + Groq AI Pipeline</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -11,38 +11,35 @@
 
     <div class="max-w-3xl mx-auto space-y-6">
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 text-emerald-500/10 text-9xl"><i class="fa-solid fa-globe"></i></div>
-            <h1 class="text-2xl font-black text-emerald-400 mb-2 relative z-10"><i class="fa-solid fa-globe mr-2"></i>Polyglot OCR + Groq</h1>
-            <p class="text-xs text-slate-400 relative z-10">Laboratorium Uji Coba: Membaca struk Multi-Bahasa dari Jepang, Indonesia, Inggris, hingga Vietnam.</p>
+            <div class="absolute -right-10 -top-10 text-blue-500/10 text-9xl"><i class="fa-solid fa-eye"></i></div>
+            <h1 class="text-2xl font-black text-blue-400 mb-2 relative z-10"><i class="fa-solid fa-eye mr-2"></i>Gemini Vision + Groq AI</h1>
+            <p class="text-xs text-slate-400 relative z-10">Laboratorium Uji Coba: Menggunakan Gemini HANYA sebagai mata (OCR), lalu Groq sebagai otak penyusun JSON.</p>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-5">
-            <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Groq Asli</label>
-                <input type="password" id="api-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Masukkan API Key (Berawalan gsk_...)">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Gemini (Mata)</label>
+                    <input type="password" id="gemini-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-blue-400 font-mono focus:outline-none focus:border-blue-500 transition-colors" placeholder="AIzaSy...">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Groq (Otak)</label>
+                    <input type="password" id="groq-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-colors" placeholder="gsk_...">
+                </div>
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Bahasa Struk Belanja</label>
-                <select id="lang-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer appearance-none">
-                    <option value="Jepang (Kanji/Kana)">🇯🇵 Jepang (Kanji/Kana)</option>
-                    <option value="Indonesia / Inggris (Latin)">🇮🇩 / 🇬🇧 Indonesia & Inggris (Latin)</option>
-                    <option value="Vietnam (Diakritik)">🇻🇳 Vietnam (Diakritik)</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Instruksi Ekstraksi</label>
-                <textarea id="prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Contoh: Fokus pada total harga dan daftar barang..."></textarea>
+                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Instruksi Ekstraksi (Untuk Groq)</label>
+                <textarea id="prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Contoh: Fokus pada total harga dan daftar barang..."></textarea>
             </div>
 
             <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:bg-slate-800/50 transition-colors">
                 <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Upload Struk Belanja</label>
-                <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 transition-colors cursor-pointer">
+                <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 transition-colors cursor-pointer">
             </div>
 
             <div class="pt-2">
-                <button id="btn-test" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
+                <button id="btn-test" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-lg shadow-blue-900/50 flex items-center justify-center gap-2">
                     <i class="fa-solid fa-bolt"></i> Eksekusi AI Pipeline
                 </button>
             </div>
@@ -54,7 +51,7 @@
                 <button id="btn-clear" class="text-xs text-slate-500 hover:text-rose-400 transition-colors px-2 py-1 bg-slate-950 rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Bersihkan</button>
             </h2>
             <div id="log-output" class="bg-black/80 border border-slate-800 p-5 rounded-xl font-mono text-[11px] text-slate-300 h-80 overflow-y-auto space-y-2 break-words shadow-inner">
-                <div class="text-slate-600">Sistem siap. Pilih bahasa struk lalu tekan eksekusi...</div>
+                <div class="text-slate-600">Sistem siap. Masukkan kedua API Key lalu pilih gambar struk...</div>
             </div>
         </div>
     </div>
@@ -67,7 +64,7 @@
             
             if (type === 'error') span.className = 'text-rose-400 bg-rose-950/30 p-2 rounded border border-rose-900/50';
             else if (type === 'success') span.className = 'text-emerald-400 font-bold bg-emerald-950/30 p-2 rounded border border-emerald-900/50';
-            else if (type === 'warn') span.className = 'text-amber-400';
+            else if (type === 'warn') span.className = 'text-blue-400';
             else span.className = 'text-slate-300 whitespace-pre-wrap'; 
             
             span.innerText = `[${time}] ${message}`;
@@ -80,68 +77,76 @@
         });
 
         document.getElementById('btn-test').addEventListener('click', async () => {
-            const groqKey = document.getElementById('api-key-input').value.trim();
-            const langChoice = document.getElementById('lang-input').value; // Mengambil pilihan bahasa
+            const geminiKey = document.getElementById('gemini-key-input').value.trim();
+            const groqKey = document.getElementById('groq-key-input').value.trim();
             const promptText = document.getElementById('prompt-input').value || 'Ekstrak detail struk ini secara lengkap.';
             const fileInput = document.getElementById('image-input');
             
-            if (!groqKey.startsWith('gsk_')) {
-                alert("Harap masukkan API Key Groq yang valid (biasanya berawalan gsk_).");
-                return;
-            }
-
-            if (!fileInput.files || !fileInput.files[0]) {
-                alert("Pilih foto struk belanja terlebih dahulu!");
-                return;
-            }
+            if (!geminiKey.startsWith('AIza')) return alert("API Key Gemini tidak valid!");
+            if (!groqKey.startsWith('gsk_')) return alert("API Key Groq tidak valid!");
+            if (!fileInput.files || !fileInput.files[0]) return alert("Pilih foto struk belanja terlebih dahulu!");
 
             const btn = document.getElementById('btn-test');
             btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Mengirim ke Peladen...';
+            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menjalankan Pipeline...';
 
             const reader = new FileReader();
             reader.readAsDataURL(fileInput.files[0]);
             reader.onload = async () => {
                 const base64Image = reader.result;
-                await eksekusiAIPipeline(promptText, base64Image, groqKey, langChoice);
+                await eksekusiAIPipeline(promptText, base64Image, geminiKey, groqKey);
             };
         });
 
-        async function eksekusiAIPipeline(userPrompt, imageStr, groqKey, langChoice) {
+        async function eksekusiAIPipeline(userPrompt, imageStr, geminiKey, groqKey) {
             try {
                 let teksMentahStruk = "";
 
-                uiLog(`🚀 Mengirim gambar ke Peladen. Mode: ${langChoice}...`, "warn");
-                const hfApiUrl = "https://tstavinues-aurafi-paddleocr.hf.space/api/predict";
+                // =========================================================
+                // TAHAP 1: MATA (GEMINI VISION) - HANYA UNTUK TEKS MENTAH
+                // =========================================================
+                uiLog("👁️ Mengirim gambar ke Gemini AI (OCR Mode) untuk disalin...", "warn");
+                
+                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+                const base64Data = imageStr.split(',')[1];
+                const mimeType = imageStr.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
 
-                const ocrResponse = await fetch(hfApiUrl, {
+                const geminiPayload = {
+                    contents: [{
+                        role: "user",
+                        parts: [
+                            { text: "Ekstrak seluruh teks dalam gambar ini apa adanya, baris demi baris. Jangan buat kesimpulan, cukup tulis ulang teksnya persis seperti di gambar." },
+                            { inlineData: { mimeType: mimeType, data: base64Data } }
+                        ]
+                    }]
+                };
+
+                const geminiResponse = await fetch(geminiUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        // MENGIRIM 2 DATA: [Gambar Base64, Pilihan Bahasa]
-                        data: [imageStr, langChoice] 
-                    })
+                    body: JSON.stringify(geminiPayload)
                 });
 
-                if (!ocrResponse.ok) {
-                    throw new Error(`Peladen OCR Error (Bisa jadi masih 'Building' atau tertidur): ${ocrResponse.status}`);
+                if (!geminiResponse.ok) {
+                    const errDetail = await geminiResponse.json().catch(()=>({}));
+                    throw new Error(`Gemini Error ${geminiResponse.status}: ${errDetail.error?.message || 'Mungkin terkena Rate Limit 5 RPM.'}`);
                 }
 
-                const ocrResult = await ocrResponse.json();
-                teksMentahStruk = ocrResult.data[0]; 
+                const geminiResult = await geminiResponse.json();
+                teksMentahStruk = geminiResult.candidates[0].content.parts[0].text;
 
-                uiLog("--- HASIL SCAN MENTAH PADDLE-OCR ---", "info");
+                uiLog("--- HASIL SCAN MENTAH GEMINI ---", "info");
                 uiLog(teksMentahStruk, "info");
-                
-                if(!teksMentahStruk || teksMentahStruk.trim() === '' || teksMentahStruk.includes("Gagal") || teksMentahStruk.includes("Error Internal")) {
-                    throw new Error("PaddleOCR gagal membaca gambar: " + teksMentahStruk);
-                }
 
+
+                // =========================================================
+                // TAHAP 2: OTAK (GROQ LLAMA-3.3) - UNTUK FORMATTING JSON
+                // =========================================================
                 uiLog("🧠 Mengirim teks mentah ke Groq AI (Llama 3.3) untuk dirapikan menjadi JSON...", "warn");
                 
                 const systemPrompt = `Anda adalah sistem parser data keuangan tingkat lanjut. 
-Berikut adalah hasil scan OCR dari sebuah struk belanja.
-Tugas Anda: Analisis teks tersebut, tebak maksud sebenarnya dari barang-barang tersebut, dan ekstrak menjadi format JSON murni.
+Berikut adalah hasil ekstraksi teks dari sebuah struk belanja.
+Tugas Anda: Analisis teks tersebut, tebak maksud sebenarnya dari barang-barang tersebut (walau typo/terpotong), dan ekstrak menjadi format JSON murni.
 Wajib gunakan struktur JSON ini persis: 
 {
   "total_belanja": angka_murni_tanpa_simbol,
@@ -150,7 +155,7 @@ Wajib gunakan struktur JSON ini persis:
 }
 ATURAN MUTLAK: Hanya berikan respons JSON mentah! Dilarang menambahkan penjelasan, sapaan, atau markdown backticks (\`\`\`json).`;
 
-                const finalPrompt = `[TEKS STRUK MENTAH HASIL OCR]\n${teksMentahStruk}\n\n[INSTRUKSI TAMBAHAN]\n${userPrompt}`;
+                const finalPrompt = `[TEKS STRUK MENTAH]\n${teksMentahStruk}\n\n[INSTRUKSI TAMBAHAN]\n${userPrompt}`;
 
                 const payload = {
                     model: "llama-3.3-70b-versatile",
@@ -161,7 +166,7 @@ ATURAN MUTLAK: Hanya berikan respons JSON mentah! Dilarang menambahkan penjelasa
                     temperature: 0.1 
                 };
 
-                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${groqKey}`,
@@ -170,12 +175,12 @@ ATURAN MUTLAK: Hanya berikan respons JSON mentah! Dilarang menambahkan penjelasa
                     body: JSON.stringify(payload)
                 });
 
-                if (!response.ok) {
-                    const errDetail = await response.json().catch(()=>({}));
-                    throw new Error(`Groq API Error: ${response.status} - ${errDetail.error?.message || ''}`);
+                if (!groqResponse.ok) {
+                    const errDetail = await groqResponse.json().catch(()=>({}));
+                    throw new Error(`Groq API Error: ${groqResponse.status} - ${errDetail.error?.message || ''}`);
                 }
 
-                const result = await response.json();
+                const result = await groqResponse.json();
                 let outputAI = result.choices[0].message.content.trim();
                 
                 uiLog("--- 🚀 HASIL AKHIR GROQ (JSON RAPI) ---", "success");
