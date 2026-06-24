@@ -1,113 +1,59 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tesseract + Groq AI Pipeline</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-</head>
-<body class="bg-slate-950 text-slate-200 p-4 md:p-8 font-sans min-h-screen">
+        // --- FUNGSI PENCUCI GAMBAR (PREPROCESSING) ---
+        // Mengubah foto HP biasa menjadi hitam-putih pekat ala mesin scanner
+        async function cuciGambarUntukOCR(base64Str) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // 1. Perbesar gambar 2x lipat agar huruf kecil tidak pecah saat dibaca
+                    const scale = 2; 
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    <div class="max-w-3xl mx-auto space-y-6">
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 text-emerald-500/10 text-9xl"><i class="fa-solid fa-microchip"></i></div>
-            <h1 class="text-2xl font-black text-emerald-400 mb-2 relative z-10"><i class="fa-solid fa-microchip mr-2"></i>Edge OCR + Groq AI</h1>
-            <p class="text-xs text-slate-400 relative z-10">Laboratorium Uji Coba: Membaca struk tanpa limit menggunakan Tesseract (Offline), lalu merapikannya dengan Groq AI.</p>
-        </div>
+                    // 2. Ambil data piksel
+                    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imgData.data;
 
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-5">
-            <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Groq Asli</label>
-                <input type="password" id="api-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Masukkan API Key (Berawalan gsk_...)">
-            </div>
-
-            <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Instruksi Ekstraksi</label>
-                <textarea id="prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Contoh: Fokus pada total harga dan daftar barang..."></textarea>
-            </div>
-
-            <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:bg-slate-800/50 transition-colors">
-                <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Upload Struk Belanja</label>
-                <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-emerald-500/20 file:text-emerald-400 hover:file:bg-emerald-500/30 transition-colors cursor-pointer">
-            </div>
-
-            <div class="pt-2">
-                <button id="btn-test" class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-lg shadow-emerald-900/50 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-bolt"></i> Eksekusi AI Pipeline
-                </button>
-            </div>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-            <h2 class="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider flex justify-between items-center">
-                <span><i class="fa-solid fa-terminal mr-2"></i>Terminal Log & Hasil</span>
-                <button id="btn-clear" class="text-xs text-slate-500 hover:text-rose-400 transition-colors px-2 py-1 bg-slate-950 rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Bersihkan</button>
-            </h2>
-            <div id="log-output" class="bg-black/80 border border-slate-800 p-5 rounded-xl font-mono text-[11px] text-slate-300 h-80 overflow-y-auto space-y-2 break-words shadow-inner">
-                <div class="text-slate-600">Sistem siap. Masukkan API Key Groq dan pilih gambar struk...</div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // --- 1. SISTEM LOGGING KE UI ---
-        const logBox = document.getElementById('log-output');
-        function uiLog(message, type = 'info') {
-            const span = document.createElement('div');
-            const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
-            
-            if (type === 'error') span.className = 'text-rose-400 bg-rose-950/30 p-2 rounded border border-rose-900/50';
-            else if (type === 'success') span.className = 'text-emerald-400 font-bold bg-emerald-950/30 p-2 rounded border border-emerald-900/50';
-            else if (type === 'warn') span.className = 'text-amber-400';
-            else span.className = 'text-slate-300 whitespace-pre-wrap'; 
-            
-            span.innerText = `[${time}] ${message}`;
-            logBox.appendChild(span);
-            logBox.scrollTop = logBox.scrollHeight;
+                    // 3. Proses Thresholding (Hitam/Putih Ekstrem)
+                    for (let i = 0; i < data.length; i += 4) {
+                        const r = data[i];
+                        const g = data[i+1];
+                        const b = data[i+2];
+                        
+                        // Rumus mengubah ke Grayscale
+                        const grayscale = 0.299 * r + 0.587 * g + 0.114 * b;
+                        
+                        // Jika kecerahan di bawah 130 (gelap/tinta), jadikan hitam pekat (0)
+                        // Jika di atas 130 (kertas/cahaya), jadikan putih bersih (255)
+                        const threshold = 130; 
+                        const color = grayscale < threshold ? 0 : 255;
+                        
+                        data[i] = data[i+1] = data[i+2] = color; // Terapkan RGB baru
+                    }
+                    
+                    ctx.putImageData(imgData, 0, 0);
+                    
+                    // Kembalikan gambar yang sudah "dicuci"
+                    resolve(canvas.toDataURL('image/jpeg', 1.0));
+                };
+                img.src = base64Str;
+            });
         }
-
-        document.getElementById('btn-clear').addEventListener('click', () => {
-            logBox.innerHTML = '<div class="text-slate-600">Log dibersihkan...</div>';
-        });
-
-        // --- 2. KENDALI TOMBOL EKSEKUSI ---
-        document.getElementById('btn-test').addEventListener('click', async () => {
-            const groqKey = document.getElementById('api-key-input').value.trim();
-            const promptText = document.getElementById('prompt-input').value || 'Ekstrak detail struk ini secara lengkap.';
-            const fileInput = document.getElementById('image-input');
-            
-            if (!groqKey.startsWith('gsk_')) {
-                alert("Harap masukkan API Key Groq yang valid (biasanya berawalan gsk_).");
-                return;
-            }
-
-            if (!fileInput.files || !fileInput.files[0]) {
-                alert("Pilih foto struk belanja terlebih dahulu!");
-                return;
-            }
-
-            const btn = document.getElementById('btn-test');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Memproses Pipeline...';
-
-            const reader = new FileReader();
-            reader.readAsDataURL(fileInput.files[0]);
-            reader.onload = async () => {
-                const base64Image = reader.result;
-                await eksekusiAIPipeline(promptText, base64Image, groqKey);
-            };
-        });
 
         // --- 3. FUNGSI INTI: TESSERACT + GROQ ---
         async function eksekusiAIPipeline(userPrompt, imageStr, groqKey) {
             try {
                 let teksMentahStruk = "";
 
-                // --- TAHAP 1: MATA (TESSERACT OCR OFFLINE) ---
-                uiLog("⚙️ Menyalakan mesin pemindai Tesseract.js (Offline)...", "warn");
+                // TAHAP 0: CUCI GAMBAR SEBELUM DIBACA
+                uiLog("🧹 Mencuci gambar (Binarization & Upscaling) agar tulisan struk lebih jelas...", "warn");
+                const cleanImageStr = await cuciGambarUntukOCR(imageStr);
+
+                // TAHAP 1: MATA (TESSERACT OCR OFFLINE)
+                uiLog("⚙️ Menyalakan mesin Tesseract.js untuk membaca gambar yang sudah dicuci...", "warn");
                 
                 const worker = await Tesseract.createWorker('ind+eng', 1, {
                     logger: m => {
@@ -117,8 +63,9 @@
                     }
                 });
                 
-                uiLog("Mengeja tulisan di dalam gambar...", "warn");
-                const ret = await worker.recognize(imageStr);
+                uiLog("Mengeja tulisan...", "warn");
+                // PENTING: Gunakan gambar yang sudah dicuci (cleanImageStr)
+                const ret = await worker.recognize(cleanImageStr);
                 teksMentahStruk = ret.data.text;
                 
                 await worker.terminate(); 
@@ -127,10 +74,10 @@
                 uiLog(teksMentahStruk, "info");
                 
                 if(teksMentahStruk.trim() === '') {
-                    throw new Error("Tesseract tidak menemukan teks apapun di gambar. Coba gambar yang lebih jelas.");
+                    throw new Error("Tesseract tetap tidak menemukan teks. Coba foto di tempat yang lebih terang.");
                 }
 
-                // --- TAHAP 2: OTAK (GROQ AI API) ---
+                // TAHAP 2: OTAK (GROQ AI API)
                 uiLog("🧠 Mengirim teks mentah ke Groq AI (Llama 3.3) untuk dirapikan menjadi JSON...", "warn");
                 
                 const systemPrompt = `Anda adalah sistem parser data keuangan tingkat lanjut. 
@@ -147,7 +94,7 @@ ATURAN MUTLAK: Hanya berikan respons JSON mentah! Dilarang menambahkan penjelasa
                 const finalPrompt = `[TEKS STRUK MENTAH HASIL OCR]\n${teksMentahStruk}\n\n[INSTRUKSI TAMBAHAN]\n${userPrompt}`;
 
                 const payload = {
-                    model: "llama-3.3-70b-versatile", // Model Groq terbaru yang aktif dan tangguh
+                    model: "llama-3.3-70b-versatile",
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: finalPrompt }
