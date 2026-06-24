@@ -299,21 +299,24 @@ const AURA_ICONS = RAW_ICONS.map((iconStr, index) => ({ icon: iconStr, color: AU
 let currentCatTab = 'expense';
 
 // ============================================================================
-// MESIN PEMANEN DATA (HARVESTER) SAPU JAGAT
+// MESIN PEMANEN DATA (HARVESTER) - VERSI PINTAR & ANTI-ZOMBIE
 // ============================================================================
 window.syncCategoriesData = async function() {
     let rawCats = AuraState.data.settings?.customCategories || {};
+    let tombstones = AuraState.data.settings?.tombstones || []; // Buku Hitam untuk kategori yg sudah dihapus user
     let isUpdated = false;
     const transactions = AuraState.data.transactions || [];
     
     transactions.forEach(trx => {
         let pName = trx.kategori; 
         if (!pName || pName.trim() === '' || pName.toLowerCase() === 'uncategorized') pName = 'Lainnya';
+        const pNameLower = pName.toLowerCase();
         
         const type = (trx.tipe === 'pemasukan' || trx.jenis === 'pemasukan' || trx.tipe === 'income') ? 'income' : 'expense';
         
-        let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pName.toLowerCase() && !rawCats[id].parentId);
-        if (!pId) {
+        // Cek Induk: Cari di gudang. Jika tidak ada DAN tidak ada di Buku Hitam, baru buat.
+        let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pNameLower && !rawCats[id].parentId);
+        if (!pId && !tombstones.includes(pNameLower)) {
             pId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
             rawCats[pId] = { name: pName, type: type, icon: 'fa-box-archive', color: '#a1a1aa', parentId: null };
             isUpdated = true;
@@ -324,10 +327,15 @@ window.syncCategoriesData = async function() {
                 if(!item || typeof item !== 'object') return;
                 const cName = item.kategori_barang || item.kategori || item.category || item.sub_kategori; 
                 
-                if (cName && cName.toLowerCase() !== pName.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
-                    let cId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase() && rawCats[id].parentId === pId);
-                    if (!cId) {
-                        cId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
+                if (cName && cName.toLowerCase() !== pNameLower && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
+                    const cNameLower = cName.toLowerCase();
+                    
+                    // RADAR GLOBAL: Cek apakah nama anak ini SUDAH ADA DI MANA SAJA di seluruh gudang
+                    let cExists = Object.values(rawCats).some(cat => cat.name.toLowerCase() === cNameLower);
+                    
+                    // Buat kategori baru HANYA JIKA: Belum ada di gudang DAN belum pernah dihapus user (Buku Hitam)
+                    if (!cExists && !tombstones.includes(cNameLower) && pId) {
+                        let cId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
                         rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
                         isUpdated = true;
                     }
@@ -828,30 +836,45 @@ window.saveCategoryData = async function() {
     }
 };
 
+// ============================================================================
+// HAPUS KATEGORI & MASUKKAN KE BUKU HITAM
+// ============================================================================
 window.deleteCategory = async function(id) {
-    const isConfirmed = confirm("Yakin ingin menghapus kategori ini? (Sub-kategori di dalamnya juga akan ikut terhapus secara permanen)");
+    const isConfirmed = confirm("Yakin ingin menghapus kategori ini? (Sistem akan memblokirnya agar tidak muncul lagi dari riwayat lama)");
     
     if (!isConfirmed) return; 
 
     try {
+        const rawCategories = AuraState.data.settings?.customCategories || {};
+        let tombstones = AuraState.data.settings?.tombstones || []; 
+        
         const updates = {};
         updates[`customCategories/${id}`] = null;
         
-        const rawCategories = AuraState.data.settings?.customCategories || {};
+        if(rawCategories[id]) tombstones.push(rawCategories[id].name.toLowerCase());
+        
         Object.entries(rawCategories).forEach(([childId, data]) => {
-            if(data.parentId === id) updates[`customCategories/${childId}`] = null;
+            if(data.parentId === id) {
+                updates[`customCategories/${childId}`] = null;
+                tombstones.push(data.name.toLowerCase()); 
+            }
         });
+
+        updates[`tombstones`] = tombstones;
 
         await window.FirebaseService.updateSettings(updates);
         
-        if(AuraState.data.settings && AuraState.data.settings.customCategories) {
-            delete AuraState.data.settings.customCategories[id];
-            Object.entries(rawCategories).forEach(([childId, data]) => {
-                if(data.parentId === id) delete AuraState.data.settings.customCategories[childId];
-            });
+        if(AuraState.data.settings) {
+            if(AuraState.data.settings.customCategories) {
+                delete AuraState.data.settings.customCategories[id];
+                Object.entries(rawCategories).forEach(([childId, data]) => {
+                    if(data.parentId === id) delete AuraState.data.settings.customCategories[childId];
+                });
+            }
+            AuraState.data.settings.tombstones = tombstones;
         }
 
-        if(window.showToast) window.showToast("Kategori berhasil dihapus.");
+        if(window.showToast) window.showToast("Kategori dihapus dan diblokir dari kemunculan ulang.");
         window.renderCategoryList(); 
     } catch(e) {
         console.error("Error Delete Category:", e);
