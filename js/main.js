@@ -602,8 +602,13 @@ window.editCategory = function(id) {
 };
 
 // ============================================================================
-// SISTEM PEMILIHAN IKON & AI ICON FETCHER (UPGRADE FINAL)
+// SISTEM PEMILIHAN IKON, AI ICON FETCHER & COLOR PICKER (ULTIMATE)
 // ============================================================================
+
+window.updateActiveColor = function(newColor) {
+    const currentIcon = document.getElementById('cat-form-icon').value;
+    window.renderIconPickerGrid(currentIcon, newColor);
+};
 
 window.renderIconPickerGrid = function(activeIcon, activeColor) {
     const grid = document.getElementById('icon-picker-grid');
@@ -611,28 +616,47 @@ window.renderIconPickerGrid = function(activeIcon, activeColor) {
     document.getElementById('cat-form-color').value = activeColor;
     
     const customIcons = AuraState.data.settings?.customIcons || [];
+    const customColors = AuraState.data.settings?.customColors || {}; 
     
     const ALL_ICONS = [
         ...RAW_ICONS.map((iconStr, i) => ({ icon: iconStr, color: AURA_PALETTE[i % AURA_PALETTE.length], isCustom: false })),
-        ...customIcons.map((iconStr, i) => ({ icon: iconStr, color: AURA_PALETTE[(RAW_ICONS.length + i) % AURA_PALETTE.length], isCustom: true }))
+        ...customIcons.map((iconStr) => ({ 
+            icon: iconStr, 
+            color: customColors[iconStr] || '#10b981', 
+            isCustom: true 
+        }))
     ];
     
     let html = `
-        <button type="button" onclick="window.openAIIconSearch()" class="w-10 h-10 rounded-full flex items-center justify-center border-2 border-dashed border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] animate-pulse hover:animate-none" title="Minta AI carikan ikon baru">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-        </button>
+        <div class="col-span-full flex items-center gap-3 mb-3 p-2 bg-black/20 rounded-xl border border-white/5">
+            <button type="button" onclick="window.openAIIconSearch()" class="w-10 h-10 shrink-0 rounded-full flex items-center justify-center border-2 border-dashed border-emerald-500 text-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)]" title="Minta AI carikan ikon baru">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </button>
+            
+            <div class="h-8 w-[1px] bg-white/10 mx-1"></div>
+            
+            <div class="relative w-10 h-10 shrink-0 rounded-full overflow-hidden border-2 border-white/20 shadow-lg cursor-pointer transition-transform hover:scale-105" title="Ubah Warna Ikon">
+                <input type="color" id="dynamic-color-picker" value="${activeColor}" onchange="window.updateActiveColor(this.value)" class="absolute -top-2 -left-2 w-16 h-16 cursor-pointer">
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-tight">Warna Ikon</span>
+                <span class="text-[9px] text-gray-500 font-mono">${activeColor.toUpperCase()}</span>
+            </div>
+        </div>
     `;
     
     ALL_ICONS.forEach(item => {
         const isActive = item.icon === activeIcon;
         const baseClass = isActive ? 'scale-110 ring-2 ring-white shadow-lg' : 'hover:scale-110 opacity-70 hover:opacity-100';
         
+        const displayColor = isActive ? activeColor : item.color;
+        
         if (item.isCustom) {
             html += `
             <div class="relative group">
-                <button type="button" onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
+                <button type="button" onclick="window.renderIconPickerGrid('${item.icon}', '${displayColor}')" 
                         class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
-                        style="background-color: ${item.color}30; color: ${item.color}">
+                        style="background-color: ${displayColor}30; color: ${displayColor}">
                     <i class="fa-solid ${item.icon}"></i>
                 </button>
                 <button type="button" onclick="window.deleteCustomIcon('${item.icon}', event)" class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full flex items-center justify-center text-[8px] text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" title="Hapus Ikon Ini">
@@ -641,9 +665,9 @@ window.renderIconPickerGrid = function(activeIcon, activeColor) {
             </div>`;
         } else {
             html += `
-            <button type="button" onclick="window.renderIconPickerGrid('${item.icon}', '${item.color}')" 
+            <button type="button" onclick="window.renderIconPickerGrid('${item.icon}', '${displayColor}')" 
                     class="w-10 h-10 rounded-full flex items-center justify-center transition-all ${baseClass}" 
-                    style="background-color: ${item.color}30; color: ${item.color}">
+                    style="background-color: ${displayColor}30; color: ${displayColor}">
                 <i class="fa-solid ${item.icon}"></i>
             </button>`;
         }
@@ -664,24 +688,19 @@ window.openAIIconSearch = async function() {
     Format wajib persis seperti ini: {"icons": ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]}`;
 
     try {
-        // PERBAIKAN FATAL: Menarik paksa API Key Groq langsung dari Brankas Database
-        const { get, ref } = await import("https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js");
-        const db = window.AuraState.instances.db;
-        const uid = window.AuraState.user.uid;
-        
-        // Membuka brankas Firebase untuk mengambil kunci Groq yang "terlupakan"
-        const snap = await get(ref(db, `aurafi_ledger/${uid}/groqApiKeys`));
-        
-        if (snap.exists()) {
-            const data = snap.val();
-            // Suntikkan kembali kunci tersebut ke memori aktif aplikasi
-            window.AuraState.data.groqKeys = Object.keys(data).map(k => ({ id: k, ...data[k] }));
+        const { GroqService } = await import('./services/ai/groq.js');
+        await GroqService.init();
+
+        if (!GroqService.keysPool || GroqService.keysPool.length === 0) {
+            throw new Error("Mesin Groq kosong! Pastikan API Key Groq sudah tersimpan di Pengaturan.");
         }
 
-        const messages = [{ role: 'user', content: `Carikan ikon untuk: ${keyword}` }];
-        
-        // Jalankan AI (Otomatis memakai Groq yang super cepat karena kuncinya sudah disuntikkan)
-        const result = await window.executeAIWithFallback(messages, systemPrompt, false);
+        const messages = [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Carikan ikon untuk: ${keyword}` }
+        ];
+
+        const result = await GroqService.fetch(messages, false);
         
         let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
         let parsedData = JSON.parse(cleanResult);
@@ -694,14 +713,12 @@ window.openAIIconSearch = async function() {
         window.renderAIIconSuggestions(iconArray);
 
     } catch (e) {
-        console.error("AI Icon Search Error:", e);
+        console.error("Direct AI Icon Search Error:", e);
         if (window.showToast) {
-            window.showToast("Gagal mencari ikon. Pastikan API Key Groq benar atau cek koneksi Anda.", true);
+            window.showToast(`Gagal: ${e.message}`, true);
         }
     }
 };
-
-
 
 window.renderAIIconSuggestions = function(icons) {
     const grid = document.getElementById('icon-picker-grid');
@@ -728,21 +745,32 @@ window.renderAIIconSuggestions = function(icons) {
 };
 
 window.saveCustomIcon = async function(iconClass) {
+    const pickedColor = document.getElementById('dynamic-color-picker').value || "#10b981";
+
     let customIcons = AuraState.data.settings?.customIcons || [];
+    let customColors = AuraState.data.settings?.customColors || {};
     
     if (!customIcons.includes(iconClass) && !RAW_ICONS.includes(iconClass)) {
         customIcons.push(iconClass);
+        customColors[iconClass] = pickedColor; 
+        
         try {
-            await window.FirebaseService.updateSettings({ customIcons: customIcons });
-            if(AuraState.data.settings) AuraState.data.settings.customIcons = customIcons;
-            if(window.showToast) window.showToast(`Ikon ${iconClass} berhasil disimpan ke menu!`);
+            await window.FirebaseService.updateSettings({ 
+                customIcons: customIcons,
+                customColors: customColors
+            });
+            if(AuraState.data.settings) {
+                AuraState.data.settings.customIcons = customIcons;
+                AuraState.data.settings.customColors = customColors;
+            }
+            if(window.showToast) window.showToast(`Ikon berhasil disimpan ke menu!`);
         } catch (e) {
             if(window.showToast) window.showToast("Gagal menyimpan ikon ke Cloud.", true);
             return;
         }
     }
     
-    window.renderIconPickerGrid(iconClass, '#10b981'); 
+    window.renderIconPickerGrid(iconClass, pickedColor); 
 };
 
 window.deleteCustomIcon = async function(iconClass, event) {
