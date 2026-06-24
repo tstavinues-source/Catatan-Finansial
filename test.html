@@ -11,16 +11,15 @@
 
     <div class="max-w-3xl mx-auto space-y-6">
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 text-blue-500/10 text-9xl"><i class="fa-solid fa-eye"></i></div>
             <h1 class="text-2xl font-black text-blue-400 mb-2 relative z-10"><i class="fa-solid fa-eye mr-2"></i>Gemini Vision + Groq AI</h1>
-            <p class="text-xs text-slate-400 relative z-10">Laboratorium Uji Coba: Menggunakan Gemini HANYA sebagai mata (OCR), lalu Groq sebagai otak penyusun JSON.</p>
+            <p class="text-xs text-slate-400 relative z-10">Pipeline: Gemini (Mata OCR) ➔ Groq (Otak JSON).</p>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Gemini (Mata)</label>
-                    <input type="password" id="gemini-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-blue-400 font-mono focus:outline-none focus:border-blue-500 transition-colors" placeholder="AIzaSy...">
+                    <input type="password" id="gemini-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-blue-400 font-mono focus:outline-none focus:border-blue-500 transition-colors" placeholder="AIza... atau AQ...">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Groq (Otak)</label>
@@ -28,30 +27,22 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Instruksi Ekstraksi (Untuk Groq)</label>
-                <textarea id="prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Contoh: Fokus pada total harga dan daftar barang..."></textarea>
-            </div>
+            <textarea id="prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Instruksi: Fokus pada total harga dan daftar barang..."></textarea>
 
-            <div class="border-2 border-dashed border-slate-700 rounded-xl p-4 text-center hover:bg-slate-800/50 transition-colors">
-                <label class="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Upload Struk Belanja</label>
-                <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 transition-colors cursor-pointer">
-            </div>
+            <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 transition-colors cursor-pointer">
 
-            <div class="pt-2">
-                <button id="btn-test" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-4 rounded-xl transition-all text-sm shadow-lg shadow-blue-900/50 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-bolt"></i> Eksekusi AI Pipeline
-                </button>
-            </div>
+            <button id="btn-test" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-bolt"></i> Eksekusi AI Pipeline
+            </button>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
             <h2 class="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider flex justify-between items-center">
-                <span><i class="fa-solid fa-terminal mr-2"></i>Terminal Log & Hasil</span>
-                <button id="btn-clear" class="text-xs text-slate-500 hover:text-rose-400 transition-colors px-2 py-1 bg-slate-950 rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Bersihkan</button>
+                <span>Terminal Log & Hasil</span>
+                <button id="btn-clear" class="text-xs text-slate-500 hover:text-rose-400 transition-colors">Bersihkan</button>
             </h2>
-            <div id="log-output" class="bg-black/80 border border-slate-800 p-5 rounded-xl font-mono text-[11px] text-slate-300 h-80 overflow-y-auto space-y-2 break-words shadow-inner">
-                <div class="text-slate-600">Sistem siap. Masukkan kedua API Key lalu pilih gambar struk...</div>
+            <div id="log-output" class="bg-black/80 border border-slate-800 p-5 rounded-xl font-mono text-[11px] text-slate-300 h-80 overflow-y-auto space-y-2">
+                <div class="text-slate-600">Sistem siap...</div>
             </div>
         </div>
     </div>
@@ -60,139 +51,68 @@
         const logBox = document.getElementById('log-output');
         function uiLog(message, type = 'info') {
             const span = document.createElement('div');
-            const time = new Date().toLocaleTimeString('id-ID', { hour12: false });
-            
-            if (type === 'error') span.className = 'text-rose-400 bg-rose-950/30 p-2 rounded border border-rose-900/50';
-            else if (type === 'success') span.className = 'text-emerald-400 font-bold bg-emerald-950/30 p-2 rounded border border-emerald-900/50';
-            else if (type === 'warn') span.className = 'text-blue-400';
-            else span.className = 'text-slate-300 whitespace-pre-wrap'; 
-            
-            span.innerText = `[${time}] ${message}`;
+            if (type === 'error') span.className = 'text-rose-400';
+            else if (type === 'success') span.className = 'text-emerald-400 font-bold';
+            else span.className = 'text-slate-300';
+            span.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
             logBox.appendChild(span);
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        document.getElementById('btn-clear').addEventListener('click', () => {
-            logBox.innerHTML = '<div class="text-slate-600">Log dibersihkan...</div>';
-        });
+        document.getElementById('btn-clear').addEventListener('click', () => logBox.innerHTML = '');
 
         document.getElementById('btn-test').addEventListener('click', async () => {
             const geminiKey = document.getElementById('gemini-key-input').value.trim();
             const groqKey = document.getElementById('groq-key-input').value.trim();
-            const promptText = document.getElementById('prompt-input').value || 'Ekstrak detail struk ini secara lengkap.';
+            const promptText = document.getElementById('prompt-input').value || 'Ekstrak detail struk ini.';
             const fileInput = document.getElementById('image-input');
             
-            if (!geminiKey.startsWith('AIza')) return alert("API Key Gemini tidak valid!");
-            if (!groqKey.startsWith('gsk_')) return alert("API Key Groq tidak valid!");
-            if (!fileInput.files || !fileInput.files[0]) return alert("Pilih foto struk belanja terlebih dahulu!");
+            // Perbaikan Validasi Key
+            if (!geminiKey.startsWith('AIza') && !geminiKey.startsWith('AQ')) return alert("API Key Gemini salah (gunakan AIza... atau AQ...)");
+            if (!groqKey.startsWith('gsk_')) return alert("API Key Groq salah!");
+            if (!fileInput.files[0]) return alert("Pilih gambar struk!");
 
-            const btn = document.getElementById('btn-test');
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Menjalankan Pipeline...';
-
+            document.getElementById('btn-test').disabled = true;
+            
             const reader = new FileReader();
             reader.readAsDataURL(fileInput.files[0]);
             reader.onload = async () => {
-                const base64Image = reader.result;
-                await eksekusiAIPipeline(promptText, base64Image, geminiKey, groqKey);
+                await eksekusiAIPipeline(promptText, reader.result, geminiKey, groqKey);
             };
         });
 
-        async function eksekusiAIPipeline(userPrompt, imageStr, geminiKey, groqKey) {
+        async function eksekusiAIPipeline(prompt, imageStr, geminiKey, groqKey) {
             try {
-                let teksMentahStruk = "";
-
-                // =========================================================
-                // TAHAP 1: MATA (GEMINI VISION) - HANYA UNTUK TEKS MENTAH
-                // =========================================================
-                uiLog("👁️ Mengirim gambar ke Gemini AI (OCR Mode) untuk disalin...", "warn");
-                
+                uiLog("👁️ Gemini sedang membaca gambar...");
                 const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-                const base64Data = imageStr.split(',')[1];
-                const mimeType = imageStr.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,.*/)[1];
+                const geminiPayload = { contents: [{ role: "user", parts: [
+                    { text: "Tulis ulang teks dalam gambar ini baris demi baris, jangan ringkas." },
+                    { inlineData: { mimeType: imageStr.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/)[1], data: imageStr.split(',')[1] } }
+                ]}]};
 
-                const geminiPayload = {
-                    contents: [{
-                        role: "user",
-                        parts: [
-                            { text: "Ekstrak seluruh teks dalam gambar ini apa adanya, baris demi baris. Jangan buat kesimpulan, cukup tulis ulang teksnya persis seperti di gambar." },
-                            { inlineData: { mimeType: mimeType, data: base64Data } }
-                        ]
-                    }]
-                };
+                const resGem = await fetch(geminiUrl, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(geminiPayload) });
+                if (!resGem.ok) throw new Error("Gemini Gagal: " + resGem.status);
+                const dataGem = await resGem.json();
+                const teksMentah = dataGem.candidates[0].content.parts[0].text;
+                uiLog("--- TEKS MENTAH DITERIMA ---");
+                uiLog(teksMentah);
 
-                const geminiResponse = await fetch(geminiUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(geminiPayload)
-                });
-
-                if (!geminiResponse.ok) {
-                    const errDetail = await geminiResponse.json().catch(()=>({}));
-                    throw new Error(`Gemini Error ${geminiResponse.status}: ${errDetail.error?.message || 'Mungkin terkena Rate Limit 5 RPM.'}`);
-                }
-
-                const geminiResult = await geminiResponse.json();
-                teksMentahStruk = geminiResult.candidates[0].content.parts[0].text;
-
-                uiLog("--- HASIL SCAN MENTAH GEMINI ---", "info");
-                uiLog(teksMentahStruk, "info");
-
-
-                // =========================================================
-                // TAHAP 2: OTAK (GROQ LLAMA-3.3) - UNTUK FORMATTING JSON
-                // =========================================================
-                uiLog("🧠 Mengirim teks mentah ke Groq AI (Llama 3.3) untuk dirapikan menjadi JSON...", "warn");
-                
-                const systemPrompt = `Anda adalah sistem parser data keuangan tingkat lanjut. 
-Berikut adalah hasil ekstraksi teks dari sebuah struk belanja.
-Tugas Anda: Analisis teks tersebut, tebak maksud sebenarnya dari barang-barang tersebut (walau typo/terpotong), dan ekstrak menjadi format JSON murni.
-Wajib gunakan struktur JSON ini persis: 
-{
-  "total_belanja": angka_murni_tanpa_simbol,
-  "toko": "nama toko",
-  "daftar_barang": ["nama barang 1", "nama barang 2"]
-}
-ATURAN MUTLAK: Hanya berikan respons JSON mentah! Dilarang menambahkan penjelasan, sapaan, atau markdown backticks (\`\`\`json).`;
-
-                const finalPrompt = `[TEKS STRUK MENTAH]\n${teksMentahStruk}\n\n[INSTRUKSI TAMBAHAN]\n${userPrompt}`;
-
-                const payload = {
+                uiLog("🧠 Groq sedang menyusun JSON...");
+                const groqPayload = {
                     model: "llama-3.3-70b-versatile",
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: finalPrompt }
-                    ],
-                    temperature: 0.1 
+                    messages: [{ role: "system", content: "Parser keuangan JSON murni saja. Format: {\"total_belanja\": 0, \"toko\": \"\", \"daftar_barang\": []}" }, { role: "user", content: `Teks: ${teksMentah}\n\nInstruksi: ${prompt}` }]
                 };
 
-                const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${groqKey}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(payload)
+                const resGroq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST", headers: {"Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json"},
+                    body: JSON.stringify(groqPayload)
                 });
+                const dataGroq = await resGroq.json();
+                uiLog("--- HASIL AKHIR ---", "success");
+                uiLog(dataGroq.choices[0].message.content.trim(), "success");
 
-                if (!groqResponse.ok) {
-                    const errDetail = await groqResponse.json().catch(()=>({}));
-                    throw new Error(`Groq API Error: ${groqResponse.status} - ${errDetail.error?.message || ''}`);
-                }
-
-                const result = await groqResponse.json();
-                let outputAI = result.choices[0].message.content.trim();
-                
-                uiLog("--- 🚀 HASIL AKHIR GROQ (JSON RAPI) ---", "success");
-                uiLog(outputAI, "success");
-
-            } catch (err) {
-                uiLog(err.message, "error");
-            } finally {
-                const btn = document.getElementById('btn-test');
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fa-solid fa-bolt"></i> Eksekusi AI Pipeline';
-            }
+            } catch (err) { uiLog(err.message, "error"); } 
+            finally { document.getElementById('btn-test').disabled = false; }
         }
     </script>
 </body>
