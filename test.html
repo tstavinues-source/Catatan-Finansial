@@ -3,23 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PaddleOCR + Groq AI Pipeline</title>
+    <title>Polyglot OCR + Groq AI</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    </head>
+</head>
 <body class="bg-slate-950 text-slate-200 p-4 md:p-8 font-sans min-h-screen">
 
     <div class="max-w-3xl mx-auto space-y-6">
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl relative overflow-hidden">
-            <div class="absolute -right-10 -top-10 text-emerald-500/10 text-9xl"><i class="fa-solid fa-server"></i></div>
-            <h1 class="text-2xl font-black text-emerald-400 mb-2 relative z-10"><i class="fa-solid fa-server mr-2"></i>Microservice OCR + Groq AI</h1>
-            <p class="text-xs text-slate-400 relative z-10">Laboratorium Uji Coba: Menggunakan peladen Python PaddleOCR (Hugging Face) untuk membaca gambar, lalu dirapikan dengan Groq AI.</p>
+            <div class="absolute -right-10 -top-10 text-emerald-500/10 text-9xl"><i class="fa-solid fa-globe"></i></div>
+            <h1 class="text-2xl font-black text-emerald-400 mb-2 relative z-10"><i class="fa-solid fa-globe mr-2"></i>Polyglot OCR + Groq</h1>
+            <p class="text-xs text-slate-400 relative z-10">Laboratorium Uji Coba: Membaca struk Multi-Bahasa dari Jepang, Indonesia, Inggris, hingga Vietnam.</p>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-5">
             <div>
                 <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Groq Asli</label>
                 <input type="password" id="api-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-colors" placeholder="Masukkan API Key (Berawalan gsk_...)">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Bahasa Struk Belanja</label>
+                <select id="lang-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500 transition-colors cursor-pointer appearance-none">
+                    <option value="Jepang (Kanji/Kana)">🇯🇵 Jepang (Kanji/Kana)</option>
+                    <option value="Indonesia / Inggris (Latin)">🇮🇩 / 🇬🇧 Indonesia & Inggris (Latin)</option>
+                    <option value="Vietnam (Diakritik)">🇻🇳 Vietnam (Diakritik)</option>
+                </select>
             </div>
 
             <div>
@@ -45,13 +54,12 @@
                 <button id="btn-clear" class="text-xs text-slate-500 hover:text-rose-400 transition-colors px-2 py-1 bg-slate-950 rounded-lg"><i class="fa-solid fa-trash mr-1"></i> Bersihkan</button>
             </h2>
             <div id="log-output" class="bg-black/80 border border-slate-800 p-5 rounded-xl font-mono text-[11px] text-slate-300 h-80 overflow-y-auto space-y-2 break-words shadow-inner">
-                <div class="text-slate-600">Sistem siap. Masukkan API Key Groq dan pilih gambar struk...</div>
+                <div class="text-slate-600">Sistem siap. Pilih bahasa struk lalu tekan eksekusi...</div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 1. SISTEM LOGGING KE UI ---
         const logBox = document.getElementById('log-output');
         function uiLog(message, type = 'info') {
             const span = document.createElement('div');
@@ -71,9 +79,9 @@
             logBox.innerHTML = '<div class="text-slate-600">Log dibersihkan...</div>';
         });
 
-        // --- 2. KENDALI TOMBOL EKSEKUSI ---
         document.getElementById('btn-test').addEventListener('click', async () => {
             const groqKey = document.getElementById('api-key-input').value.trim();
+            const langChoice = document.getElementById('lang-input').value; // Mengambil pilihan bahasa
             const promptText = document.getElementById('prompt-input').value || 'Ekstrak detail struk ini secara lengkap.';
             const fileInput = document.getElementById('image-input');
             
@@ -95,26 +103,23 @@
             reader.readAsDataURL(fileInput.files[0]);
             reader.onload = async () => {
                 const base64Image = reader.result;
-                await eksekusiAIPipeline(promptText, base64Image, groqKey);
+                await eksekusiAIPipeline(promptText, base64Image, groqKey, langChoice);
             };
         });
 
-        // --- 3. FUNGSI INTI: PADDLE-OCR (HUGGING FACE) + GROQ ---
-        async function eksekusiAIPipeline(userPrompt, imageStr, groqKey) {
+        async function eksekusiAIPipeline(userPrompt, imageStr, groqKey, langChoice) {
             try {
                 let teksMentahStruk = "";
 
-                // --- TAHAP 1: MATA (PADDLE-OCR VIA HUGGING FACE API) ---
-                uiLog("🚀 Mengirim gambar ke Peladen PaddleOCR (Hugging Face) Anda...", "warn");
-                
-                // Ini adalah URL API otomatis yang dibuat Hugging Face untuk Space Anda
+                uiLog(`🚀 Mengirim gambar ke Peladen. Mode: ${langChoice}...`, "warn");
                 const hfApiUrl = "https://tstavinues-aurafi-paddleocr.hf.space/api/predict";
 
                 const ocrResponse = await fetch(hfApiUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        data: [imageStr] // Mengirim gambar base64 ke fungsi Python Anda
+                        // MENGIRIM 2 DATA: [Gambar Base64, Pilihan Bahasa]
+                        data: [imageStr, langChoice] 
                     })
                 });
 
@@ -123,18 +128,15 @@
                 }
 
                 const ocrResult = await ocrResponse.json();
-                
-                // Menangkap teks balasan dari peladen Python
                 teksMentahStruk = ocrResult.data[0]; 
 
                 uiLog("--- HASIL SCAN MENTAH PADDLE-OCR ---", "info");
                 uiLog(teksMentahStruk, "info");
                 
-                if(!teksMentahStruk || teksMentahStruk.trim() === '' || teksMentahStruk.includes("Gagal") || teksMentahStruk.includes("Error")) {
-                    throw new Error("PaddleOCR gagal membaca gambar atau teks kosong.");
+                if(!teksMentahStruk || teksMentahStruk.trim() === '' || teksMentahStruk.includes("Gagal") || teksMentahStruk.includes("Error Internal")) {
+                    throw new Error("PaddleOCR gagal membaca gambar: " + teksMentahStruk);
                 }
 
-                // --- TAHAP 2: OTAK (GROQ AI API) ---
                 uiLog("🧠 Mengirim teks mentah ke Groq AI (Llama 3.3) untuk dirapikan menjadi JSON...", "warn");
                 
                 const systemPrompt = `Anda adalah sistem parser data keuangan tingkat lanjut. 
