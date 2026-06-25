@@ -1,12 +1,11 @@
 /**
- * AI Orchestrator (Versi Final Pipeline Ganda)
+ * AI Orchestrator (Versi Final - Menggunakan Global Window)
  * Mengatur rute eksekusi antara model Groq dan Gemini berdasarkan jenis data.
- * MENGGUNAKAN PIPELINE KHUSUS UNTUK GAMBAR: Gemini (Mata) -> Groq (Otak).
  */
 
 import { AuraState } from '../../core/state.js';
-// PERBAIKAN BARIS 8: Menghapus kurung kurawal agar kompatibel dengan export default
-import GroqService from './groq.js'; 
+
+// KITA HAPUS TOTAL PERINTAH IMPORT UNTUK GROQ DI SINI!
 
 window.getOraclePromptConfigs = function() {
     const prefs = AuraState.data.settings?.aiPreferences || {};
@@ -33,19 +32,23 @@ window.getOraclePromptConfigs = function() {
 
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     
-    // Menghindari undefined jika GroqService dipanggil dari objek global window
-    const ActiveGroq = typeof GroqService !== 'undefined' ? GroqService : window.GroqService;
+    // Langsung ambil dari window global karena groq.js dimuat di HTML
+    const ActiveGroq = window.GroqService;
+
+    if (!ActiveGroq) {
+        throw new Error("Sistem Gagal Memuat GroqService. Pastikan file groq.js sudah dimuat di index.html.");
+    }
 
     // Pastikan kunci Groq termuat ke kolam antrean
-    if (ActiveGroq && ActiveGroq.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
+    if (ActiveGroq.keysPool && ActiveGroq.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
         ActiveGroq.init(AuraState.data.groqKeys);
     }
     
     const hasGemini = AuraState.instances.geminiEngine && AuraState.instances.geminiEngine.keysPool.length > 0;
-    const hasGroq = ActiveGroq && ActiveGroq.keysPool.length > 0;
+    const hasGroq = ActiveGroq.keysPool && ActiveGroq.keysPool.length > 0;
 
     // ========================================================================
-    // SKENARIO 1: ADA GAMBAR (PIPELINE GEMINI MATA -> GROQ OTAK)
+    // SKENARIO 1: DETEKSI STRUK GAMBAR (PIPELINE GEMINI MATA -> GROQ OTAK)
     // ========================================================================
     if (base64Image) {
         if (!hasGemini) throw new Error("Fitur penglihatan (OCR) butuh Gemini. Pastikan Anda sudah login PIN Brankas!");
@@ -53,16 +56,15 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
 
         if (window.showToast) window.showToast("Mata Gemini sedang memindai struk...", false);
         
-        // TAHAP 1: Gemini (Hanya untuk Ekstrak Teks Mentah)
+        // TAHAP 1: Gemini (Hanya mengekstrak tulisan mentah)
         const userPrompt = messages[messages.length - 1].content;
-        const geminiOCRSystem = "Anda adalah mesin OCR buta yang tidak bisa berpikir, hanya bisa membaca teks. Ekstrak seluruh teks dalam gambar secara baris demi baris. Dilarang merangkum, dilarang memberi penjelasan, tulis persis apa adanya.";
+        const geminiOCRSystem = "Anda adalah mesin OCR buta yang tidak bisa berpikir, hanya bisa membaca teks. Ekstrak seluruh teks dalam gambar secara baris demi baris termasuk karakter multi-bahasa. Dilarang merangkum, dilarang memberi penjelasan, tulis persis apa adanya.";
         
         const geminiPayload = { 
             contents: [{ 
                 role: "user", 
                 parts: [
-                    { text: "BACA SELURUH TEKS DALAM GAMBAR INI APA ADANYA." } 
-                    // image base64 akan ditambahkan otomatis di dalam gemini.js
+                    { text: "SALIN DAN EKSTRAK SELURUH TEKS DALAM GAMBAR INI SECARA BARIS DEMI BARIS." } 
                 ] 
             }], 
             systemInstruction: { parts: [{ text: geminiOCRSystem }] } 
@@ -76,12 +78,12 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
         }
 
         if(!teksMentahStruk || teksMentahStruk.trim() === '') {
-            throw new Error("Mata Gemini tidak menemukan teks apa pun di gambar ini.");
+            throw new Error("Mata Gemini tidak menemukan teks apa pun di dalam gambar struk ini.");
         }
 
         if (window.showToast) window.showToast("Groq sedang merapikan data transaksi...", false);
 
-        // TAHAP 2: Groq (Llama 3.3) Merakit JSON
+        // TAHAP 2: Groq Merakit JSON
         const groqMessages = [
             { role: "system", content: systemPrompt },
             { role: "user", content: `[TEKS STRUK MENTAH DARI OCR]\n${teksMentahStruk}\n\n[INSTRUKSI ASLI USER]\n${userPrompt}` }
@@ -96,7 +98,7 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     }
 
     // ========================================================================
-    // SKENARIO 2: TIDAK ADA GAMBAR (CHAT BIASA)
+    // SKENARIO 2: CHAT TEXT-ONLY (TANPA GAMBAR)
     // ========================================================================
     const prefs = AuraState.data.settings?.aiPreferences || {};
     const chatModel = prefs.modelChat || 'Auto'; 
@@ -105,7 +107,6 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     let lastError = null;
     let fallbackToGemini = false;
     
-    // Coba Groq terlebih dahulu (Karena cepat)
     if (useGroq && hasGroq) {
         try { 
             const result = await ActiveGroq.fetch(messages, requireJson);
@@ -120,7 +121,6 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
         else throw new Error("Tidak ada kuota konfigurasi Key untuk engine Groq.");
     }
     
-    // Coba Gemini (Sebagai Fallback / Pilihan User)
     if ((useGemini && hasGemini) || fallbackToGemini) {
         try {
             const userPrompt = messages[messages.length - 1].content;
@@ -140,5 +140,5 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
         }
     }
     
-    throw new Error(`Koneksi Transmisi Intelek Terputus: ${lastError ? lastError.message : "Sistem mati atau tidak ada kunci AI."}`);
+    throw new Error(`Koneksi Transmisi Intelek Terputus: ${lastError ? lastError.message : "Sistem mati atau tidak ada kunci AI aktif."}`);
 };
