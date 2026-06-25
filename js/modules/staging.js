@@ -28,9 +28,14 @@ FOKUS UTAMA: Ekstrak JSON mentah berdasarkan teks OCR struk.
 
 ATURAN MUTLAK (ANGKA & ITEM):
 1. JANGAN PERNAH menghapus atau menggabungkan baris item. Ekstrak SEMUA baris di struk.
-2. JANGAN MELAKUKAN MATEMATIKA KOMPLEKS. Salin angka "harga" PERSIS seperti nominal yang tertulis di sebelah nama barang di struk.
-3. PAJAK SOTOZEI: Jika ada total Pajak Terpisah (Tax) di bagian bawah struk, masukkan angka pajak tersebut utuh ke dalam field "admin_fee".
-4. Indikator pajak (misal 8% atau 10%) di sebelah barang, cukup masukkan ke "tax_rate". Jika tidak ada, isi 0.
+2. TERJEMAHKAN "nama_barang" ke dalam Bahasa Indonesia yang singkat, rapi, dan masuk akal.
+3. JANGAN MELAKUKAN MATEMATIKA KOMPLEKS. Salin angka "harga" PERSIS seperti nominal yang tertulis di sebelah nama barang di struk.
+4. PENANGANAN PAJAK BAWAH STRUK (Uchizei vs Sotozei):
+   - Jika struk menggunakan "Pajak Termasuk" (Uchizei / 内税) dimana harga barang sudah berisikan pajak, ABAIKAN tulisan total pajak di bawah struk (isi "admin_fee": 0).
+   - Jika struk menggunakan "Pajak Terpisah" (Sotozei / 外税) dimana pajak baru ditambahkan di akhir, masukkan nominal pajak tersebut ke "admin_fee".
+   - CARA CEK SILANG: Pastikan rumus (Total Harga Semua Item + admin_fee) SAMA PERSIS dengan Total Bayar (Grand Total) di struk. Jika melebihi, berarti pajaknya sudah termasuk (Uchizei), jadikan admin_fee 0.
+5. Indikator pajak (misal 8% atau 10%) di sebelah barang, cukup masukkan ke "tax_rate". Jika tidak ada, isi 0.
+
 
 ATURAN KATEGORI (ORGANIK):
 - Referensi kategori yang ada: "${categoryListStr}".
