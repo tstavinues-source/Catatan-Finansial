@@ -1,11 +1,12 @@
 /**
- * AI Orchestrator
+ * AI Orchestrator (Versi Final Pipeline Ganda)
  * Mengatur rute eksekusi antara model Groq dan Gemini berdasarkan jenis data.
  * MENGGUNAKAN PIPELINE KHUSUS UNTUK GAMBAR: Gemini (Mata) -> Groq (Otak).
  */
 
 import { AuraState } from '../../core/state.js';
-import { GroqService } from './groq.js';
+// PERBAIKAN BARIS 8: Menghapus kurung kurawal agar kompatibel dengan export default
+import GroqService from './groq.js'; 
 
 window.getOraclePromptConfigs = function() {
     const prefs = AuraState.data.settings?.aiPreferences || {};
@@ -20,7 +21,7 @@ window.getOraclePromptConfigs = function() {
     else if (userPersona === "Santai dan Asyik") personaStr = "santai, asyik, dan ramah";
     else if (userPersona === "Sarkas Cerdas") personaStr = "cerdas dengan sedikit sarkas elegan";
     else if (userPersona === "Mentor Keuangan") personaStr = "seperti mentor keuangan yang tegas dan bijak";
-    else if (userPersona === "Formal") personaStr = "sangt formal, baku, dan analitis";
+    else if (userPersona === "Formal") personaStr = "sangat formal, baku, dan analitis";
     else if (userPersona === "Lucu") personaStr = "lucu, humoris, dan menghibur";
     
     let styleStr = "Jawab dengan panjang normal (sekitar 3-8 kalimat).";
@@ -32,13 +33,16 @@ window.getOraclePromptConfigs = function() {
 
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     
+    // Menghindari undefined jika GroqService dipanggil dari objek global window
+    const ActiveGroq = typeof GroqService !== 'undefined' ? GroqService : window.GroqService;
+
     // Pastikan kunci Groq termuat ke kolam antrean
-    if (GroqService.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
-        GroqService.init(AuraState.data.groqKeys);
+    if (ActiveGroq && ActiveGroq.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
+        ActiveGroq.init(AuraState.data.groqKeys);
     }
     
     const hasGemini = AuraState.instances.geminiEngine && AuraState.instances.geminiEngine.keysPool.length > 0;
-    const hasGroq = GroqService.keysPool.length > 0;
+    const hasGroq = ActiveGroq && ActiveGroq.keysPool.length > 0;
 
     // ========================================================================
     // SKENARIO 1: ADA GAMBAR (PIPELINE GEMINI MATA -> GROQ OTAK)
@@ -78,14 +82,13 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
         if (window.showToast) window.showToast("Groq sedang merapikan data transaksi...", false);
 
         // TAHAP 2: Groq (Llama 3.3) Merakit JSON
-        // Kita timpa pesan User yang asli dengan Teks Mentah dari Gemini
         const groqMessages = [
             { role: "system", content: systemPrompt },
             { role: "user", content: `[TEKS STRUK MENTAH DARI OCR]\n${teksMentahStruk}\n\n[INSTRUKSI ASLI USER]\n${userPrompt}` }
         ];
 
         try {
-            const resultJSON = await GroqService.fetch(groqMessages, requireJson);
+            const resultJSON = await ActiveGroq.fetch(groqMessages, requireJson);
             return resultJSON;
         } catch(e) {
             throw new Error(`Otak Groq Gagal Merapikan Data: ${e.message}`);
@@ -105,7 +108,7 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     // Coba Groq terlebih dahulu (Karena cepat)
     if (useGroq && hasGroq) {
         try { 
-            const result = await GroqService.fetch(messages, requireJson);
+            const result = await ActiveGroq.fetch(messages, requireJson);
             return result;
         } catch(e) { 
             lastError = e;
