@@ -1,6 +1,7 @@
 /**
  * AI Staging Area
  * Mengelola hasil ekstraksi AI (Parsing JSON), rendering UI Staging, dan penyimpanan ke database.
+ * TELAH DI-UPGRADE DENGAN SISTEM KATEGORI DINAMIS (AI ORGANIK)
  */
 
 import { AuraState } from '../core/state.js';
@@ -20,45 +21,27 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const activeCurrency = AuraState.system.displayCurrency || 'JPY';
         const profile = AuraState.data.settings?.profile || {};
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
+        
+        // Kita hanya menjadikan list kategori sebagai referensi, bukan kewajiban mutlak
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // === SUNTIKAN WAKTU LOKAL (MENCEGAH BUG JAM 09:00 UTC) ===
-        const now = new Date();
-        const localDate = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-        const localTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-        
-        const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
-WAKTU SAAT INI: Tanggal ${localDate}, Jam ${localTime}
-
-FOKUS UTAMA: Ekstrak JSON mentah dengan sangat akurat dari struk/teks.
-
-ATURAN TANGGAL & WAKTU:
-1. Cari tanggal dan jam di struk. Jika di teks/struk TIDAK ADA informasi tanggal, WAJIB gunakan Waktu Saat Ini (${localDate} dan ${localTime}).
-2. Format "tanggal" wajib YYYY-MM-DD. Format "waktu" wajib HH:MM.
-
-ATURAN KATEGORI (SMART LEARNING):
-Prioritaskan memilih "kategori_barang" dari daftar ini: [${categoryListStr}]. 
-NAMUN, jika barangnya sangat spesifik, KAMU DIIZINKAN membuat kategori baru (Maksimal 1-2 kata, Contoh: "Camilan", "Sayuran", dll). Jangan gunakan "Lainnya" kecuali terpaksa.
-
-ATURAN PAJAK BERSYARAT (SANGAT KRITIKAL!):
-Hitung dulu ada berapa jumlah barang di struk ini.
-1. JIKA JUMLAH BARANG <= 17: Bagikan nilai persen pajak ke harga masing-masing item proporsional. Masukkan harga final ke field 'harga'.
-2. JIKA JUMLAH BARANG > 17: JANGAN membagikan pajak. Masukkan harga item SAMA PERSIS dengan struk. LALU, buat item terpisah di bawah untuk pajaknya (Contoh: nama_barang: "Pajak Konsumsi", harga: nominal_pajaknya).
-3. Pengecualian: JIKA total harga barang sudah sama dengan Grand Total, JANGAN hitung pajak lagi.
-4. Total nominal item di JSON WAJIB sama persis dengan Total Akhir Pembayaran.
-
-ATURAN TRANSLASI:
-Wajib TERJEMAHKAN nama toko (merchantName) dan nama barang (nama_barang) ke BAHASA INDONESIA.
-
-Struktur Output Target JSON MURNI:
+        const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS tingkat lanjut. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
+FOKUS UTAMA: Analisis detail dan ekstrak JSON murni.
+ALUR LOGIKA:
+1. Pahami bahasa struk (misal: Jepang), terjemahkan nama barang ke Bahasa Indonesia yang masuk akal.
+2. Tentukan Tipe: "tarik_tunai", "setor_tunai", "pemasukan", atau "pengeluaran".
+3. 'nominal' = sum(harga x qty) + admin_fee.
+4. KATEGORI BARANG: Gunakan kategori yang paling spesifik dan tepat (misal: "Bahan Makanan", "Camilan", "Kebutuhan Mandi"). 
+   Referensi kategori yang sudah ada: "${categoryListStr}". JIKA barang tersebut tidak cocok dengan referensi, CIPTAKAN nama kategori baru yang sangat akurat.
+5. merchantName wajib diisi sesuai nama toko di struk.
+Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
 {
     "merchantName": "string", 
     "tanggal": "YYYY-MM-DD", 
-    "waktu": "HH:MM",
     "mata_uang": "string", 
     "metode_pembayaran": "tunai/cashless", 
-    "tipe": "pengeluaran", 
-    "admin_fee": 0, 
+    "tipe": "pemasukan/pengeluaran/tarik_tunai/setor_tunai", 
+    "admin_fee": number, 
     "description": "string", 
     "items": [
         {
@@ -66,33 +49,24 @@ Struktur Output Target JSON MURNI:
             "harga": number, 
             "qty": number, 
             "kategori_barang": "string", 
-            "tax_rate": 0
+            "tax_rate": number
         }
     ]
 }`;
-        const userContent = `Catat transaksi ini: "${text || "Proses foto terlampir"}" (Mata Uang ${activeCurrency}).`;
+        const userContent = `Catat transaksi ini secara detail dan akurat: "${text || "Proses foto terlampir"}" (Mata Uang ${activeCurrency}).`;
         const messages = [ 
             { role: "system", content: systemPrompt }, 
             { role: "user", content: userContent } 
         ];
         
-        // Panggil AI (Gemini / Groq)
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, imgData);
         const jsonResult = AuraUtils.parseCleanJSON(aiOutput);
 
-        // === PERAKITAN WAKTU FINAL (MENGUNCI ZONA WAKTU LOKAL) ===
-        const parsedDate = jsonResult.tanggal || localDate;
-        const parsedTime = jsonResult.waktu || localTime;
-        let finalDateObj = new Date(`${parsedDate}T${parsedTime}:00`);
-        if (isNaN(finalDateObj.getTime())) {
-            finalDateObj = new Date(); // Fallback jika format AI hancur
-        }
-        const finalISO = finalDateObj.toISOString();
-
+        const timestamp = new Date().toISOString();
         AuraState.temp.aiStaging = {
-            items: AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, finalISO),
+            items: AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, timestamp),
             merchantName: jsonResult.merchantName || jsonResult.storeName || jsonResult.kategori || "Toko/Merchant",
-            tanggal: finalISO, // Simpan sebagai ISO penuh berisikan Jam & Menit
+            tanggal: jsonResult.tanggal || timestamp.split('T')[0],
             mata_uang: jsonResult.mata_uang || activeCurrency,
             metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
             tipe: jsonResult.tipe || 'pengeluaran',
@@ -103,7 +77,7 @@ Struktur Output Target JSON MURNI:
         
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
-        if (window.showToast) window.showToast("Selesai diproses! Waktu disesuaikan otomatis.");
+        if (window.showToast) window.showToast("Selesai diproses! Silakan verifikasi.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
@@ -119,9 +93,10 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-trx-store', el => el.value = data.merchantName);
     AuraUtils.safeDOM('staging-trx-type', el => el.value = data.tipe);
     
+    // Persiapan Opsi Datalist
     const allCats = CategoryManager.getAllCategories();
     let catOptionsHtml = '';
-    Object.values(allCats).forEach(c => catOptionsHtml += `<option value="${c.name}">${c.name}</option>`);
+    Object.values(allCats).forEach(c => catOptionsHtml += `<option value="${c.name}">`);
     
     const itemsContainer = document.getElementById('staging-items-container');
     let totalNominal = 0;
@@ -137,30 +112,34 @@ window.renderStagingUI = function() {
                 const numQty = Number(it.qty) || 1;
                 totalNominal += (numHarga * numQty);
                 const safeName = AuraUtils.escapeHtml(it.nama_barang);
+                // Mengamankan string kategori dari bentrok tanda kutip
+                const safeKategori = it.kategori_barang ? it.kategori_barang.replace(/"/g, '&quot;') : "Lainnya";
                 
                 compiledItemsHtml += `
-                <div class="glass-panel p-3 relative group border-l-2 border-l-accent mb-2">
-                    <button onclick="window.removeStagingItem(${idx})" class="absolute top-2 right-2 text-[var(--color-expense)] hover:text-rose-400 p-1 bg-black/40 rounded-full w-6 h-6 flex items-center justify-center z-10">
+                <div class="glass-panel p-3 relative group border-l-2 border-l-accent mb-3">
+                    <button onclick="window.removeStagingItem(${idx})" class="absolute top-2 right-2 text-[var(--color-expense)] hover:text-rose-400 p-1 bg-black/40 rounded-full w-6 h-6 flex items-center justify-center z-10 transition-colors">
                         <i class="fa-solid fa-trash text-[10px]"></i>
                     </button>
-                    <div class="pr-6 space-y-2">
-                        <input type="text" value="${safeName}" onchange="window.updateStagingItem(${idx}, 'nama_barang', this.value)" class="bg-transparent border-b border-[var(--border-glass)] w-full text-sm outline-none text-white pb-1 font-medium focus:border-accent">
-                        <div class="flex gap-2">
-                            <div class="w-1/4">
-                                <span class="text-[8px] text-[var(--text-muted)] block mb-0.5 font-bold">Qty</span>
-                                <input type="number" value="${numQty}" onchange="window.updateStagingItem(${idx}, 'qty', this.value)" class="bg-black/30 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] text-center font-mono">
+                    <div class="pr-6 space-y-3">
+                        <input type="text" value="${safeName}" onchange="window.updateStagingItem(${idx}, 'nama_barang', this.value)" class="bg-transparent border-b border-[var(--border-glass)] w-full text-sm outline-none text-white pb-1 font-medium focus:border-accent transition-colors" placeholder="Nama Barang">
+                        
+                        <div class="grid grid-cols-12 gap-2 items-end">
+                            <div class="col-span-3">
+                                <span class="text-[9px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider">QTY</span>
+                                <input type="number" value="${numQty}" onchange="window.updateStagingItem(${idx}, 'qty', this.value)" class="bg-black/40 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] text-center font-mono focus:border-blue-400 transition-colors">
                             </div>
-                            <div class="w-2/4">
-                                <span class="text-[8px] text-[var(--text-muted)] block mb-0.5 font-bold">Harga Satuan</span>
-                                <input type="number" value="${numHarga}" onchange="window.updateStagingItem(${idx}, 'harga', this.value)" class="bg-black/30 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] font-mono">
+                            <div class="col-span-5">
+                                <span class="text-[9px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider">HARGA SATUAN</span>
+                                <input type="number" value="${numHarga}" onchange="window.updateStagingItem(${idx}, 'harga', this.value)" class="bg-black/40 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] font-mono focus:border-blue-400 transition-colors">
                             </div>
-                            <div class="flex-1">
-                                <span class="text-[8px] text-[var(--text-muted)] block mb-0.5 font-bold">Kategori</span>
-                                <select onchange="window.updateStagingItem(${idx}, 'kategori_barang', this.value)" class="bg-black/30 rounded-lg p-2 w-full text-[10px] outline-none border border-[var(--border-glass)]">
-                                    <option value="${it.kategori_barang}" selected>${it.kategori_barang}</option>
+                            <div class="col-span-4">
+                                <span class="text-[9px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider text-emerald-400">KATEGORI (AI)</span>
+                                
+                                <input type="text" list="kategori-list-${idx}" value="${safeKategori}" onchange="window.updateStagingItem(${idx}, 'kategori_barang', this.value)" class="bg-black/40 rounded-lg p-2 w-full text-[10px] outline-none border border-[var(--border-glass)] focus:border-emerald-400 transition-colors placeholder-slate-600" placeholder="Ketik/Pilih">
+                                <datalist id="kategori-list-${idx}">
                                     ${catOptionsHtml}
-                                </select>
-                            </div>
+                                </datalist>
+                                </div>
                         </div>
                     </div>
                 </div>`;
@@ -181,7 +160,7 @@ window.updateStagingItem = function(index, field, value) {
         const validatedVal = Number(value);
         stagingData.items[index][field] = isNaN(validatedVal) ? 0 : validatedVal;
     } else { 
-        stagingData.items[index][field] = value;
+        stagingData.items[index][field] = value.trim();
     }
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
@@ -196,7 +175,7 @@ window.addStagingItem = function() {
     if (!AuraState.temp.aiStaging) return;
     AuraState.temp.aiStaging.items.push({ 
         itemId: AuraUtils.generateId('itm'), 
-        nama_barang: "Item Tambahan", 
+        nama_barang: "Item Baru", 
         harga: 0, qty: 1, kategori_barang: "Lainnya", tax_rate: 0, 
         paymentMethod: AuraState.temp.aiStaging.metode_pembayaran, 
         timestamp: new Date().toISOString() 
@@ -217,26 +196,24 @@ window.saveStagingToDatabase = async function() {
     let finalSum = 0;
     for (let i = 0; i < stagingData.items.length; i++) { 
         finalSum += ((Number(stagingData.items[i].harga) || 0) * (Number(stagingData.items[i].qty) || 1));
+        
+        // Pastikan kategori yang baru diciptakan tersimpan dengan baik
+        if (!stagingData.items[i].kategori_barang) {
+            stagingData.items[i].kategori_barang = "Lainnya";
+        }
     }
     
     stagingData.nominal = finalSum + Number(stagingData.admin_fee || 0); 
-    stagingData.createdAt = new Date().toISOString(); // Waktu tombol ditekan
+    stagingData.createdAt = new Date().toISOString();
     stagingData.is_deleted = false;
 
     try {
-        if (typeof CategoryManager.autoLearnCategories === 'function') {
-            await CategoryManager.autoLearnCategories(stagingData.items);
-        }
-        
+        // Karena kategori bisa baru, serahkan penyimpanannya ke database
         await FirebaseService.saveTransaction(stagingData, true);
-        
         if (typeof window.closeModal === 'function') window.closeModal('modal-ai-staging');
         
         AuraState.temp.aiStaging = null;
         if (window.showToast) window.showToast("Berkas Staging Area dikonfirmasi ke server Cloud!");
-
-        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-
     } catch(e) { 
         if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
     }
