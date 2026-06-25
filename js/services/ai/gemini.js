@@ -1,6 +1,6 @@
 /**
- * Gemini Vision Engine
- * Menangani ekstraksi gambar struk dan failover API Key Google Gemini Nexus.
+ * Gemini Vision Engine (Versi Dynamic Endpoint)
+ * Menangani ekstraksi gambar, failover API Key, dan Load Balancing lintas model.
  */
 
 import { APP_CONFIG } from '../../config/constants.js';
@@ -13,9 +13,23 @@ export class GeminiFailoverEngine {
         this.pin = pinCode;
         this.keysPool = []; 
         this.currentIndex = 0; 
+        
+        // DAFTAR MODEL EKSKLUSIF (Berdasarkan ketersediaan AI Studio Anda)
+        // Array ini bisa diakses oleh UI Pengaturan untuk membuat menu Dropdown
+        this.availableModels = [
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-lite",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-pro",
+            "gemini-3.0-flash",
+            "gemini-3.1-pro",
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash"
+        ];
     }
     
-    // === MESIN GEMBOK NEXUS (MEMBUKA PIN 123) ===
+    // === MESIN GEMBOK NEXUS ===
     async init() {
         this.keysPool = [];
         if (!AuraState.instances.db) return 0;
@@ -33,7 +47,7 @@ export class GeminiFailoverEngine {
                     decrypted = EncryptionService.decryptApiKey(item.value, this.pin);
                 }
                 
-                // Fallback Dekripsi Klasik jika EncryptionService gagal
+                // Fallback Dekripsi Klasik
                 if (!decrypted) { 
                     try { 
                         let text = atob(item.value);
@@ -56,10 +70,16 @@ export class GeminiFailoverEngine {
         return this.keysPool.length;
     }
     
-    // === MESIN EKSEKUSI AI YANG SUDAH DI-UPGRADE ===
-    async fetch(payload, base64Image) {
+    // === MESIN EKSEKUSI AI DINAMIS ===
+    // Menambahkan parameter 'targetModel' untuk kebebasan memilih versi AI
+    async fetch(payload, base64Image, targetModel = "gemini-3.5-flash") {
         if (this.keysPool.length === 0) {
             throw new Error("Sistem Gemini terkunci: Kunci API kosong atau PIN Anda tidak akurat.");
+        }
+        
+        // Proteksi jika targetModel kosong atau tidak valid, kembalikan ke model unggulan
+        if (!targetModel || typeof targetModel !== 'string') {
+            targetModel = "gemini-3.5-flash";
         }
         
         let attempt = 0;
@@ -69,12 +89,12 @@ export class GeminiFailoverEngine {
         while (attempt < maxLimit) {
             const activeKeyObj = this.keysPool[this.currentIndex];
             
-            // MENGGUNAKAN ENDPOINT 3.5-FLASH MUTAKHIR UNTUK STABILITAS JSON
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKeyObj.value}`;
+            // INJEKSI ENDPOINT DINAMIS (Memanggil server sesuai pilihan)
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${activeKeyObj.value}`;
             
             const requestPayload = JSON.parse(JSON.stringify(payload));
             
-            // SUNTIKAN OTOMATIS: Memaksa AI menjawab JSON Murni jika ia mendeteksi instruksi JSON
+            // SUNTIKAN OTOMATIS: JSON Mode
             let isJsonRequest = false;
             if (requestPayload.system_instruction && requestPayload.system_instruction.parts) {
                 const sysText = requestPayload.system_instruction.parts[0].text.toLowerCase();
@@ -84,10 +104,10 @@ export class GeminiFailoverEngine {
             if (isJsonRequest) {
                 if (!requestPayload.generationConfig) requestPayload.generationConfig = {};
                 requestPayload.generationConfig.response_mime_type = "application/json";
-                requestPayload.generationConfig.temperature = 0.0; // Paksa ke mode akurasi absolut
+                requestPayload.generationConfig.temperature = 0.0;
             }
             
-            // Injeksi Gambar Cerdas (Menghindari Error Format)
+            // Injeksi Gambar Cerdas
             if (base64Image) {
                 const base64Data = base64Image.split(',')[1] || base64Image;
                 const mimeType = base64Image.includes(',') ? base64Image.split(';')[0].split(':')[1] : 'image/jpeg';
@@ -118,7 +138,7 @@ export class GeminiFailoverEngine {
                     continue; 
                 }
                 
-                if (!response.ok) throw new Error(`HTTP Eksekusi Tertolak (Status ${response.status})`);
+                if (!response.ok) throw new Error(`HTTP Eksekusi Tertolak di ${targetModel} (Status ${response.status})`);
                 
                 const result = await response.json();
                 if (!result.candidates || result.candidates.length === 0) {
@@ -135,7 +155,7 @@ export class GeminiFailoverEngine {
                 attempt++; 
             }
         }
-        throw new Error("Siklus Vision Google diblokir total atau jaringan sedang offline.");
+        throw new Error(`Siklus API diblokir total untuk model ${targetModel}. Silakan periksa limit/koneksi.`);
     }
 }
 
