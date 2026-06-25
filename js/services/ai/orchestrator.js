@@ -1,11 +1,13 @@
 /**
- * AI Orchestrator (Versi Final - Menggunakan Global Window)
+ * AI Orchestrator (Versi Final - Menyesuaikan Struktur Asli GroqAPI)
  * Mengatur rute eksekusi antara model Groq dan Gemini berdasarkan jenis data.
+ * MENGGUNAKAN PIPELINE KHUSUS UNTUK GAMBAR: Gemini (Mata) -> Groq (Otak).
  */
 
 import { AuraState } from '../../core/state.js';
 
-// KITA HAPUS TOTAL PERINTAH IMPORT UNTUK GROQ DI SINI!
+// Menggunakan kurung kurawal karena di groq.js Anda tertulis "export const GroqAPI"
+import { GroqAPI } from './groq.js'; 
 
 window.getOraclePromptConfigs = function() {
     const prefs = AuraState.data.settings?.aiPreferences || {};
@@ -32,27 +34,20 @@ window.getOraclePromptConfigs = function() {
 
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     
-    // Langsung ambil dari window global karena groq.js dimuat di HTML
-    const ActiveGroq = window.GroqService;
+    // Memastikan kita menggunakan GroqAPI yang tepat (dari import atau global)
+    const ActiveGroq = (typeof GroqAPI !== 'undefined') ? GroqAPI : window.GroqAPI;
 
     if (!ActiveGroq) {
-        throw new Error("Sistem Gagal Memuat GroqService. Pastikan file groq.js sudah dimuat di index.html.");
+        throw new Error("Sistem Gagal Memuat GroqAPI. Pastikan file groq.js sudah dimuat.");
     }
 
-    // Pastikan kunci Groq termuat ke kolam antrean
-    if (ActiveGroq.keysPool && ActiveGroq.keysPool.length === 0 && AuraState.data.groqKeys && AuraState.data.groqKeys.length > 0) {
-        ActiveGroq.init(AuraState.data.groqKeys);
-    }
-    
     const hasGemini = AuraState.instances.geminiEngine && AuraState.instances.geminiEngine.keysPool.length > 0;
-    const hasGroq = ActiveGroq.keysPool && ActiveGroq.keysPool.length > 0;
 
     // ========================================================================
     // SKENARIO 1: DETEKSI STRUK GAMBAR (PIPELINE GEMINI MATA -> GROQ OTAK)
     // ========================================================================
     if (base64Image) {
         if (!hasGemini) throw new Error("Fitur penglihatan (OCR) butuh Gemini. Pastikan Anda sudah login PIN Brankas!");
-        if (!hasGroq) throw new Error("Fitur Otak AI (Groq) mati. Pastikan API Key Groq sudah terisi di Pengaturan!");
 
         if (window.showToast) window.showToast("Mata Gemini sedang memindai struk...", false);
         
@@ -83,14 +78,13 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
 
         if (window.showToast) window.showToast("Groq sedang merapikan data transaksi...", false);
 
-        // TAHAP 2: Groq Merakit JSON
+        // TAHAP 2: Groq Merakit JSON (Memanggil fungsi callGroq milik Anda)
         const groqMessages = [
-            { role: "system", content: systemPrompt },
             { role: "user", content: `[TEKS STRUK MENTAH DARI OCR]\n${teksMentahStruk}\n\n[INSTRUKSI ASLI USER]\n${userPrompt}` }
         ];
 
         try {
-            const resultJSON = await ActiveGroq.fetch(groqMessages, requireJson);
+            const resultJSON = await ActiveGroq.callGroq(groqMessages, systemPrompt, requireJson, null);
             return resultJSON;
         } catch(e) {
             throw new Error(`Otak Groq Gagal Merapikan Data: ${e.message}`);
@@ -107,18 +101,16 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     let lastError = null;
     let fallbackToGemini = false;
     
-    if (useGroq && hasGroq) {
+    if (useGroq) {
         try { 
-            const result = await ActiveGroq.fetch(messages, requireJson);
+            // Menggunakan callGroq untuk mode chat biasa
+            const result = await ActiveGroq.callGroq(messages, systemPrompt, requireJson, null);
             return result;
         } catch(e) { 
             lastError = e;
             if (useGemini && hasGemini) fallbackToGemini = true;
             else throw e;
         }
-    } else if (useGroq && !hasGroq) {
-        if(hasGemini) fallbackToGemini = true;
-        else throw new Error("Tidak ada kuota konfigurasi Key untuk engine Groq.");
     }
     
     if ((useGemini && hasGemini) || fallbackToGemini) {
