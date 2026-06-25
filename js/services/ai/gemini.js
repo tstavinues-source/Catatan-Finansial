@@ -70,7 +70,7 @@ export class GeminiFailoverEngine {
             const activeKeyObj = this.keysPool[this.currentIndex];
             
             // MENGGUNAKAN ENDPOINT 3.5-FLASH MUTAKHIR UNTUK STABILITAS JSON
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${activeKeyObj.value}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKeyObj.value}`;
             
             const requestPayload = JSON.parse(JSON.stringify(payload));
             
