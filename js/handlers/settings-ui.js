@@ -1,6 +1,7 @@
 /**
  * Settings UI Handlers & Renderers
  * Mengelola Form Profil, Preferensi AI, Kunci API (Groq Pool & Gemini), Tracker Dinamis AI, Keluarga, & Audit.
+ * TELAH DI-UPGRADE DENGAN DYNAMIC ENDPOINT ROUTING (MODEL CHAINING LOAD BALANCER)
  */
 
 import { AuraState } from '../core/state.js';
@@ -63,6 +64,10 @@ window.saveAIPreferences = async function() {
     const visionEl = document.getElementById('setting-ai-vision');
     const personaEl = document.getElementById('setting-ai-persona');
     const styleEl = document.getElementById('setting-ai-style');
+    
+    // MENANGKAP ELEMEN DROPDOWN BARU
+    const ocrEl = document.getElementById('setting-ai-ocr');
+    const brainEl = document.getElementById('setting-ai-brain');
 
     try {
         await FirebaseService.updateSettings({ 
@@ -70,12 +75,16 @@ window.saveAIPreferences = async function() {
                 modelChat: chatEl ? chatEl.value : 'Auto',
                 modelVision: visionEl ? visionEl.value : 'Auto',
                 persona: personaEl ? personaEl.value : 'Kombinasi Humble + Jenius + Profesional',
-                style: styleEl ? styleEl.value : 'Normal'
+                style: styleEl ? styleEl.value : 'Normal',
+                
+                // MENYIMPAN CONFIG LOAD BALANCER LINTAS MODEL KE FIREBASE
+                modelOcr: ocrEl ? ocrEl.value : 'gemini-2.5-flash',
+                modelBrain: brainEl ? brainEl.value : 'gemini-3.5-flash'
             } 
         });
 
         if (window.showToast) {
-            window.showToast("Preferensi AI berhasil disimpan.");
+            window.showToast("Preferensi AI & Rute Varian Model berhasil diamankan!");
         }
     } catch (e) {
         if (window.showToast) {
@@ -135,7 +144,6 @@ window.addGroqKey = async function() {
 };
 
 window.removeGroqKey = async function(index) {
-    // MENGGUNAKAN AURA ALERT
     window.AuraAlert.confirm("Yakin ingin mencabut Key Groq ini dari Cloud?", async () => {
         try {
             let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
@@ -320,7 +328,6 @@ window.addRecurringPayment = async function() {
 };
 
 window.removeRecurringPayment = async function(id) {
-    // MENGGUNAKAN AURA ALERT
     window.AuraAlert.confirm("Hapus tagihan otomatis ini?", async () => {
         try {
             await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/recurringPayments/${id}`));
@@ -403,7 +410,6 @@ window.renderRecurringUIForBudget = function() {
 // ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
-    // MENGGUNAKAN AURA ALERT PROMPT
     window.AuraAlert.prompt("Tracker apa yang ingin kamu buat?", "Misal: Skincare, Kopi, Kucing", async (topic) => {
         if (!topic || topic.trim() === '') return;
         
@@ -521,7 +527,6 @@ window.saveNewTracker = async function() {
 };
 
 window.removeTracker = async function(id) {
-    // MENGGUNAKAN AURA ALERT
     window.AuraAlert.confirm(`Hapus pelacak ${id}?`, async () => {
         try {
             await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/staplesTrackers/${id}`));
@@ -598,7 +603,6 @@ window.addFamilyMember = async function() {
 
 window.removeFamilyMember = async function(index) {
     const members = AuraState.data.settings?.familyMembers || [];
-    // MENGGUNAKAN AURA ALERT
     window.AuraAlert.confirm(`Lepaskan akses untuk [${members[index]}]?`, async () => {
         members.splice(index, 1);
         try {
@@ -671,22 +675,17 @@ let lastGroqKeysStr = null;
 let lastRecStr = null;
 
 setInterval(() => {
-    // Pastikan sistem state sudah siap
     if (!AuraState.data || !AuraState.data.settings) return;
     
-    // 1. Pantau Perubahan pada Kunci Groq
     const currentGroqKeys = JSON.stringify(AuraState.data.settings.groqKeysEncrypted || []);
     if (currentGroqKeys !== lastGroqKeysStr) {
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
         lastGroqKeysStr = currentGroqKeys;
     }
 
-    // 2. Pantau Perubahan pada Tagihan Rutin
     const currentRec = JSON.stringify(AuraState.data.settings.recurringPayments || {});
-    
     if (currentRec !== lastRecStr) {
         if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
         lastRecStr = currentRec;
     }
 }, 1000);
-// Sistem akan mengecek perubahan setiap 1 detik secara real-time
