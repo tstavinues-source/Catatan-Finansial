@@ -3,116 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Vision + Groq AI Pipeline</title>
+    <title>AuraFi OS - AI Chain Diagnostics (Full Versions)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { background-color: #0b0f19; color: #f3f4f6; }
+        .glass { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-200 p-4 md:p-8 font-sans min-h-screen">
+<body class="p-4 md:p-8 flex flex-col items-center min-h-screen justify-center">
 
-    <div class="max-w-3xl mx-auto space-y-6">
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl relative overflow-hidden">
-            <h1 class="text-2xl font-black text-blue-400 mb-2 relative z-10"><i class="fa-solid fa-eye mr-2"></i>Gemini Vision + Groq AI</h1>
-            <p class="text-xs text-slate-400 relative z-10">Pipeline: Gemini (Mata OCR) ➔ Groq (Otak JSON).</p>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl space-y-5">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Gemini (Mata)</label>
-                    <input type="password" id="gemini-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-blue-400 font-mono focus:outline-none focus:border-blue-500 transition-colors" placeholder="AIza... atau AQ...">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">API Key Groq (Otak)</label>
-                    <input type="password" id="groq-key-input" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-emerald-400 font-mono focus:outline-none focus:border-emerald-500 transition-colors" placeholder="gsk_...">
-                </div>
+    <div class="w-full max-w-2xl glass rounded-2xl p-6 shadow-2xl space-y-6">
+        <div class="border-b border-gray-800 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-sky-400"><i class="fa-solid fa-microchip mr-2"></i>AI Chain Diagnostic Tool</h1>
+                <p class="text-xs text-gray-400 mt-1">Uji Coba Jeda Waktu & Pemisahan Versi Model Gemini 2026</p>
             </div>
-
-            <textarea id="prompt-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors" placeholder="Instruksi: Fokus pada total harga dan daftar barang..."></textarea>
-
-            <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-blue-500/20 file:text-blue-400 hover:file:bg-blue-500/30 transition-colors cursor-pointer">
-
-            <button id="btn-test" class="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
-                <i class="fa-solid fa-bolt"></i> Eksekusi AI Pipeline
-            </button>
+            <span class="text-[10px] bg-sky-950 text-sky-400 border border-sky-900 px-2.5 py-1 rounded-full font-mono font-bold">ALL VERSIONS</span>
         </div>
 
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-            <h2 class="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider flex justify-between items-center">
-                <span>Terminal Log & Hasil</span>
-                <button id="btn-clear" class="text-xs text-slate-500 hover:text-rose-400 transition-colors">Bersihkan</button>
-            </h2>
-            <div id="log-output" class="bg-black/80 border border-slate-800 p-5 rounded-xl font-mono text-[11px] text-slate-300 h-80 overflow-y-auto space-y-2">
-                <div class="text-slate-600">Sistem siap...</div>
+        <div class="space-y-2">
+            <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Masukkan 1 API Key Gemini Anda</label>
+            <input type="password" id="test-api-key" placeholder="AIzaSy..." class="w-full bg-black/40 border border-gray-800 rounded-xl p-3 text-xs font-mono outline-none focus:border-sky-500 text-emerald-400">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Model Tahap 1 (OCR)</label>
+                <select id="test-model-ocr" class="w-full bg-black/60 border border-gray-800 rounded-lg p-2 text-xs outline-none focus:border-sky-500 text-white font-mono">
+                    <option value="gemini-2.5-flash" selected>gemini-2.5-flash</option>
+                    <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                    <option value="gemini-3.0-flash">gemini-3.0-flash</option>
+                    <option value="gemini-3.1-pro">gemini-3.1-pro</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+                    <option value="gemini-3.5-flash">gemini-3.5-flash</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Model Tahap 2 (JSON)</label>
+                <select id="test-model-brain" class="w-full bg-black/60 border border-gray-800 rounded-lg p-2 text-xs outline-none focus:border-sky-500 text-white font-mono">
+                    <option value="gemini-3.5-flash" selected>gemini-3.5-flash</option>
+                    <option value="gemini-3.1-pro">gemini-3.1-pro</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+                    <option value="gemini-3.0-flash">gemini-3.0-flash</option>
+                    <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                    <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                    <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                    <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                    <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-gray-400 uppercase mb-1">Waktu Jeda (Milidetik)</label>
+                <select id="test-delay" class="w-full bg-black/60 border border-gray-800 rounded-lg p-2 text-xs outline-none focus:border-sky-500 font-mono text-amber-400">
+                    <option value="0">0 ms (Tanpa Jeda)</option>
+                    <option value="1000">1000 ms (1 Detik)</option>
+                    <option value="2000">2000 ms (2 Detik)</option>
+                    <option value="3000" selected>3000 ms (3 Detik)</option>
+                    <option value="5000">5000 ms (5 Detik)</option>
+                </select>
+            </div>
+        </div>
+
+        <button onclick="runDiagnosticChain()" id="btn-run" class="w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg active:scale-[0.99]">
+            <i class="fa-solid fa-play mr-2"></i>Mulai Eksekusi Rantai Pengujian
+        </button>
+
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-wider">Konsol Aliran Transmisi</label>
+                <button onclick="document.getElementById('test-console').innerHTML=''" class="text-[10px] text-rose-400 hover:underline">Bersihkan Log</button>
+            </div>
+            <div id="test-console" class="w-full h-48 bg-black/80 border border-gray-800 rounded-xl p-3 font-mono text-[11px] overflow-y-auto space-y-1 text-slate-300">
+                <span class="text-gray-500 italic">Konsol siap. Silakan pilih kombinasi rute versi Anda di atas...</span>
             </div>
         </div>
     </div>
 
     <script>
-        const logBox = document.getElementById('log-output');
-        function uiLog(message, type = 'info') {
-            const span = document.createElement('div');
-            if (type === 'error') span.className = 'text-rose-400';
-            else if (type === 'success') span.className = 'text-emerald-400 font-bold';
-            else span.className = 'text-slate-300';
-            span.innerText = `[${new Date().toLocaleTimeString()}] ${message}`;
-            logBox.appendChild(span);
-            logBox.scrollTop = logBox.scrollHeight;
+        function logToConsole(text, type = 'info') {
+            const consoleEl = document.getElementById('test-console');
+            if(consoleEl.innerHTML.includes("Konsol siap.")) consoleEl.innerHTML = '';
+            
+            let color = 'text-sky-400';
+            let icon = 'fa-info-circle';
+            if(type === 'success') { color = 'text-emerald-400'; icon = 'fa-circle-check'; }
+            if(type === 'warn') { color = 'text-amber-400'; icon = 'fa-triangle-exclamation'; }
+            if(type === 'error') { color = 'text-rose-400'; icon = 'fa-circle-xmark'; }
+            
+            const timestamp = new Date().toLocaleTimeString();
+            consoleEl.innerHTML += `<div class="${color}"><span class="text-gray-600">[${timestamp}]</span> <i class="fa-solid ${icon} mr-1"></i> ${text}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
         }
 
-        document.getElementById('btn-clear').addEventListener('click', () => logBox.innerHTML = '');
+        async function callGeminiRaw(model, payload, apiKey) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+            const data = await response.json();
+            return data.candidates[0].content.parts[0].text;
+        }
 
-        document.getElementById('btn-test').addEventListener('click', async () => {
-            const geminiKey = document.getElementById('gemini-key-input').value.trim();
-            const groqKey = document.getElementById('groq-key-input').value.trim();
-            const promptText = document.getElementById('prompt-input').value || 'Ekstrak detail struk ini.';
-            const fileInput = document.getElementById('image-input');
+        async function runDiagnosticChain() {
+            const apiKey = document.getElementById('test-api-key').value.trim();
+            const modelOcr = document.getElementById('test-model-ocr').value;
+            const modelBrain = document.getElementById('test-model-brain').value;
+            const delayValue = parseInt(document.getElementById('test-delay').value);
+            const btn = document.getElementById('btn-run');
+
+            if(!apiKey) {
+                alert("Harap masukkan API Key Gemini Anda terlebih dahulu untuk pengetesan!");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.className = "w-full bg-gray-800 text-gray-500 font-bold text-xs py-3 rounded-xl cursor-not-allowed";
             
-            // Perbaikan Validasi Key
-            if (!geminiKey.startsWith('AIza') && !geminiKey.startsWith('AQ')) return alert("API Key Gemini salah (gunakan AIza... atau AQ...)");
-            if (!groqKey.startsWith('gsk_')) return alert("API Key Groq salah!");
-            if (!fileInput.files[0]) return alert("Pilih gambar struk!");
-
-            document.getElementById('btn-test').disabled = true;
-            
-            const reader = new FileReader();
-            reader.readAsDataURL(fileInput.files[0]);
-            reader.onload = async () => {
-                await eksekusiAIPipeline(promptText, reader.result, geminiKey, groqKey);
-            };
-        });
-
-        async function eksekusiAIPipeline(prompt, imageStr, geminiKey, groqKey) {
             try {
-                uiLog("👁️ Gemini sedang membaca gambar...");
-                const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
-                const geminiPayload = { contents: [{ role: "user", parts: [
-                    { text: "Tulis ulang teks dalam gambar ini baris demi baris, jangan ringkas." },
-                    { inlineData: { mimeType: imageStr.match(/data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+)/)[1], data: imageStr.split(',')[1] } }
-                ]}]};
-
-                const resGem = await fetch(geminiUrl, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(geminiPayload) });
-                if (!resGem.ok) throw new Error("Gemini Gagal: " + resGem.status);
-                const dataGem = await resGem.json();
-                const teksMentah = dataGem.candidates[0].content.parts[0].text;
-                uiLog("--- TEKS MENTAH DITERIMA ---");
-                uiLog(teksMentah);
-
-                uiLog("🧠 Groq sedang menyusun JSON...");
-                const groqPayload = {
-                    model: "llama-3.3-70b-versatile",
-                    messages: [{ role: "system", content: "Parser keuangan JSON murni saja. Format: {\"total_belanja\": 0, \"toko\": \"\", \"daftar_barang\": []}" }, { role: "user", content: `Teks: ${teksMentah}\n\nInstruksi: ${prompt}` }]
+                // TAHAP 1
+                logToConsole(`MENEMBAK TAHAP 1 VIA [${modelOcr}]...`);
+                const payload1 = {
+                    contents: [{ role: "user", parts: [{ text: "SALIN KATA INI SAJA TANPA TANDA KUTIP: 'TOKO JAPAN MART \n BREAD: 150'" }] }]
                 };
+                
+                const ocrResult = await callGeminiRaw(modelOcr, payload1, apiKey);
+                logToConsole(`TAHAP 1 BERHASIL! Teks Terbaca: "${ocrResult.replace(/\n/g, ' ')}"`, 'success');
 
-                const resGroq = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-                    method: "POST", headers: {"Authorization": `Bearer ${groqKey}`, "Content-Type": "application/json"},
-                    body: JSON.stringify(groqPayload)
-                });
-                const dataGroq = await resGroq.json();
-                uiLog("--- HASIL AKHIR ---", "success");
-                uiLog(dataGroq.choices[0].message.content.trim(), "success");
+                // COOLDOWN
+                if(delayValue > 0) {
+                    logToConsole(`Menahan transmisi selama ${delayValue} ms (Mengamankan RPM)...`, 'warn');
+                    await new Promise(resolve => setTimeout(resolve, delayValue));
+                }
 
-            } catch (err) { uiLog(err.message, "error"); } 
-            finally { document.getElementById('btn-test').disabled = false; }
+                // TAHAP 2
+                logToConsole(`MENEMBAK TAHAP 2 VIA [${modelBrain}]... Meminta struktur JSON.`);
+                const payload2 = {
+                    contents: [{ role: "user", parts: [{ text: `Ubah teks mentah ini menjadi JSON murni {storeName: string}: \n ${ocrResult}` }] }]
+                };
+                
+                const brainResult = await callGeminiRaw(modelBrain, payload2, apiKey);
+                logToConsole(`TAHAP 2 BERHASIL! Objek Terbentuk: ${brainResult}`, 'success');
+
+            } catch (err) {
+                logToConsole(`RANTAI TRANSMISI PUTUS DI TAHAP 2: ${err.message}`, 'error');
+                logToConsole(`Analisis: Cek kembali dashboard rate-limit model [${modelBrain}] Anda.`, 'warn');
+            } finally {
+                btn.disabled = false;
+                btn.className = "w-full bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg active:scale-[0.99]";
+            }
         }
     </script>
 </body>
