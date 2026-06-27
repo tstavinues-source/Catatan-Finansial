@@ -1,7 +1,7 @@
 /**
- * AI Orchestrator (Versi Single-Shot Hybrid Murni)
- * Alur: Gemini (Membaca Gambar 1x) ➔ Groq (Merakit JSON & Pajak 1x secara instan)
- * Menghilangkan waktu jeda dan memblokir tembakan beruntun ke server Google.
+ * AI Orchestrator (Versi Ultimate - Single-Shot Hybrid Murni)
+ * Mengatur rute eksekusi antara model Groq dan varian Gemini berdasarkan jenis data.
+ * Alur Struk: Gemini (Membaca Gambar 1x) ➔ Groq (Merakit JSON & Pajak 1x secara instan)
  */
 
 import { AuraState } from '../../core/state.js';
@@ -33,22 +33,29 @@ window.getOraclePromptConfigs = function() {
 window.executeAIWithFallback = async function(messages, systemPrompt, requireJson, base64Image = null) {
     
     const ActiveGroq = (typeof GroqAPI !== 'undefined') ? GroqAPI : window.GroqAPI;
+    
+    // JALAN PINU: Perintahkan Groq mendekripsi dan memuat kunci dari Cloud sebelum validasi pool dilakukan
+    if (ActiveGroq && typeof ActiveGroq.refreshKeys === 'function') {
+        ActiveGroq.refreshKeys();
+    }
+    
     const hasGroq = ActiveGroq && ActiveGroq.keysPool && ActiveGroq.keysPool.length > 0;
-    const hasGemini = AuraState.instances.geminiEngine && AuraState.instances.geminiEngine.keysPool.length > 0;
+    const hasGemini = AuraState.instances.geminiEngine && AuraState.instances.geminiEngine.keysPool && AuraState.instances.geminiEngine.keysPool.length > 0;
 
     const prefs = AuraState.data.settings?.aiPreferences || {};
     const chatModel = prefs.modelChat || 'Auto'; 
+    
     const modelMataOCR = prefs.modelOcr || 'gemini-2.5-flash'; 
+    const modelOtakJSON = prefs.modelBrain || 'gemini-3.5-flash';
 
     // ========================================================================
-    // SKENARIO 1: DETEKSI STRUK GAMBAR (HYBRID LINTAS PROVIDER)
+    // SKENARIO 1: DETEKSI STRUK GAMBAR (SINGLE-SHOT HYBRID PIPELINE)
     // ========================================================================
     if (base64Image) {
-        // Peringatan Keras: Hibrida butuh kedua kunci!
-        if (!hasGemini) throw new Error("Fitur penglihatan (OCR) butuh Gemini. Pastikan PIN Brankas aktif!");
+        if (!hasGemini) throw new Error("Fitur penglihatan (OCR) butuh Gemini. Pastikan Anda sudah login PIN Brankas!");
         if (!hasGroq) throw new Error("Sistem Hibrida membutuhkan API Key Groq yang terpasang di Cloud!");
 
-        if (window.showToast) window.showToast(`Tahap 1: Membaca gambar via ${modelMataOCR}...`, false);
+        if (window.showToast) window.showToast(`Tahap 1: Membaca teks (${modelMataOCR})...`, false);
         
         // TAHAP 1: Gemini (Mata OCR - Ekstrak Mentah)
         const userPrompt = messages[messages.length - 1].content;
@@ -75,18 +82,18 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
             throw new Error("Mata Gemini tidak menemukan teks apa pun di dalam gambar struk ini.");
         }
 
-        // --- PENGHAPUSAN JEDA WAKTU (COOLDOWN) ---
-        // Karena data dilempar ke Groq, kita hapus setTimeout 3000ms. Kecepatan maksimal!
+        // --- ELIMINASI JEDA WAKTU (COOLDOWN) ---
+        // Karena pengolahan dialihkan langsung ke Groq, jeda 3000ms dihapus demi kecepatan maksimal.
 
         if (window.showToast) window.showToast(`Tahap 2: Groq sedang merakit JSON keuangan...`, false);
 
-        // TAHAP 2: Otak Groq Llama (Merakit JSON)
+        // TAHAP 2: Otak Groq (Merakit JSON, Kategori Organik, dan Pajak)
         const hybridMessages = [
             { role: "user", content: `[TEKS STRUK MENTAH DARI OCR]\n${teksMentahStruk}\n\n[INSTRUKSI ASLI USER]\n${userPrompt}` }
         ];
 
         try {
-            // PAKSA GROQ: Kita hapus opsi fallback ke Gemini untuk mencegah Rate Limit 503
+            // Jalur dipaksa langsung ke Groq tanpa fallback ke Gemini Brain demi menghindari limitasi RPM Google
             const resultJSON = await ActiveGroq.callGroq(hybridMessages, systemPrompt, requireJson, null);
             return resultJSON;
         } catch(e) {
@@ -102,7 +109,6 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     let lastError = null;
     let fallbackToGeminiChat = false;
     
-    // Untuk Chat biasa, kita tetap pertahankan sistem Fallback normal
     if (useGroq && hasGroq) {
         try { 
             const result = await ActiveGroq.callGroq(messages, systemPrompt, requireJson, null);
@@ -120,8 +126,6 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     if ((useGemini && hasGemini) || fallbackToGeminiChat) {
         try {
             const userPrompt = messages[messages.length - 1].content;
-            const modelOtakJSON = prefs.modelBrain || 'gemini-3.5-flash';
-            
             const geminiPayload = { 
                 contents: [{ role: "user", parts: [{ text: userPrompt }] }], 
                 systemInstruction: { parts: [{ text: systemPrompt }] } 
