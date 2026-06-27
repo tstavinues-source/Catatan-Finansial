@@ -7,19 +7,15 @@ import { AuraState } from '../../core/state.js';
 
 export const GroqAPI = {
     currentIndex: 0,
+    keysPool: [], // <--- Jembatan agar Orchestrator tahu kunci sudah terpasang
     
-    callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
-        
-        let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-        // Penjinak Format Firebase: Pastikan datanya berbentuk Array
+    // Fungsi khusus untuk menarik dan mendekripsi kunci dari Cloud secara instan
+    refreshKeys: function() {
+        let rawKeys = AuraState.data?.settings?.groqKeysEncrypted || [];
         let encKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-        
-        if (encKeys.length === 0) {
-            throw new Error("API Key Groq kosong! Silakan pasang minimal 1 Key di menu Pengaturan.");
-        }
-
         const secret = AuraState.user?.uid || "aura_secret_fallback";
-        let rawKeysDecrypted = [];
+        
+        this.keysPool = []; // Bersihkan memori sebelum diisi ulang
         
         for (let k of encKeys) {
             try {
@@ -27,19 +23,25 @@ export const GroqAPI = {
                 for (let i = 0; i < text.length; i++) {
                     result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
                 }
-                if (result.startsWith('gsk_')) rawKeysDecrypted.push(result);
+                if (result.startsWith('gsk_')) this.keysPool.push(result);
             } catch(e) {}
         }
+    },
 
-        if (rawKeysDecrypted.length === 0) {
-            throw new Error("Kunci Groq di Cloud korup atau tidak valid.");
+    callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
+        
+        // Tarik kunci segar dari Cloud setiap kali mau menembak
+        this.refreshKeys();
+        
+        if (this.keysPool.length === 0) {
+            throw new Error("API Key Groq kosong! Silakan pasang minimal 1 Key di menu Pengaturan.");
         }
 
         if (imgBase64) {
             console.warn('GroqAPI: Gambar terdeteksi. Groq murni teks, gambar diabaikan.');
         }
 
-       const modelName = "llama-3.3-70b-versatile";
+        const modelName = "llama-3.3-70b-versatile";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
         const groqMessages = [{ role: "system", content: systemPrompt }];
@@ -53,10 +55,11 @@ export const GroqAPI = {
         if (requireJson) payload.response_format = { type: "json_object" };
 
         let attempt = 0;
-        const maxLimit = Math.min(rawKeysDecrypted.length, 3);
+        const maxLimit = Math.min(this.keysPool.length, 3);
         
         while (attempt < maxLimit) {
-            const activeKey = rawKeysDecrypted[this.currentIndex % rawKeysDecrypted.length];
+            // Menggunakan this.keysPool yang sudah ditarik dari fungsi refreshKeys
+            const activeKey = this.keysPool[this.currentIndex % this.keysPool.length];
             
             try {
                 const response = await fetch(url, {
