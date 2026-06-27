@@ -689,3 +689,35 @@ setInterval(() => {
         lastRecStr = currentRec;
     }
 }, 1000);
+
+// ============================================================================
+// SISTEM ACCORDION (LACI) PENGATURAN
+// ============================================================================
+window.toggleSettingsSection = function(sectionId) {
+    const content = document.getElementById(sectionId);
+    const icon = document.getElementById('icon-' + sectionId);
+
+    // Jika laci sedang tertutup
+    if (content.classList.contains('max-h-0')) {
+        // Buka laci
+        content.classList.remove('max-h-0', 'opacity-0');
+        content.classList.add('max-h-[1500px]', 'opacity-100'); // max-height besar agar isi tidak terpotong
+        
+        // Animasi Ikon (Berubah dari + menjadi x)
+        icon.classList.replace('fa-plus', 'fa-xmark');
+        icon.classList.add('rotate-90', 'text-rose-400');
+        icon.classList.remove('text-blue-400');
+        icon.parentElement.classList.replace('bg-blue-600/20', 'bg-rose-500/20');
+    } else {
+        // Tutup laci
+        content.classList.remove('max-h-[1500px]', 'opacity-100');
+        content.classList.add('max-h-0', 'opacity-0');
+        
+        // Kembalikan Ikon ke awal
+        icon.classList.replace('fa-xmark', 'fa-plus');
+        icon.classList.remove('rotate-90', 'text-rose-400');
+        icon.classList.add('text-blue-400');
+        icon.parentElement.classList.replace('bg-rose-500/20', 'bg-blue-600/20');
+    }
+};
+
