@@ -683,7 +683,7 @@ window.renderIconPickerGrid = function(activeIcon, activeColor) {
     grid.innerHTML = html;
 };
 
-// --- FUNGSI PENCARIAN IKON (DIRECT CONNECT KE GROQ) ---
+// --- FUNGSI PENCARIAN IKON (DIRECT CONNECT KE GROQ VERSI BARU) ---
 window.openAIIconSearch = async function() {
     const keyword = prompt("🔍 Ikon apa yang ingin Anda cari? \n(Contoh: hewan, mobil sport, sekolah, komputer, api)");
     if (!keyword || keyword.trim() === '') return;
@@ -696,19 +696,25 @@ window.openAIIconSearch = async function() {
     Format wajib persis seperti ini: {"icons": ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]}`;
 
     try {
-        const { GroqService } = await import('./services/ai/groq.js');
-        await GroqService.init();
+        // Menggunakan arsitektur GroqAPI global yang baru
+        const ActiveGroq = window.GroqAPI;
+        if (!ActiveGroq) throw new Error("Mesin AI Groq belum dimuat oleh sistem.");
 
-        if (!GroqService.keysPool || GroqService.keysPool.length === 0) {
+        // Tarik API Key dari Cloud
+        if (typeof ActiveGroq.refreshKeys === 'function') {
+            ActiveGroq.refreshKeys();
+        }
+
+        if (!ActiveGroq.keysPool || ActiveGroq.keysPool.length === 0) {
             throw new Error("Mesin Groq kosong! Pastikan API Key Groq sudah tersimpan di Pengaturan.");
         }
 
         const messages = [
-            { role: "system", content: systemPrompt },
             { role: "user", content: `Carikan ikon untuk: ${keyword}` }
         ];
 
-        const result = await GroqService.fetch(messages, false);
+        // Tembak langsung menggunakan fungsi callGroq yang anti-lelet
+        const result = await ActiveGroq.callGroq(messages, systemPrompt, true, null);
         
         let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
         let parsedData = JSON.parse(cleanResult);
