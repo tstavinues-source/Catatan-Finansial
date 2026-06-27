@@ -1,6 +1,7 @@
 /**
- * AI Staging Area (Versi Ultimate - In-Modal Tax Action UI)
- * Mengelola hasil ekstraksi AI, rendering UI Staging dengan Kategori Dinamis & Banner Pajak In-Line.
+ * AI Staging Area (Versi Ultimate - Presisi Pajak & Auto-Romaji)
+ * Mengelola hasil ekstraksi AI, rendering UI Staging dengan Kategori Dinamis, 
+ * Banner Pajak In-Line, dan Korektor Pembulatan Yen.
  */
 
 import { AuraState } from '../core/state.js';
@@ -22,6 +23,7 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
+        // PROMPT INDUK DIPERBARUI: Ketat di Angka, Organik di Kategori, Translasi Alfabet
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
 FOKUS UTAMA: Ekstrak JSON mentah berdasarkan teks OCR struk.
 
@@ -37,12 +39,12 @@ ATURAN MUTLAK (ANGKA & ITEM):
 
 ATURAN KATEGORI (ORGANIK):
 1. Referensi kategori aplikasi nyata: "${categoryListStr}".
-2. Cocokkan barang secara logis dengan daftar di atas.
-3. Jika tidak ada yang cocok di referensi, kamu BEBAS menciptakan nama kategori baru yang sangat akurat.
+2. Cocokkan barang secara logis dengan daftar di atas (Contoh: Susu masuk ke "Bahan Pokok" atau "Minuman", bukan "Makanan" yang terlalu umum).
+3. Jika benar-benar tidak ada yang cocok di referensi, kamu BEBAS menciptakan nama kategori baru yang sangat akurat.
 
 ATURAN LAIN:
 - Tipe wajib antara: "pemasukan", "pengeluaran", "tarik_tunai", "setor_tunai".
-- "merchantName" wajib diisi sesuai nama toko di struk, TETAPI WAJIB diubah ke huruf Alfabet/Latin (Romaji). Jika struk menggunakan huruf Jepang (Katakana/Kanji/Hiragana seperti アルゾ), transkripsikan menjadi huruf Latin (misal: ALZO).
+- "merchantName" WAJIB diubah ke huruf Alfabet/Latin (Romaji). Jika nama toko di struk menggunakan Katakana/Hiragana/Kanji (misal: アルゾ), ubah menjadi huruf Latin (misal: ALZO).
 
 Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
 {
@@ -86,7 +88,7 @@ Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
             isCustomDescription: true
         };
         
-        // HAPUS AuraAlert yang bentrok. Langsung render dan buka modal Staging!
+        // Render UI lalu Buka Modal (Tanpa pop-up yang tumpang tindih)
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
         
@@ -119,7 +121,7 @@ window.renderStagingUI = function() {
         let compiledItemsHtml = '';
         
         // ====================================================================
-        // BANNER PAJAK IN-LINE (Menggantikan Pop-Up Alert)
+        // BANNER PAJAK IN-LINE
         // ====================================================================
         if (data.admin_fee > 0) {
             compiledItemsHtml += `
@@ -139,7 +141,7 @@ window.renderStagingUI = function() {
                             <i class="fa-solid fa-code-merge mr-1"></i> Leburkan ke Item
                         </button>
                         <button onclick="window.actionTaxToItem()" class="flex-1 bg-black/40 border border-amber-500/50 text-amber-400 text-[10px] font-bold py-2 rounded-lg hover:bg-amber-900/40 transition active:scale-95">
-                            <i class="fa-solid fa-plus mr-1"></i> Jadikan Item Tersendiri
+                            <i class="fa-solid fa-plus mr-1"></i> Jadikan Item
                         </button>
                     </div>
                 </div>
@@ -201,26 +203,57 @@ window.renderStagingUI = function() {
 };
 
 // ============================================================================
-// FUNGSI AKSI PAJAK IN-LINE
+// FUNGSI AKSI PAJAK IN-LINE DENGAN KOREKSI PEMBULATAN
 // ============================================================================
 
 window.actionDistributeTax = function() {
     const data = AuraState.temp.aiStaging;
     if (!data || data.admin_fee <= 0) return;
 
+    const totalPajakAsli = data.admin_fee;
+    let totalPajakDihitung = 0;
+    let itemKenaPajak = [];
+
+    // Tahap 1: Hitung simulasi pajak per item
     data.items.forEach(item => {
         const hargaOri = Number(item.harga) || 0;
         const taxRate = Number(item.tax_rate) || 0;
         
         if (taxRate > 0) {
             const pajakItem = Math.round(hargaOri * (taxRate / 100));
-            item.harga = hargaOri + pajakItem; // Meleburkan pajak ke harga item
+            item.tax_amount_temp = pajakItem; // Simpan di memori sementara
+            totalPajakDihitung += pajakItem;
+            itemKenaPajak.push(item);
+        } else {
+            item.tax_amount_temp = 0;
         }
+    });
+
+    // Tahap 2: Deteksi Selisih Pembulatan (Rounding Error)
+    const selisih = totalPajakAsli - totalPajakDihitung;
+    
+    // Jika ada selisih (misal 2 yen), suntikkan ke item pertama yang kena pajak
+    if (itemKenaPajak.length > 0 && selisih !== 0) {
+        itemKenaPajak[0].tax_amount_temp += selisih;
+    }
+
+    // Tahap 3: Leburkan pajak yang sudah dikoreksi ke Harga Utama
+    data.items.forEach(item => {
+        if (item.tax_amount_temp > 0) {
+            const hargaOri = Number(item.harga) || 0;
+            item.harga = hargaOri + item.tax_amount_temp;
+        }
+        delete item.tax_amount_temp; // Bersihkan memori sementara
     });
     
     data.admin_fee = 0; // Nol-kan agar banner hilang & tidak hitung ganda
+    
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-    if (window.showToast) window.showToast("Pajak berhasil dileburkan ke harga masing-masing barang.");
+    if (window.showToast) {
+        let msg = "Pajak berhasil dilebur ke setiap item.";
+        if (selisih !== 0) msg += ` (Koreksi sistem: ¥${selisih})`;
+        window.showToast(msg);
+    }
 };
 
 window.actionTaxToItem = function() {
