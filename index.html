@@ -124,9 +124,15 @@
                         </select>
                     </div>
                 </div>
-                <div class="mb-3">
-    <label class="block text-[10px] text-[var(--text-muted)] mb-1 font-bold tracking-wider">TANGGAL</label>
-    <input type="date" id="staging-trx-date" class="w-full bg-black/40 text-white text-xs p-2 rounded-lg border border-[var(--border-glass)] outline-none focus:border-sky-500 font-mono transition-colors">
+                <div class="grid grid-cols-2 gap-3 mb-3 mt-3">
+    <div>
+        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal</label>
+        <input type="date" id="staging-trx-date" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-white font-mono">
+    </div>
+    <div>
+        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jam</label>
+        <input type="time" id="staging-trx-time" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-white font-mono">
+    </div>
 </div>
 
                 <div class="flex justify-between items-center mt-4 mb-2">
