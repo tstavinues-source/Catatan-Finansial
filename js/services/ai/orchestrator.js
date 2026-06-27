@@ -1,7 +1,7 @@
 /**
- * AI Orchestrator (Versi Ultimate - Single-Shot Hybrid Murni)
+ * AI Orchestrator (Versi Ultimate - Chain of Specialization)
  * Mengatur rute eksekusi antara model Groq dan varian Gemini berdasarkan jenis data.
- * Alur Struk: Gemini (Membaca Gambar 1x) ➔ Groq (Merakit JSON & Pajak 1x secara instan)
+ * Alur Struk: Gemini (Penerjemah & Analis Konteks 1x) ➔ Groq (Merakit JSON & Pajak 1x secara instan)
  */
 
 import { AuraState } from '../../core/state.js';
@@ -34,7 +34,7 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     
     const ActiveGroq = (typeof GroqAPI !== 'undefined') ? GroqAPI : window.GroqAPI;
     
-    // JALAN PINU: Perintahkan Groq mendekripsi dan memuat kunci dari Cloud sebelum validasi pool dilakukan
+    // JALAN PINTAS: Perintahkan Groq mendekripsi dan memuat kunci dari Cloud sebelum validasi pool dilakukan
     if (ActiveGroq && typeof ActiveGroq.refreshKeys === 'function') {
         ActiveGroq.refreshKeys();
     }
@@ -49,23 +49,33 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     const modelOtakJSON = prefs.modelBrain || 'gemini-3.5-flash';
 
     // ========================================================================
-    // SKENARIO 1: DETEKSI STRUK GAMBAR (SINGLE-SHOT HYBRID PIPELINE)
+    // SKENARIO 1: DETEKSI STRUK GAMBAR (CHAIN OF SPECIALIZATION PIPELINE)
     // ========================================================================
     if (base64Image) {
         if (!hasGemini) throw new Error("Fitur penglihatan (OCR) butuh Gemini. Pastikan Anda sudah login PIN Brankas!");
         if (!hasGroq) throw new Error("Sistem Hibrida membutuhkan API Key Groq yang terpasang di Cloud!");
 
-        if (window.showToast) window.showToast(`Tahap 1: Membaca teks (${modelMataOCR})...`, false);
+        if (window.showToast) window.showToast(`Tahap 1: Analisis & Translasi via ${modelMataOCR}...`, false);
         
-        // TAHAP 1: Gemini (Mata OCR - Ekstrak Mentah)
+        // TAHAP 1: Gemini (Mata OCR, Penerjemah & Analis Konteks)
         const userPrompt = messages[messages.length - 1].content;
-        const geminiOCRSystem = "Anda adalah mesin OCR buta yang tidak bisa berpikir, hanya bisa membaca teks. Ekstrak seluruh teks dalam gambar secara baris demi baris. Tulis persis apa adanya.";
+        
+        const geminiOCRSystem = `Kamu adalah Ahli Bahasa Jepang dan Analis Data Finansial.
+Tugas Multimodal-mu:
+1. Baca seluruh teks dalam gambar struk ini secara akurat.
+2. NAMA TOKO: Ekstrak namanya. Jika menggunakan Katakana/Kanji, WAJIB transkripsikan ke Alfabet/Romaji.
+3. NAMA BARANG: TERJEMAHKAN nama barang ke Bahasa Indonesia yang NATURAL, LAZIM, dan MASUK AKAL untuk konteks belanjaan supermarket. JANGAN gunakan terjemahan harfiah yang kaku/aneh.
+4. KATEGORI: Berikan usulan nama kategori yang logis untuk setiap barang tersebut (misal: Sayuran, Bahan Pokok, Daging, Minuman, dll).
+5. ANGKA: Catat harga setiap barang, jumlah (qty), dan indikator persentase pajak (8% atau 10%) yang ada di sebelahnya.
+6. PAJAK BAWAH: Catat total belanja keseluruhan dan temukan total pajak terpisah di bawah struk (jika ada).
+
+Keluarkan hasil analisismu sebagai TEKS MENTAH YANG RAPI DAN TERSTRUKTUR (seperti daftar/list). JANGAN membuat format JSON, karena teksmu ini akan dibaca oleh mesin akuntan untuk tahap selanjutnya.`;
         
         const geminiPayload = { 
             contents: [{ 
                 role: "user", 
                 parts: [
-                    { text: "SALIN DAN EKSTRAK SELURUH TEKS DALAM GAMBAR INI SECARA BARIS DEMI BARIS." } 
+                    { text: "LAKUKAN ANALISIS DAN TERJEMAHAN NATURAL UNTUK GAMBAR STRUK INI." } 
                 ] 
             }], 
             systemInstruction: { parts: [{ text: geminiOCRSystem }] } 
@@ -82,18 +92,15 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
             throw new Error("Mata Gemini tidak menemukan teks apa pun di dalam gambar struk ini.");
         }
 
-        // --- ELIMINASI JEDA WAKTU (COOLDOWN) ---
-        // Karena pengolahan dialihkan langsung ke Groq, jeda 3000ms dihapus demi kecepatan maksimal.
-
         if (window.showToast) window.showToast(`Tahap 2: Groq sedang merakit JSON keuangan...`, false);
 
-        // TAHAP 2: Otak Groq (Merakit JSON, Kategori Organik, dan Pajak)
+        // TAHAP 2: Otak Groq (Merakit JSON dari hasil analisis & terjemahan matang Gemini)
         const hybridMessages = [
-            { role: "user", content: `[TEKS STRUK MENTAH DARI OCR]\n${teksMentahStruk}\n\n[INSTRUKSI ASLI USER]\n${userPrompt}` }
+            { role: "user", content: `[HASIL ANALISIS & TERJEMAHAN DARI AHLI BAHASA]\n${teksMentahStruk}\n\n[INSTRUKSI ASLI USER]\n${userPrompt}` }
         ];
 
         try {
-            // Jalur dipaksa langsung ke Groq tanpa fallback ke Gemini Brain demi menghindari limitasi RPM Google
+            // Jalur dipaksa langsung ke Groq untuk eksekusi JSON super kilat
             const resultJSON = await ActiveGroq.callGroq(hybridMessages, systemPrompt, requireJson, null);
             return resultJSON;
         } catch(e) {
