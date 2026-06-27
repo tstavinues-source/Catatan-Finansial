@@ -1,7 +1,7 @@
 /**
- * AI Staging Area (Versi Ultimate - Presisi Pajak & Auto-Romaji)
+ * AI Staging Area (Versi Ultimate - Real-time Clock Sync & Date Editor)
  * Mengelola hasil ekstraksi AI, rendering UI Staging dengan Kategori Dinamis, 
- * Banner Pajak In-Line, dan Korektor Pembulatan Yen.
+ * Banner Pajak In-Line, Korektor Pembulatan, dan Editor Tanggal Sinkron.
  */
 
 import { AuraState } from '../core/state.js';
@@ -23,28 +23,35 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT INDUK DIPERBARUI: Ketat di Angka, Organik di Kategori, Translasi Alfabet
-        const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
-FOKUS UTAMA: Ekstrak JSON mentah berdasarkan teks OCR struk.
+        // AMBIL WAKTU NYATA LOKAL (Mencegah AI Berhalusinasi Tanggal)
+        const hariIni = new Date();
+        const localDateStr = hariIni.toLocaleDateString('en-CA'); // Menghasilkan format YYYY-MM-DD secara akurat
+
+        // PROMPT INDUK DIPERBARUI: Mengunci Tanggal Berjalan Aplikasi
+        const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
+WAKTU NYATA HARI INI: ${localDateStr}.
+FOKUS UTAMA: Ekstrak JSON mentah berdasarkan teks input chat atau OCR struk.
 
 ATURAN MUTLAK (ANGKA & ITEM):
 1. JANGAN PERNAH menghapus atau menggabungkan baris item. Ekstrak SEMUA baris di struk.
 2. TERJEMAHKAN "nama_barang" ke dalam Bahasa Indonesia yang singkat, rapi, dan BEBAS TYPO.
 3. JANGAN MELAKUKAN MATEMATIKA KOMPLEKS PADA HARGA. Salin angka "harga" PERSIS seperti nominal yang tertulis di sebelah nama barang di struk.
 4. PENANGANAN PAJAK BAWAH STRUK (Uchizei vs Sotozei):
-   - Jika struk menggunakan "Pajak Termasuk" (Uchizei) dimana harga barang sudah berisikan pajak, isi "admin_fee": 0.
-   - Jika struk menggunakan "Pajak Terpisah" (Sotozei) dimana pajak ditambahkan di akhir, jumlahkan total pajak tersebut dan masukkan ke "admin_fee".
-   - CARA CEK SILANG: Pastikan (Total Harga Item + admin_fee) SAMA PERSIS dengan Grand Total di struk. Jika melebihi, berarti Uchizei, jadikan admin_fee 0.
+   - Jika struk menggunakan "Pajak Termasuk" (Uchizei), isi "admin_fee": 0.
+   - Jika struk menggunakan "Pajak Terpisah" (Sotozei), jumlahkan total pajak tersebut dan masukkan ke "admin_fee".
 5. Indikator persentase pajak (misal 8 atau 10) di sebelah barang, cukup masukkan ke "tax_rate". Jika tidak ada, isi 0.
+
+ATURAN WAKTU & TANGGAL KETAT:
+- Isilah field "tanggal" dengan format YYYY-MM-DD.
+- JIKA input berasal dari CHAT TEXT MANUAL atau STRUK tidak mencantumkan tanggal/bulan/tahun yang jelas, kamu WAJIB menggunakan WAKTU NYATA HARI INI: ${localDateStr}. JANGAN PERNAH berhalusinasi menggunakan tanggal lain!
 
 ATURAN KATEGORI (ORGANIK):
 1. Referensi kategori aplikasi nyata: "${categoryListStr}".
-2. Cocokkan barang secara logis dengan daftar di atas (Contoh: Susu masuk ke "Bahan Pokok" atau "Minuman", bukan "Makanan" yang terlalu umum).
-3. Jika benar-benar tidak ada yang cocok di referensi, kamu BEBAS menciptakan nama kategori baru yang sangat akurat.
+2. Cocokkan barang secara logis dengan daftar di atas.
 
 ATURAN LAIN:
 - Tipe wajib antara: "pemasukan", "pengeluaran", "tarik_tunai", "setor_tunai".
-- "merchantName" WAJIB diubah ke huruf Alfabet/Latin (Romaji). Jika nama toko di struk menggunakan Katakana/Hiragana/Kanji (misal: アルゾ), ubah menjadi huruf Latin (misal: ALZO).
+- "merchantName" WAJIB diubah ke huruf Alfabet/Latin (Romaji). Jika menggunakan Katakana/Hiragana/Kanji (misal: アルゾ), ubah menjadi huruf Latin (misal: ALZO). Jika input via chat biasa dan nama toko tidak disebutkan, isi dengan "Transaksi Chat".
 
 Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
 {
@@ -79,7 +86,7 @@ Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
         AuraState.temp.aiStaging = {
             items: AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, timestamp),
             merchantName: jsonResult.merchantName || jsonResult.storeName || jsonResult.kategori || "Toko/Merchant",
-            tanggal: jsonResult.tanggal || timestamp.split('T')[0],
+            tanggal: jsonResult.tanggal || localDateStr, // Fallback utama ke tanggal hari ini
             mata_uang: jsonResult.mata_uang || activeCurrency,
             metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
             tipe: jsonResult.tipe || 'pengeluaran',
@@ -88,7 +95,6 @@ Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
             isCustomDescription: true
         };
         
-        // Render UI lalu Buka Modal (Tanpa pop-up yang tumpang tindih)
         if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
         
@@ -105,8 +111,10 @@ window.renderStagingUI = function() {
     const data = AuraState.temp.aiStaging;
     if (!data) return;
     
+    // SINKRONISASI KONTROL INPUT HEADER MODAL (TERMASUK TANGGAL)
     AuraUtils.safeDOM('staging-trx-store', el => el.value = data.merchantName);
     AuraUtils.safeDOM('staging-trx-type', el => el.value = data.tipe);
+    AuraUtils.safeDOM('staging-trx-date', el => el.value = data.tanggal); // Menampilkan tanggal hasil olah AI di input HTML
     
     const allCats = CategoryManager.getAllCategories();
     let catOptionsHtml = '';
@@ -120,9 +128,7 @@ window.renderStagingUI = function() {
     if (itemsContainer) {
         let compiledItemsHtml = '';
         
-        // ====================================================================
         // BANNER PAJAK IN-LINE
-        // ====================================================================
         if (data.admin_fee > 0) {
             compiledItemsHtml += `
             <div class="bg-amber-950/40 border border-amber-500/50 rounded-xl p-3 mb-4 shadow-lg">
@@ -202,10 +208,6 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-total-display', el => el.innerText = AuraUtils.formatCurrency(totalNominal));
 };
 
-// ============================================================================
-// FUNGSI AKSI PAJAK IN-LINE DENGAN KOREKSI PEMBULATAN
-// ============================================================================
-
 window.actionDistributeTax = function() {
     const data = AuraState.temp.aiStaging;
     if (!data || data.admin_fee <= 0) return;
@@ -214,14 +216,13 @@ window.actionDistributeTax = function() {
     let totalPajakDihitung = 0;
     let itemKenaPajak = [];
 
-    // Tahap 1: Hitung simulasi pajak per item
     data.items.forEach(item => {
         const hargaOri = Number(item.harga) || 0;
         const taxRate = Number(item.tax_rate) || 0;
         
         if (taxRate > 0) {
             const pajakItem = Math.round(hargaOri * (taxRate / 100));
-            item.tax_amount_temp = pajakItem; // Simpan di memori sementara
+            item.tax_amount_temp = pajakItem;
             totalPajakDihitung += pajakItem;
             itemKenaPajak.push(item);
         } else {
@@ -229,38 +230,27 @@ window.actionDistributeTax = function() {
         }
     });
 
-    // Tahap 2: Deteksi Selisih Pembulatan (Rounding Error)
     const selisih = totalPajakAsli - totalPajakDihitung;
-    
-    // Jika ada selisih (misal 2 yen), suntikkan ke item pertama yang kena pajak
     if (itemKenaPajak.length > 0 && selisih !== 0) {
         itemKenaPajak[0].tax_amount_temp += selisih;
     }
 
-    // Tahap 3: Leburkan pajak yang sudah dikoreksi ke Harga Utama
     data.items.forEach(item => {
         if (item.tax_amount_temp > 0) {
             const hargaOri = Number(item.harga) || 0;
             item.harga = hargaOri + item.tax_amount_temp;
         }
-        delete item.tax_amount_temp; // Bersihkan memori sementara
+        delete item.tax_amount_temp;
     });
     
-    data.admin_fee = 0; // Nol-kan agar banner hilang & tidak hitung ganda
-    
+    data.admin_fee = 0;
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-    if (window.showToast) {
-        let msg = "Pajak berhasil dilebur ke setiap item.";
-        if (selisih !== 0) msg += ` (Koreksi sistem: ¥${selisih})`;
-        window.showToast(msg);
-    }
 };
 
 window.actionTaxToItem = function() {
     const data = AuraState.temp.aiStaging;
     if (!data || data.admin_fee <= 0) return;
 
-    // Tambahkan pajak sebagai item baru bernama "Pajak Struk (Tax)"
     data.items.push({ 
         itemId: AuraUtils.generateId('tax'), 
         nama_barang: "Pajak Struk (Tax)", 
@@ -272,14 +262,9 @@ window.actionTaxToItem = function() {
         timestamp: new Date().toISOString() 
     });
     
-    data.admin_fee = 0; // Nol-kan agar banner hilang & tidak hitung ganda
+    data.admin_fee = 0;
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-    if (window.showToast) window.showToast("Pajak telah dicatat sebagai item tersendiri.");
 };
-
-// ============================================================================
-// FUNGSI UTILITAS STAGING
-// ============================================================================
 
 window.updateStagingItem = function(index, field, value) {
     const stagingData = AuraState.temp.aiStaging;
@@ -318,9 +303,15 @@ window.saveStagingToDatabase = async function() {
     
     const storeNameEl = document.getElementById('staging-trx-store'); 
     const typeEl = document.getElementById('staging-trx-type');
+    const dateEl = document.getElementById('staging-trx-date'); // MENANGKAP INPUT EDIT TANGGAL DARI UI
     
     stagingData.merchantName = storeNameEl ? storeNameEl.value.trim() || 'Toko/Merchant' : 'Toko/Merchant'; 
     stagingData.tipe = typeEl ? typeEl.value : 'pengeluaran';
+    
+    // Simpan tanggal yang ada di input field HTML (jika user mengubahnya manual)
+    if (dateEl) {
+        stagingData.tanggal = dateEl.value.trim();
+    }
     
     let finalSum = 0;
     for (let i = 0; i < stagingData.items.length; i++) { 
