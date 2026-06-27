@@ -42,7 +42,7 @@ ATURAN KATEGORI (ORGANIK):
 
 ATURAN LAIN:
 - Tipe wajib antara: "pemasukan", "pengeluaran", "tarik_tunai", "setor_tunai".
-- merchantName wajib diisi sesuai nama toko di struk.
+- "merchantName" wajib diisi sesuai nama toko di struk, TETAPI WAJIB diubah ke huruf Alfabet/Latin (Romaji). Jika struk menggunakan huruf Jepang (Katakana/Kanji/Hiragana seperti アルゾ), transkripsikan menjadi huruf Latin (misal: ALZO).
 
 Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
 {
