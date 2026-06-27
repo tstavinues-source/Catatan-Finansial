@@ -1,6 +1,6 @@
 /**
- * AI Staging Area (Versi Ultimate - Single Shot Hybrid + JS Tax Distributor)
- * Mengelola hasil ekstraksi AI, rendering UI Staging dengan Kategori Dinamis & Kolom Pajak.
+ * AI Staging Area (Versi Ultimate - In-Modal Tax Action UI)
+ * Mengelola hasil ekstraksi AI, rendering UI Staging dengan Kategori Dinamis & Banner Pajak In-Line.
  */
 
 import { AuraState } from '../core/state.js';
@@ -22,7 +22,6 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // PROMPT INDUK DIPERBARUI: Ketat di Angka, Organik di Kategori, Anti-Typo
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}.
 FOKUS UTAMA: Ekstrak JSON mentah berdasarkan teks OCR struk.
 
@@ -38,8 +37,8 @@ ATURAN MUTLAK (ANGKA & ITEM):
 
 ATURAN KATEGORI (ORGANIK):
 1. Referensi kategori aplikasi nyata: "${categoryListStr}".
-2. Cocokkan barang secara logis dengan daftar di atas (Contoh: Susu masuk ke "Bahan Pokok" atau "Minuman", bukan "Makanan" yang terlalu umum).
-3. Jika benar-benar tidak ada yang cocok di referensi, kamu BEBAS menciptakan nama kategori baru yang sangat akurat.
+2. Cocokkan barang secara logis dengan daftar di atas.
+3. Jika tidak ada yang cocok di referensi, kamu BEBAS menciptakan nama kategori baru yang sangat akurat.
 
 ATURAN LAIN:
 - Tipe wajib antara: "pemasukan", "pengeluaran", "tarik_tunai", "setor_tunai".
@@ -87,45 +86,11 @@ Struktur Output Target (HANYA JSON MURNI TANPA BACKTICKS):
             isCustomDescription: true
         };
         
+        // HAPUS AuraAlert yang bentrok. Langsung render dan buka modal Staging!
+        if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
         if (typeof window.showModal === 'function') window.showModal('modal-ai-staging');
         
-        // ====================================================================
-        // TAHAP 3: INTERUPSI DISTRIBUSI PAJAK (JS MATH MURNI)
-        // ====================================================================
-        if (AuraState.temp.aiStaging.admin_fee > 0) {
-            const nominalPajak = AuraState.temp.aiStaging.admin_fee;
-            
-            // Render UI awal sebelum pop-up muncul
-            if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-            
-            if (window.AuraAlert && typeof window.AuraAlert.confirm === 'function') {
-                window.AuraAlert.confirm(
-                    `Pajak terpisah (¥${nominalPajak}) terdeteksi! Bagikan pajak ini ke harga tiap item sesuai persentasenya?`, 
-                    async () => {
-                        // USER KLIK "YA": Mesin JS membagikan pajak secara akurat
-                        AuraState.temp.aiStaging.items.forEach(item => {
-                            const hargaOri = Number(item.harga) || 0;
-                            const taxRate = Number(item.tax_rate) || 0;
-                            
-                            if (taxRate > 0) {
-                                const pajakItem = Math.round(hargaOri * (taxRate / 100));
-                                item.harga = hargaOri + pajakItem; // Meleburkan pajak ke harga utama item
-                            }
-                        });
-                        
-                        // Kosongkan admin_fee agar tidak double-tax
-                        AuraState.temp.aiStaging.admin_fee = 0; 
-                        
-                        if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-                        if (window.showToast) window.showToast("Pajak berhasil dilebur ke setiap item dengan presisi matematis!");
-                    }
-                );
-            }
-        } else {
-            // Jika tidak ada pajak terpisah, langsung render
-            if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-            if (window.showToast) window.showToast("Selesai diproses! Silakan verifikasi.");
-        }
+        if (window.showToast) window.showToast("Selesai diproses! Silakan verifikasi.");
 
     } catch(e) { 
         if (window.showToast) window.showToast(e.message || "Terdapat anomali AI.", true);
@@ -151,10 +116,39 @@ window.renderStagingUI = function() {
     let totalNominal = 0;
     
     if (itemsContainer) {
+        let compiledItemsHtml = '';
+        
+        // ====================================================================
+        // BANNER PAJAK IN-LINE (Menggantikan Pop-Up Alert)
+        // ====================================================================
+        if (data.admin_fee > 0) {
+            compiledItemsHtml += `
+            <div class="bg-amber-950/40 border border-amber-500/50 rounded-xl p-3 mb-4 shadow-lg">
+                <div class="flex flex-col gap-2">
+                    <div class="flex items-center gap-2">
+                        <div class="bg-amber-500/20 text-amber-400 p-1.5 rounded-lg">
+                            <i class="fa-solid fa-receipt text-sm"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-amber-400">Pajak Terpisah (¥${data.admin_fee})</h4>
+                            <p class="text-[9px] text-amber-200/70">Pilih bagaimana pajak ini dicatat:</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-1">
+                        <button onclick="window.actionDistributeTax()" class="flex-1 bg-amber-500 text-amber-950 text-[10px] font-bold py-2 rounded-lg hover:bg-amber-400 transition active:scale-95 shadow-lg">
+                            <i class="fa-solid fa-code-merge mr-1"></i> Leburkan ke Item
+                        </button>
+                        <button onclick="window.actionTaxToItem()" class="flex-1 bg-black/40 border border-amber-500/50 text-amber-400 text-[10px] font-bold py-2 rounded-lg hover:bg-amber-900/40 transition active:scale-95">
+                            <i class="fa-solid fa-plus mr-1"></i> Jadikan Item Tersendiri
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        }
+
         if (data.items.length === 0) {
-            itemsContainer.innerHTML = '<p class="text-xs text-[var(--text-muted)] text-center italic my-4">Keranjang kosong.</p>';
+            compiledItemsHtml += '<p class="text-xs text-[var(--text-muted)] text-center italic my-4">Keranjang kosong.</p>';
         } else {
-            let compiledItemsHtml = '';
             for (let idx = 0; idx < data.items.length; idx++) {
                 const it = data.items[idx];
                 const numHarga = Number(it.harga) || 0;
@@ -198,13 +192,61 @@ window.renderStagingUI = function() {
                     </div>
                 </div>`;
             }
-            itemsContainer.innerHTML = compiledItemsHtml;
         }
+        itemsContainer.innerHTML = compiledItemsHtml;
     }
     
     totalNominal += Number(data.admin_fee || 0);
     AuraUtils.safeDOM('staging-total-display', el => el.innerText = AuraUtils.formatCurrency(totalNominal));
 };
+
+// ============================================================================
+// FUNGSI AKSI PAJAK IN-LINE
+// ============================================================================
+
+window.actionDistributeTax = function() {
+    const data = AuraState.temp.aiStaging;
+    if (!data || data.admin_fee <= 0) return;
+
+    data.items.forEach(item => {
+        const hargaOri = Number(item.harga) || 0;
+        const taxRate = Number(item.tax_rate) || 0;
+        
+        if (taxRate > 0) {
+            const pajakItem = Math.round(hargaOri * (taxRate / 100));
+            item.harga = hargaOri + pajakItem; // Meleburkan pajak ke harga item
+        }
+    });
+    
+    data.admin_fee = 0; // Nol-kan agar banner hilang & tidak hitung ganda
+    if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
+    if (window.showToast) window.showToast("Pajak berhasil dileburkan ke harga masing-masing barang.");
+};
+
+window.actionTaxToItem = function() {
+    const data = AuraState.temp.aiStaging;
+    if (!data || data.admin_fee <= 0) return;
+
+    // Tambahkan pajak sebagai item baru bernama "Pajak Struk (Tax)"
+    data.items.push({ 
+        itemId: AuraUtils.generateId('tax'), 
+        nama_barang: "Pajak Struk (Tax)", 
+        harga: data.admin_fee, 
+        qty: 1, 
+        kategori_barang: "Lainnya", 
+        tax_rate: 0, 
+        paymentMethod: data.metode_pembayaran, 
+        timestamp: new Date().toISOString() 
+    });
+    
+    data.admin_fee = 0; // Nol-kan agar banner hilang & tidak hitung ganda
+    if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
+    if (window.showToast) window.showToast("Pajak telah dicatat sebagai item tersendiri.");
+};
+
+// ============================================================================
+// FUNGSI UTILITAS STAGING
+// ============================================================================
 
 window.updateStagingItem = function(index, field, value) {
     const stagingData = AuraState.temp.aiStaging;
