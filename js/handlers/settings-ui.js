@@ -408,7 +408,7 @@ window.renderRecurringUIForBudget = function() {
 // ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
-    const topic = await window.AuraPrompt("<i class='fa-solid fa-wand-magic-sparkles mr-2'></i> Tracker AI", "Sistem apa yang ingin kamu lacak?", "Misal: Skincare, Kopi, atau Kucing");
+    const topic = await window.AuraPrompt("<i class='fa-solid fa-wand-magic-sparkles mr-1'></i> Tracker AI", "Sistem apa yang ingin kamu lacak?", "Misal: Skincare, Kopi, atau Kucing");
     if (!topic || topic.trim() === '') return;
     
     const btn = document.getElementById('btn-ai-tracker');
@@ -668,26 +668,111 @@ window.openAuditLogs = async function() {
 };
 
 // ============================================================================
-// 6. AUTO-SYNC OBSERVER (CCTV PEMANTAU DATA FIREBASE)
+// 6. AUTO-SYNC OBSERVER & AUTO-BILLER ENGINE (CCTV PEMANTAU & PENAGIH)
 // ============================================================================
 let lastGroqKeysStr = null;
 let lastRecStr = null;
+let isProcessingBills = false;
 
+window.processRecurringBills = async function() {
+    if (isProcessingBills) return;
+    if (!AuraState.user?.uid || !AuraState.data?.settings?.recurringPayments) return;
+    
+    isProcessingBills = true;
+    const now = new Date();
+    const rPayments = AuraState.data.settings.recurringPayments;
+    let isUpdated = false;
+    const updates = {};
+    
+    for (const [id, rp] of Object.entries(rPayments)) {
+        // Tentukan tanggal jatuh tempo terdekat berdasarkan siklus hari ini
+        let recentDueDate = new Date(now.getFullYear(), now.getMonth(), rp.date);
+        
+        // Jika tanggal hari ini belum mencapai tanggal tagihan, berarti tagihan terakhir adalah bulan lalu
+        if (now.getDate() < rp.date) {
+            recentDueDate = new Date(now.getFullYear(), now.getMonth() - 1, rp.date);
+        }
+        
+        // Membuat kunci unik untuk siklus bulan ini (Contoh: "2026-6")
+        const dueMonthKey = `${recentDueDate.getFullYear()}-${recentDueDate.getMonth() + 1}`; 
+        
+        // Jika tagihan untuk siklus ini belum dieksekusi (Belum Lunas)
+        if (rp.lastExecutedMonth !== dueMonthKey) {
+            const timestamp = new Date().toISOString();
+            
+            const newTrx = {
+                merchantName: rp.name,
+                storeName: rp.name,
+                tanggal: timestamp.split('T')[0],
+                createdAt: timestamp,
+                nominal: Number(rp.amount),
+                mata_uang: AuraState.system.displayCurrency || 'JPY',
+                metode_pembayaran: rp.method || 'cashless',
+                tipe: 'pengeluaran',
+                kategori: 'Utilitas', 
+                description: `[AUTO-BILL] Tagihan rutin otomatis untuk siklus ${dueMonthKey}`,
+                isCustomDescription: true,
+                is_deleted: false,
+                items: [{
+                    itemId: window.AuraUtils ? window.AuraUtils.generateId('itm') : `itm_${Date.now()}`,
+                    nama_barang: `Tagihan ${rp.name}`,
+                    harga: Number(rp.amount),
+                    qty: 1,
+                    kategori_barang: 'Utilitas',
+                    tax_rate: 0,
+                    paymentMethod: rp.method || 'cashless',
+                    timestamp: timestamp
+                }]
+            };
+            
+            try {
+                // Eksekusi potong saldo dan rekam ke database Firebase
+                if(window.FirebaseService && window.FirebaseService.saveTransaction) {
+                    await window.FirebaseService.saveTransaction(newTrx, true);
+                    
+                    // Berikan stempel LUNAS untuk bulan ini agar tidak dipotong lagi besok
+                    rp.lastExecutedMonth = dueMonthKey;
+                    updates[`recurringPayments/${id}/lastExecutedMonth`] = dueMonthKey;
+                    isUpdated = true;
+                    
+                    if(window.showToast) window.showToast(`💳 Berhasil! Tagihan rutin [${rp.name}] telah dipotong otomatis.`);
+                }
+            } catch(e) {
+                console.error("Auto-Biller Gagal mengeksekusi tagihan:", e);
+            }
+        }
+    }
+    
+    // Simpan stempel Lunas ke Cloud
+    if (isUpdated && window.FirebaseService) {
+        await window.FirebaseService.updateSettings(updates);
+    }
+    
+    isProcessingBills = false;
+};
+
+// CCTV berjalan setiap 1,5 detik
 setInterval(() => {
     if (!AuraState.data || !AuraState.data.settings) return;
     
+    // 1. Pantau Perubahan Kunci Groq
     const currentGroqKeys = JSON.stringify(AuraState.data.settings.groqKeysEncrypted || []);
     if (currentGroqKeys !== lastGroqKeysStr) {
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
         lastGroqKeysStr = currentGroqKeys;
     }
 
+    // 2. Pantau Perubahan Data Tagihan Rutin UI
     const currentRec = JSON.stringify(AuraState.data.settings.recurringPayments || {});
     if (currentRec !== lastRecStr) {
         if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
         lastRecStr = currentRec;
     }
-}, 1000);
+
+    // 3. Jalankan Mesin Penagih Otomatis (Auto-Biller)
+    window.processRecurringBills();
+    
+}, 1500);
 
 // ============================================================================
 // SISTEM ACCORDION (LACI) PENGATURAN
