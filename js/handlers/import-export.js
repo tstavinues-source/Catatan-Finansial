@@ -117,11 +117,14 @@ window.downloadCSV = function() {
 // IMPOR DATA (RESTORASI DARI JSON/CSV)
 // ============================================================================
 
-window.processFileImport = function(event) {
+window.processFileImport = async function(event) {
     const file = event.target.files[0];
     if (!file) return;
     
-    if (confirm("Peringatan: Melakukan pemaksaan impor data berpotensi menduplikasi entri jika data tersebut sudah ada. Lanjutkan?")) {
+    // MENGGUNAKAN AURA CONFIRM BARU
+    const isConfirmed = await window.AuraConfirm("Peringatan: Melakukan pemaksaan impor data berpotensi menduplikasi entri jika data tersebut sudah ada di Cloud. Tetap Lanjutkan?");
+
+    if (isConfirmed) {
         const reader = new FileReader();
         reader.onload = async function(e) {
             const contents = e.target.result;
