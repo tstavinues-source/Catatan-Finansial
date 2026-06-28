@@ -1,5 +1,5 @@
 /**
- * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, & Native Select)
+ * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, & Cashflow Logic)
  */
 
 import { AuraState } from '../core/state.js';
@@ -21,29 +21,31 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // AMBIL WAKTU LOKAL (JST/Waktu Sistem Saat Ini)
+        // AMBIL WAKTU LOKAL
         const hariIni = new Date();
         const localDateStr = hariIni.toLocaleDateString('en-CA'); 
-        const localTimeStr = hariIni.toTimeString().substring(0, 5); // Format HH:MM
+        const localTimeStr = hariIni.toTimeString().substring(0, 5);
 
-        // PROMPT SANGAT KETAT UNTUK KATEGORI DAN WAKTU
+        // PROMPT AI - KINI DILENGKAPI PENGETAHUAN TENTANG "TARIK TUNAI"
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
 WAKTU SAAT INI: ${localDateStr} ${localTimeStr}.
-FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis Gemini.
+FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis.
 
-ATURAN WAKTU DAN TANGGAL (PENTING):
-- Jika data berasal dari struk, EKSTRAK TANGGAL DAN JAM asli dari struk tersebut. 
-- Format wajib: "tanggal": "YYYY-MM-DD", "jam": "HH:MM".
-- Jika tidak ada waktu di struk, gunakan WAKTU SAAT INI yang tertera di atas.
+ATURAN ALIRAN DANA (TIPE TRANSAKSI) - SANGAT PENTING:
+WAJIB isi parameter "tipe" dengan salah satu dari 4 opsi ini:
+1. "pengeluaran" -> Untuk belanja, bayar tagihan, jajan, dsb.
+2. "pemasukan" -> Untuk gaji, profit, dikasih uang, dsb.
+3. "tarik_tunai" -> JIKA USER MENARIK/AMBIL UANG DARI ATM (Memindahkan uang dari Bank ke Dompet Fisik).
+4. "setor_tunai" -> JIKA USER MENYETOR UANG KE ATM (Memindahkan uang Fisik ke Bank).
 
-ATURAN KATEGORI (SANGAT KETAT):
+ATURAN WAKTU DAN TANGGAL:
+- Ekstrak dari teks/struk jika ada. Format: "tanggal": "YYYY-MM-DD", "jam": "HH:MM".
+- Jika tidak ada, gunakan waktu saat ini: ${localDateStr} ${localTimeStr}.
+
+ATURAN KATEGORI:
 1. INI DAFTAR KATEGORI USER: "${categoryListStr}".
 2. KAMU WAJIB MENGGUNAKAN SALAH SATU DARI DAFTAR DI ATAS. 
-3. KELOMPOKKAN DENGAN CERDAS! JANGAN membuat kategori receh seperti "Makanan Ringan", "Kue", atau "Permen". Masukkan semuanya ke "Cemilan". JANGAN buat "Sayuran" jika sudah ada "Bahan Pokok" (sesuaikan dengan daftar).
-
-ATURAN LAIN:
-- Pajak terpisah (Sotozei) jumlahkan ke "admin_fee", jika pajak termasuk (Uchizei) jadikan 0.
-- "merchantName" WAJIB diubah ke huruf Alfabet/Latin (Romaji).
+3. Kelompokkan dengan logis! Jika user "tarik tunai" atau "setor tunai", isikan kategori_barang dengan "Lainnya".
 
 Struktur Output Target JSON MURNI:
 {
@@ -52,7 +54,7 @@ Struktur Output Target JSON MURNI:
     "jam": "HH:MM",
     "mata_uang": "string", 
     "metode_pembayaran": "tunai/cashless", 
-    "tipe": "pengeluaran", 
+    "tipe": "pengeluaran/pemasukan/tarik_tunai/setor_tunai", 
     "admin_fee": number, 
     "items": [
         { "nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string", "tax_rate": number }
@@ -73,7 +75,7 @@ Struktur Output Target JSON MURNI:
             items: AuraUtils.sanitizeItemsArray(jsonResult.items, jsonResult.metode_pembayaran, timestamp),
             merchantName: jsonResult.merchantName || "Toko/Merchant",
             tanggal: jsonResult.tanggal || localDateStr,
-            jam: jsonResult.jam || localTimeStr, // Tangkap jam dari struk/AI
+            jam: jsonResult.jam || localTimeStr, 
             mata_uang: jsonResult.mata_uang || activeCurrency,
             metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
             tipe: jsonResult.tipe || 'pengeluaran',
@@ -99,9 +101,8 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-trx-store', el => el.value = data.merchantName);
     AuraUtils.safeDOM('staging-trx-type', el => el.value = data.tipe);
     AuraUtils.safeDOM('staging-trx-date', el => el.value = data.tanggal); 
-    AuraUtils.safeDOM('staging-trx-time', el => el.value = data.jam); // Menampilkan JAM secara visual
+    AuraUtils.safeDOM('staging-trx-time', el => el.value = data.jam); 
     
-    // Siapkan daftar kategori yang ada di sistem
     const allCats = CategoryManager.getAllCategories();
     const catArray = Object.values(allCats).map(c => c.name);
     
@@ -141,7 +142,6 @@ window.renderStagingUI = function() {
                 const safeName = AuraUtils.escapeHtml(it.nama_barang);
                 let safeKategori = it.kategori_barang || "Lainnya";
                 
-                // Native Select Options (Mengganti Datalist yang bermasalah di Mobile)
                 let selectOptionsHtml = '';
                 let foundMatch = false;
                 catArray.forEach(catName => {
@@ -150,7 +150,6 @@ window.renderStagingUI = function() {
                     selectOptionsHtml += `<option value="${AuraUtils.escapeHtml(catName)}" ${isSelected ? 'selected' : ''}>${AuraUtils.escapeHtml(catName)}</option>`;
                 });
                 
-                // Jika AI tetap memaksa bikin kategori aneh yang tidak ada di list, tambahkan sementara agar tidak kosong
                 if (!foundMatch) {
                     selectOptionsHtml = `<option value="${AuraUtils.escapeHtml(safeKategori)}" selected>${AuraUtils.escapeHtml(safeKategori)} (AI Baru)</option>` + selectOptionsHtml;
                 }
@@ -192,9 +191,6 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-total-display', el => el.innerText = AuraUtils.formatCurrency(totalNominal));
 };
 
-// ... (Biarkan fungsi actionDistributeTax, actionTaxToItem, updateStagingItem, removeStagingItem, addStagingItem SAMA SEPERTI SEBELUMNYA) ...
-
-// PASTE INI UNTUK MENGGANTIKAN FUNGSI SAVE LAMA
 window.saveStagingToDatabase = async function() {
     const stagingData = AuraState.temp.aiStaging;
     if (!stagingData) return;
@@ -202,15 +198,13 @@ window.saveStagingToDatabase = async function() {
     const storeNameEl = document.getElementById('staging-trx-store'); 
     const typeEl = document.getElementById('staging-trx-type');
     const dateEl = document.getElementById('staging-trx-date'); 
-    const timeEl = document.getElementById('staging-trx-time'); // AMBIL JAM DARI UI
+    const timeEl = document.getElementById('staging-trx-time'); 
     
     stagingData.merchantName = storeNameEl ? storeNameEl.value.trim() || 'Toko/Merchant' : 'Toko/Merchant'; 
     stagingData.tipe = typeEl ? typeEl.value : 'pengeluaran';
     
-    // GABUNGKAN TANGGAL DAN JAM SECARA LOKAL AGAR TIDAK KENA BUG UTC "JAM 9 PAGI"
     let finalDateString = new Date().toISOString(); 
     if (dateEl && timeEl && dateEl.value && timeEl.value) {
-        // Membentuk format ISO Lokal yang aman: "YYYY-MM-DDTHH:MM:00"
         const localDateTime = new Date(`${dateEl.value}T${timeEl.value}:00`);
         if (!isNaN(localDateTime.getTime())) {
             finalDateString = localDateTime.toISOString();
@@ -239,7 +233,7 @@ window.saveStagingToDatabase = async function() {
     }
 };
 
-window.actionDistributeTax = function() { /* SAMA SEPERTI SEBELUMNYA */
+window.actionDistributeTax = function() {
     const data = AuraState.temp.aiStaging;
     if (!data || data.admin_fee <= 0) return;
     const totalPajakAsli = data.admin_fee; let totalPajakDihitung = 0; let itemKenaPajak = [];
@@ -253,21 +247,25 @@ window.actionDistributeTax = function() { /* SAMA SEPERTI SEBELUMNYA */
     data.admin_fee = 0;
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
-window.actionTaxToItem = function() { /* SAMA SEPERTI SEBELUMNYA */
+
+window.actionTaxToItem = function() {
     const data = AuraState.temp.aiStaging; if (!data || data.admin_fee <= 0) return;
     data.items.push({ itemId: AuraUtils.generateId('tax'), nama_barang: "Pajak Struk (Tax)", harga: data.admin_fee, qty: 1, kategori_barang: "Lainnya", tax_rate: 0, paymentMethod: data.metode_pembayaran, timestamp: new Date().toISOString() });
     data.admin_fee = 0; if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
-window.updateStagingItem = function(index, field, value) { /* SAMA SEPERTI SEBELUMNYA */
+
+window.updateStagingItem = function(index, field, value) {
     const stagingData = AuraState.temp.aiStaging; if (!stagingData || !stagingData.items[index]) return;
     if (field === 'harga' || field === 'qty' || field === 'tax_rate') { stagingData.items[index][field] = isNaN(Number(value)) ? 0 : Number(value); } else { stagingData.items[index][field] = value.trim(); }
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
-window.removeStagingItem = function(index) { /* SAMA SEPERTI SEBELUMNYA */
+
+window.removeStagingItem = function(index) {
     if (!AuraState.temp.aiStaging) return; AuraState.temp.aiStaging.items.splice(index, 1);
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
-window.addStagingItem = function() { /* SAMA SEPERTI SEBELUMNYA */
+
+window.addStagingItem = function() {
     if (!AuraState.temp.aiStaging) return; AuraState.temp.aiStaging.items.push({ itemId: AuraUtils.generateId('itm'), nama_barang: "Item Baru", harga: 0, qty: 1, kategori_barang: "Lainnya", tax_rate: 0, paymentMethod: AuraState.temp.aiStaging.metode_pembayaran, timestamp: new Date().toISOString() });
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
