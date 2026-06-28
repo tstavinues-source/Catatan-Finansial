@@ -276,6 +276,17 @@ window.fetchLiveExchangeRate = async function() {
     }
 };
 
+// MESIN FORMAT KURS DINAMIS (Mendeteksi IDR / JPY)
+window.formatAuraCurrency = function(amount, explicitCurr) {
+    const curr = explicitCurr || AuraState.system.displayCurrency || 'JPY';
+    const num = Number(amount) || 0;
+    if (curr === 'IDR') {
+        return 'Rp ' + num.toLocaleString('id-ID');
+    } else {
+        return '¥' + num.toLocaleString('en-US');
+    }
+};
+
 // ============================================================================
 // BOOTSTRAPPING SYSTEM & PWA REGISTRATION
 // ============================================================================
