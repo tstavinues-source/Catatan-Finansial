@@ -92,6 +92,66 @@
         </div>
     </div>
 
+    <div id="modal-category-manager" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border-t-4 border-t-accent">
+            <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0">
+                <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-folder-tree text-accent"></i> Kategori Sistem</h3>
+                <button onclick="window.closeModal('modal-category-manager')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="flex border-b border-[var(--border-glass)] shrink-0 bg-black/20">
+                <button id="tab-cat-expense" onclick="window.switchCatTab('expense')" class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-[var(--color-expense)] border-b-2 border-[var(--color-expense)] transition-all">Pengeluaran</button>
+                <button id="tab-cat-income" onclick="window.switchCatTab('income')" class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] border-b-2 border-transparent hover:text-white transition-all">Pemasukan</button>
+            </div>
+            
+            <div class="p-4 shrink-0 bg-[var(--bg-base)] z-10 shadow-md">
+                <button onclick="window.openAddCategoryForm()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-dashed border-[var(--border-glass)] text-xs font-bold text-white transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-plus text-accent"></i> Kategori Baru
+                </button>
+            </div>
+            
+            <div id="category-list-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-black/40">
+                </div>
+        </div>
+    </div>
+
+    <div id="modal-category-form" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
+                <h3 id="cat-form-title" class="text-lg font-bold text-accent font-display">Kategori Baru</h3>
+                <button onclick="window.closeModal('modal-category-form')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <input type="hidden" id="cat-form-id">
+            <input type="hidden" id="cat-form-type">
+            <input type="hidden" id="cat-form-icon">
+            <input type="hidden" id="cat-form-color">
+
+            <div class="space-y-4">
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Kategori</label>
+                    <input type="text" id="cat-form-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Cth: Tagihan & Utilitas">
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Bagian Dari (Sub-Kategori)</label>
+                    <select id="cat-form-parent" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <option value="">-- Menjadi Kategori Utama --</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-2 block font-bold">Pilih Ikon & Warna</label>
+                    <div class="bg-black/30 p-3 rounded-xl border border-[var(--border-glass)]">
+                        <div id="icon-picker-grid" class="grid grid-cols-5 gap-3 max-h-48 overflow-y-auto no-scrollbar justify-items-center">
+                            </div>
+                    </div>
+                </div>
+            </div>
+            <button onclick="window.saveCategoryData()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition hover:opacity-90 active:scale-95">Simpan Kategori</button>
+        </div>
+    </div>
+
+
     <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
         <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar relative overflow-hidden">
             <div class="absolute -top-20 -left-20 w-40 h-40 bg-[var(--accent-primary)] rounded-full blur-[80px] opacity-30"></div>
@@ -564,7 +624,6 @@
                     <div id="sec-advanced" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
                             <div class="grid grid-cols-2 gap-2">
-                                <button onclick="window.openCategoryManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-folder-tree text-emerald-400 text-lg"></i> Kategori</button>
                                 <button onclick="window.openTrackerManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-box-open text-amber-400 text-lg"></i> Trackers</button>
                                 <button onclick="window.openFamilyManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-users text-indigo-400 text-lg"></i> Keluarga</button>
                                 <button id="btn-show-audit" onclick="window.openAuditLogs()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-shield-halved text-gray-300 text-lg"></i> Audit Log</button>
@@ -777,7 +836,7 @@
                     <div class="flex gap-2">
                         <button onclick="window.openCategoryManager()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-emerald-400 hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-folder-tree"></i> Kategori</button>
                         <button onclick="window.openManualTrxModal()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Manual</button>
-                        <button onclick="window.switchView('trash')" class="glass-panel w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition" title="Tempat Sampah"><i class="fa-solid fa-dumpster"></i></button>
+                        <button onclick="window.switchView('trash')" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-dumpster"></i> Sampah</button>
                     </div>
                 </div>
                 
@@ -906,7 +965,7 @@
                     </div>
                     <button onclick="window.showModal('modal-settings')" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-sliders text-xs"></i></button>
                 </div>
-                <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar pb-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIyKSIvPgo8L3N2Zz4=')]"></div>
+                <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar pb-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjAxKSIvPgo8L3N2Zz4=')]"></div>
                 <div id="chat-anchor" class="h-4 shrink-0"></div>
             </div>
 
@@ -946,7 +1005,7 @@
                 <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
             </button>
             <button onclick="window.switchView('transactions')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="transactions">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class=\"fa-solid fa-list-ul text-[18px]\"></i></div>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-list-ul text-[18px]"></i></div>
                 <span class="text-[8px] font-black tracking-widest uppercase">Log</span>
             </button>
             <button onclick="window.switchView('analytics')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="analytics">
