@@ -65,7 +65,6 @@ window.saveAIPreferences = async function() {
     const personaEl = document.getElementById('setting-ai-persona');
     const styleEl = document.getElementById('setting-ai-style');
     
-    // MENANGKAP ELEMEN DROPDOWN BARU
     const ocrEl = document.getElementById('setting-ai-ocr');
     const brainEl = document.getElementById('setting-ai-brain');
 
@@ -76,8 +75,6 @@ window.saveAIPreferences = async function() {
                 modelVision: visionEl ? visionEl.value : 'Auto',
                 persona: personaEl ? personaEl.value : 'Kombinasi Humble + Jenius + Profesional',
                 style: styleEl ? styleEl.value : 'Normal',
-                
-                // MENYIMPAN CONFIG LOAD BALANCER LINTAS MODEL KE FIREBASE
                 modelOcr: ocrEl ? ocrEl.value : 'gemini-2.5-flash',
                 modelBrain: brainEl ? brainEl.value : 'gemini-3.5-flash'
             } 
@@ -144,29 +141,30 @@ window.addGroqKey = async function() {
 };
 
 window.removeGroqKey = async function(index) {
-    window.AuraAlert.confirm("Yakin ingin mencabut Key Groq ini dari Cloud?", async () => {
-        try {
-            let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-            let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-            
-            currentKeys.splice(index, 1);
-            
-            await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
-            
-            if(AuraState.data.settings) {
-                AuraState.data.settings.groqKeysEncrypted = currentKeys;
-            }
-            
-            if (window.showToast) {
-                window.showToast("Kunci dihancurkan dari Pool.");
-            }
-            window.renderGroqKeysUI();
-        } catch(e) {
-            if (window.showToast) {
-                window.showToast("Gagal mencabut kunci.", true);
-            }
+    const isConfirmed = await window.AuraConfirm("Yakin ingin mencabut Key Groq ini dari Cloud?");
+    if (!isConfirmed) return;
+
+    try {
+        let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
+        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
+        currentKeys.splice(index, 1);
+        
+        await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
+        
+        if(AuraState.data.settings) {
+            AuraState.data.settings.groqKeysEncrypted = currentKeys;
         }
-    });
+        
+        if (window.showToast) {
+            window.showToast("Kunci dihancurkan dari Pool.");
+        }
+        window.renderGroqKeysUI();
+    } catch(e) {
+        if (window.showToast) {
+            window.showToast("Gagal mencabut kunci.", true);
+        }
+    }
 };
 
 window.renderGroqKeysUI = function() {
@@ -203,7 +201,6 @@ window.renderGroqKeysUI = function() {
                 }
                 dec = result;
             } catch(e) {
-                // Biarkan null jika gagal dekripsi
             }
 
             const isValid = dec && dec.startsWith('gsk_');
@@ -328,18 +325,19 @@ window.addRecurringPayment = async function() {
 };
 
 window.removeRecurringPayment = async function(id) {
-    window.AuraAlert.confirm("Hapus tagihan otomatis ini?", async () => {
-        try {
-            await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/recurringPayments/${id}`));
-            if(window.showToast) {
-                window.showToast("Tagihan dihapus.");
-            }
-        } catch(e) {
-            if(window.showToast) {
-                window.showToast("Gagal menghapus.", true);
-            }
+    const isConfirmed = await window.AuraConfirm("Hapus tagihan otomatis ini secara permanen?");
+    if (!isConfirmed) return;
+
+    try {
+        await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/recurringPayments/${id}`));
+        if(window.showToast) {
+            window.showToast("Tagihan dihapus.");
         }
-    });
+    } catch(e) {
+        if(window.showToast) {
+            window.showToast("Gagal menghapus.", true);
+        }
+    }
 };
 
 window.renderRecurringUI = function() {
@@ -406,51 +404,50 @@ window.renderRecurringUIForBudget = function() {
 };
 
 // ============================================================================
-// 4. TRACKER DINAMIS (DENGAN AI AUTO-FILLER)
+// 4. TRACKER DINAMIS (DENGAN AI AUTO-FILLER & AURA PROMPT)
 // ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
-    window.AuraAlert.prompt("Tracker apa yang ingin kamu buat?", "Misal: Skincare, Kopi, Kucing", async (topic) => {
-        if (!topic || topic.trim() === '') return;
-        
-        const btn = document.getElementById('btn-ai-tracker');
-        const originalText = btn ? btn.innerHTML : '';
-        
-        if (btn) {
-            btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...';
-            btn.disabled = true;
-        }
-        
-        try {
-            const systemPrompt = `Kamu adalah ahli pembuat kata kunci untuk sistem Tracker Keuangan.
+    const topic = await window.AuraPrompt("<i class='fa-solid fa-wand-magic-sparkles mr-1'></i> Tracker AI", "Sistem apa yang ingin kamu lacak?", "Misal: Skincare, Kopi, atau Kucing");
+    if (!topic || topic.trim() === '') return;
+    
+    const btn = document.getElementById('btn-ai-tracker');
+    const originalText = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch animate-spin mr-1"></i> Memproses...';
+        btn.disabled = true;
+    }
+    
+    try {
+        const systemPrompt = `Kamu adalah ahli pembuat kata kunci untuk sistem Tracker Keuangan.
 TUGAS: Buat konfigurasi untuk melacak pengeluaran pengguna yang berkaitan dengan topik: "${topic}".
 1. "id": satu kata pendek huruf kecil (contoh: kopi).
 2. "name": Judul elegan dan rapi (contoh: Kopi & Kafe).
 3. "keywords": array minimal 10 kata bersinonim/merek. Harus huruf kecil. (contoh: ["starbucks", "janji jiwa", "kopi"]).
 WAJIB MENGEMBALIKAN DALAM FORMAT JSON MURNI TANPA TAG:
 {"id": "string", "name": "string", "keywords": ["string1", "string2"]}`;
-            const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
-            const responseText = await window.executeAIWithFallback(messages, systemPrompt, true, null);
-            const aiJson = AuraUtils.parseCleanJSON(responseText);
+        const messages = [{ role: "user", content: `Buatkan konfigurasi tracker untuk: ${topic}` }];
+        const responseText = await window.executeAIWithFallback(messages, systemPrompt, true, null);
+        const aiJson = AuraUtils.parseCleanJSON(responseText);
 
-            AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || '');
-            AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || '');
-            AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
-            
-            if (window.showToast) {
-                window.showToast("Berhasil! AI telah mengisi form untukmu.");
-            }
-        } catch (e) {
-            if (window.showToast) {
-                window.showToast("AI gagal memproses permintaan: " + e.message, true);
-            }
-        } finally {
-            if (btn) {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
+        AuraUtils.safeDOM('new-track-id', el => el.value = aiJson.id || '');
+        AuraUtils.safeDOM('new-track-name', el => el.value = aiJson.name || '');
+        AuraUtils.safeDOM('new-track-keywords', el => el.value = (aiJson.keywords || []).join(', '));
+        
+        if (window.showToast) {
+            window.showToast("Berhasil! AI telah mengisi form untukmu.");
         }
-    });
+    } catch (e) {
+        if (window.showToast) {
+            window.showToast("AI gagal memproses permintaan: " + e.message, true);
+        }
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
 };
 
 window.openTrackerManager = function() {
@@ -527,16 +524,17 @@ window.saveNewTracker = async function() {
 };
 
 window.removeTracker = async function(id) {
-    window.AuraAlert.confirm(`Hapus pelacak ${id}?`, async () => {
-        try {
-            await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/staplesTrackers/${id}`));
-            window.openTrackerManager();
-        } catch(e) {
-            if (window.showToast) {
-                window.showToast("Gagal menghapus Tracker.", true);
-            }
+    const isConfirmed = await window.AuraConfirm(`Hapus Tracker <b>${id}</b> dari sistem?`);
+    if (!isConfirmed) return;
+
+    try {
+        await remove(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/staplesTrackers/${id}`));
+        window.openTrackerManager();
+    } catch(e) {
+        if (window.showToast) {
+            window.showToast("Gagal menghapus Tracker.", true);
         }
-    });
+    }
 };
 
 // ============================================================================
@@ -603,17 +601,18 @@ window.addFamilyMember = async function() {
 
 window.removeFamilyMember = async function(index) {
     const members = AuraState.data.settings?.familyMembers || [];
-    window.AuraAlert.confirm(`Lepaskan akses untuk [${members[index]}]?`, async () => {
-        members.splice(index, 1);
-        try {
-            await FirebaseService.updateSettings({ familyMembers: members });
-            window.openFamilyManager();
-        } catch(e) {
-            if (window.showToast) {
-                window.showToast("Gagal mencabut akses.", true);
-            }
+    const isConfirmed = await window.AuraConfirm(`Lepaskan akses untuk anggota <b>${members[index]}</b>?`);
+    if (!isConfirmed) return;
+
+    members.splice(index, 1);
+    try {
+        await FirebaseService.updateSettings({ familyMembers: members });
+        window.openFamilyManager();
+    } catch(e) {
+        if (window.showToast) {
+            window.showToast("Gagal mencabut akses.", true);
         }
-    });
+    }
 };
 
 window.openAuditLogs = async function() {
@@ -697,27 +696,21 @@ window.toggleSettingsSection = function(sectionId) {
     const content = document.getElementById(sectionId);
     const icon = document.getElementById('icon-' + sectionId);
 
-    // Jika laci sedang tertutup
     if (content.classList.contains('max-h-0')) {
-        // Buka laci
         content.classList.remove('max-h-0', 'opacity-0');
-        content.classList.add('max-h-[1500px]', 'opacity-100'); // max-height besar agar isi tidak terpotong
+        content.classList.add('max-h-[1500px]', 'opacity-100'); 
         
-        // Animasi Ikon (Berubah dari + menjadi x)
         icon.classList.replace('fa-plus', 'fa-xmark');
         icon.classList.add('rotate-90', 'text-rose-400');
         icon.classList.remove('text-blue-400');
         icon.parentElement.classList.replace('bg-blue-600/20', 'bg-rose-500/20');
     } else {
-        // Tutup laci
         content.classList.remove('max-h-[1500px]', 'opacity-100');
         content.classList.add('max-h-0', 'opacity-0');
         
-        // Kembalikan Ikon ke awal
         icon.classList.replace('fa-xmark', 'fa-plus');
         icon.classList.remove('rotate-90', 'text-rose-400');
         icon.classList.add('text-blue-400');
         icon.parentElement.classList.replace('bg-rose-500/20', 'bg-blue-600/20');
     }
 };
-
