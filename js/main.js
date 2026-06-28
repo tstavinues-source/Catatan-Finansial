@@ -118,6 +118,108 @@ window.closeModal = function(id) {
     });
 };
 
+// ============================================================================
+// SISTEM TEMA WARNA DINAMIS (PERSISTEN KE CLOUD)
+// ============================================================================
+const AURA_THEMES = {
+    emerald: { primary: '#10b981', glow: 'rgba(16,185,129,0.4)' },
+    sky: { primary: '#38bdf8', glow: 'rgba(56,189,248,0.4)' },
+    rose: { primary: '#fb7185', glow: 'rgba(251,113,133,0.4)' },
+    amber: { primary: '#fbbf24', glow: 'rgba(251,191,36,0.4)' },
+    violet: { primary: '#a78bfa', glow: 'rgba(167,139,250,0.4)' }
+};
+
+window.applyAndSaveTheme = async function(themeKey, skipSave = false) {
+    const theme = AURA_THEMES[themeKey] || AURA_THEMES['emerald'];
+    
+    // Inject ke CSS Variable Global
+    document.documentElement.style.setProperty('--accent-primary', theme.primary);
+    document.documentElement.style.setProperty('--accent-glow', theme.glow);
+    
+    // Update dropdown UI jika ada
+    const selectEl = document.getElementById('user-theme-color');
+    if (selectEl) selectEl.value = themeKey;
+
+    // Simpan ke local storage
+    localStorage.setItem('aurafi_active_theme', themeKey);
+
+    // Simpan permanen ke Firebase
+    if (!skipSave && AuraState.user.uid && window.FirebaseService) {
+        try {
+            await window.FirebaseService.updateSettings({ appTheme: themeKey });
+            if (window.showToast) window.showToast(`Tema aplikasi diubah ke ${themeKey.toUpperCase()}!`);
+        } catch(e) {
+            console.error("Gagal menyimpan tema:", e);
+        }
+    }
+};
+
+// ============================================================================
+// AURA CUSTOM DIALOGS (PENGGANTI ALERT, PROMPT, CONFIRM)
+// ============================================================================
+window.AuraPrompt = function(title, message, placeholder = "") {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-aura-prompt');
+        const titleEl = document.getElementById('aura-prompt-title');
+        const msgEl = document.getElementById('aura-prompt-msg');
+        const inputEl = document.getElementById('aura-prompt-input');
+        const btnOk = document.getElementById('aura-prompt-ok');
+        const btnCancel = document.getElementById('aura-prompt-cancel');
+
+        titleEl.innerHTML = title;
+        msgEl.innerHTML = message;
+        inputEl.placeholder = placeholder;
+        inputEl.value = "";
+
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            modal.firstElementChild.classList.remove('scale-95');
+        });
+        inputEl.focus();
+
+        const cleanup = () => {
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+        };
+
+        btnOk.onclick = () => { cleanup(); resolve(inputEl.value); };
+        btnCancel.onclick = () => { cleanup(); resolve(null); };
+        inputEl.onkeydown = (e) => { if(e.key === 'Enter') { cleanup(); resolve(inputEl.value); } };
+    });
+};
+
+window.AuraConfirm = function(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('modal-aura-confirm');
+        const msgEl = document.getElementById('aura-confirm-msg');
+        const btnOk = document.getElementById('aura-confirm-ok');
+        const btnCancel = document.getElementById('aura-confirm-cancel');
+
+        msgEl.innerHTML = message;
+
+        modal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            modal.classList.remove('opacity-0');
+            modal.firstElementChild.classList.remove('scale-95');
+        });
+
+        const cleanup = () => {
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            btnOk.onclick = null;
+            btnCancel.onclick = null;
+        };
+
+        btnOk.onclick = () => { cleanup(); resolve(true); };
+        btnCancel.onclick = () => { cleanup(); resolve(false); };
+    });
+};
+
 // ==========================================
 // FUNGSI PREFERENSI MATA UANG & KURS REALTIME
 // ==========================================
@@ -182,8 +284,13 @@ window.addEventListener('DOMContentLoaded', () => {
     
     if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
     
+    // Inisialisasi Mata Uang
     const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
     window.setCurrency(savedCurr);
+    
+    // Inisialisasi Tema Tersimpan
+    const savedTheme = localStorage.getItem('aurafi_active_theme') || 'emerald';
+    window.applyAndSaveTheme(savedTheme, true);
     
     window.fetchLiveExchangeRate();
     
@@ -303,7 +410,7 @@ let currentCatTab = 'expense';
 // ============================================================================
 window.syncCategoriesData = async function() {
     let rawCats = AuraState.data.settings?.customCategories || {};
-    let tombstones = AuraState.data.settings?.tombstones || []; // Buku Hitam untuk kategori yg sudah dihapus user
+    let tombstones = AuraState.data.settings?.tombstones || []; 
     let isUpdated = false;
     const transactions = AuraState.data.transactions || [];
     
@@ -314,7 +421,6 @@ window.syncCategoriesData = async function() {
         
         const type = (trx.tipe === 'pemasukan' || trx.jenis === 'pemasukan' || trx.tipe === 'income') ? 'income' : 'expense';
         
-        // Cek Induk: Cari di gudang. Jika tidak ada DAN tidak ada di Buku Hitam, baru buat.
         let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pNameLower && !rawCats[id].parentId);
         if (!pId && !tombstones.includes(pNameLower)) {
             pId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
@@ -329,11 +435,7 @@ window.syncCategoriesData = async function() {
                 
                 if (cName && cName.toLowerCase() !== pNameLower && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
                     const cNameLower = cName.toLowerCase();
-                    
-                    // RADAR GLOBAL: Cek apakah nama anak ini SUDAH ADA DI MANA SAJA di seluruh gudang
                     let cExists = Object.values(rawCats).some(cat => cat.name.toLowerCase() === cNameLower);
-                    
-                    // Buat kategori baru HANYA JIKA: Belum ada di gudang DAN belum pernah dihapus user (Buku Hitam)
                     if (!cExists && !tombstones.includes(cNameLower) && pId) {
                         let cId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
                         rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
@@ -683,9 +785,9 @@ window.renderIconPickerGrid = function(activeIcon, activeColor) {
     grid.innerHTML = html;
 };
 
-// --- FUNGSI PENCARIAN IKON (DIRECT CONNECT KE GROQ VERSI BARU) ---
+// --- FUNGSI PENCARIAN IKON (MENGGUNAKAN AURA PROMPT) ---
 window.openAIIconSearch = async function() {
-    const keyword = prompt("🔍 Ikon apa yang ingin Anda cari? \n(Contoh: hewan, mobil sport, sekolah, komputer, api)");
+    const keyword = await window.AuraPrompt("<i class='fa-solid fa-wand-magic-sparkles mr-2'></i>AI Icon Search", "Ikon apa yang ingin Anda cari?<br><span class='text-[9px] opacity-70'>(Contoh: hewan, mobil sport, sekolah, komputer, api)</span>", "Ketik di sini...");
     if (!keyword || keyword.trim() === '') return;
 
     if (window.showToast) window.showToast("AI sedang membongkar perpustakaan ikon...", false);
@@ -696,11 +798,9 @@ window.openAIIconSearch = async function() {
     Format wajib persis seperti ini: {"icons": ["fa-dog", "fa-cat", "fa-paw", "fa-bone", "fa-fish"]}`;
 
     try {
-        // Menggunakan arsitektur GroqAPI global yang baru
         const ActiveGroq = window.GroqAPI;
         if (!ActiveGroq) throw new Error("Mesin AI Groq belum dimuat oleh sistem.");
 
-        // Tarik API Key dari Cloud
         if (typeof ActiveGroq.refreshKeys === 'function') {
             ActiveGroq.refreshKeys();
         }
@@ -713,7 +813,6 @@ window.openAIIconSearch = async function() {
             { role: "user", content: `Carikan ikon untuk: ${keyword}` }
         ];
 
-        // Tembak langsung menggunakan fungsi callGroq yang anti-lelet
         const result = await ActiveGroq.callGroq(messages, systemPrompt, true, null);
         
         let cleanResult = result.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -790,7 +889,7 @@ window.saveCustomIcon = async function(iconClass) {
 window.deleteCustomIcon = async function(iconClass, event) {
     event.stopPropagation(); 
     
-    const isConfirmed = confirm("Hapus ikon custom ini dari menu Anda?");
+    const isConfirmed = await window.AuraConfirm(`Hapus ikon <b>${iconClass}</b> ini secara permanen dari menu Anda?`);
     if (!isConfirmed) return;
 
     let customIcons = AuraState.data.settings?.customIcons || [];
@@ -846,7 +945,7 @@ window.saveCategoryData = async function() {
 // HAPUS KATEGORI & MASUKKAN KE BUKU HITAM
 // ============================================================================
 window.deleteCategory = async function(id) {
-    const isConfirmed = confirm("Yakin ingin menghapus kategori ini? (Sistem akan memblokirnya agar tidak muncul lagi dari riwayat lama)");
+    const isConfirmed = await window.AuraConfirm("Yakin ingin menghapus kategori ini? Sistem akan memblokirnya agar tidak muncul lagi dari riwayat lama.");
     
     if (!isConfirmed) return; 
 
