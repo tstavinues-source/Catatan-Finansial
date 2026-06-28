@@ -21,10 +21,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const valEl = document.getElementById('manual-trx-category-val');
             const displayEl = document.getElementById('manual-trx-category-display');
             if (valEl && displayEl) {
-                valEl.value = "";
-                displayEl.innerText = "Pilih Kategori...";
-                displayEl.classList.add('text-[var(--text-muted)]');
-                displayEl.classList.remove('text-accent', 'font-bold');
+                valEl.value = "Lainnya";
+                displayEl.innerText = "Lainnya";
+                displayEl.classList.add('text-white', 'font-bold');
+                displayEl.classList.remove('text-[var(--text-muted)]');
             }
         });
     }
@@ -35,18 +35,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // ============================================================================
 
 window.openManualTrxModal = function() {
-    if (typeof CategoryManager.renderDropdowns === 'function') {
-        CategoryManager.renderDropdowns(); // Untuk select kategori di item-item lain
-    }
-    
-    // Pastikan Custom Picker selalu dalam keadaan kosong/reset saat modal dibuka
+    // Pastikan Custom Picker selalu dalam keadaan default saat modal dibuka
     const valEl = document.getElementById('manual-trx-category-val');
     const displayEl = document.getElementById('manual-trx-category-display');
     if (valEl && displayEl) {
-        valEl.value = "";
-        displayEl.innerText = "Pilih Kategori...";
-        displayEl.classList.add('text-[var(--text-muted)]');
-        displayEl.classList.remove('text-accent', 'font-bold');
+        valEl.value = "Lainnya";
+        displayEl.innerText = "Lainnya";
+        displayEl.classList.add('text-white', 'font-bold');
+        displayEl.classList.remove('text-[var(--text-muted)]');
     }
 
     if (typeof window.showModal === 'function') {
@@ -61,7 +57,7 @@ window.saveManualTransaction = async function() {
     const currInput = document.getElementById('manual-trx-curr');
     const amtInput = document.getElementById('manual-trx-amount');
     
-    // PERBAIKAN: Mengambil nilai dari Hidden Input milik Custom Picker
+    // Mengambil nilai dari Hidden Input milik Custom Picker
     const catInput = document.getElementById('manual-trx-category-val');
 
     if (!storeInput || !amtInput) return;
@@ -72,7 +68,6 @@ window.saveManualTransaction = async function() {
     const currency = currInput ? currInput.value : 'JPY';
     const amount = parseFloat(amtInput.value);
     
-    // Jika tidak ada kategori yang dipilih, set default ke 'Lainnya'
     const category = (catInput && catInput.value.trim() !== '') ? catInput.value : 'Lainnya';
 
     if (!store) {
@@ -116,10 +111,8 @@ window.saveManualTransaction = async function() {
         if (typeof window.closeModal === 'function') window.closeModal('modal-manual-trx');
         if (window.showToast) window.showToast("✅ Transaksi manual berhasil disimpan!");
         
-        // Reset form setelah simpan
         storeInput.value = '';
         amtInput.value = '';
-        if(catInput) catInput.value = '';
     } catch (e) {
         if (window.showToast) window.showToast("❌ Gagal menyimpan transaksi manual.", true);
     }
@@ -213,7 +206,17 @@ window.openAddItemModal = function(trxId) {
     AuraUtils.safeDOM('add-item-qty', el => el.value = "1");
     AuraUtils.safeDOM('add-item-price', el => el.value = "");
     
-    if (typeof CategoryManager.renderDropdowns === 'function') CategoryManager.renderDropdowns();
+    // Set kategori default visual ke custom picker
+    AuraUtils.safeDOM('add-item-cat', el => {
+        el.value = "Lainnya";
+        const dEl = document.getElementById('add-item-cat-display');
+        if(dEl) { 
+            dEl.innerText = "Lainnya"; 
+            dEl.classList.add('text-white', 'font-bold'); 
+            dEl.classList.remove('text-[var(--text-muted)]'); 
+        }
+    });
+
     if (typeof window.showModal === 'function') window.showModal('modal-add-item');
 };
 
@@ -314,8 +317,16 @@ window.openEditItem = function(trxId, itemId) {
     AuraUtils.safeDOM('edit-item-qty', el => el.value = item.qty || 1);
     AuraUtils.safeDOM('edit-item-price', el => el.value = item.harga || 0);
     
-    if (typeof CategoryManager.renderDropdowns === 'function') CategoryManager.renderDropdowns();
-    AuraUtils.safeDOM('edit-item-cat', el => el.value = item.kategori_barang || 'Lainnya');
+    // Set visual display of the Custom Picker
+    AuraUtils.safeDOM('edit-item-cat', el => {
+        el.value = item.kategori_barang || 'Lainnya';
+        const dEl = document.getElementById('edit-item-cat-display');
+        if(dEl) { 
+            dEl.innerText = el.value; 
+            dEl.classList.add('text-white', 'font-bold'); 
+            dEl.classList.remove('text-[var(--text-muted)]'); 
+        }
+    });
     
     if (typeof window.showModal === 'function') window.showModal('modal-edit-item');
 };
