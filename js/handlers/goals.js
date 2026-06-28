@@ -57,6 +57,7 @@ window.confirmDelGoal = function(id) {
     
     if (!goal) return;
 
+    // Mempertahankan kompatibilitas dengan Confirm.js milik Anda
     AuraState.temp.deleteTarget = { type: 'goal', id: id, name: goal.name };
     
     AuraUtils.safeDOM('confirm-msg', el => {
@@ -66,24 +67,24 @@ window.confirmDelGoal = function(id) {
     if (typeof window.showModal === 'function') window.showModal('modal-confirm'); 
 };
 
-// SUDAH DIPERBAIKI: Menambahkan 'async' pada deklarasi fungsi
+// MENGGUNAKAN AURA PROMPT BARU
 window.editGoalPrompt = async function(id) {
     const goals = AuraState.data.goals || [];
     const goal = goals.find(g => g.id === id);
     if (!goal) return;
     
-    const newName = prompt("Nama Misi Baru:", goal.name);
-    if (newName === null) return;
+    const newName = await window.AuraPrompt("<i class='fa-solid fa-pen mr-2'></i>Edit Misi", "Masukkan nama misi baru:", goal.name);
+    if (!newName) return;
     
-    const newTarget = prompt("Target Dana Baru:", goal.targetAmount);
-    if (newTarget === null) return;
+    const newTarget = await window.AuraPrompt("<i class='fa-solid fa-bullseye mr-2'></i>Edit Target", "Masukkan target dana baru (Angka saja):", goal.targetAmount);
+    if (!newTarget) return;
     
-    const newDate = prompt("Tanggal Target Baru (YYYY-MM-DD):", goal.targetDate);
-    if (newDate === null) return;
+    const newDate = await window.AuraPrompt("<i class='fa-solid fa-calendar mr-2'></i>Edit Tanggal", "Masukkan tanggal target baru (YYYY-MM-DD):", goal.targetDate);
+    if (!newDate) return;
     
     const parsedTarget = parseFloat(newTarget);
     if (isNaN(parsedTarget) || parsedTarget <= 0) {
-        if (window.showToast) window.showToast("Target harus angka positif!", true);
+        if (window.showToast) window.showToast("Target harus berupa angka positif!", true);
         return;
     }
     
