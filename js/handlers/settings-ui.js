@@ -408,7 +408,7 @@ window.renderRecurringUIForBudget = function() {
 // ============================================================================
 
 window.autoFillTrackerWithAI = async function() {
-    const topic = await window.AuraPrompt("<i class='fa-solid fa-wand-magic-sparkles mr-1'></i> Tracker AI", "Sistem apa yang ingin kamu lacak?", "Misal: Skincare, Kopi, atau Kucing");
+    const topic = await window.AuraPrompt("<i class='fa-solid fa-wand-magic-sparkles mr-2'></i> Tracker AI", "Sistem apa yang ingin kamu lacak?", "Misal: Skincare, Kopi, atau Kucing");
     if (!topic || topic.trim() === '') return;
     
     const btn = document.getElementById('btn-ai-tracker');
