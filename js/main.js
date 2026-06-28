@@ -544,7 +544,7 @@ window.renderCategoryList = function() {
 };
 
 // ============================================================================
-// AURA CUSTOM CATEGORY PICKER (BEBAS DUPLIKAT VARIABEL)
+// AURA CUSTOM CATEGORY PICKER
 // ============================================================================
 let activePickerTargetVal = '';
 let activePickerTargetDisplay = '';
@@ -712,7 +712,7 @@ window.editCategory = function(id) {
 };
 
 // ============================================================================
-// SISTEM PEMILIHAN IKON, AI ICON FETCHER & COLOR PICKER (ULTIMATE)
+// SISTEM PEMILIHAN IKON, AI ICON FETCHER & COLOR PICKER
 // ============================================================================
 
 window.updateActiveColor = function(newColor) {
