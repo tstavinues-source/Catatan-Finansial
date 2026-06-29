@@ -10,29 +10,12 @@ import { CategoryManager } from './categories.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { ref, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// === MESIN PENYORTIR PINTAR (HIERARKI DATABASE + AI) ===
+// === MESIN PENYORTIR PINTAR (GABUNGAN MANUAL + AI) ===
 function getParentCategory(catName) {
     const customMap = AuraState.data.settings?.categoryMappings || {};
-    // 1. Cek apakah user pernah memindahkan kategori ini secara manual di "Atur Induk"
     if (customMap[catName]) return customMap[catName];
 
-    const allCats = CategoryManager.getAllCategories();
-    const safeName = catName.toLowerCase().trim();
-
-    // 2. Cari kategori ini di database Gudang Kategori
-    const matchedCat = Object.values(allCats).find(c => c.name && c.name.toLowerCase() === safeName);
-
-    if (matchedCat) {
-        // Jika dia adalah Sub-Kategori (punya parentId), kembalikan nama Induknya!
-        if (matchedCat.parentId && allCats[matchedCat.parentId]) {
-            return allCats[matchedCat.parentId].name;
-        }
-        // Jika dia adalah Kategori Utama (tidak punya parentId), kembalikan namanya sendiri
-        return matchedCat.name;
-    }
-
-    // 3. FALLBACK: Jika AI mengarang kategori aneh yang belum ada di database, gunakan detektif kata
-    const n = safeName;
+    const n = catName.toLowerCase();
     if (n.match(/makan|camilan|snack|susu|telur|daging|ayam|ikan|sayur|buah|bumbu|bahan|roti|kue|instan|kaleng|mie|jajanan/)) return 'Makanan';
     if (n.match(/minum|kopi|teh|kafe|cair|jus/)) return 'Minuman';
     if (n.match(/elektronik|pulsa|data|internet|listrik|gadget|game|wifi|topup/)) return 'Elektronik';
@@ -93,7 +76,6 @@ window.renderAnalytics = function() {
 
             (trx.items || []).forEach(it => {
                 let rawCat = (it.kategori_barang || 'Lainnya').trim();
-                // Normalisasi kapitalisasi nama kategori (Contoh: "buah" -> "Buah")
                 let cleanCat = rawCat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                 
@@ -116,7 +98,7 @@ window.renderAnalytics = function() {
 
     // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
-    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(totalExpense) : AuraUtils.formatCurrency(totalExpense));
+    AuraUtils.safeDOM('pie-total-label', el => el.innerText = AuraUtils.formatCurrency(totalExpense));
     
     const sortedParents = Object.keys(catMap).map(k => ({
         name: k, total: catMap[k].total, style: catMap[k].style, subs: catMap[k].subs
@@ -162,17 +144,14 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
-                        // Tarik Style yang tepat langsung dari Gudang Kategori
-                        const subStyle = CategoryManager.resolveStyle(sub.name);
-                        
                         subsHtml += `
                         <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/10 transition cursor-pointer active:scale-[0.99] group" onclick="window.openSubCategoryItems('${safeParent}', '${safeSub}')">
                             <span class="text-[10px] text-slate-300 flex items-center gap-2 group-hover:text-white transition">
-                                <i class="fa-solid ${subStyle.icon} w-4 text-center" style="color: ${subStyle.hex};"></i>
+                                <div class="w-1.5 h-1.5 rounded-full" style="background-color: ${p.style.hex};"></div> 
                                 ${displayName}
                             </span>
                             <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
-                                ${window.formatAuraCurrency ? window.formatAuraCurrency(sub.total) : AuraUtils.formatCurrency(sub.total)}
+                                ${AuraUtils.formatCurrency(sub.total)}
                                 <i class="fa-solid fa-chevron-right text-[8px] text-[var(--text-muted)] opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
                             </span>
                         </div>`;
@@ -197,7 +176,7 @@ window.renderAnalytics = function() {
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <p class="text-xs font-bold font-mono text-white">${window.formatAuraCurrency ? window.formatAuraCurrency(p.total) : AuraUtils.formatCurrency(p.total)}</p>
+                            <p class="text-xs font-bold font-mono text-white">${AuraUtils.formatCurrency(p.total)}</p>
                             <div class="w-5 h-5 flex items-center justify-center bg-black/30 rounded-full shrink-0">
                                 <i class="fa-solid fa-chevron-down text-[9px] text-[var(--text-muted)] transition-transform duration-300"></i>
                             </div>
@@ -227,7 +206,7 @@ window.renderAnalytics = function() {
                         <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
                         <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
                     </div>
-                    <span class="text-[10px] font-mono text-accent font-bold">${window.formatAuraCurrency ? window.formatAuraCurrency(m.total) : AuraUtils.formatCurrency(m.total)}</span>
+                    <span class="text-[10px] font-mono text-accent font-bold">${AuraUtils.formatCurrency(m.total)}</span>
                 </div>`;
             });
         }
@@ -238,8 +217,8 @@ window.renderAnalytics = function() {
     const dailyAvg = totalExpense / daysElapsed;
     const projected = dailyAvg * totalDays;
 
-    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(dailyAvg) : AuraUtils.formatCurrency(dailyAvg));
-    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(projected) : AuraUtils.formatCurrency(projected));
+    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = AuraUtils.formatCurrency(dailyAvg));
+    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = AuraUtils.formatCurrency(projected));
     drawCanvasChart(trend7Days);
 };
 
@@ -253,7 +232,7 @@ window.openSubCategoryItems = function(parentName, subName) {
         document.body.appendChild(modal);
     }
 
-    // Ambil Filter Tanggal Saat Ini
+    // Ambil Filter Tanggal Saat Ini (Agar sesuai dengan layar Stats)
     let startDate = 0, endDate = Infinity;
     const now = new Date();
     const mode = AuraState.system.viewMode || 'period';
@@ -270,6 +249,7 @@ window.openSubCategoryItems = function(parentName, subName) {
     let itemsHtml = '';
     let totalVal = 0;
 
+    // Saring data untuk mencari item yang cocok
     tx.forEach(t => {
         if (t.is_deleted || t.tipe !== 'pengeluaran') return;
         const tTime = new Date(t.tanggal || t.createdAt).getTime();
@@ -282,6 +262,7 @@ window.openSubCategoryItems = function(parentName, subName) {
                 let cleanCat = rawCat.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
                 const currentParent = getParentCategory(cleanCat);
                 
+                // Jika Induk dan Sub-nya cocok dengan yang diklik user
                 if (currentParent === parentName && cleanCat === subName) {
                     const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                     totalVal += val;
@@ -296,8 +277,8 @@ window.openSubCategoryItems = function(parentName, subName) {
                             <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-xs font-mono font-bold text-accent">${window.formatAuraCurrency ? window.formatAuraCurrency(val) : AuraUtils.formatCurrency(val)}</p>
-                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.formatAuraCurrency ? window.formatAuraCurrency(it.harga || 0) : AuraUtils.formatCurrency(it.harga || 0)}</p>
+                            <p class="text-xs font-mono font-bold text-accent">${AuraUtils.formatCurrency(val)}</p>
+                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${AuraUtils.formatCurrency(it.harga || 0)}</p>
                         </div>
                     </div>`;
                 }
@@ -313,7 +294,7 @@ window.openSubCategoryItems = function(parentName, subName) {
         <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
             <div>
                 <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(displayName)}</h3>
-                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.formatAuraCurrency ? window.formatAuraCurrency(totalVal) : AuraUtils.formatCurrency(totalVal)}</p>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${AuraUtils.formatCurrency(totalVal)}</p>
             </div>
             <button onclick="document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
                 <i class="fa-solid fa-xmark text-sm"></i>
@@ -393,7 +374,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
         <div class="bg-black/30 p-3 rounded-xl min-w-[100px] flex-1 flex flex-col items-center justify-center text-center border border-[var(--border-glass)] border-t-2 shadow-lg" style="border-top-color: currentColor; color: inherit;">
             <i class="fa-solid ${icon} ${color} text-xl mb-2"></i>
             <span class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 truncate w-full px-1">${AuraUtils.escapeHtml(tracker.name)}</span>
-            <span class="font-mono font-bold text-sm text-white">${window.formatAuraCurrency ? window.formatAuraCurrency(totals[id]) : AuraUtils.formatCurrency(totals[id])}</span>
+            <span class="font-mono font-bold text-sm text-white">${AuraUtils.formatCurrency(totals[id])}</span>
         </div>`;
     });
 
