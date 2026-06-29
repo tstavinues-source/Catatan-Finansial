@@ -10,32 +10,29 @@ import { CategoryManager } from './categories.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { ref, update } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
-// === MESIN PENYORTIR PINTAR (GABUNGAN MANUAL + AI) ===
+// === MESIN PENYORTIR PINTAR (HIERARKI DATABASE + AI) ===
 function getParentCategory(catName) {
     const customMap = AuraState.data.settings?.categoryMappings || {};
+    // 1. Cek apakah user pernah memindahkan kategori ini secara manual di "Atur Induk"
     if (customMap[catName]) return customMap[catName];
 
-    // PATCH: Cek apakah kategori ini adalah kategori utama (parent) di pengaturan custom user
-    const allCustomCats = CategoryManager.getAllCategories();
-    const isCustomParent = Object.values(allCustomCats).some(c => 
-        c.name && c.name.toLowerCase() === catName.toLowerCase() && !c.parentId
-    );
+    const allCats = CategoryManager.getAllCategories();
+    const safeName = catName.toLowerCase().trim();
 
-    // Jika ini adalah kategori utama buatan user, gunakan nama aslinya, jangan dikelompokkan paksa
-    if (isCustomParent) return catName;
+    // 2. Cari kategori ini di database Gudang Kategori
+    const matchedCat = Object.values(allCats).find(c => c.name && c.name.toLowerCase() === safeName);
 
-    // Jika bukan parent custom, cek apakah ini sub-kategori dari custom category
-    const customSub = Object.values(allCustomCats).find(c => 
-         c.name && c.name.toLowerCase() === catName.toLowerCase() && c.parentId
-    );
-    
-    // Jika ya, kembalikan nama parent-nya agar dikelompokkan dengan benar
-    if (customSub && allCustomCats[customSub.parentId]) {
-        return allCustomCats[customSub.parentId].name;
+    if (matchedCat) {
+        // Jika dia adalah Sub-Kategori (punya parentId), kembalikan nama Induknya!
+        if (matchedCat.parentId && allCats[matchedCat.parentId]) {
+            return allCats[matchedCat.parentId].name;
+        }
+        // Jika dia adalah Kategori Utama (tidak punya parentId), kembalikan namanya sendiri
+        return matchedCat.name;
     }
 
-    // Jika tidak ditemukan di custom categories, gunakan logika fallback/smart grouper bawaan
-    const n = catName.toLowerCase();
+    // 3. FALLBACK: Jika AI mengarang kategori aneh yang belum ada di database, gunakan detektif kata
+    const n = safeName;
     if (n.match(/makan|camilan|snack|susu|telur|daging|ayam|ikan|sayur|buah|bumbu|bahan|roti|kue|instan|kaleng|mie|jajanan/)) return 'Makanan';
     if (n.match(/minum|kopi|teh|kafe|cair|jus/)) return 'Minuman';
     if (n.match(/elektronik|pulsa|data|internet|listrik|gadget|game|wifi|topup/)) return 'Elektronik';
@@ -96,6 +93,7 @@ window.renderAnalytics = function() {
 
             (trx.items || []).forEach(it => {
                 let rawCat = (it.kategori_barang || 'Lainnya').trim();
+                // Normalisasi kapitalisasi nama kategori (Contoh: "buah" -> "Buah")
                 let cleanCat = rawCat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                 
@@ -164,13 +162,13 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
-                        // Selesaikan style untuk sub-kategori spesifik ini
+                        // Tarik Style yang tepat langsung dari Gudang Kategori
                         const subStyle = CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
                         <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/10 transition cursor-pointer active:scale-[0.99] group" onclick="window.openSubCategoryItems('${safeParent}', '${safeSub}')">
                             <span class="text-[10px] text-slate-300 flex items-center gap-2 group-hover:text-white transition">
-                                <i class="fa-solid ${subStyle.icon}" style="color: ${subStyle.hex};"></i>
+                                <i class="fa-solid ${subStyle.icon} w-4 text-center" style="color: ${subStyle.hex};"></i>
                                 ${displayName}
                             </span>
                             <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
@@ -255,7 +253,7 @@ window.openSubCategoryItems = function(parentName, subName) {
         document.body.appendChild(modal);
     }
 
-    // Ambil Filter Tanggal Saat Ini (Agar sesuai dengan layar Stats)
+    // Ambil Filter Tanggal Saat Ini
     let startDate = 0, endDate = Infinity;
     const now = new Date();
     const mode = AuraState.system.viewMode || 'period';
@@ -272,7 +270,6 @@ window.openSubCategoryItems = function(parentName, subName) {
     let itemsHtml = '';
     let totalVal = 0;
 
-    // Saring data untuk mencari item yang cocok
     tx.forEach(t => {
         if (t.is_deleted || t.tipe !== 'pengeluaran') return;
         const tTime = new Date(t.tanggal || t.createdAt).getTime();
@@ -285,7 +282,6 @@ window.openSubCategoryItems = function(parentName, subName) {
                 let cleanCat = rawCat.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
                 const currentParent = getParentCategory(cleanCat);
                 
-                // Jika Induk dan Sub-nya cocok dengan yang diklik user
                 if (currentParent === parentName && cleanCat === subName) {
                     const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                     totalVal += val;
@@ -522,4 +518,3 @@ window.downloadCSV = function() {
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
     if (window.showToast) window.showToast("Data CSV berhasil diunduh!");
 };
-
