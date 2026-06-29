@@ -11,14 +11,58 @@ import { CategoryManager } from '../modules/categories.js';
 // ============================================================================
 // INJECT PATCH: Mesin Format Kurs Dinamis & Anti-Desimal Aneh
 // ============================================================================
-window.formatAuraCurrency = function(amount, explicitCurr) {
-    const curr = explicitCurr || AuraState.system.displayCurrency || 'JPY';
-    const num = Math.round(Number(amount) || 0); // Bulatkan angka agar tidak ada desimal seperti 827.034
+window.formatAuraCurrency = function(amount) {
+    const curr = AuraState.system.displayCurrency || 'JPY';
+    // Bulatkan angka untuk mencegah desimal aneh seperti 11.438 atau 827.034
+    const num = Math.round(Number(amount) || 0); 
+    
     if (curr === 'IDR') {
         return 'Rp ' + num.toLocaleString('id-ID');
     } else {
         return '¥' + num.toLocaleString('en-US');
     }
+};
+
+// ============================================================================
+// PATCH: Menimpa UI Tagihan Otomatis agar menggunakan Konversi yang benar
+// ============================================================================
+window.renderRecurringUIForBudget = function() {
+    AuraUtils.safeDOM('budget-bills-container', function(el) {
+        const rPayments = AuraState.data.settings?.recurringPayments || {};
+        const entries = Object.entries(rPayments);
+        
+        if (entries.length === 0) {
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Konfigurasi Tagihan Kosong.</p>';
+            return;
+        }
+        
+        let compiledBudgets = '';
+        entries.forEach(([id, rp]) => {
+            // Konversi dari mata uang asal (saat data disimpan) ke mata uang tampilan
+            const convertedAmt = AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY');
+            const formattedMoney = window.formatAuraCurrency(convertedAmt);
+            
+            compiledBudgets += `
+            <div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
+                <div>
+                    <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
+                        ${AuraUtils.escapeHtml(rp.name)} 
+                        <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100">
+                            <i class="fa-solid fa-trash text-[10px]"></i>
+                        </button>
+                    </h4>
+                    <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">
+                        Tgl Eksekusi: ${rp.date} / Bulan
+                    </p>
+                </div>
+                <p class="font-bold text-sm font-mono text-[var(--text-main)]">
+                    ${formattedMoney}
+                </p>
+            </div>`;
+        });
+        
+        el.innerHTML = compiledBudgets;
+    });
 };
 
 window.reCalculateAll = function() {
@@ -30,7 +74,7 @@ window.reCalculateAll = function() {
 
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
-        const val = trx.nominal || 0; 
+        const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
         const isCash = (trx.metode_pembayaran === 'tunai');
 
         if (trx.tipe === 'pemasukan') {
@@ -42,12 +86,12 @@ window.reCalculateAll = function() {
             if (isCash) totalCashBal -= val;
             else totalCashlessBal -= val;
         } else if (trx.tipe === 'tarik_tunai') {
-            const feeVal = Number(trx.admin_fee || 0);
+            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
             cumulativeBalance -= feeVal; 
             totalCashBal += val; 
             totalCashlessBal -= (val + feeVal);
         } else if (trx.tipe === 'setor_tunai') {
-            const feeVal = Number(trx.admin_fee || 0);
+            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
             cumulativeBalance -= feeVal; 
             totalCashBal -= val; 
             totalCashlessBal += val; 
@@ -74,7 +118,6 @@ window.reCalculateAll = function() {
             const desc = (trx.description || trx.catatan_ai || "").toLowerCase();
             const merch = (trx.merchantName || trx.storeName || "").toLowerCase();
             let hasItemMatch = false;
-            
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
                     if (trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
@@ -109,7 +152,7 @@ window.reCalculateAll = function() {
 
     for (let i = 0; i < filteredTx.length; i++) {
         const trx = filteredTx[i];
-        const val = trx.nominal || 0; 
+        const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
         const dStrRaw = trx.tanggal || trx.createdAt;
         const dStr = dStrRaw.split('T')[0];
         const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
@@ -124,7 +167,7 @@ window.reCalculateAll = function() {
         } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
             let actualSpend = val;
             if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
-                actualSpend = Number(trx.admin_fee || 0);
+                actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
             }
             groupedTrx[dStr].total -= actualSpend; 
             periodSpent += actualSpend;
@@ -140,7 +183,8 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
 
-    const limitVal = AuraState.data.monthlyBudget || 0;
+    // Limit diasumsikan dalam mata uang JPY sebagai basis
+    const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
     const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
     const remainingBudget = limitVal - periodSpent;
     
@@ -233,7 +277,7 @@ window.reCalculateAll = function() {
                         const taxBadge = it.tax_rate ?
                         `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : '';
                         
-                        const totalItemHarga = it.harga * (it.qty || 1);
+                        const totalItemHarga = AuraUtils.convertCurrency(it.harga * (it.qty || 1), t.mata_uang || 'JPY');
                         receiptLines += `
                         <div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it">
                             <div class="flex-1 truncate">
@@ -269,6 +313,7 @@ window.reCalculateAll = function() {
                     </div>`;
                 }
                 
+                const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-10 text-[var(--text-muted)] hover:text-accent opacity-0 group-hover:opacity-100 active:scale-90 p-2 text-sm transition"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -283,7 +328,7 @@ window.reCalculateAll = function() {
                                 <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${t.metode_pembayaran} • ${t.displayTime.split(' ')[1]}</p>
                             </div>
                         </div>
-                        <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(t.nominal)}</p>
+                        <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
                     </div>
                     ${descDisp ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${descDisp}"</div>` : ''}
                     ${innerReceiptHtml}
@@ -320,7 +365,8 @@ window.reCalculateAll = function() {
         
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
-            const targetVal = g.targetAmount || 0; 
+            // Konversi IDR/JPY yang dimasukkan pengguna ke mata uang yang dipilih
+            const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, g.currency || 'JPY'); 
             const diffDays = Math.ceil((new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
             const dailyReq = diffDays > 0 ? targetVal / diffDays : 0;
             
@@ -357,7 +403,7 @@ window.reCalculateAll = function() {
         for (let i = 0; i < trashList.length; i++) {
             const t = trashList[i]; 
             const delDate = t.deletedAt ? t.deletedAt.split('T')[0] : 'Unknown'; 
-            const val = t.nominal || 0; 
+            const val = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY'); 
             
             trashHtml += `
             <div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition">
