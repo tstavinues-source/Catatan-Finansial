@@ -354,7 +354,7 @@ window.reCalculateAll = function() {
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
     
-    AuraUtils.safeDOM('goals-list-container', el => {
+        AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
             el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5">Belum ada Misi Pengumpulan Aset Finansial.</p>'; 
@@ -365,8 +365,13 @@ window.reCalculateAll = function() {
         
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
-            // Konversi IDR/JPY yang dimasukkan pengguna ke mata uang yang dipilih
-            const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, g.currency || 'JPY'); 
+            
+            // 1. Tangkap kurs asli saat pengguna membuat Misi ini
+            const originalCurrency = g.currency || 'JPY';
+            
+            // 2. Konversi angka asli ke mata uang layar (Jika layar JPY dan misi dibuat JPY, nilainya tetap. Jika layar IDR, ia dikali kurs)
+            const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, originalCurrency); 
+            
             const diffDays = Math.ceil((new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
             const dailyReq = diffDays > 0 ? targetVal / diffDays : 0;
             
@@ -390,6 +395,7 @@ window.reCalculateAll = function() {
         }
         el.innerHTML = glHtml;
     });
+
     
     AuraUtils.safeDOM('trash-list-container', el => {
         const trashList = AuraState.data.trash || [];
