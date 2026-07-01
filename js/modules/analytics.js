@@ -1,7 +1,8 @@
 /**
  * Analytics & Statistics Module
  * Mengelola kalkulasi pengeluaran, UI Accordion, Chart, CSV, Tracker Dinamis, Smart Grouper,
- * dan fitur Drill-Down (Rincian Item Sub-Kategori) beserta Auto-Sync Ikon.
+ * fitur Drill-Down (Rincian Item Sub-Kategori), Sinkronisasi Ikon ke Gudang Database,
+ * dan Custom Category Mapper dengan Bottom-Sheet UI.
  */
 
 import { AuraState } from '../core/state.js';
@@ -94,6 +95,8 @@ window.renderAnalytics = function() {
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                 
                 const parentName = getParentCategory(cleanCat);
+                
+                // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                 const styleInfo = getCategoryStyleFromDB(parentName) || CategoryManager.resolveStyle(parentName);
 
                 if (!catMap[parentName]) {
@@ -112,8 +115,6 @@ window.renderAnalytics = function() {
 
     // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
-    
-    // PEMANGGILAN FORMATTER KHUSUS STATISTIK
     AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.convertAndFormatCurrency(totalExpense));
     
     const sortedParents = Object.keys(catMap).map(k => ({
@@ -163,6 +164,7 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
+                        // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                         const subStyle = getCategoryStyleFromDB(sub.name) || CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
@@ -486,12 +488,110 @@ window.renderDynamicTrackers = function(startDate, endDate) {
     container.innerHTML = html;
 };
 
-// === FUNGSI MANAJER KATEGORI (ATUR INDUK) ===
+
+// === FUNGSI CUSTOM BOTTOM SHEET (PEMILIH INDUK DARI GUDANG) ===
+window.openParentPickerForMapping = function(subCat, currentParent) {
+    let modal = document.getElementById('modal-parent-picker');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-parent-picker';
+        modal.className = 'fixed inset-0 bg-black/90 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        document.body.appendChild(modal);
+    }
+
+    const rawCats = AuraState.data.settings?.customCategories || {};
+    const vaultParents = Object.values(rawCats).filter(c => !c.parentId);
+    
+    // Default fallback agar pilihan standar selalu tersedia jika user belum membuat apa-apa di gudang
+    let defaultParents = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
+    
+    let parentListHtml = '';
+    const addedNames = new Set();
+
+    // 1. Tarik dari Gudang Database
+    vaultParents.forEach(p => {
+        addedNames.add(p.name.toLowerCase());
+        const isSelected = p.name === currentParent;
+        parentListHtml += buildParentOptionRow(p.name, p.icon, p.color, isSelected, subCat);
+    });
+
+    // 2. Tambahkan sisa default yang belum ada di gudang
+    defaultParents.forEach(dp => {
+        if (!addedNames.has(dp.toLowerCase())) {
+            const style = CategoryManager.resolveStyle(dp);
+            const isSelected = dp === currentParent;
+            parentListHtml += buildParentOptionRow(dp, style.icon, style.hex, isSelected, subCat);
+        }
+    });
+
+    modal.innerHTML = `
+    <div class="glass-panel w-full sm:w-[400px] h-[65vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent transform translate-y-full transition-transform duration-300" id="parent-picker-panel">
+        <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40 shrink-0">
+            <div>
+                <h3 class="font-bold text-sm text-accent">Pilih Induk Kategori</h3>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5">Pindahkan sub-kategori <span class="text-white font-bold">${AuraUtils.escapeHtml(subCat)}</span> ke:</p>
+            </div>
+            <button onclick="window.closeParentPicker()" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-3 space-y-2 relative hide-scrollbar bg-black/20">
+            ${parentListHtml}
+        </div>
+    </div>`;
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('#parent-picker-panel').classList.remove('translate-y-full');
+        modal.querySelector('#parent-picker-panel').classList.add('translate-y-0');
+    });
+};
+
+function buildParentOptionRow(name, icon, color, isSelected, subCat) {
+    const bgClass = isSelected ? 'bg-accent/20 border-accent text-white' : 'bg-black/30 border-[var(--border-glass)] hover:bg-white/5 text-slate-300 hover:text-white';
+    const checkIcon = isSelected ? `<i class="fa-solid fa-circle-check text-accent text-lg"></i>` : '';
+    const safeSubCat = subCat.replace(/'/g, "\\'");
+    const safeName = name.replace(/'/g, "\\'");
+    
+    return `
+    <button onclick="window.executeCategoryMapping('${safeSubCat}', '${safeName}')" class="w-full flex justify-between items-center p-3 border rounded-xl transition-all active:scale-[0.98] ${bgClass}">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg" style="background-color: ${color}20; color: ${color};">
+                <i class="fa-solid ${icon}"></i>
+            </div>
+            <span class="text-xs font-bold">${AuraUtils.escapeHtml(name)}</span>
+        </div>
+        ${checkIcon}
+    </button>`;
+}
+
+window.closeParentPicker = function() {
+    const modal = document.getElementById('modal-parent-picker');
+    if (modal) {
+        modal.classList.add('opacity-0');
+        const panel = modal.querySelector('#parent-picker-panel');
+        if(panel) {
+            panel.classList.remove('translate-y-0');
+            panel.classList.add('translate-y-full');
+        }
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+};
+
+window.executeCategoryMapping = async function(subCat, newParent) {
+    window.closeParentPicker();
+    await window.updateCategoryMapping(subCat, newParent);
+    setTimeout(() => { window.openCategoryMapper(); }, 350); 
+};
+
+
+// === FUNGSI MANAJER KATEGORI (ATUR INDUK UTAMA) ===
 window.openCategoryMapper = function() {
     let modal = document.getElementById('modal-category-mapper');
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'modal-category-mapper';
-        modal.className = 'fixed inset-0 bg-black/90 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        modal.className = 'fixed inset-0 bg-black/90 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
         document.body.appendChild(modal);
     }
 
@@ -505,33 +605,34 @@ window.openCategoryMapper = function() {
         });
     });
 
-    const parentOptions = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
     let listHtml = '';
     const rawCats = AuraState.data.settings?.customCategories || {};
     
     Array.from(uniqueSubs).sort().forEach(sub => {
         const currentParent = getParentCategory(sub);
-        let opts = parentOptions.map(p => `<option value="${p}" ${p === currentParent ? 'selected' : ''}>${p}</option>`).join('');
         
         // Cek ID Kategori di database
         let catId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === sub.toLowerCase());
         
         let editBtnHtml = '';
         if(catId) {
-            editBtnHtml = `<button onclick="window.closeCategoryMapper(); setTimeout(() => { if(typeof window.editCategory === 'function') window.editCategory('${catId}'); else window.openCategoryManager(); }, 300);" class="mr-2 w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition active:scale-90 shrink-0" title="Edit Ikon (Sudah ada di Gudang)"><i class="fa-solid fa-palette text-[10px]"></i></button>`;
+            editBtnHtml = `<button onclick="window.closeCategoryMapper(); setTimeout(() => { if(typeof window.editCategory === 'function') window.editCategory('${catId}'); else window.openCategoryManager(); }, 300);" class="mr-2 w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition active:scale-90 shrink-0" title="Edit Ikon (Sudah ada di Gudang)"><i class="fa-solid fa-palette text-xs"></i></button>`;
         } else {
-            editBtnHtml = `<button onclick="window.addSingleCategoryToVault('${sub}')" class="mr-2 w-6 h-6 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center hover:bg-amber-500 hover:text-white transition active:scale-90 shrink-0" title="Tambahkan ke Gudang & Atur Ikon"><i class="fa-solid fa-plus text-[10px]"></i></button>`;
+            editBtnHtml = `<button onclick="window.addSingleCategoryToVault('${sub}')" class="mr-2 w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center hover:bg-amber-500 hover:text-white transition active:scale-90 shrink-0" title="Tambahkan ke Gudang & Atur Ikon"><i class="fa-solid fa-plus text-xs"></i></button>`;
         }
 
+        const safeSub = sub.replace(/'/g, "\\'");
+        const safeCurrentParent = currentParent.replace(/'/g, "\\'");
+
         listHtml += `
-        <div class="flex justify-between items-center bg-black/30 p-2.5 border-b border-[var(--border-glass)] group hover:bg-white/5 transition">
-            <div class="flex items-center flex-1 min-w-0 pr-2">
+        <div class="flex justify-between items-center bg-black/30 p-3 border-b border-[var(--border-glass)] group hover:bg-white/5 transition">
+            <div class="flex items-center flex-1 min-w-0 pr-3">
                 ${editBtnHtml}
                 <span class="text-xs font-bold text-slate-200 group-hover:text-accent truncate">${sub}</span>
             </div>
-            <select class="bg-black/60 border border-[var(--border-glass)] text-[10px] rounded p-1.5 outline-none focus:border-accent text-[var(--text-muted)] cursor-pointer shrink-0" onchange="window.updateCategoryMapping('${sub}', this.value)">
-                ${opts}
-            </select>
+            <button onclick="window.openParentPickerForMapping('${safeSub}', '${safeCurrentParent}')" class="bg-black/60 border border-[var(--border-glass)] text-[9px] font-bold rounded-lg p-2 focus:border-accent text-[var(--text-muted)] cursor-pointer shrink-0 flex items-center gap-2 hover:text-white hover:bg-white/10 transition active:scale-95 shadow-sm">
+                <span class="max-w-[100px] truncate uppercase tracking-widest">${currentParent}</span> <i class="fa-solid fa-chevron-down opacity-50"></i>
+            </button>
         </div>`;
     });
 
@@ -542,13 +643,13 @@ window.openCategoryMapper = function() {
         <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
             <div>
                 <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-folder-tree mr-1"></i> Penyelarasan & Hierarki</h3>
-                <p class="text-[9px] text-[var(--text-muted)] mt-0.5">Edit Ikon (🎨) atau Tambah ke Gudang (+).</p>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5">Edit Ikon (🎨) atau Atur Induk (Tombol Kanan).</p>
             </div>
             <button onclick="window.closeCategoryMapper()" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
                 <i class="fa-solid fa-xmark text-sm"></i>
             </button>
         </div>
-        <div class="flex-1 overflow-y-auto p-2 space-y-1 relative hide-scrollbar">${listHtml}</div>
+        <div class="flex-1 overflow-y-auto p-0 space-y-0 relative hide-scrollbar">${listHtml}</div>
     </div>`;
 
     modal.classList.remove('hidden'); requestAnimationFrame(() => modal.classList.remove('opacity-0'));
