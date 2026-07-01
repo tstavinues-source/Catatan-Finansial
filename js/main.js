@@ -12,6 +12,31 @@ import { Logger } from './core/logger.js';
 import { AuraState } from './core/state.js';
 import { AuraUtils } from './core/utils.js';
 
+// ============================================================================
+// OVERRIDE GLOBAL CURRENCY FORMATTER (KURS & DESIMAL PENUH)
+// ============================================================================
+window.formatAuraCurrency = function(amount) {
+    const num = Number(amount) || 0;
+    const currency = AuraState.system?.displayCurrency || 'JPY';
+    
+    // Ambil kurs dari sistem (default ~110.27 jika internet mati)
+    const rate = (currency === 'IDR') ? (AuraState.system?.exchangeRate || 110.27) : 1;
+    
+    // Kalikan nominal dengan kurs, lalu BULATKAN (hilangkan desimal di belakang koma)
+    const finalAmount = Math.round(num * rate);
+    
+    if (currency === 'IDR') {
+        return 'Rp ' + finalAmount.toLocaleString('id-ID');
+    } else {
+        return '¥' + finalAmount.toLocaleString('en-US');
+    }
+};
+
+// Paksa utility bawaan AuraFi untuk mematuhi aturan mesin uang baru ini
+if (AuraUtils) {
+    AuraUtils.formatCurrency = window.formatAuraCurrency;
+}
+
 // 2. Services & Modules Imports
 import './services/firebase.js';
 import './modules/categories.js';
@@ -132,18 +157,14 @@ const AURA_THEMES = {
 window.applyAndSaveTheme = async function(themeKey, skipSave = false) {
     const theme = AURA_THEMES[themeKey] || AURA_THEMES['emerald'];
     
-    // Inject ke CSS Variable Global
     document.documentElement.style.setProperty('--accent-primary', theme.primary);
     document.documentElement.style.setProperty('--accent-glow', theme.glow);
     
-    // Update dropdown UI jika ada
     const selectEl = document.getElementById('user-theme-color');
     if (selectEl) selectEl.value = themeKey;
 
-    // Simpan ke local storage
     localStorage.setItem('aurafi_active_theme', themeKey);
 
-    // Simpan permanen ke Firebase
     if (!skipSave && AuraState.user.uid && window.FirebaseService) {
         try {
             await window.FirebaseService.updateSettings({ appTheme: themeKey });
@@ -271,19 +292,18 @@ window.fetchLiveExchangeRate = async function() {
             window.AuraState.data.exchangeRate = idrRate;
             window.AuraState.system.exchangeRate = idrRate;
         }
+        
+        // Segarkan ulang tampilan UI untuk langsung merefleksikan kurs terbaru
+        if(typeof window.renderDashboard === 'function') window.renderDashboard();
+        if(typeof window.renderTransactions === 'function') window.renderTransactions();
+        if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if(typeof window.renderBudgets === 'function') window.renderBudgets();
+
     } catch (e) {
         display.innerText = "Kurs Offline (Gagal memuat)";
-    }
-};
-
-// MESIN FORMAT KURS DINAMIS (Mendeteksi IDR / JPY)
-window.formatAuraCurrency = function(amount, explicitCurr) {
-    const curr = explicitCurr || AuraState.system.displayCurrency || 'JPY';
-    const num = Number(amount) || 0;
-    if (curr === 'IDR') {
-        return 'Rp ' + num.toLocaleString('id-ID');
-    } else {
-        return '¥' + num.toLocaleString('en-US');
+        if (window.AuraState) {
+            window.AuraState.system.exchangeRate = 110.27; // Fallback jika offline
+        }
     }
 };
 
