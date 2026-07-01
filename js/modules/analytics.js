@@ -1,7 +1,7 @@
 /**
  * Analytics & Statistics Module
  * Mengelola kalkulasi pengeluaran, UI Accordion, Chart, CSV, Tracker Dinamis, Smart Grouper,
- * dan fitur Drill-Down (Rincian Item Sub-Kategori) beserta Sinkronisasi Ikon ke Gudang Database.
+ * dan fitur Drill-Down (Rincian Item Sub-Kategori) beserta Auto-Sync Ikon.
  */
 
 import { AuraState } from '../core/state.js';
@@ -28,7 +28,6 @@ function getParentCategory(catName) {
     return 'Lainnya';
 }
 
-// FUNGSI BARU: Mengambil Ikon Langsung dari Gudang Kategori (Firebase)
 function getCategoryStyleFromDB(catName) {
     if (!AuraState.data.settings || !AuraState.data.settings.customCategories) return null;
     const rawCats = AuraState.data.settings.customCategories;
@@ -95,8 +94,6 @@ window.renderAnalytics = function() {
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                 
                 const parentName = getParentCategory(cleanCat);
-                
-                // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                 const styleInfo = getCategoryStyleFromDB(parentName) || CategoryManager.resolveStyle(parentName);
 
                 if (!catMap[parentName]) {
@@ -115,7 +112,9 @@ window.renderAnalytics = function() {
 
     // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
-    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(totalExpense) : AuraUtils.formatCurrency(totalExpense));
+    
+    // PEMANGGILAN FORMATTER KHUSUS STATISTIK
+    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.convertAndFormatCurrency(totalExpense));
     
     const sortedParents = Object.keys(catMap).map(k => ({
         name: k, total: catMap[k].total, style: catMap[k].style, subs: catMap[k].subs
@@ -164,7 +163,6 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
-                        // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                         const subStyle = getCategoryStyleFromDB(sub.name) || CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
@@ -174,7 +172,7 @@ window.renderAnalytics = function() {
                                 ${displayName}
                             </span>
                             <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
-                                ${window.formatAuraCurrency ? window.formatAuraCurrency(sub.total) : AuraUtils.formatCurrency(sub.total)}
+                                ${window.convertAndFormatCurrency(sub.total)}
                                 <i class="fa-solid fa-chevron-right text-[8px] text-[var(--text-muted)] opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
                             </span>
                         </div>`;
@@ -199,7 +197,7 @@ window.renderAnalytics = function() {
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <p class="text-xs font-bold font-mono text-white">${window.formatAuraCurrency ? window.formatAuraCurrency(p.total) : AuraUtils.formatCurrency(p.total)}</p>
+                            <p class="text-xs font-bold font-mono text-white">${window.convertAndFormatCurrency(p.total)}</p>
                             <div class="w-5 h-5 flex items-center justify-center bg-black/30 rounded-full shrink-0">
                                 <i class="fa-solid fa-chevron-down text-[9px] text-[var(--text-muted)] transition-transform duration-300"></i>
                             </div>
@@ -229,7 +227,7 @@ window.renderAnalytics = function() {
                         <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
                         <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
                     </div>
-                    <span class="text-[10px] font-mono text-accent font-bold">${window.formatAuraCurrency ? window.formatAuraCurrency(m.total) : AuraUtils.formatCurrency(m.total)}</span>
+                    <span class="text-[10px] font-mono text-accent font-bold">${window.convertAndFormatCurrency(m.total)}</span>
                 </div>`;
             });
         }
@@ -240,8 +238,8 @@ window.renderAnalytics = function() {
     const dailyAvg = totalExpense / daysElapsed;
     const projected = dailyAvg * totalDays;
 
-    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(dailyAvg) : AuraUtils.formatCurrency(dailyAvg));
-    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(projected) : AuraUtils.formatCurrency(projected));
+    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.convertAndFormatCurrency(dailyAvg));
+    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.convertAndFormatCurrency(projected));
     drawCanvasChart(trend7Days);
 };
 
@@ -250,7 +248,6 @@ window.addSingleCategoryToVault = async function(subName) {
     const rawCats = AuraState.data.settings?.customCategories || {};
     const parentName = getParentCategory(subName);
     
-    // Cari atau buat Induknya
     let pId = Object.keys(rawCats).find(id => rawCats[id].name === parentName && !rawCats[id].parentId);
     if (!pId) {
         pId = `cat_p_${Date.now()}_${Math.floor(Math.random()*1000)}`;
@@ -258,7 +255,6 @@ window.addSingleCategoryToVault = async function(subName) {
         rawCats[pId] = { name: parentName, type: 'expense', icon: pStyle.icon, color: pStyle.hex, parentId: null };
     }
 
-    // Daftarkan Anaknya
     const cId = `cat_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
     const fallbackStyle = CategoryManager.resolveStyle(subName);
     rawCats[cId] = { name: subName, type: 'expense', icon: fallbackStyle.icon, color: fallbackStyle.hex, parentId: pId };
@@ -269,10 +265,9 @@ window.addSingleCategoryToVault = async function(subName) {
         if(AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
         
         window.closeCategoryMapper();
-        window.renderAnalytics(); // Segarkan UI
+        window.renderAnalytics(); 
         if (window.showToast) window.showToast(`Kategori ${subName} berhasil didaftarkan ke Gudang!`);
         
-        // Otomatis buka form edit ikon
         setTimeout(() => { if(typeof window.editCategory === 'function') window.editCategory(cId); }, 400);
     } catch (e) {
         if(window.showToast) window.showToast("Gagal mendaftarkan kategori ke Cloud.", true);
@@ -387,8 +382,8 @@ window.openSubCategoryItems = function(parentName, subName) {
                             <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-xs font-mono font-bold text-accent">${window.formatAuraCurrency ? window.formatAuraCurrency(val) : AuraUtils.formatCurrency(val)}</p>
-                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.formatAuraCurrency ? window.formatAuraCurrency(it.harga || 0) : AuraUtils.formatCurrency(it.harga || 0)}</p>
+                            <p class="text-xs font-mono font-bold text-accent">${window.convertAndFormatCurrency(val)}</p>
+                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.convertAndFormatCurrency(it.harga || 0)}</p>
                         </div>
                     </div>`;
                 }
@@ -404,7 +399,7 @@ window.openSubCategoryItems = function(parentName, subName) {
         <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
             <div>
                 <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(displayName)}</h3>
-                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.formatAuraCurrency ? window.formatAuraCurrency(totalVal) : AuraUtils.formatCurrency(totalVal)}</p>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.convertAndFormatCurrency(totalVal)}</p>
             </div>
             <button onclick="document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
                 <i class="fa-solid fa-xmark text-sm"></i>
@@ -418,7 +413,6 @@ window.openSubCategoryItems = function(parentName, subName) {
     modal.classList.remove('hidden');
     requestAnimationFrame(() => modal.classList.remove('opacity-0'));
 };
-
 
 window.renderDynamicTrackers = function(startDate, endDate) {
     let container = document.getElementById('staples-container');
@@ -484,7 +478,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
         <div class="bg-black/30 p-3 rounded-xl min-w-[100px] flex-1 flex flex-col items-center justify-center text-center border border-[var(--border-glass)] border-t-2 shadow-lg" style="border-top-color: currentColor; color: inherit;">
             <i class="fa-solid ${icon} ${color} text-xl mb-2"></i>
             <span class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 truncate w-full px-1">${AuraUtils.escapeHtml(tracker.name)}</span>
-            <span class="font-mono font-bold text-sm text-white">${window.formatAuraCurrency ? window.formatAuraCurrency(totals[id]) : AuraUtils.formatCurrency(totals[id])}</span>
+            <span class="font-mono font-bold text-sm text-white">${window.convertAndFormatCurrency(totals[id])}</span>
         </div>`;
     });
 
