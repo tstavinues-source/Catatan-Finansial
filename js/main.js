@@ -13,29 +13,40 @@ import { AuraState } from './core/state.js';
 import { AuraUtils } from './core/utils.js';
 
 // ============================================================================
-// OVERRIDE GLOBAL CURRENCY FORMATTER (KURS & DESIMAL PENUH)
+// MESIN FORMAT KURS DINAMIS (MEMPERBAIKI DESIMAL & DOUBLE MULTIPLICATION)
 // ============================================================================
-window.formatAuraCurrency = function(amount) {
+
+// 1. FORMATTER MURNI (Untuk Dashboard & UI yang sudah mengalikan kurs sendiri)
+window.formatAuraCurrency = function(amount, explicitCurr) {
+    const curr = explicitCurr || AuraState.system?.displayCurrency || 'JPY';
+    const num = Math.round(Number(amount) || 0); // Pembulatan mutlak (hapus desimal)
+    
+    if (curr === 'IDR') {
+        return 'Rp ' + num.toLocaleString('id-ID');
+    } else {
+        return '¥' + num.toLocaleString('en-US');
+    }
+};
+
+// Pasang override ke utils bawaan
+if (window.AuraUtils) {
+    window.AuraUtils.formatCurrency = window.formatAuraCurrency;
+}
+
+// 2. KONVERTER + FORMATTER (Khusus untuk Statistik & Modul yang butuh dikalikan)
+window.convertAndFormatCurrency = function(amount) {
     const num = Number(amount) || 0;
-    const currency = AuraState.system?.displayCurrency || 'JPY';
+    const curr = AuraState.system?.displayCurrency || 'JPY';
+    const rate = (curr === 'IDR') ? (AuraState.system?.exchangeRate || 110.27) : 1;
     
-    // Ambil kurs dari sistem (default ~110.27 jika internet mati)
-    const rate = (currency === 'IDR') ? (AuraState.system?.exchangeRate || 110.27) : 1;
+    const finalAmount = Math.round(num * rate); // Kalikan kurs & bulatkan
     
-    // Kalikan nominal dengan kurs, lalu BULATKAN (hilangkan desimal di belakang koma)
-    const finalAmount = Math.round(num * rate);
-    
-    if (currency === 'IDR') {
+    if (curr === 'IDR') {
         return 'Rp ' + finalAmount.toLocaleString('id-ID');
     } else {
         return '¥' + finalAmount.toLocaleString('en-US');
     }
 };
-
-// Paksa utility bawaan AuraFi untuk mematuhi aturan mesin uang baru ini
-if (AuraUtils) {
-    AuraUtils.formatCurrency = window.formatAuraCurrency;
-}
 
 // 2. Services & Modules Imports
 import './services/firebase.js';
@@ -293,7 +304,6 @@ window.fetchLiveExchangeRate = async function() {
             window.AuraState.system.exchangeRate = idrRate;
         }
         
-        // Segarkan ulang tampilan UI untuk langsung merefleksikan kurs terbaru
         if(typeof window.renderDashboard === 'function') window.renderDashboard();
         if(typeof window.renderTransactions === 'function') window.renderTransactions();
         if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
@@ -315,11 +325,9 @@ window.addEventListener('DOMContentLoaded', () => {
     
     if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
     
-    // Inisialisasi Mata Uang
     const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
     window.setCurrency(savedCurr);
     
-    // Inisialisasi Tema Tersimpan
     const savedTheme = localStorage.getItem('aurafi_active_theme') || 'emerald';
     window.applyAndSaveTheme(savedTheme, true);
     
