@@ -1,7 +1,7 @@
 /**
  * Analytics & Statistics Module
  * Mengelola kalkulasi pengeluaran, UI Accordion, Chart, CSV, Tracker Dinamis, Smart Grouper,
- * dan fitur Drill-Down (Rincian Item Sub-Kategori).
+ * dan fitur Drill-Down (Rincian Item Sub-Kategori) beserta Auto-Sync Ikon.
  */
 
 import { AuraState } from '../core/state.js';
@@ -121,9 +121,14 @@ window.renderAnalytics = function() {
         catContainer.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <span class="text-xs font-bold text-[var(--text-muted)]"><i class="fa-solid fa-layer-group mr-1"></i> Hierarki Data</span>
-            <button onclick="window.openCategoryMapper()" class="bg-accent/20 border border-accent/50 hover:bg-accent hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider text-accent transition flex items-center gap-1.5 active:scale-95">
-                <i class="fa-solid fa-sliders"></i> ATUR INDUK
-            </button>
+            <div class="flex gap-2">
+                <button onclick="window.autoSyncIcons()" class="bg-emerald-500/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider text-emerald-400 transition flex items-center gap-1.5 active:scale-95" title="Selaraskan ikon baru ke Gudang Kategori">
+                    <i class="fa-solid fa-rotate"></i> SYNC IKON
+                </button>
+                <button onclick="window.openCategoryMapper()" class="bg-accent/20 border border-accent/50 hover:bg-accent hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider text-accent transition flex items-center gap-1.5 active:scale-95">
+                    <i class="fa-solid fa-sliders"></i> ATUR INDUK
+                </button>
+            </div>
         </div>`;
         
         if (sortedParents.length === 0) {
@@ -142,8 +147,6 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
-                        // === LOGIKA BARU SESUAI PERMINTAAN ANDA ===
-                        // Cari apakah nama sub-kategori ini ada di database? Jika ada, ambil ikon dan warnanya.
                         const subStyle = CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
@@ -222,6 +225,65 @@ window.renderAnalytics = function() {
     AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(dailyAvg) : AuraUtils.formatCurrency(dailyAvg));
     AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(projected) : AuraUtils.formatCurrency(projected));
     drawCanvasChart(trend7Days);
+};
+
+// === FUNGSI AUTO-SYNC IKON (PENYELARASAN) ===
+window.autoSyncIcons = async function() {
+    const tx = AuraState.data.transactions || [];
+    const rawCats = AuraState.data.settings?.customCategories || {};
+    let isUpdated = false;
+
+    // 1. Kumpulkan semua sub-kategori unik dari transaksi
+    const uniqueSubs = new Set();
+    tx.forEach(t => {
+        if(t.is_deleted || t.tipe !== 'pengeluaran') return;
+        (t.items || []).forEach(it => {
+            let cleanCat = (it.kategori_barang || 'Lainnya').trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+            uniqueSubs.add(cleanCat);
+        });
+    });
+
+    const catArray = Object.entries(rawCats).map(([id, data]) => ({ id, ...data }));
+    
+    // 2. Cek dan masukkan ke Gudang jika belum ada
+    uniqueSubs.forEach(subName => {
+        const exists = catArray.some(c => c.name.toLowerCase() === subName.toLowerCase());
+        if (!exists && subName !== 'Lainnya') {
+            const parentName = getParentCategory(subName);
+            
+            // Cari Induknya dulu, jika tidak ada, buatkan
+            let pId = Object.keys(rawCats).find(id => rawCats[id].name === parentName && !rawCats[id].parentId);
+            if (!pId) {
+                pId = `cat_p_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+                const pStyle = CategoryManager.resolveStyle(parentName);
+                rawCats[pId] = { name: parentName, type: 'expense', icon: pStyle.icon, color: pStyle.hex, parentId: null };
+            }
+
+            // Daftarkan Anak (Sub-kategori) ke Gudang
+            const cId = `cat_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+            const fallbackStyle = CategoryManager.resolveStyle(subName);
+            rawCats[cId] = { name: subName, type: 'expense', icon: fallbackStyle.icon, color: fallbackStyle.hex, parentId: pId };
+            
+            isUpdated = true;
+        }
+    });
+
+    // 3. Simpan ke Firebase
+    if (isUpdated) {
+        try {
+            if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
+            await update(ref(AuraState.instances.db), { [`${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/customCategories`]: rawCats });
+            if(AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
+            window.renderAnalytics();
+            if(window.showToast) window.showToast("✅ Ikon diselaraskan! Silakan klik 'ATUR INDUK' untuk mengubah ikon secara manual.");
+        } catch (e) {
+            if(window.showToast) window.showToast("❌ Gagal menyelaraskan ikon ke Cloud.", true);
+        } finally {
+            if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
+        }
+    } else {
+        if(window.showToast) window.showToast("Semua kategori sudah terdaftar di Gudang. Aman!");
+    }
 };
 
 // === FUNGSI MODAL DRILL-DOWN RINCIAN ITEM ===
@@ -402,14 +464,29 @@ window.openCategoryMapper = function() {
 
     const parentOptions = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
     let listHtml = '';
+    const rawCats = AuraState.data.settings?.customCategories || {};
     
     Array.from(uniqueSubs).sort().forEach(sub => {
         const currentParent = getParentCategory(sub);
         let opts = parentOptions.map(p => `<option value="${p}" ${p === currentParent ? 'selected' : ''}>${p}</option>`).join('');
+        
+        // Cek ID Kategori di database
+        let catId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === sub.toLowerCase());
+        
+        let editBtnHtml = '';
+        if(catId) {
+            editBtnHtml = `<button onclick="window.closeCategoryMapper(); setTimeout(() => { if(typeof window.editCategory === 'function') window.editCategory('${catId}'); else window.openCategoryManager(); }, 300);" class="mr-2 w-6 h-6 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition active:scale-90 shrink-0" title="Edit Ikon ini"><i class="fa-solid fa-palette text-[10px]"></i></button>`;
+        } else {
+            editBtnHtml = `<button onclick="window.closeCategoryMapper(); setTimeout(() => window.autoSyncIcons(), 300);" class="mr-2 w-6 h-6 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center hover:bg-amber-500 hover:text-white transition active:scale-90 shrink-0" title="Sinkronkan dulu untuk mengedit"><i class="fa-solid fa-rotate text-[10px]"></i></button>`;
+        }
+
         listHtml += `
         <div class="flex justify-between items-center bg-black/30 p-2.5 border-b border-[var(--border-glass)] group hover:bg-white/5 transition">
-            <span class="text-xs font-bold text-slate-200 group-hover:text-accent truncate pr-2">${sub}</span>
-            <select class="bg-black/60 border border-[var(--border-glass)] text-[10px] rounded p-1.5 outline-none focus:border-accent text-[var(--text-muted)] cursor-pointer" onchange="window.updateCategoryMapping('${sub}', this.value)">
+            <div class="flex items-center flex-1 min-w-0 pr-2">
+                ${editBtnHtml}
+                <span class="text-xs font-bold text-slate-200 group-hover:text-accent truncate">${sub}</span>
+            </div>
+            <select class="bg-black/60 border border-[var(--border-glass)] text-[10px] rounded p-1.5 outline-none focus:border-accent text-[var(--text-muted)] cursor-pointer shrink-0" onchange="window.updateCategoryMapping('${sub}', this.value)">
                 ${opts}
             </select>
         </div>`;
@@ -421,8 +498,8 @@ window.openCategoryMapper = function() {
     <div class="glass-panel w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent">
         <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
             <div>
-                <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-folder-tree mr-1"></i> Manajer Hierarki</h3>
-                <p class="text-[9px] text-[var(--text-muted)] mt-0.5">Pindahkan item salah alamat ke Induk yang benar.</p>
+                <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-folder-tree mr-1"></i> Penyelarasan & Hierarki</h3>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5">Edit Ikon (🎨) atau Ubah Induk Kategori.</p>
             </div>
             <button onclick="window.closeCategoryMapper()" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
                 <i class="fa-solid fa-xmark text-sm"></i>
