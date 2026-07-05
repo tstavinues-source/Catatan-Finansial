@@ -1,5 +1,6 @@
 /**
- * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, Cashflow Logic, & Anti-Lazy Rule)
+ * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, & Cashflow Logic)
+ * Update: Anti-Laziness Prompt untuk ekstraksi struk panjang.
  */
 
 import { AuraState } from '../core/state.js';
@@ -26,15 +27,16 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const localDateStr = hariIni.toLocaleDateString('en-CA'); 
         const localTimeStr = hariIni.toTimeString().substring(0, 5);
 
-        // PROMPT AI - KINI DILENGKAPI ATURAN ANTI-MALAS (ANTI-LAZY)
+        // PROMPT AI - KINI DILENGKAPI ATURAN ANTI-MALAS (ANTI-LAZINESS)
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
 WAKTU SAAT INI: ${localDateStr} ${localTimeStr}.
-FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis.
+FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis struk.
 
-ATURAN TRANSKRIPSI ITEM (ANTI-LAZY RULE) - WAJIB MUTLAK:
-1. KAMU WAJIB MENGEKSTRAK 100% SEMUA BARANG YANG ADA DI STRUK. JANGAN ADA YANG DILEWATI SATU PUN!
-2. JANGAN PERNAH merangkum (summarize) atau menyingkat daftar barang. Jika di struk ada 25 baris barang, maka array "items" harus berisi persis 25 objek.
-3. Baca dari baris paling atas hingga baris paling bawah sebelum total.
+ATURAN EKSTRAKSI STRUK (SANGAT KRITIKAL & WAJIB DIPATUHI 100%):
+1. BACA SETIAP BARIS STRUK! Ekstrak **SELURUH ITEM TANPA TERKECUALI**. Jika di struk ada 25 barang, maka array "items" WAJIB berisi 25 barang.
+2. DILARANG KERAS merangkum, melewati, memotong, atau menggabungkan daftar belanjaan. Jangan malas!
+3. Terjemahkan nama barang Jepang ke Bahasa Indonesia secara akurat agar mudah dibaca.
+4. Perhatikan baik-baik indikator QTY (Jumlah) dan Harga Satuan di struk.
 
 ATURAN ALIRAN DANA (TIPE TRANSAKSI) - SANGAT PENTING:
 WAJIB isi parameter "tipe" dengan salah satu dari 4 opsi ini:
@@ -66,7 +68,7 @@ Struktur Output Target JSON MURNI:
     ]
 }`;
 
-        const userContent = `Catat transaksi ini: "${text || "Proses foto terlampir"}". Pastikan semua barang terekstrak sepenuhnya.`;
+        const userContent = `Catat transaksi ini: "${text || "Proses foto terlampir"}".`;
         const messages = [ 
             { role: "system", content: systemPrompt }, 
             { role: "user", content: userContent } 
