@@ -1,5 +1,5 @@
 /**
- * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, & Cashflow Logic)
+ * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, Cashflow Logic, & Anti-Lazy Rule)
  */
 
 import { AuraState } from '../core/state.js';
@@ -26,10 +26,15 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const localDateStr = hariIni.toLocaleDateString('en-CA'); 
         const localTimeStr = hariIni.toTimeString().substring(0, 5);
 
-        // PROMPT AI - KINI DILENGKAPI PENGETAHUAN TENTANG "TARIK TUNAI"
+        // PROMPT AI - KINI DILENGKAPI ATURAN ANTI-MALAS (ANTI-LAZY)
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
 WAKTU SAAT INI: ${localDateStr} ${localTimeStr}.
 FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis.
+
+ATURAN TRANSKRIPSI ITEM (ANTI-LAZY RULE) - WAJIB MUTLAK:
+1. KAMU WAJIB MENGEKSTRAK 100% SEMUA BARANG YANG ADA DI STRUK. JANGAN ADA YANG DILEWATI SATU PUN!
+2. JANGAN PERNAH merangkum (summarize) atau menyingkat daftar barang. Jika di struk ada 25 baris barang, maka array "items" harus berisi persis 25 objek.
+3. Baca dari baris paling atas hingga baris paling bawah sebelum total.
 
 ATURAN ALIRAN DANA (TIPE TRANSAKSI) - SANGAT PENTING:
 WAJIB isi parameter "tipe" dengan salah satu dari 4 opsi ini:
@@ -61,7 +66,7 @@ Struktur Output Target JSON MURNI:
     ]
 }`;
 
-        const userContent = `Catat transaksi ini: "${text || "Proses foto terlampir"}".`;
+        const userContent = `Catat transaksi ini: "${text || "Proses foto terlampir"}". Pastikan semua barang terekstrak sepenuhnya.`;
         const messages = [ 
             { role: "system", content: systemPrompt }, 
             { role: "user", content: userContent } 
