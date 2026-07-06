@@ -11,26 +11,33 @@ window.saveGoal = async function() {
     const nameEl = document.getElementById('goal-name');
     const amtEl = document.getElementById('goal-target');
     const dtEl = document.getElementById('goal-date');
-    const currEl = document.getElementById('goal-currency'); // Menangkap Pilihan Kurs
+    const currEl = document.getElementById('goal-currency'); 
+    const freqEl = document.getElementById('goal-frequency'); // Menangkap Pilihan Frekuensi
     
     if (!nameEl || !amtEl || !dtEl) return;
     
     const name = nameEl.value.trim(); 
     const amt = parseFloat(amtEl.value); 
     const dt = dtEl.value;
-    const selectedCurr = currEl ? currEl.value : 'JPY'; // Default JPY jika tidak ditemukan
+    const selectedCurr = currEl ? currEl.value : 'JPY'; 
+    const freq = freqEl ? parseInt(freqEl.value) : 1;
 
     if (!name || isNaN(amt) || !dt) {
         if (window.showToast) window.showToast("Harap lengkapi semua isian formulir!", true);
         return;
     }
     
+    // KUNCI PERBAIKAN: Simpan waktu misi DIBUAT (Start Date) untuk dasar kalkulasi tetap
+    const startDate = new Date().toISOString().split('T')[0];
+    
     try {
         await FirebaseService.saveGoal({ 
             name: name, 
             targetAmount: amt, 
             targetDate: dt, 
-            currency: selectedCurr // SIMPAN IDENTITAS KURS SECARA PERMANEN
+            startDate: startDate,         // Tambahan data: Tanggal mulai
+            frequencyDays: freq,          // Tambahan data: Frekuensi (Harian/Mingguan/Bulanan)
+            currency: selectedCurr 
         });
 
         const formContainer = document.getElementById('goal-form');
@@ -39,7 +46,8 @@ window.saveGoal = async function() {
         nameEl.value = "";
         amtEl.value = ""; 
         dtEl.value = ""; 
-        if (currEl) currEl.value = "JPY"; // Reset kembali ke JPY
+        if (freqEl) freqEl.value = "1";
+        if (currEl) currEl.value = "JPY"; 
         
         if (window.showToast) window.showToast("Misi Tabungan Berhasil Ditambahkan!");
     } catch(e) {
@@ -94,7 +102,7 @@ window.editGoalPrompt = async function(id) {
             name: newName, 
             targetAmount: parsedTarget, 
             targetDate: newDate 
-            // Kita tidak mengubah Currency-nya agar tetap konsisten dengan niat awal pembuatan
+            // Kita membiarkan startDate dan frequencyDays seperti aslinya agar perhitungan tidak kacau
         });
         if (window.showToast) window.showToast("Misi berhasil diperbarui!");
     } catch(e) {
