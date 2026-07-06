@@ -910,21 +910,27 @@
                     </div>
                 </div>
                 
-                <div id="goal-form" class="glass-panel p-5 space-y-4 hidden border-t-4 border-t-accent shadow-2xl transition-all">
-                    <h3 class="font-bold text-xs mb-2">Misi Tabungan Baru</h3>
-                    <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo)" class="v-input w-full rounded-xl p-3.5 text-sm outline-none">
-                    
-                    <div class="flex gap-2">
-                        <select id="goal-currency" class="v-input w-1/3 rounded-xl p-3.5 text-xs outline-none bg-black">
-                            <option value="JPY">JPY</option>
-                            <option value="IDR">IDR</option>
-                        </select>
-                        <input type="number" id="goal-target" placeholder="Target Dana" class="v-input w-2/3 rounded-xl p-3.5 text-sm outline-none">
-                    </div>
-                    
-                    <input type="date" id="goal-date" class="v-input w-full rounded-xl p-3.5 text-sm text-[var(--text-muted)] outline-none">
-                    <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-lg">Mulai Misi Menabung</button>
-                </div>
+                        <div id="goal-form" class="glass-panel p-5 space-y-4 hidden border-t-4 border-t-accent shadow-2xl transition-all">
+            <h3 class="font-bold text-xs mb-2">Misi Tabungan Baru</h3>
+            <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo)" class="v-input w-full rounded-xl p-3.5 text-sm outline-none">
+            <div class="flex gap-3">
+                <input type="number" id="goal-target" placeholder="Target Dana" class="v-input w-1/2 rounded-xl p-3.5 text-sm outline-none">
+                <input type="date" id="goal-date" class="v-input w-1/2 rounded-xl p-3.5 text-sm text-[var(--text-muted)] outline-none">
+            </div>
+            
+            <select id="goal-frequency" class="v-input w-full rounded-xl p-3.5 text-sm outline-none bg-black">
+                <option value="1">Harian (Tiap Hari)</option>
+                <option value="5">Per 5 Hari</option>
+                <option value="6">Per 6 Hari</option>
+                <option value="7">Mingguan (Tiap 7 Hari)</option>
+                <option value="14">Dwi-Mingguan (Tiap 14 Hari)</option>
+                <option value="30">Bulanan (Tiap 30 Hari)</option>
+                <option value="60">Per 2 Bulan (Tiap 60 Hari)</option>
+            </select>
+
+            <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-lg">Mulai Misi Menabung</button>
+        </div>
+
 
                 <div>
                     <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1"><i class="fa-solid fa-bullseye mr-1"></i> Misi Aktif</h3>
