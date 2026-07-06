@@ -9,22 +9,7 @@ import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
 
 // ============================================================================
-// INJECT PATCH: Mesin Format Kurs Dinamis & Anti-Desimal Aneh
-// ============================================================================
-window.formatAuraCurrency = function(amount) {
-    const curr = AuraState.system.displayCurrency || 'JPY';
-    // Bulatkan angka untuk mencegah desimal aneh seperti 11.438 atau 827.034
-    const num = Math.round(Number(amount) || 0); 
-    
-    if (curr === 'IDR') {
-        return 'Rp ' + num.toLocaleString('id-ID');
-    } else {
-        return '¥' + num.toLocaleString('en-US');
-    }
-};
-
-// ============================================================================
-// PATCH: Menimpa UI Tagihan Otomatis agar menggunakan Konversi yang benar
+// UI TAGIHAN OTOMATIS (MENGGUNAKAN KONVERSI KURS)
 // ============================================================================
 window.renderRecurringUIForBudget = function() {
     AuraUtils.safeDOM('budget-bills-container', function(el) {
@@ -38,7 +23,7 @@ window.renderRecurringUIForBudget = function() {
         
         let compiledBudgets = '';
         entries.forEach(([id, rp]) => {
-            // Konversi dari mata uang asal (saat data disimpan) ke mata uang tampilan
+            // Konversi dari mata uang asal ke mata uang tampilan
             const convertedAmt = AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY');
             const formattedMoney = window.formatAuraCurrency(convertedAmt);
             
@@ -354,7 +339,10 @@ window.reCalculateAll = function() {
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
     
-        AuraUtils.safeDOM('goals-list-container', el => {
+    // ============================================================================
+    // LOGIKA PERBAIKAN: MANAJER MISI TABUNGAN (TIDAK ADA LAGI DESIMAL/BENGKAK)
+    // ============================================================================
+    AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
             el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5">Belum ada Misi Pengumpulan Aset Finansial.</p>'; 
@@ -366,29 +354,51 @@ window.reCalculateAll = function() {
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
             
-            // 1. Tangkap kurs asli saat pengguna membuat Misi ini
             const originalCurrency = g.currency || 'JPY';
-            
-            // 2. Konversi angka asli ke mata uang layar (Jika layar JPY dan misi dibuat JPY, nilainya tetap. Jika layar IDR, ia dikali kurs)
             const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, originalCurrency); 
             
-            const diffDays = Math.ceil((new Date(g.targetDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24));
-            const dailyReq = diffDays > 0 ? targetVal / diffDays : 0;
+            // KUNCI: Mencegah error jika data lama tidak punya startDate (anggap dibuat 30 hari lalu)
+            const createdDateObj = g.startDate ? new Date(g.startDate) : new Date(new Date(g.targetDate).getTime() - (30*24*3600*1000));
+            const targetDateObj = new Date(g.targetDate);
+            const todayObj = new Date();
+            
+            // 1. Total hari dari AWAL DIBUAT sampai TARGET (Digunakan untuk membagi cicilan secara TETAP)
+            let totalDaysPlanned = Math.ceil((targetDateObj.getTime() - createdDateObj.getTime()) / (1000 * 3600 * 24));
+            if (totalDaysPlanned <= 0) totalDaysPlanned = 1;
+
+            // 2. Sisa hari saat ini (Hanya untuk tampilan ke pengguna)
+            const diffDaysLeft = Math.ceil((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
+            
+            const freq = parseInt(g.frequencyDays) || 1;
+            
+            let freqText = "Harian";
+            if (freq === 5) freqText = "Per 5 Hari";
+            else if (freq === 6) freqText = "Per 6 Hari";
+            else if (freq === 7) freqText = "Mingguan";
+            else if (freq === 14) freqText = "2 Mingguan";
+            else if (freq === 30) freqText = "Bulanan";
+            else if (freq === 60) freqText = "Per 2 Bulan";
+
+            // Total periode menabung yang direncanakan SEJAK AWAL
+            const totalPeriods = Math.max(1, Math.ceil(totalDaysPlanned / freq));
+            
+            // Kewajiban per periode menjadi TETAP, tidak membesar seiring berjalannya waktu
+            const requiredPerPeriod = targetVal / totalPeriods;
             
             glHtml += `
-            <div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent">
+            <div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent mb-4">
                 <button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 transition"><i class="fa-solid fa-trash text-xs"></i></button>
                 <button onclick="window.editGoalPrompt('${g.id}')" class="absolute top-4 right-10 text-[var(--text-muted)] hover:text-accent p-1 transition"><i class="fa-solid fa-pen text-xs"></i></button>
                 <h4 class="font-bold text-sm mb-1">${AuraUtils.escapeHtml(g.name)}</h4>
                 <p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${window.formatAuraCurrency(targetVal)} max ${g.targetDate}</p>
                 <div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]">
                     <div>
-                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Kewajiban Nabung Harian</p>
-                        <p class="font-mono text-accent font-bold text-xs">${diffDays > 0 ? window.formatAuraCurrency(dailyReq) : 'TERLAMPAUI'}</p>
+                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Kewajiban Nabung ${freqText}</p>
+                        <p class="font-mono text-accent font-bold text-xs">${diffDaysLeft > 0 ? window.formatAuraCurrency(requiredPerPeriod) : 'TERLAMPAUI'}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Hari</p>
-                        <p class="font-bold text-xs">${diffDays > 0 ? diffDays + ' Hari' : 'KADALUARSA'}</p>
+                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Waktu</p>
+                        <p class="font-bold text-xs">${diffDaysLeft > 0 ? diffDaysLeft + ' Hari' : 'KADALUARSA'}</p>
                     </div>
                 </div>
             </div>`;
