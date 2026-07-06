@@ -341,69 +341,98 @@ window.reCalculateAll = function() {
     // ============================================================================
     // LOGIKA PERBAIKAN: MANAJER MISI TABUNGAN (TIDAK ADA LAGI DESIMAL/BENGKAK)
     // ============================================================================
-    AuraUtils.safeDOM('goals-list-container', el => {
+        AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
-            el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5">Belum ada Misi Pengumpulan Aset Finansial.</p>'; 
+            el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5 opacity-70"><i class="fa-solid fa-bullseye text-2xl block mb-2"></i>Belum ada Misi Pengumpulan Aset Finansial.</p>'; 
             return; 
         }
         
         let glHtml = '';
+        const todayObj = new Date();
+        todayObj.setHours(0,0,0,0); // Normalisasi hari ini ke jam 00:00
         
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
             
             const originalCurrency = g.currency || 'JPY';
             const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, originalCurrency); 
+            // Menarik saldo yang sudah ditabung
+            const savedVal = AuraUtils.convertCurrency(g.savedAmount || 0, originalCurrency);
             
-            // KUNCI: Mencegah error jika data lama tidak punya startDate (anggap dibuat 30 hari lalu)
-            const createdDateObj = g.startDate ? new Date(g.startDate) : new Date(new Date(g.targetDate).getTime() - (30*24*3600*1000));
+            // Kalkulasi sisa target
+            const remainingTarget = Math.max(0, targetVal - savedVal);
+            const progressPct = targetVal > 0 ? Math.min(100, (savedVal / targetVal) * 100) : 0;
+            
             const targetDateObj = new Date(g.targetDate);
-            const todayObj = new Date();
+            targetDateObj.setHours(23,59,59,999);
             
-            // 1. Total hari dari AWAL DIBUAT sampai TARGET (Digunakan untuk membagi cicilan secara TETAP)
-            let totalDaysPlanned = Math.ceil((targetDateObj.getTime() - createdDateObj.getTime()) / (1000 * 3600 * 24));
-            if (totalDaysPlanned <= 0) totalDaysPlanned = 1;
-
-            // 2. Sisa hari saat ini (Hanya untuk tampilan ke pengguna)
+            // Sisa hari dari HARI INI ke TARGET AKHIR
             const diffDaysLeft = Math.ceil((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
             
             const freq = parseInt(g.frequencyDays) || 1;
             
             let freqText = "Harian";
-            if (freq === 5) freqText = "Per 5 Hari";
-            else if (freq === 6) freqText = "Per 6 Hari";
-            else if (freq === 7) freqText = "Mingguan";
-            else if (freq === 14) freqText = "2 Mingguan";
+            if (g.periodUnit && g.periodVal) {
+                freqText = `Per ${g.periodVal} <span class="capitalize">${g.periodUnit}</span>`;
+            } else if (freq === 7) freqText = "Mingguan";
             else if (freq === 30) freqText = "Bulanan";
-            else if (freq === 60) freqText = "Per 2 Bulan";
+            else freqText = `Per ${freq} Hari`;
 
-            // Total periode menabung yang direncanakan SEJAK AWAL
-            const totalPeriods = Math.max(1, Math.ceil(totalDaysPlanned / freq));
+            // ========================================================
+            // DYNAMIC SINKING FUND CALCULATION
+            // Membagi sisa uang yang dibutuhkan dengan sisa periode waktu
+            // ========================================================
+            const remainingPeriods = Math.max(1, Math.ceil(diffDaysLeft / freq));
+            const requiredPerPeriod = remainingTarget / remainingPeriods;
             
-            // Kewajiban per periode menjadi TETAP, tidak membesar seiring berjalannya waktu
-            const requiredPerPeriod = targetVal / totalPeriods;
+            let requiredStatusHtml = '';
+            if (remainingTarget <= 0) {
+                requiredStatusHtml = '<span class="text-emerald-400"><i class="fa-solid fa-check-double"></i> TERCAPAI</span>';
+            } else if (diffDaysLeft < 0) {
+                requiredStatusHtml = '<span class="text-rose-400"><i class="fa-solid fa-clock-rotate-left"></i> KADALUARSA</span>';
+            } else {
+                requiredStatusHtml = window.formatAuraCurrency(requiredPerPeriod);
+            }
             
             glHtml += `
-            <div class="glass-panel p-4 relative overflow-hidden border-t-2 border-t-accent mb-4">
-                <button onclick="window.confirmDelGoal('${g.id}')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-[var(--text-main)] p-1 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-                <button onclick="window.editGoalPrompt('${g.id}')" class="absolute top-4 right-10 text-[var(--text-muted)] hover:text-accent p-1 transition"><i class="fa-solid fa-pen text-xs"></i></button>
-                <h4 class="font-bold text-sm mb-1">${AuraUtils.escapeHtml(g.name)}</h4>
-                <p class="text-[9px] text-[var(--text-muted)] mb-3 uppercase tracking-wider font-extrabold">Target: ${window.formatAuraCurrency(targetVal)} max ${g.targetDate}</p>
+            <div class="glass-panel p-4 relative overflow-hidden border-t-2 ${remainingTarget <= 0 ? 'border-t-emerald-400' : 'border-t-accent'} mb-4 group">
+                
+                <div class="absolute top-3 right-3 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
+                    <button onclick="window.openTopupGoal('${g.id}', '${AuraUtils.escapeHtml(g.name)}')" class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Setor Tabungan"><i class="fa-solid fa-plus text-xs"></i></button>
+                    <button onclick="window.openEditGoalFull('${g.id}')" class="w-8 h-8 rounded-full bg-accent/20 text-accent hover:bg-accent/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Edit Misi"><i class="fa-solid fa-pen text-xs"></i></button>
+                    <button onclick="window.confirmDelGoal('${g.id}')" class="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Hapus Permanen"><i class="fa-solid fa-trash text-xs"></i></button>
+                </div>
+
+                <h4 class="font-bold text-sm mb-1 pr-28 truncate">${AuraUtils.escapeHtml(g.name)}</h4>
+                
+                <div class="mb-4 mt-3">
+                    <div class="flex justify-between text-[9px] font-bold uppercase tracking-widest mb-1.5 text-[var(--text-muted)]">
+                        <span class="text-emerald-400">Terkumpul: ${window.formatAuraCurrency(savedVal)}</span>
+                        <span>Target: ${window.formatAuraCurrency(targetVal)}</span>
+                    </div>
+                    <div class="w-full h-2.5 bg-black/60 rounded-full overflow-hidden border border-[var(--border-glass)] shadow-inner">
+                        <div class="h-full ${remainingTarget <= 0 ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : 'bg-accent'} transition-all duration-1000 relative" style="width: ${progressPct}%">
+                            <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]">
                     <div>
-                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Kewajiban Nabung ${freqText}</p>
-                        <p class="font-mono text-accent font-bold text-xs">${diffDaysLeft > 0 ? window.formatAuraCurrency(requiredPerPeriod) : 'TERLAMPAUI'}</p>
+                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold flex items-center gap-1"><i class="fa-solid fa-coins text-amber-400"></i> Wajib Nabung <span class="text-white">${freqText}</span></p>
+                        <p class="font-mono text-accent font-bold text-xs">${requiredStatusHtml}</p>
                     </div>
                     <div class="text-right">
-                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold">Sisa Waktu</p>
-                        <p class="font-bold text-xs">${diffDaysLeft > 0 ? diffDaysLeft + ' Hari' : 'KADALUARSA'}</p>
+                        <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold flex items-center gap-1 justify-end"><i class="fa-regular fa-calendar text-sky-400"></i> Sisa Waktu</p>
+                        <p class="font-bold text-xs ${diffDaysLeft < 0 ? 'text-rose-400' : 'text-white'}">${diffDaysLeft > 0 ? diffDaysLeft + ' Hari' : (diffDaysLeft === 0 ? 'Hari Ini' : 'Selesai')}</p>
                     </div>
                 </div>
             </div>`;
         }
         el.innerHTML = glHtml;
     });
+
 
     
     AuraUtils.safeDOM('trash-list-container', el => {
