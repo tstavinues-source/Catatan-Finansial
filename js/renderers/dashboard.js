@@ -149,10 +149,14 @@ window.reCalculateAll = function() {
         if (trx.tipe === 'pemasukan') {
             periodIncome += val;
             groupedTrx[dStr].total += val;
-        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
+        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai' || trx.tipe === 'nabung') {
             let actualSpend = val;
+            // Tarik/Setor hanya menghitung admin fee sebagai pengeluaran chart
             if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
                 actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+            } else if (trx.tipe === 'nabung') {
+                // Nabung tidak masuk chart pengeluaran Burn Rate sama sekali!
+                actualSpend = 0; 
             }
             groupedTrx[dStr].total -= actualSpend; 
             periodSpent += actualSpend;
@@ -162,8 +166,18 @@ window.reCalculateAll = function() {
         groupedTrx[dStr].items.push(trx);
     }
 
+    // HITUNG TOTAL UANG DI BRANKAS (TOTAL TABUNGAN)
+    let totalBrankas = 0;
+    const glListForBrankas = AuraState.data.goals || [];
+    for (let i = 0; i < glListForBrankas.length; i++) {
+        const g = glListForBrankas[i];
+        totalBrankas += AuraUtils.convertCurrency(g.savedAmount || 0, g.currency || 'JPY');
+    }
+
     AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(cumulativeBalance));
     AuraUtils.safeDOM('dash-cash', el => el.innerText = window.formatAuraCurrency(totalCashBal));
+    AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.formatAuraCurrency(totalCashlessBal));
+    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); // MENGISI KARTU BRANKAS
     AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.formatAuraCurrency(totalCashlessBal));
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
@@ -236,7 +250,7 @@ window.reCalculateAll = function() {
                 let colorClass = 'text-[var(--text-main)]';
                 let signChar = '-';
                 
-                if (t.tipe === 'pemasukan') { 
+                                if (t.tipe === 'pemasukan') { 
                     iconHtml = '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>';
                     colorClass = 'text-[var(--color-income)]'; 
                     signChar = '+'; 
@@ -244,6 +258,11 @@ window.reCalculateAll = function() {
                     iconHtml = '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>';
                     colorClass = 'text-[#38bdf8]'; 
                     signChar = '⇄'; 
+                } else if (t.tipe === 'nabung') {
+                    // TAMPILAN KHUSUS UNTUK LOG MENABUNG (TIDAK MASUK PENGELUARAN)
+                    iconHtml = '<i class="fa-solid fa-piggy-bank text-emerald-400"></i>';
+                    colorClass = 'text-emerald-400'; 
+                    signChar = '🔒'; 
                 }
                 
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
