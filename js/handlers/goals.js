@@ -7,9 +7,6 @@ import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
 import { FirebaseService } from '../services/firebase.js';
 
-// ============================================================================
-// UI PICKER SATUAN WAKTU (HARI / MINGGU / BULAN)
-// ============================================================================
 let activeTimeUnitTargetVal = '';
 let activeTimeUnitTargetDisplay = '';
 
@@ -18,7 +15,6 @@ window.openTimeUnitPicker = function(valId, displayId) {
     activeTimeUnitTargetDisplay = displayId;
     if(typeof window.showModal === 'function') window.showModal('modal-time-unit-picker');
     
-    // Animasikan Bottom Sheet
     const panel = document.getElementById('time-picker-panel');
     if (panel) {
         requestAnimationFrame(() => {
@@ -47,17 +43,13 @@ window.selectTimeUnit = function(unit) {
     window.closeTimeUnitPicker();
 };
 
-// Fungsi Helper untuk mengonversi Angka + Satuan menjadi Total Hari
 function getFreqDays(val, unit) {
     const num = parseInt(val) || 1;
     if (unit === 'minggu') return num * 7;
-    if (unit === 'bulan') return Math.round(num * 30.416); // Rata-rata hari dalam sebulan
-    return num; // hari
+    if (unit === 'bulan') return Math.round(num * 30.416); 
+    return num; 
 }
 
-// ============================================================================
-// MEMBUAT MISI TABUNGAN BARU
-// ============================================================================
 window.saveGoal = async function() { 
     const name = document.getElementById('goal-name')?.value.trim();
     const amt = parseFloat(document.getElementById('goal-target')?.value);
@@ -77,7 +69,7 @@ window.saveGoal = async function() {
         await FirebaseService.saveGoal({ 
             name: name, 
             targetAmount: amt, 
-            savedAmount: 0, // Tabungan dimulai dari 0
+            savedAmount: 0, 
             startDate: startDate,         
             targetDate: endDate,
             frequencyDays: freqDays,
@@ -89,7 +81,6 @@ window.saveGoal = async function() {
         const formContainer = document.getElementById('goal-form');
         if (formContainer) formContainer.classList.add('hidden');
         
-        // Bersihkan Form
         document.getElementById('goal-name').value = "";
         document.getElementById('goal-target').value = ""; 
         document.getElementById('goal-start-date').value = ""; 
@@ -113,9 +104,6 @@ window.confirmDelGoal = function(id) {
     if (typeof window.showModal === 'function') window.showModal('modal-confirm'); 
 };
 
-// ============================================================================
-// EDIT MISI SECARA KESELURUHAN (FULL EDIT)
-// ============================================================================
 window.openEditGoalFull = function(id) {
     const goal = (AuraState.data.goals || []).find(g => g.id === id);
     if(!goal) return;
@@ -174,9 +162,6 @@ window.saveFullEditGoal = async function() {
     }
 };
 
-// ============================================================================
-// SETOR / TOP-UP UANG TABUNGAN
-// ============================================================================
 window.openTopupGoal = function(id, name) {
     AuraState.temp.topupGoalId = id;
     document.getElementById('topup-goal-name').innerText = name;
@@ -185,9 +170,13 @@ window.openTopupGoal = function(id, name) {
     if (typeof window.showModal === 'function') window.showModal('modal-topup-goal');
 };
 
+// ============================================================================
+// LOGIKA BARU: MENABUNG MEMOTONG SALDO TUNAI/REKENING NAMUN BUKAN PENGELUARAN
+// ============================================================================
 window.saveProgressGoal = async function() {
     const id = AuraState.temp.topupGoalId;
     const amt = parseFloat(document.getElementById('topup-goal-amount')?.value);
+    const source = document.getElementById('topup-goal-source')?.value || 'cashless';
     
     if(!id || isNaN(amt) || amt <= 0) {
         if (window.showToast) window.showToast("Nominal tidak valid!", true);
@@ -200,9 +189,42 @@ window.saveProgressGoal = async function() {
     const currentSaved = parseFloat(goal.savedAmount) || 0;
     
     try {
+        // 1. Update progres tabungan
         await FirebaseService.updateGoal(id, { savedAmount: currentSaved + amt });
+        
+        // 2. Buat Log Transaksi "Nabung" agar memotong uang tanpa mengganggu Burn Rate
+        const currentCurr = AuraState.system.displayCurrency || 'JPY';
+        const timestamp = new Date().toISOString();
+        
+        const tabunganTrx = {
+            merchantName: "Brankas: " + goal.name,
+            storeName: "AuraFi Vault",
+            tanggal: timestamp.split('T')[0],
+            createdAt: timestamp,
+            nominal: amt,
+            mata_uang: currentCurr,
+            metode_pembayaran: source,
+            tipe: 'nabung', // TIPE BARU: Hanya memotong cash/cashless, bukan pengeluaran
+            kategori: 'Tabungan',
+            description: `Setor tabungan dari ${source === 'tunai' ? 'Dompet' : 'Rekening'}.`,
+            isCustomDescription: true,
+            is_deleted: false,
+            items: [{
+                itemId: AuraUtils.generateId('itm'),
+                nama_barang: `Setor Misi: ${goal.name}`,
+                harga: amt,
+                qty: 1,
+                kategori_barang: 'Tabungan',
+                tax_rate: 0,
+                paymentMethod: source,
+                timestamp: timestamp
+            }]
+        };
+        
+        await FirebaseService.saveTransaction(tabunganTrx, false);
+
         if (typeof window.closeModal === 'function') window.closeModal('modal-topup-goal');
-        if (window.showToast) window.showToast("Tabungan berhasil disetor ke dalam sistem!");
+        if (window.showToast) window.showToast(`Uang berhasil dipindahkan ke Brankas ${goal.name}!`);
     } catch(e) {
         if (window.showToast) window.showToast("Gagal menyetor tabungan.", true);
     }
