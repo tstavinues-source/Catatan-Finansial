@@ -97,18 +97,15 @@
                 <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-folder-tree text-accent"></i> Kategori Sistem</h3>
                 <button onclick="window.closeModal('modal-category-manager')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
             <div class="flex border-b border-[var(--border-glass)] shrink-0 bg-black/20">
                 <button id="tab-cat-expense" onclick="window.switchCatTab('expense')" class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-[var(--color-expense)] border-b-2 border-[var(--color-expense)] transition-all">Pengeluaran</button>
                 <button id="tab-cat-income" onclick="window.switchCatTab('income')" class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] border-b-2 border-transparent hover:text-white transition-all">Pemasukan</button>
             </div>
-            
             <div class="p-4 shrink-0 bg-[var(--bg-base)] z-10 shadow-md">
                 <button onclick="window.openAddCategoryForm()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-dashed border-[var(--border-glass)] text-xs font-bold text-white transition flex items-center justify-center gap-2">
                     <i class="fa-solid fa-plus text-accent"></i> Kategori Baru
                 </button>
             </div>
-            
             <div id="category-list-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-black/40"></div>
         </div>
     </div>
@@ -119,12 +116,10 @@
                 <h3 id="cat-form-title" class="text-lg font-bold text-accent font-display">Kategori Baru</h3>
                 <button onclick="window.closeModal('modal-category-form')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
             <input type="hidden" id="cat-form-id">
             <input type="hidden" id="cat-form-type">
             <input type="hidden" id="cat-form-icon">
             <input type="hidden" id="cat-form-color">
-
             <div class="space-y-4">
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Kategori</label>
@@ -136,7 +131,6 @@
                         <option value="">-- Menjadi Kategori Utama --</option>
                     </select>
                 </div>
-                
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-2 block font-bold">Pilih Ikon & Warna</label>
                     <div class="bg-black/30 p-3 rounded-xl border border-[var(--border-glass)]">
@@ -148,7 +142,6 @@
         </div>
     </div>
 
-
     <div id="modal-login" class="fixed inset-0 z-[300] bg-[var(--bg-base)] flex items-center justify-center p-5 transition-all duration-300">
         <div class="glass-panel p-8 w-full max-w-sm text-center border-t-4 border-t-accent shadow-2xl flex flex-col items-center max-h-[95vh] overflow-y-auto no-scrollbar relative overflow-hidden">
             <div class="absolute -top-20 -left-20 w-40 h-40 bg-[var(--accent-primary)] rounded-full blur-[80px] opacity-30"></div>
@@ -157,7 +150,6 @@
             </div>
             <h2 class="text-3xl font-display font-black tracking-tight mb-2 z-10">AuraFi OS</h2>
             <p class="text-xs text-[var(--text-muted)] mb-8 leading-relaxed z-10">Cognitive Wealth System. Sinkronisasi persisten untuk akses tanpa batas.</p>
-            
             <div class="space-y-3 w-full mb-6 z-10">
                 <input type="email" id="login-email" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Email Terdaftar">
                 <input type="password" id="login-pass" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Kata Sandi">
@@ -165,13 +157,11 @@
                     <i class="fa-solid fa-envelope"></i> Masuk via Email
                 </button>
             </div>
-            
             <div class="flex items-center gap-3 w-full mb-6 z-10">
                 <div class="h-px bg-[var(--border-glass)] flex-1"></div>
                 <span class="text-[9px] text-[var(--text-muted)] uppercase font-bold tracking-widest">ATAU</span>
                 <div class="h-px bg-[var(--border-glass)] flex-1"></div>
             </div>
-
             <button onclick="window.loginWithGoogle()" class="w-full py-4 mb-3 rounded-2xl bg-white text-black font-bold text-sm shadow-xl flex items-center justify-center gap-3 hover:bg-gray-100 transition active:scale-95 z-10">
                 <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
                 Masuk dengan Google
@@ -202,7 +192,6 @@
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-microscope"></i> AI Staging Area</h3>
                 <button onclick="window.closeModal('modal-ai-staging')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
             <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
                 <div class="flex gap-2">
                     <div class="flex-1">
@@ -219,15 +208,12 @@
                         </select>
                     </div>
                 </div>
-                
                 <div class="flex justify-between items-center mt-4 mb-2">
                     <h4 class="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]"><i class="fa-solid fa-list-check"></i> Keranjang Item</h4>
                     <button onclick="window.addStagingItem()" class="text-[10px] text-accent font-bold hover:text-white bg-white/5 px-2 py-1 rounded"><i class="fa-solid fa-plus"></i> Manual</button>
                 </div>
-                
                 <div id="staging-items-container" class="space-y-3"></div>
             </div>
-            
             <div class="p-4 border-t border-[var(--border-glass)] bg-[var(--bg-base)] shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-10">
                 <div class="flex justify-between items-center mb-3">
                     <span class="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Total Kalkulasi</span>
@@ -244,7 +230,6 @@
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</h3>
                 <button onclick="window.closeModal('modal-manual-trx')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
-
             <div class="space-y-4">
                 <div class="flex gap-3">
                     <div class="w-1/2">
@@ -264,7 +249,6 @@
                         </select>
                     </div>
                 </div>
-
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
@@ -278,12 +262,10 @@
                         <input type="number" id="manual-trx-amount" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold text-accent" placeholder="0">
                     </div>
                 </div>
-
                 <div>
                     <label id="lbl-manual-store" class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant / Sumber</label>
                     <input type="text" id="manual-trx-store" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Contoh: 7-Eleven / Gaji / ATM">
                 </div>
-                
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kategori Spesifik</label>
                     <div class="relative">
@@ -324,12 +306,10 @@
                         </select>
                     </div>
                 </div>
-
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Merchant / Toko</label>
                     <input type="text" id="edit-global-store" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                 </div>
-
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
@@ -343,7 +323,6 @@
                         <input type="number" id="edit-global-nominal" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono">
                     </div>
                 </div>
-                
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Deskripsi / Keterangan</label>
                     <textarea id="edit-global-desc" rows="3" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Ubah deskripsi di sini..."></textarea>
@@ -451,7 +430,6 @@
             </div>
             <h3 class="text-lg font-bold mb-1 font-display text-emerald-400">Setor Tabungan</h3>
             <p id="topup-goal-name" class="text-xs text-[var(--text-muted)] mb-4 font-bold uppercase tracking-widest"></p>
-            
             <div class="text-left mb-3">
                 <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Ambil Uang Dari:</label>
                 <select id="topup-goal-source" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-white">
@@ -459,12 +437,10 @@
                     <option value="tunai">Dompet Tunai</option>
                 </select>
             </div>
-
             <input type="number" id="topup-goal-amount" placeholder="Nominal Disetor" class="v-input w-full rounded-xl p-4 text-center font-mono font-bold text-lg outline-none mb-4 focus:border-emerald-500">
             <button onclick="window.saveProgressGoal()" class="w-full py-4 rounded-xl bg-emerald-500 text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.4)] transition hover:opacity-90 active:scale-95">Setor & Kunci Dana!</button>
         </div>
     </div>
-
 
     <div id="modal-edit-goal-full" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar relative">
@@ -472,10 +448,8 @@
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-sliders"></i> Edit Misi Tabungan</h3>
                 <button onclick="window.closeModal('modal-edit-goal-full')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
             <div class="space-y-4">
                 <input type="text" id="edit-goal-name" placeholder="Nama Misi" class="v-input w-full rounded-xl p-3.5 text-sm outline-none">
-                
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Total Target</label>
@@ -486,7 +460,6 @@
                         <input type="number" id="edit-goal-saved" class="v-input w-full rounded-xl p-3 text-xs outline-none font-mono border-emerald-500/50 focus:border-emerald-400 text-emerald-400">
                     </div>
                 </div>
-                
                 <div class="flex gap-3">
                     <div class="w-1/2">
                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal Mulai</label>
@@ -497,7 +470,6 @@
                         <input type="date" id="edit-goal-end-date" class="v-input w-full rounded-xl p-3 text-xs text-[var(--text-muted)] outline-none">
                     </div>
                 </div>
-                
                 <div class="flex gap-3">
                     <div class="w-1/2">
                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Angka Waktu</label>
@@ -521,12 +493,10 @@
 
     <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-5 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
-            
             <div class="flex justify-between items-center mb-5 sticky top-0 bg-[var(--bg-glass)] pb-2 z-20 backdrop-blur-md border-b border-[var(--border-glass)]">
                 <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-microchip"></i> AURA SETTINGS</h3>
                 <button onclick="window.closeModal('modal-settings')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
             <div class="space-y-3 pb-4">
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-profil')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
@@ -720,9 +690,7 @@
                         </div>
                     </div>
                 </div>
-
             </div>
-
             <div class="mt-4 pt-4 border-t border-[var(--border-glass)]">
                 <button onclick="window.logoutAccount()" class="w-full py-4 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-xs uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2">
                     <i class="fa-solid fa-right-from-bracket"></i> Keluar Akun
@@ -756,7 +724,6 @@
             <div id="tracker-list-container" class="space-y-3 mb-5"></div>
             <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
                 <h4 class="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Tambah Tracker Baru</h4>
-                
                 <div id="new-tracker-form-container" class="space-y-3">
                     <input type="text" id="new-track-id" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="ID (Contoh: kopi)">
                     <input type="text" id="new-track-name" class="v-input w-full rounded-xl p-2.5 text-xs outline-none" placeholder="Nama Label (Cth: Ngopi)">
@@ -809,8 +776,7 @@
         </div>
     </div>
 
-
-        <div class="w-full max-w-md md:max-w-5xl h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)] transition-all duration-500 mx-auto">
+    <div class="w-full max-w-md md:max-w-5xl h-[100dvh] flex flex-col relative bg-[var(--bg-base)] border-x border-[var(--border-glass)] shadow-[0_0_50px_rgba(0,0,0,0.8)] mx-auto transition-all duration-500">
         
         <header id="global-header" class="px-5 pt-5 pb-3 flex justify-between items-start z-10 shrink-0 border-b border-[var(--border-glass)] bg-[var(--bg-base)]">
             <div>
@@ -848,7 +814,7 @@
                     <button id="btn-mode-all" onclick="window.changeViewMode('all')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Semua</button>
                 </div>
 
-                                <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8">
+                <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8">
                     
                     <div class="space-y-5">
                         <div class="flex justify-between items-center mt-4 md:mt-0">
@@ -937,6 +903,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
             <div id="view-transactions" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-1">
@@ -1020,7 +987,7 @@
                     </div>
                 </div>
                 
-                                        <div id="goal-form" class="glass-panel p-5 space-y-4 hidden border-t-4 border-t-accent shadow-2xl transition-all mb-5">
+                <div id="goal-form" class="glass-panel p-5 space-y-4 hidden border-t-4 border-t-accent shadow-2xl transition-all mb-5">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-rocket mr-1"></i> Misi Tabungan Baru</h3>
                         <button onclick="window.toggleGoalForm()" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[var(--text-muted)] transition"><i class="fa-solid fa-xmark"></i></button>
@@ -1065,9 +1032,7 @@
                     <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)] mt-2">Mulai Misi Menabung</button>
                 </div>
 
-
-
-                                <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start pt-4 md:border-t md:border-[var(--border-glass)] mt-5 md:mt-8">
+                <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start pt-4 md:border-t md:border-[var(--border-glass)] mt-5 md:mt-8">
                     
                     <div>
                         <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1"><i class="fa-solid fa-bullseye mr-1"></i> Misi Aktif</h3>
@@ -1110,6 +1075,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
             <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
                 <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-surface)] backdrop-blur-xl z-10 shrink-0 sticky top-0 shadow-sm">
@@ -1158,7 +1124,7 @@
             </div>
         </div>
 
-                <nav class="w-full h-[70px] glass-nav flex justify-around md:justify-center md:gap-16 items-center px-2 z-50 shrink-0 safe-pb transition-all">
+        <nav class="w-full h-[70px] glass-nav flex justify-around md:justify-center md:gap-16 items-center px-2 z-50 shrink-0 safe-pb transition-all">
             <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--accent-primary)] active:scale-90 transition group" data-target="dashboard">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-meteor text-[18px]"></i></div>
                 <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
