@@ -1,6 +1,5 @@
 /**
  * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, & Cashflow Logic)
- * Update: Anti-Laziness Prompt untuk ekstraksi struk panjang.
  */
 
 import { AuraState } from '../core/state.js';
@@ -27,16 +26,10 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const localDateStr = hariIni.toLocaleDateString('en-CA'); 
         const localTimeStr = hariIni.toTimeString().substring(0, 5);
 
-        // PROMPT AI - KINI DILENGKAPI ATURAN ANTI-MALAS (ANTI-LAZINESS)
+        // PROMPT AI - LEBIH KETAT DALAM PEMILIHAN KATEGORI (NO HALLUCINATION)
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
 WAKTU SAAT INI: ${localDateStr} ${localTimeStr}.
-FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis struk.
-
-ATURAN EKSTRAKSI STRUK (SANGAT KRITIKAL & WAJIB DIPATUHI 100%):
-1. BACA SETIAP BARIS STRUK! Ekstrak **SELURUH ITEM TANPA TERKECUALI**. Jika di struk ada 25 barang, maka array "items" WAJIB berisi 25 barang.
-2. DILARANG KERAS merangkum, melewati, memotong, atau menggabungkan daftar belanjaan. Jangan malas!
-3. Terjemahkan nama barang Jepang ke Bahasa Indonesia secara akurat agar mudah dibaca.
-4. Perhatikan baik-baik indikator QTY (Jumlah) dan Harga Satuan di struk.
+FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis.
 
 ATURAN ALIRAN DANA (TIPE TRANSAKSI) - SANGAT PENTING:
 WAJIB isi parameter "tipe" dengan salah satu dari 4 opsi ini:
@@ -49,10 +42,11 @@ ATURAN WAKTU DAN TANGGAL:
 - Ekstrak dari teks/struk jika ada. Format: "tanggal": "YYYY-MM-DD", "jam": "HH:MM".
 - Jika tidak ada, gunakan waktu saat ini: ${localDateStr} ${localTimeStr}.
 
-ATURAN KATEGORI:
-1. INI DAFTAR KATEGORI USER: "${categoryListStr}".
-2. KAMU WAJIB MENGGUNAKAN SALAH SATU DARI DAFTAR DI ATAS. 
-3. Kelompokkan dengan logis! Jika user "tarik tunai" atau "setor tunai", isikan kategori_barang dengan "Lainnya".
+ATURAN KATEGORI (HARGA MATI):
+1. INI ADALAH DAFTAR KATEGORI ABSOLUT: "${categoryListStr}".
+2. KAMU DILARANG KERAS MENCIPTAKAN NAMA KATEGORI BARU ATAU MENGUBAH HURUF BESAR/KECILNYA. 
+3. KAMU WAJIB MEMILIH SALAH SATU NAMA PERSIS SEPERTI DI ATAS. Jika tidak ada yang cocok, gunakan "Lainnya".
+4. Jika user "tarik tunai" atau "setor tunai", isikan kategori_barang dengan "Lainnya".
 
 Struktur Output Target JSON MURNI:
 {
@@ -76,6 +70,28 @@ Struktur Output Target JSON MURNI:
         
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, imgData);
         const jsonResult = AuraUtils.parseCleanJSON(aiOutput);
+
+        // ==============================================================================
+        // PENYAPU (SANITIZER) KATEGORI: Mencegah Ikon Tertimpa karena Typo / Hallucination AI
+        // ==============================================================================
+        const allCats = CategoryManager.getAllCategories();
+        const validCategoryNames = Object.values(allCats).map(c => c.name);
+        const validCategoryNamesLower = validCategoryNames.map(name => name.toLowerCase());
+
+        if (jsonResult.items && Array.isArray(jsonResult.items)) {
+            jsonResult.items.forEach(item => {
+                let aiCat = (item.kategori_barang || "Lainnya").trim();
+                let idx = validCategoryNamesLower.indexOf(aiCat.toLowerCase());
+                
+                if (idx !== -1) {
+                    // Jika AI typo (misal: "makanan" padahal aslinya "Makanan"), kita paksakan ke format asli di DB
+                    item.kategori_barang = validCategoryNames[idx];
+                } else {
+                    // Jika AI mengarang bebas nama baru, paksa masuk ke "Lainnya" agar tidak menimpa ikon induk
+                    item.kategori_barang = "Lainnya";
+                }
+            });
+        }
 
         const timestamp = new Date().toISOString();
         AuraState.temp.aiStaging = {
@@ -157,6 +173,8 @@ window.renderStagingUI = function() {
                     selectOptionsHtml += `<option value="${AuraUtils.escapeHtml(catName)}" ${isSelected ? 'selected' : ''}>${AuraUtils.escapeHtml(catName)}</option>`;
                 });
                 
+                // Karena kita sudah punya Sanitizer, if(!foundMatch) sebenarnya tidak akan terpanggil, 
+                // tapi kita tetap biarkan sebagai pengaman ganda level UI.
                 if (!foundMatch) {
                     selectOptionsHtml = `<option value="${AuraUtils.escapeHtml(safeKategori)}" selected>${AuraUtils.escapeHtml(safeKategori)} (AI Baru)</option>` + selectOptionsHtml;
                 }
