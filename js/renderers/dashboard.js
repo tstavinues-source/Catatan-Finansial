@@ -12,17 +12,14 @@ window.renderRecurringUIForBudget = function() {
     AuraUtils.safeDOM('budget-bills-container', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
-        
         if (entries.length === 0) {
             el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Konfigurasi Tagihan Kosong.</p>';
             return;
         }
-        
         let compiledBudgets = '';
         entries.forEach(([id, rp]) => {
             const convertedAmt = AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY');
             const formattedMoney = window.formatAuraCurrency(convertedAmt);
-            
             compiledBudgets += `
             <div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
                 <div>
@@ -41,7 +38,6 @@ window.renderRecurringUIForBudget = function() {
                 </p>
             </div>`;
         });
-        
         el.innerHTML = compiledBudgets;
     });
 };
@@ -51,16 +47,12 @@ window.reCalculateAll = function() {
     const wallets = AuraState.data.wallets || {};
     const today = new Date();
     
-    // 1. Siapkan Buku Saldo Masing-masing Dompet (Dimulai dari NOL karena Modal awal dicatat di log)
     let walletBalances = {};
-    Object.keys(wallets).forEach(wId => {
-        walletBalances[wId] = 0; 
-    });
+    Object.keys(wallets).forEach(wId => { walletBalances[wId] = 0; });
 
     let legacyCash = 0;
     let legacyCashless = 0;
 
-    // 2. Sirkulasikan Seluruh Sejarah Transaksi ke Dompet Masing-masing
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
@@ -85,7 +77,6 @@ window.reCalculateAll = function() {
         }
     }
 
-    // 3. Klasifikasi Saldo Akhir & Hitung Kekayaan Aktif
     let totalCashBal = legacyCash;
     let totalCashlessBal = legacyCashless;
     let totalActiveWealth = legacyCash + legacyCashless;
@@ -97,7 +88,6 @@ window.reCalculateAll = function() {
         const w = wallets[wId];
         const bal = walletBalances[wId];
         const isHidden = w.is_hidden;
-
         const hiddenStyle = isHidden ? 'opacity-40 line-through text-rose-400' : 'text-white';
         const iconEye = isHidden ? '<i class="fa-solid fa-eye-slash ml-1 text-[8px] text-rose-500"></i>' : '';
         const lineHtml = `<div class="flex justify-between w-full text-[10px] mt-2 border-b border-white/5 pb-1 font-sans font-medium transition-all ${hiddenStyle}"><span class="truncate pr-1">${AuraUtils.escapeHtml(w.name)} ${iconEye}</span><span class="font-mono font-bold">${window.formatAuraCurrency(bal)}</span></div>`;
@@ -109,7 +99,6 @@ window.reCalculateAll = function() {
             totalCashBal += bal;
             breakdownCashHtml += lineHtml;
         }
-
         if (!isHidden) totalActiveWealth += bal;
     });
 
@@ -163,13 +152,10 @@ window.reCalculateAll = function() {
         const dStrRaw = trx.tanggal || trx.createdAt;
         const dStr = dStrRaw.split('T')[0];
         const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
-        
         const wId = trx.wallet_id;
         const isHiddenTrx = wId && wallets[wId] && wallets[wId].is_hidden;
 
-        if (!groupedTrx[dStr]) {
-            groupedTrx[dStr] = { total: 0, items: [] };
-        }
+        if (!groupedTrx[dStr]) { groupedTrx[dStr] = { total: 0, items: [] }; }
 
         if (trx.tipe === 'pemasukan') {
             if (!isHiddenTrx) periodIncome += val;
@@ -181,13 +167,9 @@ window.reCalculateAll = function() {
             } else if (trx.tipe === 'nabung') {
                 actualSpend = 0; 
             }
-            
-            if (!isHiddenTrx) {
-                periodSpent += actualSpend;
-            }
+            if (!isHiddenTrx) { periodSpent += actualSpend; }
             groupedTrx[dStr].total -= actualSpend; 
         }
-        
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     }
@@ -204,23 +186,16 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
 
-    // UPDATE: Klik/Tap untuk membuka laci dompet di HP (bukan sekadar hover)
     AuraUtils.safeDOM('dash-cash', el => {
-        el.innerHTML = `${window.formatAuraCurrency(totalCashBal)}
-        <div id="breakdown-cash" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
+        el.innerHTML = `${window.formatAuraCurrency(totalCashBal)}<div id="breakdown-cash" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
         el.parentElement.classList.add('cursor-pointer');
-        el.parentElement.onclick = function() {
-            document.getElementById('breakdown-cash').classList.toggle('hidden');
-        };
+        el.parentElement.onclick = function() { document.getElementById('breakdown-cash').classList.toggle('hidden'); };
     });
 
     AuraUtils.safeDOM('dash-cashless', el => {
-        el.innerHTML = `${window.formatAuraCurrency(totalCashlessBal)}
-        <div id="breakdown-cashless" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
+        el.innerHTML = `${window.formatAuraCurrency(totalCashlessBal)}<div id="breakdown-cashless" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
         el.parentElement.classList.add('cursor-pointer');
-        el.parentElement.onclick = function() {
-            document.getElementById('breakdown-cashless').classList.toggle('hidden');
-        };
+        el.parentElement.onclick = function() { document.getElementById('breakdown-cashless').classList.toggle('hidden'); };
     });
 
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
@@ -262,7 +237,6 @@ window.reCalculateAll = function() {
 
     AuraUtils.safeDOM('trx-list-container', el => {
         const groupedKeys = Object.keys(groupedTrx).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
-        
         if (groupedKeys.length === 0) { 
             el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-10">Ruang transaksi kosong.</p>'; 
             return; 
@@ -307,10 +281,8 @@ window.reCalculateAll = function() {
                 
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
                 const descDisp = AuraUtils.escapeHtml(t.description || t.catatan_ai || "");
-                
                 const walletName = t.wallet_id && wallets[t.wallet_id] ? wallets[t.wallet_id].name : t.metode_pembayaran;
-                const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ?
-                '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
+                const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ? '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
                 
                 let innerReceiptHtml = '';
                 if (hasItems) {
@@ -319,9 +291,7 @@ window.reCalculateAll = function() {
                         const it = t.items[k];
                         const safeItemId = it.itemId || 'no_id_fallback'; 
                         const itCatHex = CategoryManager.resolveStyle(it.kategori_barang).hex;
-                        const taxBadge = it.tax_rate ?
-                        `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : '';
-                        
+                        const taxBadge = it.tax_rate ? `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : '';
                         const totalItemHarga = AuraUtils.convertCurrency(it.harga * (it.qty || 1), t.mata_uang || 'JPY');
                         receiptLines += `
                         <div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it">
@@ -399,63 +369,47 @@ window.reCalculateAll = function() {
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
     
-        AuraUtils.safeDOM('goals-list-container', el => {
+    AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
             el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5 opacity-70"><i class="fa-solid fa-bullseye text-2xl block mb-2"></i>Belum ada Misi Pengumpulan Aset Finansial.</p>'; 
             return; 
         }
-        
         let glHtml = '';
         const todayObj = new Date();
         todayObj.setHours(0,0,0,0);
-        
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
-            
             const originalCurrency = g.currency || 'JPY';
             const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, originalCurrency); 
             const savedVal = AuraUtils.convertCurrency(g.savedAmount || 0, originalCurrency);
-            
             const remainingTarget = Math.max(0, targetVal - savedVal);
             const progressPct = targetVal > 0 ? Math.min(100, (savedVal / targetVal) * 100) : 0;
-            
             const targetDateObj = new Date(g.targetDate);
             targetDateObj.setHours(23,59,59,999);
-            
             const diffDaysLeft = Math.ceil((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
             const freq = parseInt(g.frequencyDays) || 1;
-            
             let freqText = "Harian";
-            if (g.periodUnit && g.periodVal) {
-                freqText = `Per ${g.periodVal} <span class="capitalize">${g.periodUnit}</span>`;
-            } else if (freq === 7) freqText = "Mingguan";
+            if (g.periodUnit && g.periodVal) { freqText = `Per ${g.periodVal} <span class="capitalize">${g.periodUnit}</span>`; } 
+            else if (freq === 7) freqText = "Mingguan";
             else if (freq === 30) freqText = "Bulanan";
             else freqText = `Per ${freq} Hari`;
 
             const remainingPeriods = Math.max(1, Math.ceil(diffDaysLeft / freq));
             const requiredPerPeriod = remainingTarget / remainingPeriods;
-            
             let requiredStatusHtml = '';
-            if (remainingTarget <= 0) {
-                requiredStatusHtml = '<span class="text-emerald-400"><i class="fa-solid fa-check-double"></i> TERCAPAI</span>';
-            } else if (diffDaysLeft < 0) {
-                requiredStatusHtml = '<span class="text-rose-400"><i class="fa-solid fa-clock-rotate-left"></i> KADALUARSA</span>';
-            } else {
-                requiredStatusHtml = window.formatAuraCurrency(requiredPerPeriod);
-            }
+            if (remainingTarget <= 0) { requiredStatusHtml = '<span class="text-emerald-400"><i class="fa-solid fa-check-double"></i> TERCAPAI</span>'; } 
+            else if (diffDaysLeft < 0) { requiredStatusHtml = '<span class="text-rose-400"><i class="fa-solid fa-clock-rotate-left"></i> KADALUARSA</span>'; } 
+            else { requiredStatusHtml = window.formatAuraCurrency(requiredPerPeriod); }
             
             glHtml += `
             <div class="glass-panel p-4 relative overflow-hidden border-t-2 ${remainingTarget <= 0 ? 'border-t-emerald-400' : 'border-t-accent'} mb-4 group">
-                
                 <div class="absolute top-3 right-3 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
                     <button onclick="window.openTopupGoal('${g.id}', '${AuraUtils.escapeHtml(g.name)}')" class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Setor Tabungan"><i class="fa-solid fa-plus text-xs"></i></button>
                     <button onclick="window.openEditGoalFull('${g.id}')" class="w-8 h-8 rounded-full bg-accent/20 text-accent hover:bg-accent/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Edit Misi"><i class="fa-solid fa-pen text-xs"></i></button>
                     <button onclick="window.confirmDelGoal('${g.id}')" class="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Hapus Permanen"><i class="fa-solid fa-trash text-xs"></i></button>
                 </div>
-
                 <h4 class="font-bold text-sm mb-1 pr-28 truncate">${AuraUtils.escapeHtml(g.name)}</h4>
-                
                 <div class="mb-4 mt-3">
                     <div class="flex justify-between text-[9px] font-bold uppercase tracking-widest mb-1.5 text-[var(--text-muted)]">
                         <span class="text-emerald-400">Terkumpul: ${window.formatAuraCurrency(savedVal)}</span>
@@ -467,7 +421,6 @@ window.reCalculateAll = function() {
                         </div>
                     </div>
                 </div>
-
                 <div class="bg-black/35 rounded-xl p-3 flex justify-between items-center border border-[var(--border-glass)]">
                     <div>
                         <p class="text-[8px] text-[var(--text-muted)] uppercase mb-0.5 font-extrabold flex items-center gap-1"><i class="fa-solid fa-coins text-amber-400"></i> Wajib Nabung <span class="text-white">${freqText}</span></p>
@@ -489,14 +442,11 @@ window.reCalculateAll = function() {
             el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5"><i class="fa-solid fa-seedling block text-2xl mb-2 text-emerald-900/50"></i>Tempat sampah bersih.</p>'; 
             return; 
         }
-        
         let trashHtml = '';
-        
         for (let i = 0; i < trashList.length; i++) {
             const t = trashList[i]; 
             const delDate = t.deletedAt ? t.deletedAt.split('T')[0] : 'Unknown'; 
             const val = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY'); 
-            
             trashHtml += `
             <div class="glass-panel p-4 flex justify-between items-center opacity-85 hover:opacity-100 transition">
                 <div>
@@ -522,9 +472,7 @@ window.debouncedCalculateAll = AuraUtils.debounce(window.reCalculateAll, APP_CON
 
 window.addEventListener('resize', function() {
     if (AuraState.system.activeView === 'dashboard' || AuraState.system.activeView === 'analytics') {
-        if (typeof window.debouncedCalculateAll === 'function') {
-            window.debouncedCalculateAll();
-        }
+        if (typeof window.debouncedCalculateAll === 'function') { window.debouncedCalculateAll(); }
     }
 });
 
