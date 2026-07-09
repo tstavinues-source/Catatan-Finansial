@@ -2,7 +2,7 @@
  * Transactions CRUD Handlers
  * Menangani semua logika input manual, edit transaksi, manajemen keranjang struk, 
  * serta fungsi soft-delete (sampah) dan restorasi.
- * [UPDATE: MULTI-WALLET COMPATIBILITY]
+ * [UPDATE: MULTI-WALLET COMPATIBILITY & FITUR MUTASI SALDO]
  */
 
 import { AuraState } from '../core/state.js';
@@ -52,10 +52,149 @@ window.populateWalletDropdowns = function(dropdownId, selectedId = null) {
         const w = wallets[key];
         const isSelected = selectedId === key ? 'selected' : '';
         const symbol = w.type === 'cashless' ? '💳' : '💵';
-        html += `<option value="${key}" ${isSelected}>${symbol} ${AuraUtils.escapeHtml(w.name)}</option>`;
+        html += "<option value='" + key + "' " + isSelected + ">" + symbol + " " + AuraUtils.escapeHtml(w.name) + "</option>";
     });
     
     selectEl.innerHTML = html;
+};
+
+// ============================================================================
+// FITUR BARU: SISTEM MUTASI SALDO & MIGRASI DANA LAWAS
+// ============================================================================
+window.openTransferModal = function() {
+    const sourceSelect = document.getElementById('transfer-source');
+    const destSelect = document.getElementById('transfer-dest');
+    if (!sourceSelect || !destSelect) return;
+
+    const wallets = AuraState.data.wallets || {};
+    let optionsHtml = '';
+
+    // Opsi Penyelamat Dana Lawas
+    optionsHtml += '<option value="legacy_cash">📦 Dana Fisik Lawas (Tunai)</option>';
+    optionsHtml += '<option value="legacy_cashless">💳 Rekening Lawas (Cashless)</option>';
+
+    // Opsi Dompet Aktif
+    Object.keys(wallets).forEach(key => {
+        const w = wallets[key];
+        const symbol = w.type === 'cashless' ? '💳' : '💵';
+        optionsHtml += "<option value='" + key + "'>" + symbol + " " + AuraUtils.escapeHtml(w.name) + "</option>";
+    });
+
+    sourceSelect.innerHTML = optionsHtml;
+    destSelect.innerHTML = optionsHtml;
+    
+    document.getElementById('transfer-amount').value = '';
+    
+    if(typeof window.showModal === 'function') window.showModal('modal-transfer');
+};
+
+window.executeTransfer = async function() {
+    const sourceId = document.getElementById('transfer-source').value;
+    const destId = document.getElementById('transfer-dest').value;
+    const amountEl = document.getElementById('transfer-amount');
+    const amount = parseFloat(amountEl.value);
+
+    if (sourceId === destId) {
+        if (window.showToast) window.showToast("Sumber dan Tujuan tidak boleh sama!", true);
+        return;
+    }
+    if (isNaN(amount) || amount <= 0) {
+        if (window.showToast) window.showToast("Nominal transfer tidak valid!", true);
+        return;
+    }
+
+    if(typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
+
+    try {
+        const activeCurr = AuraState.system?.displayCurrency || 'JPY';
+        const nowIso = new Date().toISOString();
+        const dateStr = nowIso.split('T')[0];
+        const wallets = AuraState.data.wallets || {};
+
+        // Identifikasi Sumber
+        let sourceName = ""; let sourceType = "cashless"; let realSourceWalletId = null;
+        if (sourceId === 'legacy_cash') { sourceName = "Dana Fisik Lawas"; sourceType = "tunai"; }
+        else if (sourceId === 'legacy_cashless') { sourceName = "Rekening Lawas"; sourceType = "cashless"; }
+        else { sourceName = wallets[sourceId].name; sourceType = wallets[sourceId].type; realSourceWalletId = sourceId; }
+
+        // Identifikasi Tujuan
+        let destName = ""; let destType = "cashless"; let realDestWalletId = null;
+        if (destId === 'legacy_cash') { destName = "Dana Fisik Lawas"; destType = "tunai"; }
+        else if (destId === 'legacy_cashless') { destName = "Rekening Lawas"; destType = "cashless"; }
+        else { destName = wallets[destId].name; destType = wallets[destId].type; realDestWalletId = destId; }
+
+        // 1. Buat Transaksi Keluar (Mengurangi Saldo Sumber)
+        const idKeluar = AuraUtils.generateId('trx');
+        const trxKeluar = {
+            id: idKeluar,
+            merchantName: "Mutasi ke " + destName,
+            storeName: "Mutasi Keluar",
+            tanggal: dateStr,
+            createdAt: nowIso,
+            nominal: amount,
+            mata_uang: activeCurr,
+            wallet_id: realSourceWalletId,
+            metode_pembayaran: sourceType,
+            tipe: 'pengeluaran',
+            kategori: 'Lainnya',
+            description: "Memindahkan dana ke " + destName,
+            isCustomDescription: true,
+            is_deleted: false,
+            items: [{
+                itemId: AuraUtils.generateId('itm'),
+                nama_barang: 'Transfer Keluar',
+                harga: amount,
+                qty: 1,
+                kategori_barang: 'Lainnya',
+                tax_rate: 0,
+                paymentMethod: sourceType,
+                timestamp: nowIso
+            }]
+        };
+
+        // 2. Buat Transaksi Masuk (Menambah Saldo Tujuan)
+        const idMasuk = AuraUtils.generateId('trx');
+        const nowIso2 = new Date(Date.now() + 1000).toISOString(); 
+        const trxMasuk = {
+            id: idMasuk,
+            merchantName: "Mutasi dari " + sourceName,
+            storeName: "Mutasi Masuk",
+            tanggal: dateStr,
+            createdAt: nowIso2,
+            nominal: amount,
+            mata_uang: activeCurr,
+            wallet_id: realDestWalletId,
+            metode_pembayaran: destType,
+            tipe: 'pemasukan',
+            kategori: 'Lainnya',
+            description: "Menerima dana dari " + sourceName,
+            isCustomDescription: true,
+            is_deleted: false,
+            items: [{
+                itemId: AuraUtils.generateId('itm'),
+                nama_barang: 'Transfer Masuk',
+                harga: amount,
+                qty: 1,
+                kategori_barang: 'Lainnya',
+                tax_rate: 0,
+                paymentMethod: destType,
+                timestamp: nowIso2
+            }]
+        };
+
+        // Simpan ke Firebase
+        await FirebaseService.saveTransaction(trxKeluar, true); // true = silent toast
+        await FirebaseService.saveTransaction(trxMasuk, false);
+
+        if (typeof window.closeModal === 'function') window.closeModal('modal-transfer');
+        if (window.showToast) window.showToast("Mutasi saldo berhasil dieksekusi!");
+
+    } catch (e) {
+        console.error(e);
+        if (window.showToast) window.showToast("Gagal mengeksekusi mutasi saldo.", true);
+    } finally {
+        if(typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
+    }
 };
 
 // ============================================================================
@@ -234,7 +373,7 @@ window.saveEditTrx = async function() {
 };
 
 // ============================================================================
-// MANAJEMEN ITEM (KERANJANG STRUK) & SAMPAH (TIDAK ADA PERUBAHAN LOGIKA WALLET)
+// MANAJEMEN ITEM (KERANJANG STRUK) & SAMPAH
 // ============================================================================
 
 window.openAddItemModal = function(trxId) {
