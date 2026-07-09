@@ -1,5 +1,5 @@
 /**
- * Super Render Engine
+ * Super Render Engine [V3 - MULTI-WALLET & GHOST WEALTH FILTER]
  */
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
@@ -23,7 +23,6 @@ window.renderRecurringUIForBudget = function() {
         
         let compiledBudgets = '';
         entries.forEach(([id, rp]) => {
-            // Konversi dari mata uang asal ke mata uang tampilan
             const convertedAmt = AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY');
             const formattedMoney = window.formatAuraCurrency(convertedAmt);
             
@@ -50,40 +49,81 @@ window.renderRecurringUIForBudget = function() {
     });
 };
 
+// ============================================================================
+// OTAK UTAMA PERHITUNGAN MULTI-WALLET & FILTER GAIB
+// ============================================================================
 window.reCalculateAll = function() {
     const allTx = AuraState.data.transactions || [];
+    const wallets = AuraState.data.wallets || {};
     const today = new Date();
     
-    let cumulativeBalance = 0;
-    let totalCashBal = 0, totalCashlessBal = 0;
+    // 1. Siapkan Buku Saldo Masing-masing Dompet (Dimulai dari modal awal)
+    let walletBalances = {};
+    Object.keys(wallets).forEach(wId => {
+        walletBalances[wId] = AuraUtils.convertCurrency(wallets[wId].initial_balance || 0, 'JPY'); // Modal awal
+    });
 
+    // Kantong darurat untuk transaksi lawas yang belum punya ID Dompet (Migration Fallback)
+    let legacyCash = 0;
+    let legacyCashless = 0;
+
+    // 2. Sirkulasikan Seluruh Sejarah Transaksi ke Dompet Masing-masing
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
-        const isCash = (trx.metode_pembayaran === 'tunai');
+        const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+        const wId = trx.wallet_id;
+        const isLegacyCash = (trx.metode_pembayaran === 'tunai');
 
         if (trx.tipe === 'pemasukan') {
-            cumulativeBalance += val;
-            if (isCash) totalCashBal += val;
-            else totalCashlessBal += val;
+            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] += val;
+            else { if (isLegacyCash) legacyCash += val; else legacyCashless += val; }
         } else if (trx.tipe === 'pengeluaran') {
-            cumulativeBalance -= val;
-            if (isCash) totalCashBal -= val;
-            else totalCashlessBal -= val;
+            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= val;
+            else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
         } else if (trx.tipe === 'tarik_tunai') {
-            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
-            cumulativeBalance -= feeVal; 
-            totalCashBal += val; 
-            totalCashlessBal -= (val + feeVal);
+            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
+            else legacyCashless -= (val + feeVal);
+            legacyCash += val; 
         } else if (trx.tipe === 'setor_tunai') {
-            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
-            cumulativeBalance -= feeVal; 
-            totalCashBal -= val; 
-            totalCashlessBal += val; 
-            totalCashlessBal -= feeVal;
+            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
+            else legacyCash -= (val + feeVal);
+            legacyCashless += val; 
         }
     }
 
+    // 3. Klasifikasi Saldo Akhir & Hitung Kekayaan Aktif (Net Worth Bebas Pakai)
+    let totalCashBal = legacyCash;
+    let totalCashlessBal = legacyCashless;
+    let totalActiveWealth = legacyCash + legacyCashless;
+
+    let breakdownCashHtml = legacyCash !== 0 ? `<div class="flex justify-between w-full text-[9px] mt-2 opacity-50 border-b border-white/10 pb-0.5"><span class="truncate pr-1">Dana Fisik Lawas</span><span>${window.formatAuraCurrency(legacyCash)}</span></div>` : '';
+    let breakdownCashlessHtml = legacyCashless !== 0 ? `<div class="flex justify-between w-full text-[9px] mt-2 opacity-50 border-b border-white/10 pb-0.5"><span class="truncate pr-1">Rekening Lawas</span><span>${window.formatAuraCurrency(legacyCashless)}</span></div>` : '';
+
+    Object.keys(wallets).forEach(wId => {
+        const w = wallets[wId];
+        const bal = walletBalances[wId];
+        const isHidden = w.is_hidden;
+
+        // Visual Jika Dompet Disembunyikan
+        const hiddenStyle = isHidden ? 'opacity-40 line-through text-rose-400' : 'text-white';
+        const iconEye = isHidden ? '<i class="fa-solid fa-eye-slash ml-1 text-[8px] text-rose-500"></i>' : '';
+        
+        const lineHtml = `<div class="flex justify-between w-full text-[10px] mt-2 border-b border-white/5 pb-1 font-sans font-medium transition-all ${hiddenStyle}"><span class="truncate pr-1">${AuraUtils.escapeHtml(w.name)} ${iconEye}</span><span class="font-mono font-bold">${window.formatAuraCurrency(bal)}</span></div>`;
+
+        if (w.type === 'cashless') {
+            totalCashlessBal += bal;
+            breakdownCashlessHtml += lineHtml;
+        } else {
+            totalCashBal += bal;
+            breakdownCashHtml += lineHtml;
+        }
+
+        // FUNGSI PENGHANCUR ILUSI: Jangan tambah ke Net Worth jika gaib!
+        if (!isHidden) totalActiveWealth += bal;
+    });
+
+    // 4. Proses Filter Waktu & Kategori (Sama seperti versi lama)
     const periodRange = AuraUtils.getPeriodRange();
     const fSearch = (AuraState.filters && AuraState.filters.search) ? AuraState.filters.search.toLowerCase() : "";
     const fCat = (AuraState.filters && AuraState.filters.category) ? AuraState.filters.category : "ALL";
@@ -142,31 +182,35 @@ window.reCalculateAll = function() {
         const dStr = dStrRaw.split('T')[0];
         const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
         
+        const wId = trx.wallet_id;
+        const isHiddenTrx = wId && wallets[wId] && wallets[wId].is_hidden;
+
         if (!groupedTrx[dStr]) {
             groupedTrx[dStr] = { total: 0, items: [] };
         }
 
         if (trx.tipe === 'pemasukan') {
-            periodIncome += val;
+            if (!isHiddenTrx) periodIncome += val;
             groupedTrx[dStr].total += val;
         } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai' || trx.tipe === 'nabung') {
             let actualSpend = val;
-            // Tarik/Setor hanya menghitung admin fee sebagai pengeluaran chart
             if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
                 actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
             } else if (trx.tipe === 'nabung') {
-                // Nabung tidak masuk chart pengeluaran Burn Rate sama sekali!
                 actualSpend = 0; 
             }
+            
+            // JIKA DOMPET DISEMBUNYIKAN (MISAL TABUNGAN), PENGELUARANNYA TIDAK MAKAN LIMIT BULANAN!
+            if (!isHiddenTrx) {
+                periodSpent += actualSpend;
+            }
             groupedTrx[dStr].total -= actualSpend; 
-            periodSpent += actualSpend;
         }
         
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     }
 
-    // HITUNG TOTAL UANG DI BRANKAS (TOTAL TABUNGAN)
     let totalBrankas = 0;
     const glListForBrankas = AuraState.data.goals || [];
     for (let i = 0; i < glListForBrankas.length; i++) {
@@ -174,13 +218,25 @@ window.reCalculateAll = function() {
         totalBrankas += AuraUtils.convertCurrency(g.savedAmount || 0, g.currency || 'JPY');
     }
 
-    AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(cumulativeBalance));
-    AuraUtils.safeDOM('dash-cash', el => el.innerText = window.formatAuraCurrency(totalCashBal));
-    AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.formatAuraCurrency(totalCashlessBal));
-    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); // MENGISI KARTU BRANKAS
-    AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.formatAuraCurrency(totalCashlessBal));
+    // 5. UPDATE TAMPILAN DASHBOARD (DOM INJECTION)
+    AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(totalActiveWealth));
+    
+    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); 
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
+
+    // Kartu Dompet Interaktif (Tap untuk Expands)
+    AuraUtils.safeDOM('dash-cash', el => {
+        el.innerHTML = `${window.formatAuraCurrency(totalCashBal)}
+        <div class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden group-hover/card:block transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
+        el.parentElement.classList.add('group/card', 'cursor-pointer');
+    });
+
+    AuraUtils.safeDOM('dash-cashless', el => {
+        el.innerHTML = `${window.formatAuraCurrency(totalCashlessBal)}
+        <div class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden group-hover/card:block transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
+        el.parentElement.classList.add('group/card', 'cursor-pointer');
+    });
 
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
     const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
@@ -219,6 +275,7 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('period-progress-text', el => el.innerText = `PROGRES SIKLUS: ${periodPct.toFixed(0)}%`);
     AuraUtils.safeDOM('period-days-left', el => el.innerText = `${daysLeft} HARI TERSISA`);
 
+    // 6. RENDER LOG TRANSAKSI DI DASHBOARD
     AuraUtils.safeDOM('trx-list-container', el => {
         const groupedKeys = Object.keys(groupedTrx).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
         
@@ -250,7 +307,7 @@ window.reCalculateAll = function() {
                 let colorClass = 'text-[var(--text-main)]';
                 let signChar = '-';
                 
-                                if (t.tipe === 'pemasukan') { 
+                if (t.tipe === 'pemasukan') { 
                     iconHtml = '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>';
                     colorClass = 'text-[var(--color-income)]'; 
                     signChar = '+'; 
@@ -259,7 +316,6 @@ window.reCalculateAll = function() {
                     colorClass = 'text-[#38bdf8]'; 
                     signChar = '⇄'; 
                 } else if (t.tipe === 'nabung') {
-                    // TAMPILAN KHUSUS UNTUK LOG MENABUNG (TIDAK MASUK PENGELUARAN)
                     iconHtml = '<i class="fa-solid fa-piggy-bank text-emerald-400"></i>';
                     colorClass = 'text-emerald-400'; 
                     signChar = '🔒'; 
@@ -267,7 +323,10 @@ window.reCalculateAll = function() {
                 
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
                 const descDisp = AuraUtils.escapeHtml(t.description || t.catatan_ai || "");
-                const metIcon = t.metode_pembayaran === 'tunai' ?
+                
+                // MENGAMBIL NAMA DOMPET ASLI (JIKA ADA)
+                const walletName = t.wallet_id && wallets[t.wallet_id] ? wallets[t.wallet_id].name : t.metode_pembayaran;
+                const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ?
                 '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
                 
                 let innerReceiptHtml = '';
@@ -328,7 +387,7 @@ window.reCalculateAll = function() {
                             </div>
                             <div class="overflow-hidden">
                                 <h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4>
-                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${t.metode_pembayaran} • ${t.displayTime.split(' ')[1]}</p>
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${t.displayTime.split(' ')[1]}</p>
                             </div>
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
@@ -358,7 +417,7 @@ window.reCalculateAll = function() {
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
     
     // ============================================================================
-    // LOGIKA PERBAIKAN: MANAJER MISI TABUNGAN (TIDAK ADA LAGI DESIMAL/BENGKAK)
+    // LOGIKA MANAJER MISI TABUNGAN 
     // ============================================================================
         AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
@@ -369,26 +428,22 @@ window.reCalculateAll = function() {
         
         let glHtml = '';
         const todayObj = new Date();
-        todayObj.setHours(0,0,0,0); // Normalisasi hari ini ke jam 00:00
+        todayObj.setHours(0,0,0,0);
         
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
             
             const originalCurrency = g.currency || 'JPY';
             const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, originalCurrency); 
-            // Menarik saldo yang sudah ditabung
             const savedVal = AuraUtils.convertCurrency(g.savedAmount || 0, originalCurrency);
             
-            // Kalkulasi sisa target
             const remainingTarget = Math.max(0, targetVal - savedVal);
             const progressPct = targetVal > 0 ? Math.min(100, (savedVal / targetVal) * 100) : 0;
             
             const targetDateObj = new Date(g.targetDate);
             targetDateObj.setHours(23,59,59,999);
             
-            // Sisa hari dari HARI INI ke TARGET AKHIR
             const diffDaysLeft = Math.ceil((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
-            
             const freq = parseInt(g.frequencyDays) || 1;
             
             let freqText = "Harian";
@@ -398,10 +453,6 @@ window.reCalculateAll = function() {
             else if (freq === 30) freqText = "Bulanan";
             else freqText = `Per ${freq} Hari`;
 
-            // ========================================================
-            // DYNAMIC SINKING FUND CALCULATION
-            // Membagi sisa uang yang dibutuhkan dengan sisa periode waktu
-            // ========================================================
             const remainingPeriods = Math.max(1, Math.ceil(diffDaysLeft / freq));
             const requiredPerPeriod = remainingTarget / remainingPeriods;
             
@@ -452,8 +503,6 @@ window.reCalculateAll = function() {
         el.innerHTML = glHtml;
     });
 
-
-    
     AuraUtils.safeDOM('trash-list-container', el => {
         const trashList = AuraState.data.trash || [];
         if (trashList.length === 0) { 
@@ -505,6 +554,9 @@ window.toggleExpandedReceipt = function(trxId) {
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 };
 
+// ============================================================================
+// PIPA REALTIME DATABASE (DIPERBARUI UNTUK MEMBACA NODE "WALLETS")
+// ============================================================================
 window.loadRealtimeDatabaseData = function() {
     if (!AuraState.user.uid) {
         Logger.warn('Dashboard', 'loadRealtimeDatabaseData: Tidak ada user UID aktif');
@@ -523,6 +575,7 @@ window.loadRealtimeDatabaseData = function() {
     
     Logger.info('Dashboard', 'Membangun koneksi listener Realtime Firebase...');
     
+    // LISTENER TRANSAKSI
     const txRef = ref(db, `${ledgerNode}/${uid}/transactions`);
     const txUnsubscribe = onValue(txRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -535,6 +588,16 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(txUnsubscribe);
     
+    // LISTENER DOMPET (KUNCI UTAMA MULTI-WALLET) 🌟
+    const walletsRef = ref(db, `users/${uid}/wallets`);
+    const walletsUnsubscribe = onValue(walletsRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        AuraState.data.wallets = data;
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    });
+    AuraState.listeners.push(walletsUnsubscribe);
+
+    // LISTENER GOALS
     const goalsRef = ref(db, `${ledgerNode}/${uid}/goals`);
     const goalsUnsubscribe = onValue(goalsRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -543,6 +606,7 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(goalsUnsubscribe);
     
+    // LISTENER SETTINGS
     const settingsRef = ref(db, `${ledgerNode}/${uid}/settings`);
     const settingsUnsubscribe = onValue(settingsRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -576,6 +640,7 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(settingsUnsubscribe);
     
+    // LISTENER CHAT
     const chatRef = ref(db, `${ledgerNode}/${uid}/oracleChats`);
     const chatUnsubscribe = onValue(chatRef, (snapshot) => {
         const data = snapshot.val() || {};
