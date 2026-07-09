@@ -1,6 +1,5 @@
 /**
- * Super Render Engine [V3 - MULTI-WALLET & GHOST WEALTH FILTER]
- * (FORMATTED FOR MOBILE COPY-PASTE SAFETY)
+ * Super Render Engine
  */
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
@@ -9,6 +8,9 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
 
+// ============================================================================
+// UI TAGIHAN OTOMATIS (MENGGUNAKAN KONVERSI KURS)
+// ============================================================================
 window.renderRecurringUIForBudget = function() {
     AuraUtils.safeDOM('budget-bills-container', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
@@ -21,6 +23,7 @@ window.renderRecurringUIForBudget = function() {
         
         let compiledBudgets = '';
         entries.forEach(([id, rp]) => {
+            // Konversi dari mata uang asal ke mata uang tampilan
             const convertedAmt = AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY');
             const formattedMoney = window.formatAuraCurrency(convertedAmt);
             
@@ -49,89 +52,37 @@ window.renderRecurringUIForBudget = function() {
 
 window.reCalculateAll = function() {
     const allTx = AuraState.data.transactions || [];
-    const wallets = AuraState.data.wallets || {};
     const today = new Date();
     
-    let walletBalances = {};
-    Object.keys(wallets).forEach(wId => {
-        walletBalances[wId] = 0; 
-    });
-
-    let legacyCash = 0;
-    let legacyCashless = 0;
+    let cumulativeBalance = 0;
+    let totalCashBal = 0, totalCashlessBal = 0;
 
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
-        const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
-        const wId = trx.wallet_id;
-        const isLegacyCash = (trx.metode_pembayaran === 'tunai');
+        const isCash = (trx.metode_pembayaran === 'tunai');
 
         if (trx.tipe === 'pemasukan') {
-            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] += val;
-            else { if (isLegacyCash) legacyCash += val; else legacyCashless += val; }
+            cumulativeBalance += val;
+            if (isCash) totalCashBal += val;
+            else totalCashlessBal += val;
         } else if (trx.tipe === 'pengeluaran') {
-            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= val;
-            else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
+            cumulativeBalance -= val;
+            if (isCash) totalCashBal -= val;
+            else totalCashlessBal -= val;
         } else if (trx.tipe === 'tarik_tunai') {
-            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
-            else legacyCashless -= (val + feeVal);
-            legacyCash += val; 
+            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+            cumulativeBalance -= feeVal; 
+            totalCashBal += val; 
+            totalCashlessBal -= (val + feeVal);
         } else if (trx.tipe === 'setor_tunai') {
-            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
-            else legacyCash -= (val + feeVal);
-            legacyCashless += val; 
+            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+            cumulativeBalance -= feeVal; 
+            totalCashBal -= val; 
+            totalCashlessBal += val; 
+            totalCashlessBal -= feeVal;
         }
     }
-
-    let totalCashBal = legacyCash;
-    let totalCashlessBal = legacyCashless;
-    let totalActiveWealth = legacyCash + legacyCashless;
-
-    let breakdownCashHtml = '';
-    if (legacyCash !== 0) {
-        breakdownCashHtml += `
-        <div class="flex justify-between w-full text-[9px] mt-2 opacity-50 border-b border-white/10 pb-0.5">
-            <span class="truncate pr-1">Dana Fisik Lawas</span>
-            <span>${window.formatAuraCurrency(legacyCash)}</span>
-        </div>`;
-    }
-
-    let breakdownCashlessHtml = '';
-    if (legacyCashless !== 0) {
-        breakdownCashlessHtml += `
-        <div class="flex justify-between w-full text-[9px] mt-2 opacity-50 border-b border-white/10 pb-0.5">
-            <span class="truncate pr-1">Rekening Lawas</span>
-            <span>${window.formatAuraCurrency(legacyCashless)}</span>
-        </div>`;
-    }
-
-    Object.keys(wallets).forEach(wId => {
-        const w = wallets[wId];
-        const bal = walletBalances[wId];
-        const isHidden = w.is_hidden;
-
-        const hiddenStyle = isHidden ? 'opacity-40 line-through text-rose-400' : 'text-white';
-        const iconEye = isHidden ? '<i class="fa-solid fa-eye-slash ml-1 text-[8px] text-rose-500"></i>' : '';
-        
-        const lineHtml = `
-        <div class="flex justify-between w-full text-[10px] mt-2 border-b border-white/5 pb-1 font-sans font-medium transition-all ${hiddenStyle}">
-            <span class="truncate pr-1">${AuraUtils.escapeHtml(w.name)} ${iconEye}</span>
-            <span class="font-mono font-bold">${window.formatAuraCurrency(bal)}</span>
-        </div>`;
-
-        if (w.type === 'cashless') {
-            totalCashlessBal += bal;
-            breakdownCashlessHtml += lineHtml;
-        } else {
-            totalCashBal += bal;
-            breakdownCashHtml += lineHtml;
-        }
-
-        if (!isHidden) {
-            totalActiveWealth += bal;
-        }
-    });
 
     const periodRange = AuraUtils.getPeriodRange();
     const fSearch = (AuraState.filters && AuraState.filters.search) ? AuraState.filters.search.toLowerCase() : "";
@@ -155,7 +106,7 @@ window.reCalculateAll = function() {
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
                     if (trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
-                        hasItemMatch = true; 
+                        hasItemMatch = true;
                         break; 
                     } 
                 }
@@ -169,7 +120,7 @@ window.reCalculateAll = function() {
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
                     if (trx.items[j].kategori_barang === fCat) { 
-                        itemCatMatch = true; 
+                        itemCatMatch = true;
                         break; 
                     } 
                 }
@@ -191,34 +142,31 @@ window.reCalculateAll = function() {
         const dStr = dStrRaw.split('T')[0];
         const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
         
-        const wId = trx.wallet_id;
-        const isHiddenTrx = wId && wallets[wId] && wallets[wId].is_hidden;
-
         if (!groupedTrx[dStr]) {
             groupedTrx[dStr] = { total: 0, items: [] };
         }
 
         if (trx.tipe === 'pemasukan') {
-            if (!isHiddenTrx) periodIncome += val;
+            periodIncome += val;
             groupedTrx[dStr].total += val;
         } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai' || trx.tipe === 'nabung') {
             let actualSpend = val;
+            // Tarik/Setor hanya menghitung admin fee sebagai pengeluaran chart
             if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
                 actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
             } else if (trx.tipe === 'nabung') {
+                // Nabung tidak masuk chart pengeluaran Burn Rate sama sekali!
                 actualSpend = 0; 
             }
-            
-            if (!isHiddenTrx) {
-                periodSpent += actualSpend;
-            }
             groupedTrx[dStr].total -= actualSpend; 
+            periodSpent += actualSpend;
         }
         
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     }
 
+    // HITUNG TOTAL UANG DI BRANKAS (TOTAL TABUNGAN)
     let totalBrankas = 0;
     const glListForBrankas = AuraState.data.goals || [];
     for (let i = 0; i < glListForBrankas.length; i++) {
@@ -226,36 +174,13 @@ window.reCalculateAll = function() {
         totalBrankas += AuraUtils.convertCurrency(g.savedAmount || 0, g.currency || 'JPY');
     }
 
-    AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(totalActiveWealth));
-    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); 
+    AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(cumulativeBalance));
+    AuraUtils.safeDOM('dash-cash', el => el.innerText = window.formatAuraCurrency(totalCashBal));
+    AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.formatAuraCurrency(totalCashlessBal));
+    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); // MENGISI KARTU BRANKAS
+    AuraUtils.safeDOM('dash-cashless', el => el.innerText = window.formatAuraCurrency(totalCashlessBal));
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
-
-    AuraUtils.safeDOM('dash-cash', el => {
-        el.innerHTML = `
-            ${window.formatAuraCurrency(totalCashBal)}
-            <div id="breakdown-cash" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">
-                ${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}
-            </div>
-        `;
-        el.parentElement.classList.add('cursor-pointer');
-        el.parentElement.onclick = function() {
-            document.getElementById('breakdown-cash').classList.toggle('hidden');
-        };
-    });
-
-    AuraUtils.safeDOM('dash-cashless', el => {
-        el.innerHTML = `
-            ${window.formatAuraCurrency(totalCashlessBal)}
-            <div id="breakdown-cashless" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">
-                ${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}
-            </div>
-        `;
-        el.parentElement.classList.add('cursor-pointer');
-        el.parentElement.onclick = function() {
-            document.getElementById('breakdown-cashless').classList.toggle('hidden');
-        };
-    });
 
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
     const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
@@ -325,7 +250,7 @@ window.reCalculateAll = function() {
                 let colorClass = 'text-[var(--text-main)]';
                 let signChar = '-';
                 
-                if (t.tipe === 'pemasukan') { 
+                                if (t.tipe === 'pemasukan') { 
                     iconHtml = '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>';
                     colorClass = 'text-[var(--color-income)]'; 
                     signChar = '+'; 
@@ -334,6 +259,7 @@ window.reCalculateAll = function() {
                     colorClass = 'text-[#38bdf8]'; 
                     signChar = '⇄'; 
                 } else if (t.tipe === 'nabung') {
+                    // TAMPILAN KHUSUS UNTUK LOG MENABUNG (TIDAK MASUK PENGELUARAN)
                     iconHtml = '<i class="fa-solid fa-piggy-bank text-emerald-400"></i>';
                     colorClass = 'text-emerald-400'; 
                     signChar = '🔒'; 
@@ -341,9 +267,7 @@ window.reCalculateAll = function() {
                 
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
                 const descDisp = AuraUtils.escapeHtml(t.description || t.catatan_ai || "");
-                
-                const walletName = t.wallet_id && wallets[t.wallet_id] ? wallets[t.wallet_id].name : t.metode_pembayaran;
-                const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ?
+                const metIcon = t.metode_pembayaran === 'tunai' ?
                 '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
                 
                 let innerReceiptHtml = '';
@@ -357,7 +281,6 @@ window.reCalculateAll = function() {
                         `<span class="text-[8px] bg-sky-950/40 text-sky-400 px-1 rounded font-mono border border-sky-900">${it.tax_rate}%</span>` : '';
                         
                         const totalItemHarga = AuraUtils.convertCurrency(it.harga * (it.qty || 1), t.mata_uang || 'JPY');
-                        
                         receiptLines += `
                         <div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it">
                             <div class="flex-1 truncate">
@@ -405,7 +328,7 @@ window.reCalculateAll = function() {
                             </div>
                             <div class="overflow-hidden">
                                 <h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4>
-                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${t.displayTime.split(' ')[1]}</p>
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${t.metode_pembayaran} • ${t.displayTime.split(' ')[1]}</p>
                             </div>
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
@@ -434,7 +357,10 @@ window.reCalculateAll = function() {
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
     
-    AuraUtils.safeDOM('goals-list-container', el => {
+    // ============================================================================
+    // LOGIKA PERBAIKAN: MANAJER MISI TABUNGAN (TIDAK ADA LAGI DESIMAL/BENGKAK)
+    // ============================================================================
+        AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
             el.innerHTML = '<p class="text-center text-[var(--text-muted)] mt-5 opacity-70"><i class="fa-solid fa-bullseye text-2xl block mb-2"></i>Belum ada Misi Pengumpulan Aset Finansial.</p>'; 
@@ -443,22 +369,26 @@ window.reCalculateAll = function() {
         
         let glHtml = '';
         const todayObj = new Date();
-        todayObj.setHours(0,0,0,0);
+        todayObj.setHours(0,0,0,0); // Normalisasi hari ini ke jam 00:00
         
         for (let i = 0; i < glList.length; i++) {
             const g = glList[i]; 
             
             const originalCurrency = g.currency || 'JPY';
             const targetVal = AuraUtils.convertCurrency(g.targetAmount || 0, originalCurrency); 
+            // Menarik saldo yang sudah ditabung
             const savedVal = AuraUtils.convertCurrency(g.savedAmount || 0, originalCurrency);
             
+            // Kalkulasi sisa target
             const remainingTarget = Math.max(0, targetVal - savedVal);
             const progressPct = targetVal > 0 ? Math.min(100, (savedVal / targetVal) * 100) : 0;
             
             const targetDateObj = new Date(g.targetDate);
             targetDateObj.setHours(23,59,59,999);
             
+            // Sisa hari dari HARI INI ke TARGET AKHIR
             const diffDaysLeft = Math.ceil((targetDateObj.getTime() - todayObj.getTime()) / (1000 * 3600 * 24));
+            
             const freq = parseInt(g.frequencyDays) || 1;
             
             let freqText = "Harian";
@@ -468,6 +398,10 @@ window.reCalculateAll = function() {
             else if (freq === 30) freqText = "Bulanan";
             else freqText = `Per ${freq} Hari`;
 
+            // ========================================================
+            // DYNAMIC SINKING FUND CALCULATION
+            // Membagi sisa uang yang dibutuhkan dengan sisa periode waktu
+            // ========================================================
             const remainingPeriods = Math.max(1, Math.ceil(diffDaysLeft / freq));
             const requiredPerPeriod = remainingTarget / remainingPeriods;
             
@@ -518,6 +452,8 @@ window.reCalculateAll = function() {
         el.innerHTML = glHtml;
     });
 
+
+    
     AuraUtils.safeDOM('trash-list-container', el => {
         const trashList = AuraState.data.trash || [];
         if (trashList.length === 0) { 
@@ -599,14 +535,6 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(txUnsubscribe);
     
-    const walletsRef = ref(db, `${ledgerNode}/${uid}/wallets`);
-    const walletsUnsubscribe = onValue(walletsRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        AuraState.data.wallets = data;
-        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    });
-    AuraState.listeners.push(walletsUnsubscribe);
-
     const goalsRef = ref(db, `${ledgerNode}/${uid}/goals`);
     const goalsUnsubscribe = onValue(goalsRef, (snapshot) => {
         const data = snapshot.val() || {};
