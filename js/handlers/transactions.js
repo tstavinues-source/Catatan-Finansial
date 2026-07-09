@@ -2,6 +2,7 @@
  * Transactions CRUD Handlers
  * Menangani semua logika input manual, edit transaksi, manajemen keranjang struk, 
  * serta fungsi soft-delete (sampah) dan restorasi.
+ * [UPDATE: MULTI-WALLET COMPATIBILITY]
  */
 
 import { AuraState } from '../core/state.js';
@@ -9,6 +10,7 @@ import { AuraUtils } from '../core/utils.js';
 import { Logger } from '../core/logger.js';
 import { FirebaseService } from '../services/firebase.js';
 import { CategoryManager } from '../modules/categories.js';
+import { WalletManager } from '../modules/wallets.js';
 
 // ============================================================================
 // EVENT LISTENER GLOBAL UNTUK CUSTOM PICKER
@@ -16,7 +18,6 @@ import { CategoryManager } from '../modules/categories.js';
 document.addEventListener('DOMContentLoaded', () => {
     const typeSelect = document.getElementById('manual-trx-type');
     if (typeSelect) {
-        // Reset kategori setiap kali jenis transaksi (Pemasukan/Pengeluaran) diubah
         typeSelect.addEventListener('change', function() {
             const valEl = document.getElementById('manual-trx-category-val');
             const displayEl = document.getElementById('manual-trx-category-display');
@@ -31,11 +32,37 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ============================================================================
+// POPULATE DOMPET DINAMIS UNTUK DROPDOWN
+// ============================================================================
+window.populateWalletDropdowns = function(dropdownId, selectedId = null) {
+    const selectEl = document.getElementById(dropdownId);
+    if (!selectEl) return;
+    
+    const wallets = AuraState.data.wallets || {};
+    const walletKeys = Object.keys(wallets);
+    
+    // Jika tidak ada dompet, biarkan kosong dengan pesan peringatan
+    if (walletKeys.length === 0) {
+        selectEl.innerHTML = '<option value="">(Belum Ada Dompet - Buat di Settings)</option>';
+        return;
+    }
+    
+    let html = '';
+    walletKeys.forEach(key => {
+        const w = wallets[key];
+        const isSelected = selectedId === key ? 'selected' : '';
+        const symbol = w.type === 'cashless' ? '💳' : '💵';
+        html += `<option value="${key}" ${isSelected}>${symbol} ${AuraUtils.escapeHtml(w.name)}</option>`;
+    });
+    
+    selectEl.innerHTML = html;
+};
+
+// ============================================================================
 // INPUT TRANSAKSI MANUAL UTAMA
 // ============================================================================
 
 window.openManualTrxModal = function() {
-    // Pastikan Custom Picker selalu dalam keadaan default saat modal dibuka
     const valEl = document.getElementById('manual-trx-category-val');
     const displayEl = document.getElementById('manual-trx-category-display');
     if (valEl && displayEl) {
@@ -45,6 +72,9 @@ window.openManualTrxModal = function() {
         displayEl.classList.remove('text-[var(--text-muted)]');
     }
 
+    // Suntikkan dompet dari Firebase ke dalam Dropdown Modal ini
+    window.populateWalletDropdowns('manual-trx-wallet');
+
     if (typeof window.showModal === 'function') {
         window.showModal('modal-manual-trx');
     }
@@ -53,33 +83,36 @@ window.openManualTrxModal = function() {
 window.saveManualTransaction = async function() {
     const storeInput = document.getElementById('manual-trx-store');
     const typeInput = document.getElementById('manual-trx-type');
-    const methodInput = document.getElementById('manual-trx-method');
+    const walletInput = document.getElementById('manual-trx-wallet'); // <-- Mengambil ID Dompet asli
     const currInput = document.getElementById('manual-trx-curr');
     const amtInput = document.getElementById('manual-trx-amount');
-    
-    // Mengambil nilai dari Hidden Input milik Custom Picker
     const catInput = document.getElementById('manual-trx-category-val');
 
     if (!storeInput || !amtInput) return;
     
     const store = storeInput.value.trim();
     const type = typeInput ? typeInput.value : 'pengeluaran';
-    const method = methodInput ? methodInput.value : 'cashless';
+    const walletId = walletInput ? walletInput.value : null; 
     const currency = currInput ? currInput.value : 'JPY';
     const amount = parseFloat(amtInput.value);
-    
     const category = (catInput && catInput.value.trim() !== '') ? catInput.value : 'Lainnya';
 
     if (!store) {
         if (window.showToast) window.showToast("Nama toko/merchant wajib diisi!", true);
         return;
     }
-    
     if (isNaN(amount) || amount <= 0) {
         if (window.showToast) window.showToast("Nominal harus berupa angka dan lebih dari 0!", true);
         return;
     }
+    if (!walletId) {
+        if (window.showToast) window.showToast("Pilih Dompet Sumber terlebih dahulu!", true);
+        return;
+    }
     
+    // Tentukan metode fallback untuk item agar tidak hancur kompatibilitasnya
+    const walletType = AuraState.data.wallets[walletId]?.type || 'cashless';
+
     const timestamp = new Date().toISOString();
     const data = {
         merchantName: store,
@@ -88,7 +121,8 @@ window.saveManualTransaction = async function() {
         createdAt: timestamp,
         nominal: amount,
         mata_uang: currency,
-        metode_pembayaran: method,
+        wallet_id: walletId,           // <--- PENTING: Merekam ID Dompet
+        metode_pembayaran: walletType, // Fallback legacy system
         tipe: type,
         kategori: category,
         description: `Manual input: ${store}`,
@@ -101,7 +135,7 @@ window.saveManualTransaction = async function() {
             qty: 1,
             kategori_barang: category,
             tax_rate: 0,
-            paymentMethod: method,
+            paymentMethod: walletType,
             timestamp: timestamp
         }]
     };
@@ -109,7 +143,7 @@ window.saveManualTransaction = async function() {
     try {
         await FirebaseService.saveTransaction(data, false);
         if (typeof window.closeModal === 'function') window.closeModal('modal-manual-trx');
-        if (window.showToast) window.showToast("✅ Transaksi manual berhasil disimpan!");
+        if (window.showToast) window.showToast("✅ Transaksi manual berhasil disimpan ke dompet!");
         
         storeInput.value = '';
         amtInput.value = '';
@@ -134,13 +168,14 @@ window.openEditTrxModal = function(id) {
     }
      
     if (!sourceTrx) return;
-    
     const trx = JSON.parse(JSON.stringify(sourceTrx));
     AuraState.temp.editTrxTargetData = trx.id;
 
+    // Isi dropdown dengan daftar dompet dan otomatis pilih dompet yang digunakan di transaksi ini
+    window.populateWalletDropdowns('edit-global-wallet', trx.wallet_id);
+
     AuraUtils.safeDOM('edit-global-store', el => el.value = AuraUtils.escapeHtml(trx.merchantName || trx.storeName || trx.kategori || ''));
     AuraUtils.safeDOM('edit-global-curr', el => el.value = trx.mata_uang || 'JPY');
-    AuraUtils.safeDOM('edit-global-method', el => el.value = trx.metode_pembayaran || 'cashless');
     AuraUtils.safeDOM('edit-global-nominal', el => el.value = trx.nominal || 0);
     AuraUtils.safeDOM('edit-global-type', el => el.value = trx.tipe || 'pengeluaran');
     AuraUtils.safeDOM('edit-global-desc', el => el.value = AuraUtils.escapeHtml(trx.description || trx.catatan_ai || ''));
@@ -154,29 +189,31 @@ window.saveEditTrx = async function() {
     const trxId = AuraState.temp.editTrxTargetData;
     const storeEl = document.getElementById('edit-global-store');
     const currEl = document.getElementById('edit-global-curr');
-    const methodEl = document.getElementById('edit-global-method');
+    const walletEl = document.getElementById('edit-global-wallet'); // <-- Mengambil ID Dompet saat diedit
     const nominalEl = document.getElementById('edit-global-nominal');
     const typeEl = document.getElementById('edit-global-type');
     const descEl = document.getElementById('edit-global-desc');
 
     const storeName = storeEl ? storeEl.value.trim() : ''; 
     const curr = currEl ? currEl.value : 'JPY';
-    const method = methodEl ? methodEl.value : 'cashless'; 
+    const walletId = walletEl ? walletEl.value : null; 
     const nominal = nominalEl ? parseFloat(nominalEl.value) : 0;
+    const tipe = typeEl ? typeEl.value : 'pengeluaran'; 
+    const desc = descEl ? descEl.value.trim() : '';
 
     if (isNaN(nominal) || nominal < 0) {
         if (window.showToast) window.showToast("Nominal tidak boleh negatif atau kosong!", true);
         return;
     }
 
-    const tipe = typeEl ? typeEl.value : 'pengeluaran'; 
-    const desc = descEl ? descEl.value.trim() : '';
+    const walletType = AuraState.data.wallets[walletId]?.type || 'cashless';
 
     const updates = { 
         merchantName: storeName, 
         storeName: storeName, 
         mata_uang: curr, 
-        metode_pembayaran: method, 
+        wallet_id: walletId, 
+        metode_pembayaran: walletType, // Fallback legacy system
         nominal: nominal, 
         tipe: tipe 
     };
@@ -197,7 +234,7 @@ window.saveEditTrx = async function() {
 };
 
 // ============================================================================
-// MANAJEMEN ITEM (KERANJANG STRUK)
+// MANAJEMEN ITEM (KERANJANG STRUK) & SAMPAH (TIDAK ADA PERUBAHAN LOGIKA WALLET)
 // ============================================================================
 
 window.openAddItemModal = function(trxId) {
@@ -206,7 +243,6 @@ window.openAddItemModal = function(trxId) {
     AuraUtils.safeDOM('add-item-qty', el => el.value = "1");
     AuraUtils.safeDOM('add-item-price', el => el.value = "");
     
-    // Set kategori default visual ke custom picker
     AuraUtils.safeDOM('add-item-cat', el => {
         el.value = "Lainnya";
         const dEl = document.getElementById('add-item-cat-display');
@@ -317,7 +353,6 @@ window.openEditItem = function(trxId, itemId) {
     AuraUtils.safeDOM('edit-item-qty', el => el.value = item.qty || 1);
     AuraUtils.safeDOM('edit-item-price', el => el.value = item.harga || 0);
     
-    // Set visual display of the Custom Picker
     AuraUtils.safeDOM('edit-item-cat', el => {
         el.value = item.kategori_barang || 'Lainnya';
         const dEl = document.getElementById('edit-item-cat-display');
@@ -402,10 +437,6 @@ window.saveEditItem = async function() {
         }
     }
 };
-
-// ============================================================================
-// PENGHAPUSAN, SAMPAH & RESTORASI
-// ============================================================================
 
 window.confirmDelTrx = function(id) { 
     const transactions = AuraState.data.transactions || [];
