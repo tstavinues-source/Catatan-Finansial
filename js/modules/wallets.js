@@ -5,8 +5,8 @@
 
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
-import { APP_CONFIG } from '../config/constants.js'; // <-- DIIMPORT UNTUK ALAMAT FOLDER YANG BENAR
-import { ref, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+import { APP_CONFIG } from '../config/constants.js';
+import { ref, set, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 export const WalletManager = {
     init() {
@@ -40,6 +40,7 @@ export const WalletManager = {
         AuraUtils.safeDOM('wallet-form-name', el => el.value = wallet.name);
         AuraUtils.safeDOM('wallet-form-type', el => el.value = wallet.type);
         
+        // Sembunyikan saldo awal saat diedit. Jika ingin ubah saldo, edit transaksinya di Menu Log!
         AuraUtils.safeDOM('wallet-form-initial-container', el => el.style.display = 'none');
         AuraUtils.safeDOM('wallet-form-title', el => el.innerText = 'Edit Parameter Dompet');
 
@@ -79,18 +80,51 @@ export const WalletManager = {
 
             if (isNew) {
                 walletData.createdAt = nowIso;
-                walletData.initial_balance = initialBalance;
             } else {
-                walletData.initial_balance = AuraState.data.wallets[walletId].initial_balance || 0;
                 walletData.createdAt = AuraState.data.wallets[walletId].createdAt || nowIso;
             }
 
-            // PERBAIKAN: Menembak data ke folder nexus_ledgers yang diizinkan Firebase
             const db = AuraState.instances.db;
             const uid = AuraState.user.uid;
             const ledgerNode = APP_CONFIG.LEDGER_NODE;
+            
             if (db && uid) {
+                // 1. Simpan data struktur dompet
                 await set(ref(db, `${ledgerNode}/${uid}/wallets/${walletId}`), walletData);
+                
+                // 2. JIKA DOMPET BARU & ADA SALDO AWAL -> CATAT SEBAGAI TRANSAKSI PEMASUKAN!
+                if (isNew && initialBalance > 0) {
+                    const trxId = AuraUtils.generateId('trx');
+                    const activeCurr = AuraState.system?.displayCurrency || 'JPY';
+                    
+                    const modalTrx = {
+                        id: trxId,
+                        merchantName: `Saldo Awal: ${name}`,
+                        storeName: `Saldo Awal: ${name}`,
+                        tanggal: nowIso.split('T')[0],
+                        createdAt: nowIso,
+                        nominal: initialBalance,
+                        mata_uang: activeCurr,
+                        wallet_id: walletId,
+                        metode_pembayaran: type,
+                        tipe: 'pemasukan',
+                        kategori: 'Lainnya',
+                        description: `Deposit modal awal pembuatan dompet ${name}.`,
+                        isCustomDescription: true,
+                        is_deleted: false,
+                        items: [{
+                            itemId: AuraUtils.generateId('itm'),
+                            nama_barang: 'Modal Awal Dompet',
+                            harga: initialBalance,
+                            qty: 1,
+                            kategori_barang: 'Lainnya',
+                            tax_rate: 0,
+                            paymentMethod: type,
+                            timestamp: nowIso
+                        }]
+                    };
+                    await set(ref(db, `${ledgerNode}/${uid}/transactions/${trxId}`), modalTrx);
+                }
             } else {
                 throw new Error("Koneksi Firebase Cloud terputus.");
             }
@@ -101,8 +135,6 @@ export const WalletManager = {
             if(typeof window.closeModal === 'function') window.closeModal('modal-wallet-form');
             this.renderList();
             
-            if(typeof window.reCalculateAll === 'function') window.reCalculateAll();
-
             if(window.showToast) window.showToast("Struktur Dompet berhasil disinkronisasi permanen!");
         } catch(e) {
             console.error(e);
@@ -112,17 +144,42 @@ export const WalletManager = {
         }
     },
 
+    async deleteWallet(id) {
+        const wallet = AuraState.data.wallets[id];
+        if(!wallet) return;
+
+        // Gunakan dialog kustom bawaan AuraFi Anda
+        const isConfirmed = await window.AuraConfirm(`Yakin ingin memusnahkan dompet <b>${wallet.name}</b>? Transaksi yang sudah masuk ke dompet ini akan tetap ada, tapi kehilangan identitas sumbernya.`);
+        if (!isConfirmed) return;
+
+        try {
+            const db = AuraState.instances.db;
+            const uid = AuraState.user.uid;
+            const ledgerNode = APP_CONFIG.LEDGER_NODE;
+            
+            if (db && uid) {
+                await remove(ref(db, `${ledgerNode}/${uid}/wallets/${id}`));
+            }
+            
+            delete AuraState.data.wallets[id];
+            this.renderList();
+            if(typeof window.reCalculateAll === 'function') window.reCalculateAll();
+            
+            if(window.showToast) window.showToast("Dompet berhasil dimusnahkan.");
+        } catch(e) {
+            if(window.showToast) window.showToast("Gagal menghapus dompet dari Cloud.", true);
+        }
+    },
+
     async toggleVisibility(id) {
         const wallet = AuraState.data.wallets[id];
         if(!wallet) return;
 
         wallet.is_hidden = !wallet.is_hidden;
         wallet.updatedAt = new Date().toISOString();
-        
         this.renderList();
 
         try {
-            // PERBAIKAN: Menembak ke folder nexus_ledgers
             const db = AuraState.instances.db;
             const uid = AuraState.user.uid;
             const ledgerNode = APP_CONFIG.LEDGER_NODE;
@@ -130,12 +187,10 @@ export const WalletManager = {
                 await set(ref(db, `${ledgerNode}/${uid}/wallets/${id}`), wallet);
             }
             if(typeof window.reCalculateAll === 'function') window.reCalculateAll();
-            
             if(window.showToast) window.showToast(wallet.is_hidden ? "Dompet disembunyikan dari Total Kekayaan." : "Dompet kembali masuk ke perhitungan.");
         } catch(e) {
             wallet.is_hidden = !wallet.is_hidden;
             this.renderList();
-            if(window.showToast) window.showToast("Gagal mengubah visibilitas di Cloud.", true);
         }
     },
 
@@ -177,12 +232,15 @@ export const WalletManager = {
                         <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-1 font-semibold">${w.type === 'cashless' ? 'Rekening Digital' : 'Tunai Fisik'}</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
+                <div class="flex items-center gap-1.5 shrink-0">
                     <button onclick="window.toggleWalletVisibility('${key}')" class="w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 shadow-md group" title="Sembunyikan dari Net Worth">
                         ${eyeIcon}
                     </button>
                     <button onclick="window.editWallet('${key}')" class="w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 text-[var(--text-muted)] hover:text-white shadow-md">
                         <i class="fa-solid fa-pen text-[10px]"></i>
+                    </button>
+                    <button onclick="window.deleteWallet('${key}')" class="w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-rose-500/20 transition-all active:scale-90 text-[var(--text-muted)] hover:text-rose-400 shadow-md">
+                        <i class="fa-solid fa-trash text-[10px]"></i>
                     </button>
                 </div>
             </div>
@@ -197,4 +255,5 @@ window.openWalletManager = () => WalletManager.openManager();
 window.openAddWalletForm = () => WalletManager.openAddForm();
 window.saveWalletData = () => WalletManager.saveWallet();
 window.editWallet = (id) => WalletManager.editWallet(id);
+window.deleteWallet = (id) => WalletManager.deleteWallet(id);
 window.toggleWalletVisibility = (id) => WalletManager.toggleVisibility(id);
