@@ -5,10 +5,10 @@
 
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
+import { APP_CONFIG } from '../config/constants.js'; // <-- DIIMPORT UNTUK ALAMAT FOLDER YANG BENAR
 import { ref, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 export const WalletManager = {
-    // Inisialisasi State Dompet jika masih kosong
     init() {
         if (!AuraState.data.wallets) {
             AuraState.data.wallets = {};
@@ -26,7 +26,6 @@ export const WalletManager = {
         AuraUtils.safeDOM('wallet-form-type', el => el.value = 'cashless');
         AuraUtils.safeDOM('wallet-form-initial', el => el.value = '0');
         
-        // Tampilkan input saldo awal hanya untuk dompet baru
         AuraUtils.safeDOM('wallet-form-initial-container', el => el.style.display = 'block');
         AuraUtils.safeDOM('wallet-form-title', el => el.innerText = 'Akun Dompet Baru');
 
@@ -41,7 +40,6 @@ export const WalletManager = {
         AuraUtils.safeDOM('wallet-form-name', el => el.value = wallet.name);
         AuraUtils.safeDOM('wallet-form-type', el => el.value = wallet.type);
         
-        // Sembunyikan input saldo awal saat mode edit (karena saldo dihitung otomatis nanti)
         AuraUtils.safeDOM('wallet-form-initial-container', el => el.style.display = 'none');
         AuraUtils.safeDOM('wallet-form-title', el => el.innerText = 'Edit Parameter Dompet');
 
@@ -83,31 +81,29 @@ export const WalletManager = {
                 walletData.createdAt = nowIso;
                 walletData.initial_balance = initialBalance;
             } else {
-                // Pertahankan data lama saat edit
                 walletData.initial_balance = AuraState.data.wallets[walletId].initial_balance || 0;
                 walletData.createdAt = AuraState.data.wallets[walletId].createdAt || nowIso;
             }
 
-            // 1. Tembak Langsung ke Firebase Cloud Database
+            // PERBAIKAN: Menembak data ke folder nexus_ledgers yang diizinkan Firebase
             const db = AuraState.instances.db;
             const uid = AuraState.user.uid;
+            const ledgerNode = APP_CONFIG.LEDGER_NODE;
             if (db && uid) {
-                await set(ref(db, `users/${uid}/wallets/${walletId}`), walletData);
+                await set(ref(db, `${ledgerNode}/${uid}/wallets/${walletId}`), walletData);
             } else {
                 throw new Error("Koneksi Firebase Cloud terputus.");
             }
 
-            // 2. Simpan di Memori Lokal agar UI langsung berubah tanpa refresh
             if(!AuraState.data.wallets) AuraState.data.wallets = {};
             AuraState.data.wallets[walletId] = walletData;
 
             if(typeof window.closeModal === 'function') window.closeModal('modal-wallet-form');
             this.renderList();
             
-            // Kalkulasi Ulang Dashboard (Akan disempurnakan di Fase 3)
             if(typeof window.reCalculateAll === 'function') window.reCalculateAll();
 
-            if(window.showToast) window.showToast("Struktur Dompet berhasil disinkronisasi!");
+            if(window.showToast) window.showToast("Struktur Dompet berhasil disinkronisasi permanen!");
         } catch(e) {
             console.error(e);
             if(window.showToast) window.showToast("Gagal mengukir dompet ke sistem.", true);
@@ -120,24 +116,23 @@ export const WalletManager = {
         const wallet = AuraState.data.wallets[id];
         if(!wallet) return;
 
-        // Balikkan status visibilitas (True/False)
         wallet.is_hidden = !wallet.is_hidden;
         wallet.updatedAt = new Date().toISOString();
         
-        // Render ulang UI secara instan agar terasa responsif
         this.renderList();
 
         try {
+            // PERBAIKAN: Menembak ke folder nexus_ledgers
             const db = AuraState.instances.db;
             const uid = AuraState.user.uid;
+            const ledgerNode = APP_CONFIG.LEDGER_NODE;
             if (db && uid) {
-                await set(ref(db, `users/${uid}/wallets/${id}`), wallet);
+                await set(ref(db, `${ledgerNode}/${uid}/wallets/${id}`), wallet);
             }
             if(typeof window.reCalculateAll === 'function') window.reCalculateAll();
             
             if(window.showToast) window.showToast(wallet.is_hidden ? "Dompet disembunyikan dari Total Kekayaan." : "Dompet kembali masuk ke perhitungan.");
         } catch(e) {
-            // Jika gagal tembak Firebase, kembalikan status UI seperti semula
             wallet.is_hidden = !wallet.is_hidden;
             this.renderList();
             if(window.showToast) window.showToast("Gagal mengubah visibilitas di Cloud.", true);
@@ -164,12 +159,9 @@ export const WalletManager = {
         let html = '';
         walletKeys.forEach(key => {
             const w = wallets[key];
-            
-            // Logika Estetika Dinamis (Cashless = Biru, Tunai = Hijau)
             const icon = w.type === 'cashless' ? '<i class="fa-solid fa-credit-card text-sky-400"></i>' : '<i class="fa-solid fa-money-bill-wave text-emerald-400"></i>';
             const bgIcon = w.type === 'cashless' ? 'bg-sky-500/10 border-sky-500/30 shadow-[0_0_10px_rgba(56,189,248,0.2)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
             
-            // Logika Mata Gaib (Disembunyikan)
             const eyeIcon = w.is_hidden ? '<i class="fa-solid fa-eye-slash text-rose-400"></i>' : '<i class="fa-solid fa-eye text-[var(--text-muted)] group-hover:text-emerald-400"></i>';
             const hiddenBadge = w.is_hidden ? '<span class="text-[8px] text-rose-400 border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-[0.15em] ml-2 font-bold animate-pulse">Gaib</span>' : '';
             const borderGlow = w.is_hidden ? 'border-l-rose-500 opacity-60' : (w.type === 'cashless' ? 'border-l-sky-400' : 'border-l-emerald-400');
@@ -201,9 +193,6 @@ export const WalletManager = {
     }
 };
 
-// ============================================================================
-// BINDING GLOBAL: Agar fungsi ini bisa diakses dari atribut onclick di HTML
-// ============================================================================
 window.openWalletManager = () => WalletManager.openManager();
 window.openAddWalletForm = () => WalletManager.openAddForm();
 window.saveWalletData = () => WalletManager.saveWallet();
