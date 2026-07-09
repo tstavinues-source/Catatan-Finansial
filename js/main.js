@@ -324,6 +324,9 @@ window.fetchLiveExchangeRate = async function() {
 window.addEventListener('DOMContentLoaded', () => {
     Logger.info('System', `AuraFi OS v${APP_CONFIG.VERSION} Bootstrapping initiated...`);
     
+    // --- INISIALISASI DOMPET ---
+    WalletManager.init();
+    
     if (typeof window.injectMissingModals === 'function') window.injectMissingModals();
     
     const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
