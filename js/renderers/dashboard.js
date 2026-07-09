@@ -589,7 +589,7 @@ window.loadRealtimeDatabaseData = function() {
     AuraState.listeners.push(txUnsubscribe);
     
     // LISTENER DOMPET (KUNCI UTAMA MULTI-WALLET) 🌟
-    const walletsRef = ref(db, `users/${uid}/wallets`);
+    const walletsRef = ref(db, `${ledgerNode}/${uid}/wallets`);
     const walletsUnsubscribe = onValue(walletsRef, (snapshot) => {
         const data = snapshot.val() || {};
         AuraState.data.wallets = data;
