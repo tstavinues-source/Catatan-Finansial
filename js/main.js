@@ -52,6 +52,7 @@ window.convertAndFormatCurrency = function(amount) {
 import './services/firebase.js';
 import './modules/categories.js';
 import './modules/analytics.js';
+import { WalletManager } from './modules/wallets.js';
 
 // 3. Renderers Imports
 import './renderers/dashboard.js';
