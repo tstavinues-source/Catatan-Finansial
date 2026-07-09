@@ -1,6 +1,7 @@
 /**
  * AuraFi OS - Multi-Wallet Wealth Manager
  * Modul Canggih untuk Manajemen Dompet, Likuiditas, dan Filter Ilusi Kekayaan.
+ * (SAFE MODE: Steril dari Backtick Multi-baris)
  */
 
 import { AuraState } from '../core/state.js';
@@ -40,7 +41,6 @@ export const WalletManager = {
         AuraUtils.safeDOM('wallet-form-name', el => el.value = wallet.name);
         AuraUtils.safeDOM('wallet-form-type', el => el.value = wallet.type);
         
-        // Sembunyikan saldo awal saat diedit. Jika ingin ubah saldo, edit transaksinya di Menu Log!
         AuraUtils.safeDOM('wallet-form-initial-container', el => el.style.display = 'none');
         AuraUtils.safeDOM('wallet-form-title', el => el.innerText = 'Edit Parameter Dompet');
 
@@ -89,18 +89,16 @@ export const WalletManager = {
             const ledgerNode = APP_CONFIG.LEDGER_NODE;
             
             if (db && uid) {
-                // 1. Simpan data struktur dompet
-                await set(ref(db, `${ledgerNode}/${uid}/wallets/${walletId}`), walletData);
+                await set(ref(db, ledgerNode + "/" + uid + "/wallets/" + walletId), walletData);
                 
-                // 2. JIKA DOMPET BARU & ADA SALDO AWAL -> CATAT SEBAGAI TRANSAKSI PEMASUKAN!
                 if (isNew && initialBalance > 0) {
                     const trxId = AuraUtils.generateId('trx');
                     const activeCurr = AuraState.system?.displayCurrency || 'JPY';
                     
                     const modalTrx = {
                         id: trxId,
-                        merchantName: `Saldo Awal: ${name}`,
-                        storeName: `Saldo Awal: ${name}`,
+                        merchantName: "Saldo Awal: " + name,
+                        storeName: "Saldo Awal: " + name,
                         tanggal: nowIso.split('T')[0],
                         createdAt: nowIso,
                         nominal: initialBalance,
@@ -109,7 +107,7 @@ export const WalletManager = {
                         metode_pembayaran: type,
                         tipe: 'pemasukan',
                         kategori: 'Lainnya',
-                        description: `Deposit modal awal pembuatan dompet ${name}.`,
+                        description: "Deposit modal awal pembuatan dompet " + name + ".",
                         isCustomDescription: true,
                         is_deleted: false,
                         items: [{
@@ -123,7 +121,7 @@ export const WalletManager = {
                             timestamp: nowIso
                         }]
                     };
-                    await set(ref(db, `${ledgerNode}/${uid}/transactions/${trxId}`), modalTrx);
+                    await set(ref(db, ledgerNode + "/" + uid + "/transactions/" + trxId), modalTrx);
                 }
             } else {
                 throw new Error("Koneksi Firebase Cloud terputus.");
@@ -148,8 +146,7 @@ export const WalletManager = {
         const wallet = AuraState.data.wallets[id];
         if(!wallet) return;
 
-        // Gunakan dialog kustom bawaan AuraFi Anda
-        const isConfirmed = await window.AuraConfirm(`Yakin ingin memusnahkan dompet <b>${wallet.name}</b>? Transaksi yang sudah masuk ke dompet ini akan tetap ada, tapi kehilangan identitas sumbernya.`);
+        const isConfirmed = await window.AuraConfirm("Yakin ingin memusnahkan dompet <b>" + wallet.name + "</b>? Transaksi yang sudah masuk ke dompet ini akan tetap ada, tapi kehilangan identitas sumbernya.");
         if (!isConfirmed) return;
 
         try {
@@ -158,7 +155,7 @@ export const WalletManager = {
             const ledgerNode = APP_CONFIG.LEDGER_NODE;
             
             if (db && uid) {
-                await remove(ref(db, `${ledgerNode}/${uid}/wallets/${id}`));
+                await remove(ref(db, ledgerNode + "/" + uid + "/wallets/" + id));
             }
             
             delete AuraState.data.wallets[id];
@@ -184,7 +181,7 @@ export const WalletManager = {
             const uid = AuraState.user.uid;
             const ledgerNode = APP_CONFIG.LEDGER_NODE;
             if (db && uid) {
-                await set(ref(db, `${ledgerNode}/${uid}/wallets/${id}`), wallet);
+                await set(ref(db, ledgerNode + "/" + uid + "/wallets/" + id), wallet);
             }
             if(typeof window.reCalculateAll === 'function') window.reCalculateAll();
             if(window.showToast) window.showToast(wallet.is_hidden ? "Dompet disembunyikan dari Total Kekayaan." : "Dompet kembali masuk ke perhitungan.");
@@ -202,49 +199,36 @@ export const WalletManager = {
         const walletKeys = Object.keys(wallets);
 
         if(walletKeys.length === 0) {
-            container.innerHTML = `
-                <div class="text-center p-8 border border-dashed border-[var(--border-glass)] rounded-2xl bg-black/20 mt-4">
-                    <div class="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3"><i class="fa-solid fa-ghost text-gray-500 text-lg"></i></div>
-                    <p class="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Kekosongan Terdeteksi</p>
-                    <p class="text-xs text-gray-500 mt-1">Anda belum mengonfigurasi dompet atau rekening fisik/digital apa pun.</p>
-                </div>`;
+            container.innerHTML = "<div class='text-center p-8 border border-dashed border-[var(--border-glass)] rounded-2xl bg-black/20 mt-4'>" +
+                "<div class='w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3'><i class='fa-solid fa-ghost text-gray-500 text-lg'></i></div>" +
+                "<p class='text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold'>Kekosongan Terdeteksi</p>" +
+                "<p class='text-xs text-gray-500 mt-1'>Anda belum mengonfigurasi dompet atau rekening fisik/digital apa pun.</p>" +
+                "</div>";
             return;
         }
 
         let html = '';
         walletKeys.forEach(key => {
             const w = wallets[key];
-            const icon = w.type === 'cashless' ? '<i class="fa-solid fa-credit-card text-sky-400"></i>' : '<i class="fa-solid fa-money-bill-wave text-emerald-400"></i>';
-            const bgIcon = w.type === 'cashless' ? 'bg-sky-500/10 border-sky-500/30 shadow-[0_0_10px_rgba(56,189,248,0.2)]' : 'bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+            const icon = w.type === 'cashless' ? "<i class='fa-solid fa-credit-card text-sky-400'></i>" : "<i class='fa-solid fa-money-bill-wave text-emerald-400'></i>";
+            const bgIcon = w.type === 'cashless' ? "bg-sky-500/10 border-sky-500/30 shadow-[0_0_10px_rgba(56,189,248,0.2)]" : "bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]";
             
-            const eyeIcon = w.is_hidden ? '<i class="fa-solid fa-eye-slash text-rose-400"></i>' : '<i class="fa-solid fa-eye text-[var(--text-muted)] group-hover:text-emerald-400"></i>';
-            const hiddenBadge = w.is_hidden ? '<span class="text-[8px] text-rose-400 border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-[0.15em] ml-2 font-bold animate-pulse">Gaib</span>' : '';
-            const borderGlow = w.is_hidden ? 'border-l-rose-500 opacity-60' : (w.type === 'cashless' ? 'border-l-sky-400' : 'border-l-emerald-400');
+            const eyeIcon = w.is_hidden ? "<i class='fa-solid fa-eye-slash text-rose-400'></i>" : "<i class='fa-solid fa-eye text-[var(--text-muted)] group-hover:text-emerald-400'></i>";
+            const hiddenBadge = w.is_hidden ? "<span class='text-[8px] text-rose-400 border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-[0.15em] ml-2 font-bold animate-pulse'>Gaib</span>" : "";
+            const borderGlow = w.is_hidden ? "border-l-rose-500 opacity-60" : (w.type === 'cashless' ? "border-l-sky-400" : "border-l-emerald-400");
+            const walletTypeLabel = w.type === 'cashless' ? "Rekening Digital" : "Tunai Fisik";
 
-            html += `
-            <div class="glass-panel p-4 flex items-center justify-between border-l-[3px] ${borderGlow} transition-all duration-300 hover:bg-white/5 group">
-                <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 rounded-xl flex items-center justify-center border ${bgIcon} shrink-0 transition-transform group-hover:scale-105">
-                        ${icon}
-                    </div>
-                    <div>
-                        <h4 class="text-sm font-bold text-white tracking-wide">${AuraUtils.escapeHtml(w.name)} ${hiddenBadge}</h4>
-                        <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-1 font-semibold">${w.type === 'cashless' ? 'Rekening Digital' : 'Tunai Fisik'}</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1.5 shrink-0">
-                    <button onclick="window.toggleWalletVisibility('${key}')" class="w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 shadow-md group" title="Sembunyikan dari Net Worth">
-                        ${eyeIcon}
-                    </button>
-                    <button onclick="window.editWallet('${key}')" class="w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 text-[var(--text-muted)] hover:text-white shadow-md">
-                        <i class="fa-solid fa-pen text-[10px]"></i>
-                    </button>
-                    <button onclick="window.deleteWallet('${key}')" class="w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-rose-500/20 transition-all active:scale-90 text-[var(--text-muted)] hover:text-rose-400 shadow-md">
-                        <i class="fa-solid fa-trash text-[10px]"></i>
-                    </button>
-                </div>
-            </div>
-            `;
+            html += "<div class='glass-panel p-4 flex items-center justify-between border-l-[3px] " + borderGlow + " transition-all duration-300 hover:bg-white/5 group'>" +
+                "<div class='flex items-center gap-3'>" +
+                "<div class='w-11 h-11 rounded-xl flex items-center justify-center border " + bgIcon + " shrink-0 transition-transform group-hover:scale-105'>" + icon + "</div>" +
+                "<div><h4 class='text-sm font-bold text-white tracking-wide'>" + AuraUtils.escapeHtml(w.name) + " " + hiddenBadge + "</h4>" +
+                "<p class='text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-1 font-semibold'>" + walletTypeLabel + "</p></div>" +
+                "</div>" +
+                "<div class='flex items-center gap-1.5 shrink-0'>" +
+                "<button onclick=\"window.toggleWalletVisibility('" + key + "')\" class='w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 shadow-md group' title='Sembunyikan dari Net Worth'>" + eyeIcon + "</button>" +
+                "<button onclick=\"window.editWallet('" + key + "')\" class='w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 text-[var(--text-muted)] hover:text-white shadow-md'><i class='fa-solid fa-pen text-[10px]'></i></button>" +
+                "<button onclick=\"window.deleteWallet('" + key + "')\" class='w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-rose-500/20 transition-all active:scale-90 text-[var(--text-muted)] hover:text-rose-400 shadow-md'><i class='fa-solid fa-trash text-[10px]'></i></button>" +
+                "</div></div>";
         });
 
         container.innerHTML = html;
