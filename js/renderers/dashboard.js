@@ -8,9 +8,6 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
 
-// ============================================================================
-// UI TAGIHAN OTOMATIS (MENGGUNAKAN KONVERSI KURS)
-// ============================================================================
 window.renderRecurringUIForBudget = function() {
     AuraUtils.safeDOM('budget-bills-container', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
@@ -49,21 +46,17 @@ window.renderRecurringUIForBudget = function() {
     });
 };
 
-// ============================================================================
-// OTAK UTAMA PERHITUNGAN MULTI-WALLET & FILTER GAIB
-// ============================================================================
 window.reCalculateAll = function() {
     const allTx = AuraState.data.transactions || [];
     const wallets = AuraState.data.wallets || {};
     const today = new Date();
     
-    // 1. Siapkan Buku Saldo Masing-masing Dompet (Dimulai dari modal awal)
+    // 1. Siapkan Buku Saldo Masing-masing Dompet (Dimulai dari NOL karena Modal awal dicatat di log)
     let walletBalances = {};
     Object.keys(wallets).forEach(wId => {
-        walletBalances[wId] = AuraUtils.convertCurrency(wallets[wId].initial_balance || 0, 'JPY'); // Modal awal
+        walletBalances[wId] = 0; 
     });
 
-    // Kantong darurat untuk transaksi lawas yang belum punya ID Dompet (Migration Fallback)
     let legacyCash = 0;
     let legacyCashless = 0;
 
@@ -92,7 +85,7 @@ window.reCalculateAll = function() {
         }
     }
 
-    // 3. Klasifikasi Saldo Akhir & Hitung Kekayaan Aktif (Net Worth Bebas Pakai)
+    // 3. Klasifikasi Saldo Akhir & Hitung Kekayaan Aktif
     let totalCashBal = legacyCash;
     let totalCashlessBal = legacyCashless;
     let totalActiveWealth = legacyCash + legacyCashless;
@@ -105,10 +98,8 @@ window.reCalculateAll = function() {
         const bal = walletBalances[wId];
         const isHidden = w.is_hidden;
 
-        // Visual Jika Dompet Disembunyikan
         const hiddenStyle = isHidden ? 'opacity-40 line-through text-rose-400' : 'text-white';
         const iconEye = isHidden ? '<i class="fa-solid fa-eye-slash ml-1 text-[8px] text-rose-500"></i>' : '';
-        
         const lineHtml = `<div class="flex justify-between w-full text-[10px] mt-2 border-b border-white/5 pb-1 font-sans font-medium transition-all ${hiddenStyle}"><span class="truncate pr-1">${AuraUtils.escapeHtml(w.name)} ${iconEye}</span><span class="font-mono font-bold">${window.formatAuraCurrency(bal)}</span></div>`;
 
         if (w.type === 'cashless') {
@@ -119,11 +110,9 @@ window.reCalculateAll = function() {
             breakdownCashHtml += lineHtml;
         }
 
-        // FUNGSI PENGHANCUR ILUSI: Jangan tambah ke Net Worth jika gaib!
         if (!isHidden) totalActiveWealth += bal;
     });
 
-    // 4. Proses Filter Waktu & Kategori (Sama seperti versi lama)
     const periodRange = AuraUtils.getPeriodRange();
     const fSearch = (AuraState.filters && AuraState.filters.search) ? AuraState.filters.search.toLowerCase() : "";
     const fCat = (AuraState.filters && AuraState.filters.category) ? AuraState.filters.category : "ALL";
@@ -136,7 +125,6 @@ window.reCalculateAll = function() {
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
         const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
-        
         if (trxTime < periodRange.start || trxTime > periodRange.end) continue;
         
         if (fSearch) {
@@ -145,10 +133,7 @@ window.reCalculateAll = function() {
             let hasItemMatch = false;
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
-                    if (trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
-                        hasItemMatch = true;
-                        break; 
-                    } 
+                    if (trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { hasItemMatch = true; break; } 
                 }
             }
             if (!desc.includes(fSearch) && !merch.includes(fSearch) && !hasItemMatch) continue;
@@ -159,10 +144,7 @@ window.reCalculateAll = function() {
             let itemCatMatch = false;
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
-                    if (trx.items[j].kategori_barang === fCat) { 
-                        itemCatMatch = true;
-                        break; 
-                    } 
+                    if (trx.items[j].kategori_barang === fCat) { itemCatMatch = true; break; } 
                 }
             }
             if (!mainCatMatch && !itemCatMatch) continue;
@@ -200,7 +182,6 @@ window.reCalculateAll = function() {
                 actualSpend = 0; 
             }
             
-            // JIKA DOMPET DISEMBUNYIKAN (MISAL TABUNGAN), PENGELUARANNYA TIDAK MAKAN LIMIT BULANAN!
             if (!isHiddenTrx) {
                 periodSpent += actualSpend;
             }
@@ -218,24 +199,28 @@ window.reCalculateAll = function() {
         totalBrankas += AuraUtils.convertCurrency(g.savedAmount || 0, g.currency || 'JPY');
     }
 
-    // 5. UPDATE TAMPILAN DASHBOARD (DOM INJECTION)
     AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(totalActiveWealth));
-    
     AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); 
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
 
-    // Kartu Dompet Interaktif (Tap untuk Expands)
+    // UPDATE: Klik/Tap untuk membuka laci dompet di HP (bukan sekadar hover)
     AuraUtils.safeDOM('dash-cash', el => {
         el.innerHTML = `${window.formatAuraCurrency(totalCashBal)}
-        <div class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden group-hover/card:block transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
-        el.parentElement.classList.add('group/card', 'cursor-pointer');
+        <div id="breakdown-cash" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
+        el.parentElement.classList.add('cursor-pointer');
+        el.parentElement.onclick = function() {
+            document.getElementById('breakdown-cash').classList.toggle('hidden');
+        };
     });
 
     AuraUtils.safeDOM('dash-cashless', el => {
         el.innerHTML = `${window.formatAuraCurrency(totalCashlessBal)}
-        <div class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden group-hover/card:block transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
-        el.parentElement.classList.add('group/card', 'cursor-pointer');
+        <div id="breakdown-cashless" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}</div>`;
+        el.parentElement.classList.add('cursor-pointer');
+        el.parentElement.onclick = function() {
+            document.getElementById('breakdown-cashless').classList.toggle('hidden');
+        };
     });
 
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
@@ -275,7 +260,6 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('period-progress-text', el => el.innerText = `PROGRES SIKLUS: ${periodPct.toFixed(0)}%`);
     AuraUtils.safeDOM('period-days-left', el => el.innerText = `${daysLeft} HARI TERSISA`);
 
-    // 6. RENDER LOG TRANSAKSI DI DASHBOARD
     AuraUtils.safeDOM('trx-list-container', el => {
         const groupedKeys = Object.keys(groupedTrx).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
         
@@ -324,7 +308,6 @@ window.reCalculateAll = function() {
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
                 const descDisp = AuraUtils.escapeHtml(t.description || t.catatan_ai || "");
                 
-                // MENGAMBIL NAMA DOMPET ASLI (JIKA ADA)
                 const walletName = t.wallet_id && wallets[t.wallet_id] ? wallets[t.wallet_id].name : t.metode_pembayaran;
                 const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ?
                 '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
@@ -416,9 +399,6 @@ window.reCalculateAll = function() {
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
     
-    // ============================================================================
-    // LOGIKA MANAJER MISI TABUNGAN 
-    // ============================================================================
         AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
         if (glList.length === 0) { 
@@ -554,9 +534,6 @@ window.toggleExpandedReceipt = function(trxId) {
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 };
 
-// ============================================================================
-// PIPA REALTIME DATABASE (DIPERBARUI UNTUK MEMBACA NODE "WALLETS")
-// ============================================================================
 window.loadRealtimeDatabaseData = function() {
     if (!AuraState.user.uid) {
         Logger.warn('Dashboard', 'loadRealtimeDatabaseData: Tidak ada user UID aktif');
@@ -575,7 +552,6 @@ window.loadRealtimeDatabaseData = function() {
     
     Logger.info('Dashboard', 'Membangun koneksi listener Realtime Firebase...');
     
-    // LISTENER TRANSAKSI
     const txRef = ref(db, `${ledgerNode}/${uid}/transactions`);
     const txUnsubscribe = onValue(txRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -588,7 +564,6 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(txUnsubscribe);
     
-    // LISTENER DOMPET (KUNCI UTAMA MULTI-WALLET) 🌟
     const walletsRef = ref(db, `${ledgerNode}/${uid}/wallets`);
     const walletsUnsubscribe = onValue(walletsRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -597,7 +572,6 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(walletsUnsubscribe);
 
-    // LISTENER GOALS
     const goalsRef = ref(db, `${ledgerNode}/${uid}/goals`);
     const goalsUnsubscribe = onValue(goalsRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -606,7 +580,6 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(goalsUnsubscribe);
     
-    // LISTENER SETTINGS
     const settingsRef = ref(db, `${ledgerNode}/${uid}/settings`);
     const settingsUnsubscribe = onValue(settingsRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -640,7 +613,6 @@ window.loadRealtimeDatabaseData = function() {
     });
     AuraState.listeners.push(settingsUnsubscribe);
     
-    // LISTENER CHAT
     const chatRef = ref(db, `${ledgerNode}/${uid}/oracleChats`);
     const chatUnsubscribe = onValue(chatRef, (snapshot) => {
         const data = snapshot.val() || {};
