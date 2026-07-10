@@ -1,5 +1,5 @@
 /**
- * AI Staging Area (Versi Ultimate - Strict Category, Real Timezone, Native Select, & Cashflow Logic)
+ * AI Staging Area (Versi Ultimate - Strict Category, Auto-Wallet Predictor & Tax Strategy)
  */
 
 import { AuraState } from '../core/state.js';
@@ -21,12 +21,10 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const nickname = profile.nickname || profile.fullName || "Tuan/Nyonya";
         const categoryListStr = CategoryManager.getCategoryStringList();
         
-        // AMBIL WAKTU LOKAL
         const hariIni = new Date();
         const localDateStr = hariIni.toLocaleDateString('en-CA'); 
         const localTimeStr = hariIni.toTimeString().substring(0, 5);
 
-        // PROMPT AI - LEBIH KETAT DALAM PEMILIHAN KATEGORI (NO HALLUCINATION)
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
 WAKTU SAAT INI: ${localDateStr} ${localTimeStr}.
 FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis.
@@ -71,9 +69,7 @@ Struktur Output Target JSON MURNI:
         const aiOutput = await window.executeAIWithFallback(messages, systemPrompt, true, imgData);
         const jsonResult = AuraUtils.parseCleanJSON(aiOutput);
 
-        // ==============================================================================
-        // PENYAPU (SANITIZER) KATEGORI: Mencegah Ikon Tertimpa karena Typo / Hallucination AI
-        // ==============================================================================
+        // PENYAPU (SANITIZER) KATEGORI
         const allCats = CategoryManager.getAllCategories();
         const validCategoryNames = Object.values(allCats).map(c => c.name);
         const validCategoryNamesLower = validCategoryNames.map(name => name.toLowerCase());
@@ -82,15 +78,22 @@ Struktur Output Target JSON MURNI:
             jsonResult.items.forEach(item => {
                 let aiCat = (item.kategori_barang || "Lainnya").trim();
                 let idx = validCategoryNamesLower.indexOf(aiCat.toLowerCase());
-                
                 if (idx !== -1) {
-                    // Jika AI typo (misal: "makanan" padahal aslinya "Makanan"), kita paksakan ke format asli di DB
                     item.kategori_barang = validCategoryNames[idx];
                 } else {
-                    // Jika AI mengarang bebas nama baru, paksa masuk ke "Lainnya" agar tidak menimpa ikon induk
                     item.kategori_barang = "Lainnya";
                 }
             });
+        }
+
+        // AUTO-PREDICT DOMPET BERDASARKAN HASIL SCAN AI
+        let predictedWalletId = "";
+        const wallets = AuraState.data.wallets || {};
+        const walletKeys = Object.keys(wallets);
+        if (walletKeys.length > 0) {
+            const fallbackType = jsonResult.metode_pembayaran === 'tunai' ? 'tunai' : 'cashless';
+            const matchedWallet = walletKeys.find(k => wallets[k].type === fallbackType);
+            predictedWalletId = matchedWallet ? matchedWallet : walletKeys[0];
         }
 
         const timestamp = new Date().toISOString();
@@ -101,6 +104,7 @@ Struktur Output Target JSON MURNI:
             jam: jsonResult.jam || localTimeStr, 
             mata_uang: jsonResult.mata_uang || activeCurrency,
             metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
+            wallet_id: predictedWalletId, // Menyimpan tebakan dompet
             tipe: jsonResult.tipe || 'pengeluaran',
             admin_fee: Number(jsonResult.admin_fee) || 0
         };
@@ -126,33 +130,29 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-trx-date', el => el.value = data.tanggal); 
     AuraUtils.safeDOM('staging-trx-time', el => el.value = data.jam); 
     
+    // MENGISI DROPDOWN DOMPET DAN MEMILIH OTOMATIS TEBAKAN AI
+    if (typeof window.populateWalletDropdowns === 'function') {
+        window.populateWalletDropdowns('staging-trx-wallet', data.wallet_id);
+    }
+    
+    // MANAJEMEN UI PAJAK (TAX HANDLING)
+    const taxSection = document.getElementById('staging-tax-section');
+    const taxAmountEl = document.getElementById('staging-tax-amount');
+    
+    if (data.admin_fee > 0) {
+        if (taxSection) taxSection.classList.remove('hidden');
+        if (taxAmountEl) taxAmountEl.innerText = AuraUtils.formatCurrency(data.admin_fee, data.mata_uang);
+    } else {
+        if (taxSection) taxSection.classList.add('hidden');
+    }
+
     const allCats = CategoryManager.getAllCategories();
     const catArray = Object.values(allCats).map(c => c.name);
-    
     const itemsContainer = document.getElementById('staging-items-container');
     let totalNominal = 0;
     
     if (itemsContainer) {
         let compiledItemsHtml = '';
-        
-        if (data.admin_fee > 0) {
-            compiledItemsHtml += `
-            <div class="bg-amber-950/40 border border-amber-500/50 rounded-xl p-3 mb-4 shadow-lg">
-                <div class="flex flex-col gap-2">
-                    <div class="flex items-center gap-2">
-                        <div class="bg-amber-500/20 text-amber-400 p-1.5 rounded-lg"><i class="fa-solid fa-receipt text-sm"></i></div>
-                        <div>
-                            <h4 class="text-xs font-bold text-amber-400">Pajak Terpisah (¥${data.admin_fee})</h4>
-                            <p class="text-[9px] text-amber-200/70">Pilih bagaimana pajak ini dicatat:</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 mt-1">
-                        <button onclick="window.actionDistributeTax()" class="flex-1 bg-amber-500 text-amber-950 text-[10px] font-bold py-2 rounded-lg hover:bg-amber-400">Leburkan ke Item</button>
-                        <button onclick="window.actionTaxToItem()" class="flex-1 bg-black/40 border border-amber-500/50 text-amber-400 text-[10px] font-bold py-2 rounded-lg">Jadikan Item</button>
-                    </div>
-                </div>
-            </div>`;
-        }
 
         if (data.items.length === 0) {
             compiledItemsHtml += '<p class="text-xs text-[var(--text-muted)] text-center italic my-4">Keranjang kosong.</p>';
@@ -170,51 +170,84 @@ window.renderStagingUI = function() {
                 catArray.forEach(catName => {
                     const isSelected = (catName.toLowerCase() === safeKategori.toLowerCase());
                     if(isSelected) foundMatch = true;
-                    selectOptionsHtml += `<option value="${AuraUtils.escapeHtml(catName)}" ${isSelected ? 'selected' : ''}>${AuraUtils.escapeHtml(catName)}</option>`;
+                    selectOptionsHtml += "<option value='" + AuraUtils.escapeHtml(catName) + "' " + (isSelected ? 'selected' : '') + ">" + AuraUtils.escapeHtml(catName) + "</option>";
                 });
                 
-                // Karena kita sudah punya Sanitizer, if(!foundMatch) sebenarnya tidak akan terpanggil, 
-                // tapi kita tetap biarkan sebagai pengaman ganda level UI.
                 if (!foundMatch) {
-                    selectOptionsHtml = `<option value="${AuraUtils.escapeHtml(safeKategori)}" selected>${AuraUtils.escapeHtml(safeKategori)} (AI Baru)</option>` + selectOptionsHtml;
+                    selectOptionsHtml = "<option value='" + AuraUtils.escapeHtml(safeKategori) + "' selected>" + AuraUtils.escapeHtml(safeKategori) + " (AI Baru)</option>" + selectOptionsHtml;
                 }
                 
-                compiledItemsHtml += `
-                <div class="glass-panel p-3 relative group border-l-2 border-l-accent mb-3">
-                    <button onclick="window.removeStagingItem(${idx})" class="absolute top-2 right-2 text-[var(--color-expense)] hover:text-rose-400 p-1 bg-black/40 rounded-full w-6 h-6 flex items-center justify-center z-10 transition-colors"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                    <div class="pr-6 space-y-3">
-                        <input type="text" value="${safeName}" onchange="window.updateStagingItem(${idx}, 'nama_barang', this.value)" class="bg-transparent border-b border-[var(--border-glass)] w-full text-sm outline-none text-white pb-1 font-medium focus:border-accent" placeholder="Nama Barang">
-                        
-                        <div class="grid grid-cols-12 gap-2 items-end">
-                            <div class="col-span-2">
-                                <span class="text-[8px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider">QTY</span>
-                                <input type="number" value="${numQty}" onchange="window.updateStagingItem(${idx}, 'qty', this.value)" class="bg-black/40 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] text-center font-mono focus:border-blue-400">
-                            </div>
-                            <div class="col-span-4">
-                                <span class="text-[8px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider">HARGA</span>
-                                <input type="number" value="${numHarga}" onchange="window.updateStagingItem(${idx}, 'harga', this.value)" class="bg-black/40 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] font-mono focus:border-blue-400">
-                            </div>
-                            <div class="col-span-2">
-                                <span class="text-[8px] text-rose-400/80 block mb-1 font-bold tracking-wider">TAX(%)</span>
-                                <input type="number" value="${it.tax_rate || 0}" onchange="window.updateStagingItem(${idx}, 'tax_rate', this.value)" class="bg-rose-950/30 rounded-lg p-2 w-full text-xs outline-none border border-rose-900/50 text-center font-mono text-rose-300">
-                            </div>
-                            <div class="col-span-4">
-                                <span class="text-[8px] text-emerald-400/80 block mb-1 font-bold tracking-wider">KATEGORI</span>
-                                <select onchange="window.updateStagingItem(${idx}, 'kategori_barang', this.value)" class="bg-black/40 rounded-lg p-2 w-full text-[10px] outline-none border border-[var(--border-glass)] focus:border-emerald-400 text-white truncate">
-                                    ${selectOptionsHtml}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
+                compiledItemsHtml += "<div class='glass-panel p-3 relative group border-l-2 border-l-accent mb-3'>" +
+                    "<button onclick='window.removeStagingItem(" + idx + ")' class='absolute top-2 right-2 text-[var(--color-expense)] hover:text-rose-400 p-1 bg-black/40 rounded-full w-6 h-6 flex items-center justify-center z-10 transition-colors'><i class='fa-solid fa-trash text-[10px]'></i></button>" +
+                    "<div class='pr-6 space-y-3'>" +
+                    "<input type='text' value='" + safeName + "' onchange='window.updateStagingItem(" + idx + ", \"nama_barang\", this.value)' class='bg-transparent border-b border-[var(--border-glass)] w-full text-sm outline-none text-white pb-1 font-medium focus:border-accent' placeholder='Nama Barang'>" +
+                    "<div class='grid grid-cols-12 gap-2 items-end'>" +
+                    "<div class='col-span-2'><span class='text-[8px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider'>QTY</span><input type='number' value='" + numQty + "' onchange='window.updateStagingItem(" + idx + ", \"qty\", this.value)' class='bg-black/40 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] text-center font-mono focus:border-blue-400'></div>" +
+                    "<div class='col-span-4'><span class='text-[8px] text-[var(--text-muted)] block mb-1 font-bold tracking-wider'>HARGA</span><input type='number' value='" + numHarga + "' onchange='window.updateStagingItem(" + idx + ", \"harga\", this.value)' class='bg-black/40 rounded-lg p-2 w-full text-xs outline-none border border-[var(--border-glass)] font-mono focus:border-blue-400'></div>" +
+                    "<div class='col-span-2'><span class='text-[8px] text-rose-400/80 block mb-1 font-bold tracking-wider'>TAX(%)</span><input type='number' value='" + (it.tax_rate || 0) + "' onchange='window.updateStagingItem(" + idx + ", \"tax_rate\", this.value)' class='bg-rose-950/30 rounded-lg p-2 w-full text-xs outline-none border border-rose-900/50 text-center font-mono text-rose-300'></div>" +
+                    "<div class='col-span-4'><span class='text-[8px] text-emerald-400/80 block mb-1 font-bold tracking-wider'>KATEGORI</span><select onchange='window.updateStagingItem(" + idx + ", \"kategori_barang\", this.value)' class='bg-black/40 rounded-lg p-2 w-full text-[10px] outline-none border border-[var(--border-glass)] focus:border-emerald-400 text-white truncate'>" + selectOptionsHtml + "</select></div>" +
+                    "</div></div></div>";
             }
         }
         itemsContainer.innerHTML = compiledItemsHtml;
     }
     
     totalNominal += Number(data.admin_fee || 0);
-    AuraUtils.safeDOM('staging-total-display', el => el.innerText = AuraUtils.formatCurrency(totalNominal));
+    AuraUtils.safeDOM('staging-total-display', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(totalNominal) : totalNominal);
 };
+
+// ============================================================================
+// LOGIKA PAJAK BARU (TERHUBUNG KE INDEX.HTML)
+// ============================================================================
+window.applyTaxStrategy = function(strategy) {
+    const data = AuraState.temp.aiStaging;
+    if (!data || data.admin_fee <= 0) return;
+
+    if (strategy === 'distribute') {
+        const totalPajakAsli = data.admin_fee; 
+        let totalPajakDihitung = 0; 
+        let itemKenaPajak = [];
+        
+        data.items.forEach(item => {
+            const hargaOri = Number(item.harga) || 0; 
+            const taxRate = Number(item.tax_rate) || 0;
+            if (taxRate > 0) { 
+                const pajakItem = Math.round(hargaOri * (taxRate / 100)); 
+                item.tax_amount_temp = pajakItem; 
+                totalPajakDihitung += pajakItem; 
+                itemKenaPajak.push(item); 
+            } else { 
+                item.tax_amount_temp = 0; 
+            }
+        });
+        
+        const selisih = totalPajakAsli - totalPajakDihitung;
+        if (itemKenaPajak.length > 0 && selisih !== 0) itemKenaPajak[0].tax_amount_temp += selisih;
+        
+        data.items.forEach(item => { 
+            if (item.tax_amount_temp > 0) { 
+                item.harga = (Number(item.harga) || 0) + item.tax_amount_temp; 
+            } 
+            delete item.tax_amount_temp; 
+        });
+
+    } else if (strategy === 'separate') {
+        data.items.push({ 
+            itemId: AuraUtils.generateId('itm'), 
+            nama_barang: "Pajak Struk (Tax)", 
+            harga: data.admin_fee, 
+            qty: 1, 
+            kategori_barang: "Lainnya", 
+            tax_rate: 0, 
+            paymentMethod: data.metode_pembayaran, 
+            timestamp: new Date().toISOString() 
+        });
+    }
+
+    data.admin_fee = 0; // Kosongkan agar section pajak di UI hilang
+    if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
+};
+
 
 window.saveStagingToDatabase = async function() {
     const stagingData = AuraState.temp.aiStaging;
@@ -222,15 +255,25 @@ window.saveStagingToDatabase = async function() {
     
     const storeNameEl = document.getElementById('staging-trx-store'); 
     const typeEl = document.getElementById('staging-trx-type');
+    const walletEl = document.getElementById('staging-trx-wallet'); // AMBIL DATA DOMPET
     const dateEl = document.getElementById('staging-trx-date'); 
     const timeEl = document.getElementById('staging-trx-time'); 
     
     stagingData.merchantName = storeNameEl ? storeNameEl.value.trim() || 'Toko/Merchant' : 'Toko/Merchant'; 
     stagingData.tipe = typeEl ? typeEl.value : 'pengeluaran';
     
+    // WAJIB ADA DOMPET UNTUK DISIMPAN
+    if (walletEl && walletEl.value) {
+        stagingData.wallet_id = walletEl.value;
+        stagingData.metode_pembayaran = AuraState.data.wallets[walletEl.value]?.type || stagingData.metode_pembayaran;
+    } else {
+        if (window.showToast) window.showToast("Ditolak! Pilih Dompet Sumber terlebih dahulu.", true);
+        return;
+    }
+    
     let finalDateString = new Date().toISOString(); 
     if (dateEl && timeEl && dateEl.value && timeEl.value) {
-        const localDateTime = new Date(`${dateEl.value}T${timeEl.value}:00`);
+        const localDateTime = new Date(dateEl.value + "T" + timeEl.value + ":00");
         if (!isNaN(localDateTime.getTime())) {
             finalDateString = localDateTime.toISOString();
         }
@@ -256,27 +299,6 @@ window.saveStagingToDatabase = async function() {
     } catch(e) { 
         if (window.showToast) window.showToast("Gagal merekam perbelanjaan.", true);
     }
-};
-
-window.actionDistributeTax = function() {
-    const data = AuraState.temp.aiStaging;
-    if (!data || data.admin_fee <= 0) return;
-    const totalPajakAsli = data.admin_fee; let totalPajakDihitung = 0; let itemKenaPajak = [];
-    data.items.forEach(item => {
-        const hargaOri = Number(item.harga) || 0; const taxRate = Number(item.tax_rate) || 0;
-        if (taxRate > 0) { const pajakItem = Math.round(hargaOri * (taxRate / 100)); item.tax_amount_temp = pajakItem; totalPajakDihitung += pajakItem; itemKenaPajak.push(item); } else { item.tax_amount_temp = 0; }
-    });
-    const selisih = totalPajakAsli - totalPajakDihitung;
-    if (itemKenaPajak.length > 0 && selisih !== 0) itemKenaPajak[0].tax_amount_temp += selisih;
-    data.items.forEach(item => { if (item.tax_amount_temp > 0) { item.harga = (Number(item.harga) || 0) + item.tax_amount_temp; } delete item.tax_amount_temp; });
-    data.admin_fee = 0;
-    if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
-};
-
-window.actionTaxToItem = function() {
-    const data = AuraState.temp.aiStaging; if (!data || data.admin_fee <= 0) return;
-    data.items.push({ itemId: AuraUtils.generateId('tax'), nama_barang: "Pajak Struk (Tax)", harga: data.admin_fee, qty: 1, kategori_barang: "Lainnya", tax_rate: 0, paymentMethod: data.metode_pembayaran, timestamp: new Date().toISOString() });
-    data.admin_fee = 0; if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
 
 window.updateStagingItem = function(index, field, value) {
