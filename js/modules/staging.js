@@ -1,5 +1,6 @@
 /**
  * AI Staging Area (Versi Ultimate - Strict Category, Auto-Wallet Predictor & Tax Strategy)
+ * [UPDATE: Pelatihan AI untuk mendeteksi Pajak/VAT/消費税 ke dalam admin_fee]
  */
 
 import { AuraState } from '../core/state.js';
@@ -25,6 +26,9 @@ window.processTransactionParsing = async function(text, imgData = null) {
         const localDateStr = hariIni.toLocaleDateString('en-CA'); 
         const localTimeStr = hariIni.toTimeString().substring(0, 5);
 
+        // ========================================================================
+        // SUNTIKAN KECERDASAN PAJAK (TAX INSTRUCTION UPDATE)
+        // ========================================================================
         const systemPrompt = `Kamu adalah Sistem Analisis Finansial AuraFi OS. Nama User: ${nickname}. Mata Uang: ${activeCurrency}. 
 WAKTU SAAT INI: ${localDateStr} ${localTimeStr}.
 FOKUS UTAMA: Ekstrak JSON mentah dari hasil analisis.
@@ -40,6 +44,11 @@ ATURAN WAKTU DAN TANGGAL:
 - Ekstrak dari teks/struk jika ada. Format: "tanggal": "YYYY-MM-DD", "jam": "HH:MM".
 - Jika tidak ada, gunakan waktu saat ini: ${localDateStr} ${localTimeStr}.
 
+ATURAN PAJAK (TAX) - WAJIB DIIKUTI:
+1. Harga pada "items" ("harga") harus diisi dengan harga SEBELUM PAJAK (Harga Netto).
+2. Jika pada struk terdapat total pajak (Tax / VAT / 消費税), MASUKKAN NOMINAL TOTAL PAJAK tersebut ke parameter "admin_fee" di root JSON!
+3. Masukkan persentase pajaknya ke dalam "tax_rate" di setiap item (misal: 8 atau 10).
+
 ATURAN KATEGORI (HARGA MATI):
 1. INI ADALAH DAFTAR KATEGORI ABSOLUT: "${categoryListStr}".
 2. KAMU DILARANG KERAS MENCIPTAKAN NAMA KATEGORI BARU ATAU MENGUBAH HURUF BESAR/KECILNYA. 
@@ -54,7 +63,7 @@ Struktur Output Target JSON MURNI:
     "mata_uang": "string", 
     "metode_pembayaran": "tunai/cashless", 
     "tipe": "pengeluaran/pemasukan/tarik_tunai/setor_tunai", 
-    "admin_fee": number, 
+    "admin_fee": number, // ISI DENGAN TOTAL PAJAK/TAX (JIKA ADA)
     "items": [
         { "nama_barang": "string", "harga": number, "qty": number, "kategori_barang": "string", "tax_rate": number }
     ]
@@ -104,7 +113,7 @@ Struktur Output Target JSON MURNI:
             jam: jsonResult.jam || localTimeStr, 
             mata_uang: jsonResult.mata_uang || activeCurrency,
             metode_pembayaran: jsonResult.metode_pembayaran || 'cashless',
-            wallet_id: predictedWalletId, // Menyimpan tebakan dompet
+            wallet_id: predictedWalletId, 
             tipe: jsonResult.tipe || 'pengeluaran',
             admin_fee: Number(jsonResult.admin_fee) || 0
         };
@@ -130,7 +139,6 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-trx-date', el => el.value = data.tanggal); 
     AuraUtils.safeDOM('staging-trx-time', el => el.value = data.jam); 
     
-    // MENGISI DROPDOWN DOMPET DAN MEMILIH OTOMATIS TEBAKAN AI
     if (typeof window.populateWalletDropdowns === 'function') {
         window.populateWalletDropdowns('staging-trx-wallet', data.wallet_id);
     }
@@ -141,7 +149,7 @@ window.renderStagingUI = function() {
     
     if (data.admin_fee > 0) {
         if (taxSection) taxSection.classList.remove('hidden');
-        if (taxAmountEl) taxAmountEl.innerText = AuraUtils.formatCurrency(data.admin_fee, data.mata_uang);
+        if (taxAmountEl) taxAmountEl.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(data.admin_fee) : data.admin_fee;
     } else {
         if (taxSection) taxSection.classList.add('hidden');
     }
@@ -196,9 +204,6 @@ window.renderStagingUI = function() {
     AuraUtils.safeDOM('staging-total-display', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(totalNominal) : totalNominal);
 };
 
-// ============================================================================
-// LOGIKA PAJAK BARU (TERHUBUNG KE INDEX.HTML)
-// ============================================================================
 window.applyTaxStrategy = function(strategy) {
     const data = AuraState.temp.aiStaging;
     if (!data || data.admin_fee <= 0) return;
@@ -244,7 +249,7 @@ window.applyTaxStrategy = function(strategy) {
         });
     }
 
-    data.admin_fee = 0; // Kosongkan agar section pajak di UI hilang
+    data.admin_fee = 0;
     if (typeof window.renderStagingUI === 'function') window.renderStagingUI();
 };
 
@@ -255,14 +260,13 @@ window.saveStagingToDatabase = async function() {
     
     const storeNameEl = document.getElementById('staging-trx-store'); 
     const typeEl = document.getElementById('staging-trx-type');
-    const walletEl = document.getElementById('staging-trx-wallet'); // AMBIL DATA DOMPET
+    const walletEl = document.getElementById('staging-trx-wallet'); 
     const dateEl = document.getElementById('staging-trx-date'); 
     const timeEl = document.getElementById('staging-trx-time'); 
     
     stagingData.merchantName = storeNameEl ? storeNameEl.value.trim() || 'Toko/Merchant' : 'Toko/Merchant'; 
     stagingData.tipe = typeEl ? typeEl.value : 'pengeluaran';
     
-    // WAJIB ADA DOMPET UNTUK DISIMPAN
     if (walletEl && walletEl.value) {
         stagingData.wallet_id = walletEl.value;
         stagingData.metode_pembayaran = AuraState.data.wallets[walletEl.value]?.type || stagingData.metode_pembayaran;
