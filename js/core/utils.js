@@ -1,5 +1,6 @@
 /**
  * Utility & Security Functions
+ * Kumpulan fungsi bantuan yang digunakan di seluruh aplikasi.
  */
 import { AuraState } from './state.js';
 import { Logger } from './logger.js';
@@ -46,20 +47,16 @@ export const AuraUtils = {
         }
     },
 
-    // KUNCI PERBAIKAN KURS DI SINI! (Hanya dikali satu kali di fungsi ini)
     formatCurrency: function(amount) {
         try {
-            const currency = AuraState.system.displayCurrency || 'JPY';
-            const val = Number(amount) || 0;
-            
-            if (currency === 'IDR') {
-                const rate = AuraState.system.exchangeRate || 105;
-                return 'Rp ' + Math.round(val * rate).toLocaleString('id-ID');
-            } else {
-                return '¥' + Math.round(val).toLocaleString('ja-JP');
-            }
+            const currency = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
+            const styleOpts = { style: 'currency', currency: currency, maximumFractionDigits: 0 };
+            return currency === 'JPY' 
+                ? new Intl.NumberFormat('ja-JP', styleOpts).format(amount)
+                : new Intl.NumberFormat('id-ID', styleOpts).format(amount);
         } catch (e) { 
-            return `${AuraState.system.displayCurrency || 'JPY'} ${Number(amount).toLocaleString()}`; 
+            const fallbackCurr = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
+            return `${fallbackCurr} ${Number(amount).toLocaleString()}`; 
         }
     },
 
@@ -67,10 +64,12 @@ export const AuraUtils = {
         const numAmount = Number(amount);
         if (isNaN(numAmount)) return 0;
         
-        const currentDisplay = AuraState.system.displayCurrency || 'JPY';
-        if (!fromCurrency || fromCurrency === currentDisplay) return numAmount;
+        const currentDisplay = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
+        if (!fromCurrency || typeof fromCurrency !== 'string' || fromCurrency === currentDisplay) {
+            return numAmount;
+        }
         
-        const rate = AuraState.system.exchangeRate || 105;
+        const rate = AuraState.system.exchangeRateIDR || 110.27; // Beri fallback rate agar aman
         if (fromCurrency === 'JPY' && currentDisplay === 'IDR') return numAmount * rate;
         if (fromCurrency === 'IDR' && currentDisplay === 'JPY') return numAmount / rate;
         return numAmount; 
@@ -97,10 +96,15 @@ export const AuraUtils = {
             let safeTax = Number(item.tax_rate !== undefined ? item.tax_rate : 0);
             if (isNaN(safeTax) || safeTax < 0) safeTax = 0;
 
+            // PERBAIKAN BUG DOUBLE-ESCAPING: Biarkan raw text disimpan ke DB/State
+            let rawName = item.nama_barang || item.name || "Item Abstrak";
+            if (typeof rawName === 'string') rawName = rawName.trim();
+
             return {
                 itemId: item.itemId || AuraUtils.generateId('itm'),
-                nama_barang: AuraUtils.escapeHtml(item.nama_barang || item.name || "Item Abstrak"),
-                harga: safePrice, qty: safeQty,                      
+                nama_barang: rawName, // <--- Tidak ada lagi escapeHtml di sini!
+                harga: safePrice, 
+                qty: safeQty,                      
                 kategori_barang: item.kategori_barang || item.category || "Lainnya",
                 tax_rate: safeTax,
                 paymentMethod: item.paymentMethod || defaultPaymentMethod || "cashless",
@@ -124,8 +128,7 @@ export const AuraUtils = {
 
     getPeriodRange: function() {
         const now = new Date();
-        // PERBAIKAN CRASH: Gunakan optional chaining agar aman saat booting
-        const mode = AuraState.filters?.periodMode || 'period';
+        const mode = AuraState.filters?.periodMode || 'month'; // Fallback aman
         let start, end;
         
         if (mode === 'period') {
@@ -160,6 +163,7 @@ export const AuraUtils = {
     }
 };
 
+// Global Exposure untuk fungsi utilitas yang dipakai di HTML
 window.AuraUtils = AuraUtils;
 window.generateItemId = function() { return AuraUtils.generateId('itm'); };
 window.parseCleanJSON = AuraUtils.parseCleanJSON;
