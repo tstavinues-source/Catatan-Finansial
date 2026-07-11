@@ -1,6 +1,6 @@
 /**
  * Super Render Engine [V3 - MULTI-WALLET & GHOST WEALTH FILTER]
- * (FORMATTED FOR MOBILE COPY-PASTE SAFETY - BASED ON 1.JS)
+ * (FIX: Global Memory Intercept for Analytics & Date Parser Fix)
  */
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
@@ -9,30 +9,18 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
 
-// ============================================================================
-// 🕵️‍♂️ RADAR PELACAK ERUDA (Ketik window.CariDataRusak() di Console)
-// ============================================================================
 window.CariDataRusak = function() {
     const txs = AuraState.data.transactions || [];
     let ketemu = false;
-    console.log("🕵️‍♂️ Memulai pemindaian data cacat di database...");
-    
     txs.forEach(t => {
         if (!t.tanggal && !t.createdAt) {
             ketemu = true;
-            console.log("%c🚨 DATA RUSAK DITEMUKAN!", "color: red; font-size: 14px; font-weight: bold;");
+            console.log("%c🚨 DATA RUSAK DITEMUKAN!", "color: red; font-weight: bold;");
             console.log("ID Transaksi:", t.id);
-            console.log("Toko / Info:", t.merchantName || t.storeName || "Tanpa Nama");
-            console.log("📍 Lokasi Firebase: aurafi_ledger/" + AuraState.user.uid + "/transactions/" + t.id);
-            console.log("%c💥 Ketik perintah ini untuk menghapusnya:", "color: yellow; font-weight: bold;");
-            console.log("window.deleteForever('" + t.id + "')");
-            console.log("-----------------------------------------");
+            console.log("Ketik perintah ini untuk menghapusnya: window.deleteForever('" + t.id + "')");
         }
     });
-
-    if (!ketemu) {
-        console.log("%c✅ Sistem Bersih! Tidak ditemukan data tanpa tanggal.", "color: lime; font-weight: bold;");
-    }
+    if (!ketemu) console.log("%c✅ Sistem Bersih!", "color: lime; font-weight: bold;");
 };
 
 window.renderRecurringUIForBudget = function() {
@@ -88,30 +76,22 @@ window.reCalculateAll = function() {
 
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
-        
-        // AUTO-FIX TIPE MUTASI (Membantu memperbaiki data lawas on-the-fly)
-        let tTipe = trx.tipe;
-        if (tTipe !== 'mutasi_keluar' && tTipe !== 'mutasi_masuk') {
-            if (trx.merchantName && typeof trx.merchantName === 'string' && trx.merchantName.startsWith('Mutasi ke ')) tTipe = 'mutasi_keluar';
-            if (trx.merchantName && typeof trx.merchantName === 'string' && trx.merchantName.startsWith('Mutasi dari ')) tTipe = 'mutasi_masuk';
-        }
-
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
         const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
         const wId = trx.wallet_id;
         const isLegacyCash = (trx.metode_pembayaran === 'tunai');
 
-        if (tTipe === 'pemasukan' || tTipe === 'mutasi_masuk') {
+        if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] += val;
             else { if (isLegacyCash) legacyCash += val; else legacyCashless += val; }
-        } else if (tTipe === 'pengeluaran' || tTipe === 'mutasi_keluar') {
+        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= val;
             else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
-        } else if (tTipe === 'tarik_tunai') {
+        } else if (trx.tipe === 'tarik_tunai') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
             else legacyCashless -= (val + feeVal);
             legacyCash += val; 
-        } else if (tTipe === 'setor_tunai') {
+        } else if (trx.tipe === 'setor_tunai') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
             else legacyCash -= (val + feeVal);
             legacyCashless += val; 
@@ -179,19 +159,21 @@ window.reCalculateAll = function() {
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
         
-        // 🛡️ PELINDUNG 1: Anti-crash jika trx.tanggal kosong
-        const safeDateRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
-        const trxTime = new Date(safeDateRaw).getTime();
+        // FIX TANGGAL: Perbaikan logika pengambilan waktu yang aman
+        let dStrRaw = trx.tanggal || trx.createdAt;
+        if (!dStrRaw || typeof dStrRaw !== 'string') dStrRaw = new Date().toISOString();
+        
+        const trxTime = new Date(dStrRaw).getTime();
         
         if (trxTime < periodRange.start || trxTime > periodRange.end) continue;
         
         if (fSearch) {
-            const desc = (trx.description || trx.catatan_ai || "").toString().toLowerCase();
-            const merch = (trx.merchantName || trx.storeName || "").toString().toLowerCase();
+            const desc = (trx.description || trx.catatan_ai || "").toLowerCase();
+            const merch = (trx.merchantName || trx.storeName || "").toLowerCase();
             let hasItemMatch = false;
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
-                    if (trx.items[j].nama_barang && typeof trx.items[j].nama_barang === 'string' && trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
+                    if (trx.items[j].nama_barang && trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
                         hasItemMatch = true; 
                         break; 
                     } 
@@ -223,22 +205,14 @@ window.reCalculateAll = function() {
 
     for (let i = 0; i < filteredTx.length; i++) {
         const trx = filteredTx[i];
-        
-        // AUTO-FIX TIPE MUTASI (Untuk Render Grafik & Stats)
-        let tTipe = trx.tipe;
-        if (tTipe !== 'mutasi_keluar' && tTipe !== 'mutasi_masuk') {
-            if (trx.merchantName && typeof trx.merchantName === 'string' && trx.merchantName.startsWith('Mutasi ke ')) tTipe = 'mutasi_keluar';
-            if (trx.merchantName && typeof trx.merchantName === 'string' && trx.merchantName.startsWith('Mutasi dari ')) tTipe = 'mutasi_masuk';
-        }
-
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
         
-        // 🛡️ PELINDUNG 2: Anti-crash split() 
-        const dStrRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
-        const dStr = (typeof dStrRaw === 'string' && dStrRaw.includes('T')) ? dStrRaw.split('T')[0] : new Date().toISOString().split('T')[0];
+        // FIX TANGGAL 2: Pemotongan string tanggal yang dijamin aman untuk format "YYYY-MM-DD"
+        let dStrRaw = trx.tanggal || trx.createdAt;
+        if (!dStrRaw || typeof dStrRaw !== 'string') dStrRaw = new Date().toISOString();
+        const dStr = dStrRaw.split('T')[0];
         
-        const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
-        
+        const timeFormatted = AuraUtils.formatDateToReadable(trx.createdAt || dStrRaw);
         const wId = trx.wallet_id;
         const isHiddenTrx = wId && wallets[wId] && wallets[wId].is_hidden;
 
@@ -246,14 +220,14 @@ window.reCalculateAll = function() {
             groupedTrx[dStr] = { total: 0, items: [] };
         }
 
-        if (tTipe === 'pemasukan') {
+        if (trx.tipe === 'pemasukan') {
             if (!isHiddenTrx) periodIncome += val;
             groupedTrx[dStr].total += val;
-        } else if (tTipe === 'pengeluaran' || tTipe === 'tarik_tunai' || tTipe === 'setor_tunai' || tTipe === 'nabung') {
+        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai' || trx.tipe === 'nabung') {
             let actualSpend = val;
-            if (tTipe === 'tarik_tunai' || tTipe === 'setor_tunai') {
+            if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
                 actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
-            } else if (tTipe === 'nabung') {
+            } else if (trx.tipe === 'nabung') {
                 actualSpend = 0; 
             }
             
@@ -261,13 +235,12 @@ window.reCalculateAll = function() {
                 periodSpent += actualSpend;
             }
             groupedTrx[dStr].total -= actualSpend; 
-        } else if (tTipe === 'mutasi_masuk') {
+        } else if (trx.tipe === 'mutasi_masuk') {
             groupedTrx[dStr].total += val;
-        } else if (tTipe === 'mutasi_keluar') {
+        } else if (trx.tipe === 'mutasi_keluar') {
             groupedTrx[dStr].total -= val;
         }
         
-        trx.tTipeOverride = tTipe;
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     }
@@ -378,24 +351,23 @@ window.reCalculateAll = function() {
                 let colorClass = 'text-[var(--text-main)]';
                 let signChar = '-';
                 
-                const tTipe = t.tTipeOverride || t.tipe;
-                if (tTipe === 'pemasukan') { 
+                if (t.tipe === 'pemasukan') { 
                     iconHtml = '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>';
                     colorClass = 'text-[var(--color-income)]'; 
                     signChar = '+'; 
-                } else if (tTipe === 'mutasi_masuk') { 
+                } else if (t.tipe === 'mutasi_masuk') { 
                     iconHtml = '<i class="fa-solid fa-arrow-right-to-bracket text-indigo-400"></i>';
                     colorClass = 'text-indigo-400'; 
                     signChar = '+'; 
-                } else if (tTipe === 'mutasi_keluar') { 
+                } else if (t.tipe === 'mutasi_keluar') { 
                     iconHtml = '<i class="fa-solid fa-arrow-right-from-bracket text-indigo-400"></i>';
                     colorClass = 'text-indigo-400'; 
                     signChar = '-'; 
-                } else if (tTipe === 'tarik_tunai' || tTipe === 'setor_tunai') { 
+                } else if (t.tipe === 'tarik_tunai' || t.tipe === 'setor_tunai') { 
                     iconHtml = '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>';
                     colorClass = 'text-[#38bdf8]'; 
                     signChar = '⇄'; 
-                } else if (tTipe === 'nabung') {
+                } else if (t.tipe === 'nabung') {
                     iconHtml = '<i class="fa-solid fa-piggy-bank text-emerald-400"></i>';
                     colorClass = 'text-emerald-400'; 
                     signChar = '🔒'; 
@@ -457,10 +429,6 @@ window.reCalculateAll = function() {
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 
-                // 🛡️ PELINDUNG 3: Anti-crash pada pemformatan waktu khusus HP
-                const displayTimeArr = (t.displayTime && typeof t.displayTime === 'string') ? t.displayTime.split(' ') : ['--', '--:--'];
-                const timeOnly = displayTimeArr.length > 1 ? displayTimeArr[1] : '--:--';
-
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-12 text-[var(--text-muted)] hover:text-accent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 p-2 text-sm transition bg-black/60 rounded-full shadow-lg z-10"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -472,7 +440,7 @@ window.reCalculateAll = function() {
                             </div>
                             <div class="overflow-hidden">
                                 <h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4>
-                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${timeOnly}</p>
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
                             </div>
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
@@ -657,7 +625,23 @@ window.loadRealtimeDatabaseData = function() {
     const txRef = ref(db, `${ledgerNode}/${uid}/transactions`);
     const txUnsubscribe = onValue(txRef, (snapshot) => {
         const data = snapshot.val() || {};
-        const transactions = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        
+        // ====================================================================
+        // FIX GLOBAL: Mencegat dan mengubah data tepat saat diunduh dari cloud
+        // ====================================================================
+        const transactions = Object.keys(data).map(key => {
+            let t = { id: key, ...data[key] };
+            
+            // Ubah tipe mutasi di memori agar mesin Analitik/Statistik tidak menghitungnya!
+            if (t.tipe !== 'mutasi_keluar' && t.tipe !== 'mutasi_masuk') {
+                if (typeof t.merchantName === 'string') {
+                    if (t.merchantName.startsWith('Mutasi ke ')) t.tipe = 'mutasi_keluar';
+                    if (t.merchantName.startsWith('Mutasi dari ')) t.tipe = 'mutasi_masuk';
+                }
+            }
+            return t;
+        });
+
         AuraState.data.transactions = transactions.filter(t => !t.is_deleted);
         AuraState.data.trash = transactions.filter(t => t.is_deleted);
         
