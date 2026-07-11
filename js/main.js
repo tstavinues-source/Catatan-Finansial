@@ -75,6 +75,7 @@ import './handlers/import-export.js';
 import './modules/staging.js';
 import './handlers/input.js';
 import './renderers/oracle.js';
+import './tools/migrateMutasi.js';
 
 // ============================================================================
 // GLOBAL ERROR HANDLERS
