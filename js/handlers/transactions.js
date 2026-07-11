@@ -2,7 +2,7 @@
  * Transactions CRUD Handlers
  * Menangani semua logika input manual, edit transaksi, manajemen keranjang struk, 
  * serta fungsi soft-delete (sampah) dan restorasi.
- * [UPDATE: MULTI-WALLET COMPATIBILITY & FITUR MUTASI SALDO]
+ * [UPDATE: MULTI-WALLET COMPATIBILITY & FITUR MUTASI + VALIDASI SALDO]
  */
 
 import { AuraState } from '../core/state.js';
@@ -52,14 +52,14 @@ window.populateWalletDropdowns = function(dropdownId, selectedId = null) {
         const w = wallets[key];
         const isSelected = selectedId === key ? 'selected' : '';
         const symbol = w.type === 'cashless' ? '💳' : '💵';
-        html += "<option value='" + key + "' " + isSelected + ">" + symbol + " " + AuraUtils.escapeHtml(w.name) + "</option>";
+        html += `<option value="${key}" ${isSelected}>${symbol} ${AuraUtils.escapeHtml(w.name)}</option>`;
     });
     
     selectEl.innerHTML = html;
 };
 
 // ============================================================================
-// FITUR BARU: SISTEM MUTASI SALDO & MIGRASI DANA LAWAS
+// FITUR MUTASI SALDO & MIGRASI LAWAS DENGAN VALIDASI
 // ============================================================================
 window.openTransferModal = function() {
     const sourceSelect = document.getElementById('transfer-source');
@@ -69,15 +69,13 @@ window.openTransferModal = function() {
     const wallets = AuraState.data.wallets || {};
     let optionsHtml = '';
 
-    // Opsi Penyelamat Dana Lawas
     optionsHtml += '<option value="legacy_cash">📦 Dana Fisik Lawas (Tunai)</option>';
     optionsHtml += '<option value="legacy_cashless">💳 Rekening Lawas (Cashless)</option>';
 
-    // Opsi Dompet Aktif
     Object.keys(wallets).forEach(key => {
         const w = wallets[key];
         const symbol = w.type === 'cashless' ? '💳' : '💵';
-        optionsHtml += "<option value='" + key + "'>" + symbol + " " + AuraUtils.escapeHtml(w.name) + "</option>";
+        optionsHtml += `<option value="${key}">${symbol} ${AuraUtils.escapeHtml(w.name)}</option>`;
     });
 
     sourceSelect.innerHTML = optionsHtml;
@@ -103,31 +101,83 @@ window.executeTransfer = async function() {
         return;
     }
 
+    const wallets = AuraState.data.wallets || {};
+
+    // Identifikasi Sumber
+    let sourceName = ""; let sourceType = "cashless"; let realSourceWalletId = null;
+    if (sourceId === 'legacy_cash') { sourceName = "Dana Fisik Lawas"; sourceType = "tunai"; }
+    else if (sourceId === 'legacy_cashless') { sourceName = "Rekening Lawas"; sourceType = "cashless"; }
+    else { sourceName = wallets[sourceId].name; sourceType = wallets[sourceId].type; realSourceWalletId = sourceId; }
+
+    // Identifikasi Tujuan
+    let destName = ""; let destType = "cashless"; let realDestWalletId = null;
+    if (destId === 'legacy_cash') { destName = "Dana Fisik Lawas"; destType = "tunai"; }
+    else if (destId === 'legacy_cashless') { destName = "Rekening Lawas"; destType = "cashless"; }
+    else { destName = wallets[destId].name; destType = wallets[destId].type; realDestWalletId = destId; }
+
+    // ====================================================================
+    // 1. VALIDASI SALDO (Hanya untuk dompet asli, dilewati untuk dompet lawas)
+    // ====================================================================
+    if (realSourceWalletId) {
+        let currentBalance = 0;
+        const allTx = AuraState.data.transactions || [];
+        
+        // Kalkulasi sisa saldo dompet sumber saat ini
+        for (let i = 0; i < allTx.length; i++) {
+            const trx = allTx[i];
+            if (trx.wallet_id === realSourceWalletId) {
+                const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
+                const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+                
+                // Fallback pencocokan string untuk berjaga-jaga jika skrip migrasi belum dijalankan
+                let tTipe = trx.tipe;
+                if (tTipe !== 'mutasi_keluar' && tTipe !== 'mutasi_masuk') {
+                    if (trx.merchantName && trx.merchantName.startsWith('Mutasi ke ')) tTipe = 'mutasi_keluar';
+                    if (trx.merchantName && trx.merchantName.startsWith('Mutasi dari ')) tTipe = 'mutasi_masuk';
+                }
+
+                if (tTipe === 'pemasukan' || tTipe === 'mutasi_masuk') currentBalance += val;
+                else if (tTipe === 'pengeluaran' || tTipe === 'mutasi_keluar') currentBalance -= val;
+                else if (tTipe === 'tarik_tunai' || tTipe === 'setor_tunai') currentBalance -= (val + feeVal);
+            }
+        }
+
+        if (currentBalance < amount) {
+            const formattedBalance = window.formatAuraCurrency ? window.formatAuraCurrency(currentBalance) : currentBalance;
+            if (window.showToast) window.showToast(`Ditolak! Saldo ${sourceName} tidak cukup (Sisa: ${formattedBalance}).`, true);
+            return; // Hentikan eksekusi jika saldo minus
+        }
+    }
+
+    // ====================================================================
+    // 2. KONFIRMASI MUTASI SEBELUM EKSEKUSI
+    // ====================================================================
+    const formattedAmount = window.formatAuraCurrency ? window.formatAuraCurrency(amount) : amount;
+    const confirmMsg = `
+        Konfirmasi Mutasi Saldo:<br><br>
+        Dari: <b class="text-rose-400">${sourceName}</b><br>
+        Ke: <b class="text-emerald-400">${destName}</b><br>
+        Total: <b class="text-white font-mono">${formattedAmount}</b><br><br>
+        Lanjutkan pemindahan dana?
+    `;
+    
+    const isConfirmed = await window.AuraConfirm(confirmMsg);
+    if (!isConfirmed) return; // Batal jika user klik Cancel
+
+    // ====================================================================
+    // 3. EKSEKUSI PENYIMPANAN KE FIREBASE (Dengan Tipe Mutasi Baru)
+    // ====================================================================
     if(typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
 
     try {
         const activeCurr = AuraState.system?.displayCurrency || 'JPY';
         const nowIso = new Date().toISOString();
         const dateStr = nowIso.split('T')[0];
-        const wallets = AuraState.data.wallets || {};
 
-        // Identifikasi Sumber
-        let sourceName = ""; let sourceType = "cashless"; let realSourceWalletId = null;
-        if (sourceId === 'legacy_cash') { sourceName = "Dana Fisik Lawas"; sourceType = "tunai"; }
-        else if (sourceId === 'legacy_cashless') { sourceName = "Rekening Lawas"; sourceType = "cashless"; }
-        else { sourceName = wallets[sourceId].name; sourceType = wallets[sourceId].type; realSourceWalletId = sourceId; }
-
-        // Identifikasi Tujuan
-        let destName = ""; let destType = "cashless"; let realDestWalletId = null;
-        if (destId === 'legacy_cash') { destName = "Dana Fisik Lawas"; destType = "tunai"; }
-        else if (destId === 'legacy_cashless') { destName = "Rekening Lawas"; destType = "cashless"; }
-        else { destName = wallets[destId].name; destType = wallets[destId].type; realDestWalletId = destId; }
-
-        // 1. Buat Transaksi Keluar (Mengurangi Saldo Sumber)
         const idKeluar = AuraUtils.generateId('trx');
         const trxKeluar = {
             id: idKeluar,
-            merchantName: "Mutasi ke " + destName,
+            merchantName: `Mutasi ke ${destName}`,
             storeName: "Mutasi Keluar",
             tanggal: dateStr,
             createdAt: nowIso,
@@ -135,9 +185,9 @@ window.executeTransfer = async function() {
             mata_uang: activeCurr,
             wallet_id: realSourceWalletId,
             metode_pembayaran: sourceType,
-            tipe: 'pengeluaran',
+            tipe: 'mutasi_keluar', // <--- KHUSUS MUTASI
             kategori: 'Lainnya',
-            description: "Memindahkan dana ke " + destName,
+            description: `Memindahkan dana ke ${destName}`,
             isCustomDescription: true,
             is_deleted: false,
             items: [{
@@ -152,12 +202,11 @@ window.executeTransfer = async function() {
             }]
         };
 
-        // 2. Buat Transaksi Masuk (Menambah Saldo Tujuan)
         const idMasuk = AuraUtils.generateId('trx');
         const nowIso2 = new Date(Date.now() + 1000).toISOString(); 
         const trxMasuk = {
             id: idMasuk,
-            merchantName: "Mutasi dari " + sourceName,
+            merchantName: `Mutasi dari ${sourceName}`,
             storeName: "Mutasi Masuk",
             tanggal: dateStr,
             createdAt: nowIso2,
@@ -165,9 +214,9 @@ window.executeTransfer = async function() {
             mata_uang: activeCurr,
             wallet_id: realDestWalletId,
             metode_pembayaran: destType,
-            tipe: 'pemasukan',
+            tipe: 'mutasi_masuk', // <--- KHUSUS MUTASI
             kategori: 'Lainnya',
-            description: "Menerima dana dari " + sourceName,
+            description: `Menerima dana dari ${sourceName}`,
             isCustomDescription: true,
             is_deleted: false,
             items: [{
@@ -182,7 +231,6 @@ window.executeTransfer = async function() {
             }]
         };
 
-        // Simpan ke Firebase
         await FirebaseService.saveTransaction(trxKeluar, true); // true = silent toast
         await FirebaseService.saveTransaction(trxMasuk, false);
 
