@@ -1,6 +1,6 @@
 /**
  * Super Render Engine [V3 - MULTI-WALLET & GHOST WEALTH FILTER]
- * PURE REFERENCE UPDATE: Fix Mutasi Calculation & Mobile Buttons
+ * (FORMATTED FOR MOBILE COPY-PASTE SAFETY)
  */
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
@@ -9,9 +9,6 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
 
-// ============================================================================
-// UI TAGIHAN OTOMATIS (MENGGUNAKAN KONVERSI KURS)
-// ============================================================================
 window.renderRecurringUIForBudget = function() {
     AuraUtils.safeDOM('budget-bills-container', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
@@ -70,18 +67,24 @@ window.reCalculateAll = function() {
         const wId = trx.wallet_id;
         const isLegacyCash = (trx.metode_pembayaran === 'tunai');
 
-        // UPDATE: Mutasi juga menggerakkan saldo dompet
-        if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') {
+        // AUTO-FIX: Deteksi transaksi mutasi lawas
+        let tTipe = trx.tipe;
+        if (tTipe !== 'mutasi_keluar' && tTipe !== 'mutasi_masuk') {
+            if (trx.merchantName && trx.merchantName.indexOf('Mutasi ke ') === 0) tTipe = 'mutasi_keluar';
+            if (trx.merchantName && trx.merchantName.indexOf('Mutasi dari ') === 0) tTipe = 'mutasi_masuk';
+        }
+
+        if (tTipe === 'pemasukan' || tTipe === 'mutasi_masuk') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] += val;
             else { if (isLegacyCash) legacyCash += val; else legacyCashless += val; }
-        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') {
+        } else if (tTipe === 'pengeluaran' || tTipe === 'mutasi_keluar') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= val;
             else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
-        } else if (trx.tipe === 'tarik_tunai') {
+        } else if (tTipe === 'tarik_tunai') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
             else legacyCashless -= (val + feeVal);
             legacyCash += val; 
-        } else if (trx.tipe === 'setor_tunai') {
+        } else if (tTipe === 'setor_tunai') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
             else legacyCash -= (val + feeVal);
             legacyCashless += val; 
@@ -148,7 +151,10 @@ window.reCalculateAll = function() {
     
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
-        const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
+        
+        // PELINDUNG 1: Mencegah error jika trx.tanggal atau trx.createdAt kosong/undefined
+        const safeDateRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
+        const trxTime = new Date(safeDateRaw).getTime();
         
         if (trxTime < periodRange.start || trxTime > periodRange.end) continue;
         
@@ -158,7 +164,7 @@ window.reCalculateAll = function() {
             let hasItemMatch = false;
             if (trx.items && Array.isArray(trx.items)) {
                 for (let j = 0; j < trx.items.length; j++) { 
-                    if (trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
+                    if (trx.items[j].nama_barang && trx.items[j].nama_barang.toLowerCase().includes(fSearch)) { 
                         hasItemMatch = true; 
                         break; 
                     } 
@@ -191,8 +197,11 @@ window.reCalculateAll = function() {
     for (let i = 0; i < filteredTx.length; i++) {
         const trx = filteredTx[i];
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
-        const dStrRaw = trx.tanggal || trx.createdAt;
-        const dStr = dStrRaw.split('T')[0];
+        
+        // PELINDUNG 2: Anti-crash split() jika data string rusak
+        const dStrRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
+        const dStr = (typeof dStrRaw === 'string' && dStrRaw.includes('T')) ? dStrRaw.split('T')[0] : new Date().toISOString().split('T')[0];
+        
         const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
         
         const wId = trx.wallet_id;
@@ -202,15 +211,21 @@ window.reCalculateAll = function() {
             groupedTrx[dStr] = { total: 0, items: [] };
         }
 
-        // PURE DATABASE TIPE: Mutasi tidak memicu periodIncome / periodSpent
-        if (trx.tipe === 'pemasukan') {
+        // AUTO-FIX: Tipe Mutasi
+        let tTipe = trx.tipe;
+        if (tTipe !== 'mutasi_keluar' && tTipe !== 'mutasi_masuk') {
+            if (trx.merchantName && trx.merchantName.indexOf('Mutasi ke ') === 0) tTipe = 'mutasi_keluar';
+            if (trx.merchantName && trx.merchantName.indexOf('Mutasi dari ') === 0) tTipe = 'mutasi_masuk';
+        }
+
+        if (tTipe === 'pemasukan') {
             if (!isHiddenTrx) periodIncome += val;
             groupedTrx[dStr].total += val;
-        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai' || trx.tipe === 'nabung') {
+        } else if (tTipe === 'pengeluaran' || tTipe === 'tarik_tunai' || tTipe === 'setor_tunai' || tTipe === 'nabung') {
             let actualSpend = val;
-            if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
+            if (tTipe === 'tarik_tunai' || tTipe === 'setor_tunai') {
                 actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
-            } else if (trx.tipe === 'nabung') {
+            } else if (tTipe === 'nabung') {
                 actualSpend = 0; 
             }
             
@@ -218,12 +233,13 @@ window.reCalculateAll = function() {
                 periodSpent += actualSpend;
             }
             groupedTrx[dStr].total -= actualSpend; 
-        } else if (trx.tipe === 'mutasi_masuk') {
+        } else if (tTipe === 'mutasi_masuk') {
             groupedTrx[dStr].total += val;
-        } else if (trx.tipe === 'mutasi_keluar') {
+        } else if (tTipe === 'mutasi_keluar') {
             groupedTrx[dStr].total -= val;
         }
         
+        trx.tTipeOverride = tTipe;
         trx.displayTime = timeFormatted;
         groupedTrx[dStr].items.push(trx);
     }
@@ -334,23 +350,24 @@ window.reCalculateAll = function() {
                 let colorClass = 'text-[var(--text-main)]';
                 let signChar = '-';
                 
-                if (t.tipe === 'pemasukan') { 
+                const tTipe = t.tTipeOverride || t.tipe;
+                if (tTipe === 'pemasukan') { 
                     iconHtml = '<i class="fa-solid fa-arrow-turn-up text-[var(--color-income)]"></i>';
                     colorClass = 'text-[var(--color-income)]'; 
                     signChar = '+'; 
-                } else if (t.tipe === 'mutasi_masuk') { 
+                } else if (tTipe === 'mutasi_masuk') { 
                     iconHtml = '<i class="fa-solid fa-arrow-right-to-bracket text-indigo-400"></i>';
                     colorClass = 'text-indigo-400'; 
                     signChar = '+'; 
-                } else if (t.tipe === 'mutasi_keluar') { 
+                } else if (tTipe === 'mutasi_keluar') { 
                     iconHtml = '<i class="fa-solid fa-arrow-right-from-bracket text-indigo-400"></i>';
                     colorClass = 'text-indigo-400'; 
                     signChar = '-'; 
-                } else if (t.tipe === 'tarik_tunai' || t.tipe === 'setor_tunai') { 
+                } else if (tTipe === 'tarik_tunai' || tTipe === 'setor_tunai') { 
                     iconHtml = '<i class="fa-solid fa-money-bill-transfer text-[#38bdf8]"></i>';
                     colorClass = 'text-[#38bdf8]'; 
                     signChar = '⇄'; 
-                } else if (t.tipe === 'nabung') {
+                } else if (tTipe === 'nabung') {
                     iconHtml = '<i class="fa-solid fa-piggy-bank text-emerald-400"></i>';
                     colorClass = 'text-emerald-400'; 
                     signChar = '🔒'; 
@@ -412,8 +429,10 @@ window.reCalculateAll = function() {
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 
-                // PERBAIKAN: Tombol Edit & Hapus kini dimunculkan secara permanen di layar HP (opacity-100), 
-                // dengan tombol membulat dan gelap agar sangat jelas terlihat untuk ditekan. Padding disesuaikan (pr-20)
+                // PELINDUNG 3: Cegah TypeError pada saat split waktu untuk tampilan HP
+                const displayTimeArr = (t.displayTime && typeof t.displayTime === 'string') ? t.displayTime.split(' ') : ['--', '--:--'];
+                const timeOnly = displayTimeArr.length > 1 ? displayTimeArr[1] : '--:--';
+
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-12 text-[var(--text-muted)] hover:text-accent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 p-2 text-sm transition bg-black/60 rounded-full shadow-lg z-10"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -425,7 +444,7 @@ window.reCalculateAll = function() {
                             </div>
                             <div class="overflow-hidden">
                                 <h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4>
-                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${t.displayTime.split(' ')[1]}</p>
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${timeOnly}</p>
                             </div>
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
