@@ -22,7 +22,7 @@ try {
 export const GroqService = {
     keysPool: [], 
     currentIndex: 0, 
-    model: "qwen/qwen3.6-27b",
+    model: "llama-3.1-8b-instant",
     secret: groqSecretKey,
     
     init: function(rawKeysArray) {
