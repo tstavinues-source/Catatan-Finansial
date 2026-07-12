@@ -1,7 +1,7 @@
 /**
  * Groq AI Engine Service
  * Menangani koneksi ke model Groq LLM beserta sistem failover API Key.
- * [UPDATED: LLaMA 3.1 8B Instant (128k Context) + Anti 400-Looping Fix]
+ * [BULLETPROOF EDITION: Anti-Crash Tipe Data, Dukungan Vision LLaMA 3.2, & Safe JSON]
  */
 
 import { APP_CONFIG } from '../../config/constants.js';
@@ -22,8 +22,10 @@ try {
 export const GroqService = {
     keysPool: [], 
     currentIndex: 0, 
-    // 🔥 Menggunakan LLaMA 3.1 Instant (Support hingga 128.000 token untuk data raksasa)
+    // 🔥 Model standar super cepat Groq untuk percakapan teks
     model: "llama-3.1-8b-instant",
+    // 🔥 Model khusus Groq untuk membedah struk bergambar
+    visionModel: "llama-3.2-11b-vision-preview",
     secret: groqSecretKey,
     
     init: function(rawKeysArray) {
@@ -39,6 +41,7 @@ export const GroqService = {
                 }
             }
         }
+        
         this.currentIndex = 0;
         return this.keysPool.length;
     },
@@ -63,31 +66,53 @@ export const GroqService = {
         const totalKeys = this.keysPool.length;
         const maxLimit = Math.min(totalKeys, APP_CONFIG.MAX_RETRY_AI);
         const groqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
-
-        // 🔥 WAJIB GROQ: Menyelipkan instruksi "JSON" agar tidak ditolak dengan Error 400
+        
         let finalMessages = JSON.parse(JSON.stringify(messages));
-        if (requireJson) {
+        let hasVision = false;
+
+        // 🛡️ PELINDUNG 1: Deteksi tipe data dengan aman agar JavaScript tidak TypeError/Crash!
+        if (finalMessages.length > 0) {
             const lastMsg = finalMessages[finalMessages.length - 1];
-            if (!lastMsg.content.toLowerCase().includes("json")) {
-                lastMsg.content += "\n\n(IMPORTANT: You must respond in valid JSON format only).";
+            
+            // Jika payload berbentuk array (Artinya ada Sisipan Gambar/Struk)
+            if (Array.isArray(lastMsg.content)) {
+                hasVision = true;
+                if (requireJson) {
+                    let textPart = lastMsg.content.find(p => p.type === 'text');
+                    if (textPart && typeof textPart.text === 'string' && !textPart.text.toLowerCase().includes("json")) {
+                        textPart.text += "\n\n(IMPORTANT: You must respond in valid JSON format only).";
+                    } else if (!textPart) {
+                        lastMsg.content.push({ type: "text", text: "(IMPORTANT: You must respond in valid JSON format only)." });
+                    }
+                }
+            // Jika payload berbentuk string murni (Chat Biasa)
+            } else if (typeof lastMsg.content === 'string') {
+                if (requireJson && !lastMsg.content.toLowerCase().includes("json")) {
+                    lastMsg.content += "\n\n(IMPORTANT: You must respond in valid JSON format only).";
+                }
             }
         }
+        
+        // 🔥 Pilih model secara otomatis (Teks vs Gambar)
+        const targetModel = hasVision ? this.visionModel : this.model;
         
         while (attempt < maxLimit) {
             const apiKey = this.getCurrentApiKey();
             try {
                 const payload = { 
-                    model: this.model, 
+                    model: targetModel, 
                     messages: finalMessages, 
                     temperature: requireJson ? 0.1 : 0.7 
                 };
-                if (requireJson) {
+                
+                // 🛡️ PELINDUNG 2: Model Groq Vision akan error 400 jika kita memaksa format json_object.
+                // Oleh karena itu, json_object DILARANG AKTIF jika sedang memproses gambar!
+                if (requireJson && !hasVision) {
                     payload.response_format = { type: "json_object" };
                 }
-
-                // Memberikan keleluasaan waktu 60 Detik agar tidak terputus saat berpikir keras
+                
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000);
+                const timeoutId = setTimeout(() => controller.abort(), 60000); // Batas 60 detik
                 
                 const response = await fetch(groqApiUrl, {
                     method: 'POST', 
@@ -98,11 +123,9 @@ export const GroqService = {
                     body: JSON.stringify(payload),
                     signal: controller.signal
                 });
-
+                
                 clearTimeout(timeoutId);
                 
-                // 🔥 PERBAIKAN: Menghapus status 400 (Bad Request) dari daftar Ganti Key. 
-                // Jika error 400, berarti datanya yang salah/kebesaran, kita harus langsung lempar ke Gemini!
                 if (response.status === 429 || response.status === 401 || response.status === 503 || response.status >= 500) { 
                     this.switchToNextApiKey();
                     attempt++; 
@@ -111,7 +134,7 @@ export const GroqService = {
                 
                 if (!response.ok) { 
                     const err = await response.json();
-                    throw new Error(`Groq HTTP ${response.status}: ` + (err.error?.message || "Kesalahan Fatal")); 
+                    throw new Error(`[Groq HTTP ${response.status}] ` + (err.error?.message || "Kesalahan API")); 
                 }
                 
                 const data = await response.json();
@@ -121,7 +144,10 @@ export const GroqService = {
                 
                 return data.choices[0].message.content;
             } catch (err) { 
-                // Jika request ditolak mentah-mentah karena data kebesaran (Error 400), Hentikan looping dan lempar tugasnya ke Gemini!
+                console.error("[AuraFi Groq Debug]", err);
+                
+                // 🛡️ PELINDUNG 3: Jika data ditolak mentah-mentah (400) atau timeout, 
+                // langsung HENTIKAN looping (jangan buang API Key lain) dan biarkan orchestrator melempar tugasnya ke Gemini!
                 if (err.message.includes("400") || err.name === 'AbortError') {
                     throw err; 
                 }
