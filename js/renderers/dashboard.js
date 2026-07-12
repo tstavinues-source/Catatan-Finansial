@@ -1,6 +1,6 @@
 /**
  * Super Render Engine [V3 - MULTI-WALLET & GHOST WEALTH FILTER]
- * (FIX: Global Memory Intercept for Analytics & Date Parser Fix)
+ * (FIX: Global Analytics Interceptor & Nuklir Basmi Hantu)
  */
 import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
@@ -9,18 +9,38 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { CategoryManager } from '../modules/categories.js';
 
-window.CariDataRusak = function() {
-    const txs = AuraState.data.transactions || [];
-    let ketemu = false;
+// ============================================================================
+// 💥 TOMBOL NUKLIR (Ketik window.BasmiHantuMutasi() di Eruda Console)
+// ============================================================================
+window.BasmiHantuMutasi = function() {
+    if (!AuraState || !AuraState.data) {
+        console.error("Sistem belum siap. Tunggu 5 detik lalu coba lagi.");
+        return;
+    }
+    const txs = [...(AuraState.data.transactions || []), ...(AuraState.data.trash || [])];
+    let count = 0;
+    
+    console.log("🕵️‍♂️ MEMULAI OPERASI PEMUSNAHAN HANTU MUTASI...");
+    
     txs.forEach(t => {
-        if (!t.tanggal && !t.createdAt) {
-            ketemu = true;
-            console.log("%c🚨 DATA RUSAK DITEMUKAN!", "color: red; font-weight: bold;");
-            console.log("ID Transaksi:", t.id);
-            console.log("Ketik perintah ini untuk menghapusnya: window.deleteForever('" + t.id + "')");
+        const name = (t.merchantName || t.storeName || "").toLowerCase();
+        // Cari semua transaksi yang mengandung kata mutasi, hirogin, atau rekening lawas
+        if (name.includes('mutasi') || name.includes('hirogin') || name.includes('rekening lawas')) {
+            console.log("💥 Menembak target:", t.merchantName);
+            if(window.deleteForever) {
+                window.deleteForever(t.id);
+                count++;
+            }
         }
     });
-    if (!ketemu) console.log("%c✅ Sistem Bersih!", "color: lime; font-weight: bold;");
+    
+    if (count > 0) {
+        console.log(`✅ BERHASIL! ${count} data hantu dimusnahkan.`);
+        console.log("🔄 SILAKAN REFRESH HALAMAN BROWSER ANDA SEKARANG!");
+        if (window.showToast) window.showToast(`${count} Data Hantu Berhasil Dimusnahkan!`, false);
+    } else {
+        console.log("✅ Aman! Tidak ada data hantu ditemukan.");
+    }
 };
 
 window.renderRecurringUIForBudget = function() {
@@ -158,12 +178,8 @@ window.reCalculateAll = function() {
     
     for (let i = 0; i < allTx.length; i++) {
         const trx = allTx[i];
-        
-        // FIX TANGGAL: Perbaikan logika pengambilan waktu yang aman
-        let dStrRaw = trx.tanggal || trx.createdAt;
-        if (!dStrRaw || typeof dStrRaw !== 'string') dStrRaw = new Date().toISOString();
-        
-        const trxTime = new Date(dStrRaw).getTime();
+        const safeDateRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
+        const trxTime = new Date(safeDateRaw).getTime();
         
         if (trxTime < periodRange.start || trxTime > periodRange.end) continue;
         
@@ -207,12 +223,10 @@ window.reCalculateAll = function() {
         const trx = filteredTx[i];
         const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY'); 
         
-        // FIX TANGGAL 2: Pemotongan string tanggal yang dijamin aman untuk format "YYYY-MM-DD"
-        let dStrRaw = trx.tanggal || trx.createdAt;
-        if (!dStrRaw || typeof dStrRaw !== 'string') dStrRaw = new Date().toISOString();
-        const dStr = dStrRaw.split('T')[0];
+        let dStrRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
+        const dStr = dStrRaw.includes('T') ? dStrRaw.split('T')[0] : dStrRaw;
+        const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
         
-        const timeFormatted = AuraUtils.formatDateToReadable(trx.createdAt || dStrRaw);
         const wId = trx.wallet_id;
         const isHiddenTrx = wId && wallets[wId] && wallets[wId].is_hidden;
 
@@ -428,7 +442,6 @@ window.reCalculateAll = function() {
                 }
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
-                
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
                     <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-12 text-[var(--text-muted)] hover:text-accent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 p-2 text-sm transition bg-black/60 rounded-full shadow-lg z-10"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -627,16 +640,15 @@ window.loadRealtimeDatabaseData = function() {
         const data = snapshot.val() || {};
         
         // ====================================================================
-        // FIX GLOBAL: Mencegat dan mengubah data tepat saat diunduh dari cloud
+        // 🛡️ PENCEGAT GLOBAL (Mencegah Mutasi masuk ke Analitik/Stats)
         // ====================================================================
         const transactions = Object.keys(data).map(key => {
             let t = { id: key, ...data[key] };
-            
-            // Ubah tipe mutasi di memori agar mesin Analitik/Statistik tidak menghitungnya!
             if (t.tipe !== 'mutasi_keluar' && t.tipe !== 'mutasi_masuk') {
                 if (typeof t.merchantName === 'string') {
-                    if (t.merchantName.startsWith('Mutasi ke ')) t.tipe = 'mutasi_keluar';
-                    if (t.merchantName.startsWith('Mutasi dari ')) t.tipe = 'mutasi_masuk';
+                    const mName = t.merchantName.toLowerCase();
+                    if (mName.startsWith('mutasi ke ')) t.tipe = 'mutasi_keluar';
+                    if (mName.startsWith('mutasi dari ')) t.tipe = 'mutasi_masuk';
                 }
             }
             return t;
