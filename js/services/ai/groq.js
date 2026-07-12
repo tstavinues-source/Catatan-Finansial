@@ -1,12 +1,12 @@
 /**
  * Groq AI Engine Service
  * Menangani koneksi ke model Groq LLM beserta sistem failover API Key.
- * [BULLETPROOF EDITION: Anti-Crash Tipe Data, Dukungan Vision LLaMA 3.2, & Safe JSON]
  */
 
 import { APP_CONFIG } from '../../config/constants.js';
 import { EncryptionService } from '../encryption.js';
 
+// Mengamankan inisialisasi kunci rahasia dari Strict Mode
 let groqSecretKey = null;
 try {
     groqSecretKey = localStorage.getItem('aurafi_groq_secret');
@@ -22,10 +22,7 @@ try {
 export const GroqService = {
     keysPool: [], 
     currentIndex: 0, 
-    // 🔥 Model standar super cepat Groq untuk percakapan teks
-    model: "llama-3.1-8b-instant",
-    // 🔥 Model khusus Groq untuk membedah struk bergambar
-    visionModel: "llama-3.2-11b-vision-preview",
+    model: "qwen/qwen3.6-27b",
     secret: groqSecretKey,
     
     init: function(rawKeysArray) {
@@ -67,52 +64,17 @@ export const GroqService = {
         const maxLimit = Math.min(totalKeys, APP_CONFIG.MAX_RETRY_AI);
         const groqApiUrl = "https://api.groq.com/openai/v1/chat/completions";
         
-        let finalMessages = JSON.parse(JSON.stringify(messages));
-        let hasVision = false;
-
-        // 🛡️ PELINDUNG 1: Deteksi tipe data dengan aman agar JavaScript tidak TypeError/Crash!
-        if (finalMessages.length > 0) {
-            const lastMsg = finalMessages[finalMessages.length - 1];
-            
-            // Jika payload berbentuk array (Artinya ada Sisipan Gambar/Struk)
-            if (Array.isArray(lastMsg.content)) {
-                hasVision = true;
-                if (requireJson) {
-                    let textPart = lastMsg.content.find(p => p.type === 'text');
-                    if (textPart && typeof textPart.text === 'string' && !textPart.text.toLowerCase().includes("json")) {
-                        textPart.text += "\n\n(IMPORTANT: You must respond in valid JSON format only).";
-                    } else if (!textPart) {
-                        lastMsg.content.push({ type: "text", text: "(IMPORTANT: You must respond in valid JSON format only)." });
-                    }
-                }
-            // Jika payload berbentuk string murni (Chat Biasa)
-            } else if (typeof lastMsg.content === 'string') {
-                if (requireJson && !lastMsg.content.toLowerCase().includes("json")) {
-                    lastMsg.content += "\n\n(IMPORTANT: You must respond in valid JSON format only).";
-                }
-            }
-        }
-        
-        // 🔥 Pilih model secara otomatis (Teks vs Gambar)
-        const targetModel = hasVision ? this.visionModel : this.model;
-        
         while (attempt < maxLimit) {
             const apiKey = this.getCurrentApiKey();
             try {
                 const payload = { 
-                    model: targetModel, 
-                    messages: finalMessages, 
+                    model: this.model, 
+                    messages: messages, 
                     temperature: requireJson ? 0.1 : 0.7 
                 };
-                
-                // 🛡️ PELINDUNG 2: Model Groq Vision akan error 400 jika kita memaksa format json_object.
-                // Oleh karena itu, json_object DILARANG AKTIF jika sedang memproses gambar!
-                if (requireJson && !hasVision) {
+                if (requireJson) {
                     payload.response_format = { type: "json_object" };
                 }
-                
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 60000); // Batas 60 detik
                 
                 const response = await fetch(groqApiUrl, {
                     method: 'POST', 
@@ -120,13 +82,10 @@ export const GroqService = {
                         'Authorization': `Bearer ${apiKey}`, 
                         'Content-Type': 'application/json' 
                     }, 
-                    body: JSON.stringify(payload),
-                    signal: controller.signal
+                    body: JSON.stringify(payload)
                 });
                 
-                clearTimeout(timeoutId);
-                
-                if (response.status === 429 || response.status === 401 || response.status === 503 || response.status >= 500) { 
+                if (response.status === 429 || response.status === 400 || response.status === 401 || response.status === 503 || response.status >= 500) { 
                     this.switchToNextApiKey();
                     attempt++; 
                     continue; 
@@ -134,7 +93,7 @@ export const GroqService = {
                 
                 if (!response.ok) { 
                     const err = await response.json();
-                    throw new Error(`[Groq HTTP ${response.status}] ` + (err.error?.message || "Kesalahan API")); 
+                    throw new Error(err.error?.message || "Kesalahan Fatal Groq Engine"); 
                 }
                 
                 const data = await response.json();
@@ -144,13 +103,6 @@ export const GroqService = {
                 
                 return data.choices[0].message.content;
             } catch (err) { 
-                console.error("[AuraFi Groq Debug]", err);
-                
-                // 🛡️ PELINDUNG 3: Jika data ditolak mentah-mentah (400) atau timeout, 
-                // langsung HENTIKAN looping (jangan buang API Key lain) dan biarkan orchestrator melempar tugasnya ke Gemini!
-                if (err.message.includes("400") || err.name === 'AbortError') {
-                    throw err; 
-                }
                 this.switchToNextApiKey();
                 attempt++; 
             }
