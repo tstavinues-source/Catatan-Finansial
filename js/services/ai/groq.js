@@ -41,7 +41,7 @@ export const GroqAPI = {
             console.warn('GroqAPI: Gambar terdeteksi. Groq murni teks, gambar diabaikan.');
         }
 
-        const modelName = "llama-3.1-8b-instant";
+        const modelName = "openai/gpt-oss-120b";
         const url = "https://api.groq.com/openai/v1/chat/completions";
 
         const groqMessages = [{ role: "system", content: systemPrompt }];
