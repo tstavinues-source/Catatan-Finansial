@@ -23,9 +23,7 @@ export class GeminiFailoverEngine {
             "gemini-2.5-flash-lite",
             "gemini-2.5-pro",
             "gemini-3.0-flash",
-            "gemini-3.1-pro",
-            "gemini-3.1-flash-lite",
-            "gemini-3.5-flash"
+            
         ];
     }
     
@@ -72,7 +70,7 @@ export class GeminiFailoverEngine {
     
     // === MESIN EKSEKUSI AI DINAMIS ===
     // Menambahkan parameter 'targetModel' untuk kebebasan memilih versi AI
-    async fetch(payload, base64Image, targetModel = "gemini-3.5-flash") {
+    async fetch(payload, base64Image, targetModel = "gemini-2.5-flash") {
         if (this.keysPool.length === 0) {
             throw new Error("Sistem Gemini terkunci: Kunci API kosong atau PIN Anda tidak akurat.");
         }
