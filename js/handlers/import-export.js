@@ -99,8 +99,13 @@ window.downloadCSV = function() {
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     
+    // FITUR BARU: nama file sekarang mencantumkan rentang tanggal yang benar-benar
+    // dipakai (siklus/bulan/semua/custom), supaya beberapa file unduhan gampang dibedakan.
+    const fmtDate = (d) => d.toISOString().split('T')[0];
+    const rangeLabel = `${fmtDate(periodRange.startObj)}_to_${fmtDate(periodRange.endObj)}`;
+    
     link.href = url;
-    link.download = `AuraFi_Ledger_Report_Secured_${new Date().toISOString().split('T')[0]}.csv`; 
+    link.download = `AuraFi_Ledger_${rangeLabel}.csv`; 
     
     document.body.appendChild(link); 
     link.click();
