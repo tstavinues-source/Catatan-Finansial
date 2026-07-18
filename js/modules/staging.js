@@ -154,8 +154,18 @@ window.renderStagingUI = function() {
         if (taxSection) taxSection.classList.add('hidden');
     }
 
-    const allCats = CategoryManager.getAllCategories();
-    const catArray = Object.values(allCats).map(c => c.name);
+    // PERBAIKAN: sebelumnya dropdown kategori per-item dibangun dari daftar nama
+    // yang FLAT (induk & anak dicampur rata tanpa struktur) — makanya isinya
+    // terasa "beda"/acak dibanding picker kategori yang dipakai di form manual.
+    // Sekarang dibangun terstruktur per induk (dengan <optgroup>) persis seperti
+    // struktur asli di customCategories, supaya nama yang dipilih user PASTI
+    // sama persis dengan kategori yang sudah ada (mencegah duplikat saat disimpan).
+    const rawCatsForDropdown = AuraState.data.settings?.customCategories || {};
+    const catEntries = Object.entries(rawCatsForDropdown).map(([id, c]) => ({ id, ...c }));
+    const parentCats = catEntries.filter(c => !c.parentId);
+    const childCats = catEntries.filter(c => c.parentId);
+    // catArray dipertahankan untuk kompatibilitas pengecekan "foundMatch" di bawah
+    const catArray = catEntries.map(c => c.name);
     const itemsContainer = document.getElementById('staging-items-container');
     let totalNominal = 0;
     
@@ -174,12 +184,30 @@ window.renderStagingUI = function() {
                 let safeKategori = it.kategori_barang || "Lainnya";
                 
                 let selectOptionsHtml = '';
-                let foundMatch = false;
-                catArray.forEach(catName => {
-                    const isSelected = (catName.toLowerCase() === safeKategori.toLowerCase());
-                    if(isSelected) foundMatch = true;
-                    selectOptionsHtml += "<option value='" + AuraUtils.escapeHtml(catName) + "' " + (isSelected ? 'selected' : '') + ">" + AuraUtils.escapeHtml(catName) + "</option>";
-                });
+                let foundMatch = catArray.some(catName => catName.toLowerCase() === safeKategori.toLowerCase());
+
+                if (parentCats.length === 0) {
+                    // Fallback kalau vault kategori masih kosong total
+                    catArray.forEach(catName => {
+                        const isSelected = (catName.toLowerCase() === safeKategori.toLowerCase());
+                        selectOptionsHtml += "<option value='" + AuraUtils.escapeHtml(catName) + "' " + (isSelected ? 'selected' : '') + ">" + AuraUtils.escapeHtml(catName) + "</option>";
+                    });
+                } else {
+                    parentCats.forEach(parent => {
+                        const isParentSelected = (parent.name.toLowerCase() === safeKategori.toLowerCase());
+                        selectOptionsHtml += "<option value='" + AuraUtils.escapeHtml(parent.name) + "' " + (isParentSelected ? 'selected' : '') + ">" + AuraUtils.escapeHtml(parent.name) + "</option>";
+                        
+                        const mySubs = childCats.filter(c => c.parentId === parent.id);
+                        if (mySubs.length > 0) {
+                            selectOptionsHtml += "<optgroup label='" + AuraUtils.escapeHtml(parent.name) + "'>";
+                            mySubs.forEach(sub => {
+                                const isSubSelected = (sub.name.toLowerCase() === safeKategori.toLowerCase());
+                                selectOptionsHtml += "<option value='" + AuraUtils.escapeHtml(sub.name) + "' " + (isSubSelected ? 'selected' : '') + ">&nbsp;&nbsp;" + AuraUtils.escapeHtml(sub.name) + "</option>";
+                            });
+                            selectOptionsHtml += "</optgroup>";
+                        }
+                    });
+                }
                 
                 if (!foundMatch) {
                     selectOptionsHtml = "<option value='" + AuraUtils.escapeHtml(safeKategori) + "' selected>" + AuraUtils.escapeHtml(safeKategori) + " (AI Baru)</option>" + selectOptionsHtml;
@@ -286,10 +314,28 @@ window.saveStagingToDatabase = async function() {
     stagingData.tanggal = dateEl ? dateEl.value : stagingData.tanggal;
     
     let finalSum = 0;
+    const catTotals = {}; // PERBAIKAN: lacak total nominal per kategori item
     for (let i = 0; i < stagingData.items.length; i++) { 
-        finalSum += ((Number(stagingData.items[i].harga) || 0) * (Number(stagingData.items[i].qty) || 1));
+        const itemTotal = (Number(stagingData.items[i].harga) || 0) * (Number(stagingData.items[i].qty) || 1);
+        finalSum += itemTotal;
         if (!stagingData.items[i].kategori_barang) stagingData.items[i].kategori_barang = "Lainnya";
+        
+        const cKey = stagingData.items[i].kategori_barang;
+        catTotals[cKey] = (catTotals[cKey] || 0) + itemTotal;
     }
+    
+    // PERBAIKAN: Sebelumnya `stagingData.kategori` (kategori level transaksi) tidak
+    // pernah di-update walau user mengganti kategori tiap item di dropdown — jadi
+    // tetap memakai tebakan awal AI (sering generik/"Lainnya"). Ini menyebabkan ikon
+    // transaksi & filter kategori di Dashboard tidak nyambung dengan isi belanjaan
+    // yang sebenarnya, dan membuat _autoRegisterToVault mendaftarkan kategori item
+    // sebagai anak dari induk yang salah. Sekarang disinkronkan ke kategori dengan
+    // nominal terbesar di antara item-item transaksi ini.
+    let dominantCat = null, dominantVal = -1;
+    for (const cKey in catTotals) {
+        if (catTotals[cKey] > dominantVal) { dominantVal = catTotals[cKey]; dominantCat = cKey; }
+    }
+    if (dominantCat) stagingData.kategori = dominantCat;
     
     stagingData.nominal = finalSum + Number(stagingData.admin_fee || 0); 
     stagingData.is_deleted = false;
