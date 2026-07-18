@@ -132,9 +132,19 @@ window.populateUserFilterDropdown = function() {
 // KONTROL MATA UANG
 // ============================================================================
 
+// PERBAIKAN: Sebelumnya ada DUA definisi window.setCurrency (di sini dan di
+// main.js). Karena main.js dievaluasi belakangan, definisinya menimpa versi
+// ini — dan versi main.js TIDAK PERNAH menyimpan preferensi mata uang ke
+// Firebase (cuma ke localStorage), jadi preferensi mata uang gagal sinkron
+// lintas perangkat. Definisi duplikat di main.js sudah dihapus; versi di sini
+// sekarang jadi satu-satunya sumber, dan tetap menulis ke localStorage juga
+// (agar bisa langsung dipakai untuk render awal sebelum Firebase termuat).
 window.setCurrency = function(curr) {
     if (curr !== 'JPY' && curr !== 'IDR') return;
     AuraState.system.displayCurrency = curr;
+    AuraState.system.currency = curr;
+
+    try { localStorage.setItem('aurafi_active_currency', curr); } catch(e) { /* abaikan jika storage diblokir */ }
     
     const btnJpy = document.getElementById('btn-curr-jpy');
     const btnIdr = document.getElementById('btn-curr-idr');
@@ -153,7 +163,11 @@ window.setCurrency = function(curr) {
         window.FirebaseService.updateSettings({ currency: curr }).catch(err => Logger.warn('Navigation', 'Gagal menyimpan mata uang', err));
     }
     
-    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    if (typeof window.loadRealtimeDatabaseData === 'function') {
+        window.loadRealtimeDatabaseData(true);
+    } else if (typeof window.debouncedCalculateAll === 'function') {
+        window.debouncedCalculateAll();
+    }
 };
 
 // ============================================================================
