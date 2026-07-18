@@ -2,7 +2,6 @@
  * Super Render Engine [V3 - MULTI-WALLET & GHOST WEALTH FILTER]
  * (FIX: Global Analytics Interceptor & Nuklir Basmi Hantu)
  */
-import { ref, onValue } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { Logger } from '../core/logger.js';
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
@@ -617,107 +616,22 @@ window.toggleExpandedReceipt = function(trxId) {
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 };
 
-window.loadRealtimeDatabaseData = function() {
-    if (!AuraState.user.uid) {
-        Logger.warn('Dashboard', 'loadRealtimeDatabaseData: Tidak ada user UID aktif');
-        return;
-    }
-    
-    const uid = AuraState.user.uid;
-    const db = AuraState.instances.db;
-    const ledgerNode = APP_CONFIG.LEDGER_NODE;
-    const listeners = AuraState.listeners || [];
-    
-    for (let i = 0; i < listeners.length; i++) {
-        if (typeof listeners[i] === 'function') listeners[i]();
-    }
-    AuraState.listeners = [];
-    
-    Logger.info('Dashboard', 'Membangun koneksi listener Realtime Firebase...');
-    
-    const txRef = ref(db, `${ledgerNode}/${uid}/transactions`);
-    const txUnsubscribe = onValue(txRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        
-        // ====================================================================
-        // 🛡️ PENCEGAT GLOBAL (Mencegah Mutasi masuk ke Analitik/Stats)
-        // ====================================================================
-        const transactions = Object.keys(data).map(key => {
-            let t = { id: key, ...data[key] };
-            if (t.tipe !== 'mutasi_keluar' && t.tipe !== 'mutasi_masuk') {
-                if (typeof t.merchantName === 'string') {
-                    const mName = t.merchantName.toLowerCase();
-                    if (mName.startsWith('mutasi ke ')) t.tipe = 'mutasi_keluar';
-                    if (mName.startsWith('mutasi dari ')) t.tipe = 'mutasi_masuk';
-                }
-            }
-            return t;
-        });
-
-        AuraState.data.transactions = transactions.filter(t => !t.is_deleted);
-        AuraState.data.trash = transactions.filter(t => t.is_deleted);
-        
-        if (typeof window.populateUserFilterDropdown === 'function') window.populateUserFilterDropdown();
-        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    });
-    AuraState.listeners.push(txUnsubscribe);
-    
-    const walletsRef = ref(db, `${ledgerNode}/${uid}/wallets`);
-    const walletsUnsubscribe = onValue(walletsRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        AuraState.data.wallets = data;
-        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    });
-    AuraState.listeners.push(walletsUnsubscribe);
-
-    const goalsRef = ref(db, `${ledgerNode}/${uid}/goals`);
-    const goalsUnsubscribe = onValue(goalsRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        AuraState.data.goals = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    });
-    AuraState.listeners.push(goalsUnsubscribe);
-    
-    const settingsRef = ref(db, `${ledgerNode}/${uid}/settings`);
-    const settingsUnsubscribe = onValue(settingsRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        AuraState.data.settings = data;
-        
-        if (data.monthlyBudget?.limit !== undefined) {
-            AuraState.data.monthlyBudget = data.monthlyBudget.limit;
-        }
-        
-        if (data.groqApiKeys) {
-            AuraState.data.groqKeys = Object.keys(data.groqApiKeys).map(key => ({ id: key, ...data.groqApiKeys[key] }));
-            if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
-        }
-        
-        if (data.aiPreferences) {
-            AuraUtils.safeDOM('setting-ai-chat', el => el.value = data.aiPreferences.modelChat || 'Auto');
-            AuraUtils.safeDOM('setting-ai-vision', el => el.value = data.aiPreferences.modelVision || 'Auto');
-            AuraUtils.safeDOM('setting-ai-persona', el => el.value = data.aiPreferences.persona || 'Kombinasi Humble + Jenius + Profesional');
-            AuraUtils.safeDOM('setting-ai-style', el => el.value = data.aiPreferences.style || 'Normal');
-        }
-        
-        if (data.profile) {
-            AuraUtils.safeDOM('user-fullname', el => el.value = data.profile.fullName || '');
-            AuraUtils.safeDOM('user-nickname', el => el.value = data.profile.nickname || '');
-        }
-        
-        if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
-        if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
-        if (typeof window.renderCategoryDropdowns === 'function') window.renderCategoryDropdowns();
-        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    });
-    AuraState.listeners.push(settingsUnsubscribe);
-    
-    const chatRef = ref(db, `${ledgerNode}/${uid}/oracleChats`);
-    const chatUnsubscribe = onValue(chatRef, (snapshot) => {
-        const data = snapshot.val() || {};
-        AuraState.data.oracleChats = Object.keys(data).map(key => ({ id: key, ...data[key] }));
-        if (typeof window.renderOracleChats === 'function') window.renderOracleChats();
-    });
-    AuraState.listeners.push(chatUnsubscribe);
-    
-    Logger.success('Dashboard', 'Pipa koneksi data realtime telah dikunci rapat.');
-};
+// ============================================================================
+// PERBAIKAN: window.loadRealtimeDatabaseData DIHAPUS dari file ini.
+// ============================================================================
+// Sebelumnya fungsi ini memasang SET LISTENER KEDUA yang terpisah untuk path
+// yang SAMA (transactions/settings/goals/wallets/oracleChats) dengan yang
+// sudah dipasang oleh `services/firebase.js` saat login (onAuthStateChanged).
+// Karena main.js mengimpor firebase.js LEBIH DULU lalu dashboard.js BELAKANGAN,
+// definisi di sini menimpa punya firebase.js — sehingga tombol "Refresh Data"
+// dan pemanggilan `loadRealtimeDatabaseData(true)` di main.js justru membuat
+// listener realtime baru yang duplikat, berjalan berdampingan dengan listener
+// asli dari firebase.js yang tidak pernah dilepas. Dua listener ini memproses
+// data dengan cara sedikit berbeda (satu mengurutkan tanggal, satu mengoreksi
+// tipe mutasi legacy) sehingga hasil akhirnya tidak konsisten tergantung mana
+// yang menembak terakhir.
+//
+// Sekarang satu-satunya tempat yang boleh memasang listener realtime adalah
+// `services/firebase.js`. Definisi `window.loadRealtimeDatabaseData` yang aktif
+// juga sudah dipindah ke sana sebagai fungsi refresh tampilan murni (tanpa buat
+// listener baru). Lihat services/firebase.js untuk implementasi barunya.
