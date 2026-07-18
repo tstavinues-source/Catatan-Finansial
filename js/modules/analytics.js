@@ -108,6 +108,25 @@ window.renderAnalytics = function() {
                 trxExpense += val;
             });
 
+            // PERBAIKAN: sebelumnya admin_fee/pajak transaksi TIDAK ikut dihitung
+            // di sini (hanya harga item), padahal Dashboard (reCalculateAll &
+            // periodSpent) memakai trx.nominal yang SUDAH termasuk admin_fee.
+            // Akibatnya total pengeluaran di Analytics selalu lebih kecil dari
+            // Dashboard untuk struk yang masih punya pajak terpisah (belum
+            // "distribute"/"separate" lewat staging AI). Dimasukkan sebagai
+            // kategori tersendiri "Pajak & Biaya Admin" agar total cocok dan
+            // tetap transparan (tidak dibaurkan ke kategori item mana pun).
+            const feeVal = Number(trx.admin_fee || 0);
+            if (feeVal > 0) {
+                const feeCatName = 'Pajak & Biaya Admin';
+                if (!catMap[feeCatName]) {
+                    catMap[feeCatName] = { total: 0, style: { icon: 'fa-file-invoice-dollar', hex: '#facc15' }, subs: {} };
+                }
+                catMap[feeCatName].total += feeVal;
+                catMap[feeCatName].subs[feeCatName] = (catMap[feeCatName].subs[feeCatName] || 0) + feeVal;
+                trxExpense += feeVal;
+            }
+
             merchantMap[safeMerchant] = (merchantMap[safeMerchant] || 0) + trxExpense;
             totalExpense += trxExpense;
         }
