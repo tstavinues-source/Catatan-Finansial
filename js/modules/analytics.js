@@ -43,29 +43,52 @@ function getCategoryStyleFromDB(catName) {
     return null;
 }
 
+// FITUR BARU: terapkan rentang tanggal bebas pilih di halaman Statistik.
+// Menyatu dengan sistem filter periode yang sudah ada (AuraState.filters.periodMode)
+// supaya Dashboard, Analytics, dan Download CSV otomatis konsisten memakai rentang yang sama.
+window.applyCustomAnalyticsRange = function() {
+    const startEl = document.getElementById('analytics-range-start');
+    const endEl = document.getElementById('analytics-range-end');
+    const startVal = startEl ? startEl.value : '';
+    const endVal = endEl ? endEl.value : '';
+
+    if (!startVal || !endVal) {
+        if (window.showToast) window.showToast("Pilih tanggal mulai dan akhir dulu.", true);
+        return;
+    }
+    if (new Date(startVal) > new Date(endVal)) {
+        if (window.showToast) window.showToast("Tanggal mulai tidak boleh setelah tanggal akhir.", true);
+        return;
+    }
+
+    AuraState.filters.periodMode = 'custom';
+    AuraState.filters.customStart = startVal;
+    AuraState.filters.customEnd = endVal;
+
+    // Nonaktifkan highlight tombol mode siklus/bulan/semua di Dashboard karena sekarang custom
+    ['period', 'month', 'all'].forEach(m => {
+        AuraUtils.safeDOM(`btn-mode-${m}`, el => el.classList.remove('text-accent', 'bg-white/10'));
+    });
+
+    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    if (window.showToast) window.showToast(`Rentang diterapkan: ${startVal} s/d ${endVal}`);
+};
+
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
     
     // 1. FILTER WAKTU
-    let startDate = 0, endDate = Infinity;
-    const now = new Date();
-    const mode = AuraState.system.viewMode || 'period';
-    
-    if (mode === 'period') {
-        const y = now.getFullYear(); const m = now.getMonth(); const d = now.getDate();
-        if (d >= 16) {
-            startDate = new Date(y, m, 16, 0, 0, 0).getTime();
-            endDate = new Date(y, m + 1, 15, 23, 59, 59).getTime();
-        } else {
-            startDate = new Date(y, m - 1, 16, 0, 0, 0).getTime();
-            endDate = new Date(y, m, 15, 23, 59, 59).getTime();
-        }
-    } else if (mode === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).getTime();
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
-    } else {
-        startDate = 0; 
-    }
+    // PERBAIKAN KRITIS: sebelumnya baca AuraState.system.viewMode — properti yang
+    // TIDAK PERNAH di-set di manapun di seluruh kode (selalu undefined), jadi
+    // Analytics SELALU jatuh ke fallback 'period' (siklus 16-15) permanen,
+    // terlepas dari toggle "Bulan Ini"/"Semua" yang dipencet user di Dashboard
+    // (yang sebenarnya menyimpan pilihannya di AuraState.filters.periodMode,
+    // path yang berbeda). Sekarang disamakan, dan sekaligus pakai satu fungsi
+    // bersama AuraUtils.getPeriodRange() (bukan logika duplikat sendiri) supaya
+    // otomatis ikut mendukung siklus fleksibel & rentang tanggal custom.
+    const range = AuraUtils.getPeriodRange();
+    let startDate = range.start, endDate = range.end;
 
     if (typeof window.renderDynamicTrackers === 'function') {
         window.renderDynamicTrackers(startDate, endDate);
@@ -361,17 +384,10 @@ window.openSubCategoryItems = function(parentName, subName) {
         document.body.appendChild(modal);
     }
 
-    let startDate = 0, endDate = Infinity;
-    const now = new Date();
-    const mode = AuraState.system.viewMode || 'period';
-    
-    if (mode === 'period') {
-        const y = now.getFullYear(); const m = now.getMonth(); const d = now.getDate();
-        if (d >= 16) { startDate = new Date(y, m, 16, 0, 0, 0).getTime(); endDate = new Date(y, m + 1, 15, 23, 59, 59).getTime(); } 
-        else { startDate = new Date(y, m - 1, 16, 0, 0, 0).getTime(); endDate = new Date(y, m, 15, 23, 59, 59).getTime(); }
-    } else if (mode === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0).getTime(); endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).getTime();
-    }
+    // PERBAIKAN: sama seperti renderAnalytics, sebelumnya pakai AuraState.system.viewMode
+    // (selalu undefined) dan logika tanggal duplikat sendiri. Disamakan ke getPeriodRange().
+    const range = AuraUtils.getPeriodRange();
+    let startDate = range.start, endDate = range.end;
 
     const tx = AuraState.data.transactions || [];
     let itemsHtml = '';
