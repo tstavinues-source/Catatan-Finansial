@@ -186,7 +186,7 @@
         </div>
     </div>
 
-        <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
+    <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-lg h-[90vh] flex flex-col shadow-2xl border-t-4 border-t-accent overflow-hidden">
             <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-glass)]">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-microscope"></i> AI Staging Area</h3>
@@ -913,9 +913,6 @@
                     <button id="btn-mode-period" onclick="window.changeViewMode('period')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Siklus 16-15</button>
                     <button id="btn-mode-month" onclick="window.changeViewMode('month')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all text-accent bg-white/10">Bulan Ini</button>
                     <button id="btn-mode-all" onclick="window.changeViewMode('all')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Semua</button>
-                    <button onclick="window.promptCycleStartDay()" class="w-9 glass-panel py-2 text-[10px] flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition-all shrink-0" aria-label="Atur Tanggal Mulai Siklus">
-                        <i class="fa-solid fa-gear"></i>
-                    </button>
                 </div>
 
                 <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8">
@@ -1037,17 +1034,6 @@
                     <h2 class="text-xl font-display font-black tracking-tight">Statistik Cerdas</h2>
                     <button onclick="window.downloadCSV()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-bold text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-download"></i> CSV</button>
                 </div>
-
-                <!-- FITUR BARU: rentang tanggal custom untuk data pengeluaran & download CSV -->
-                <div class="glass-panel p-3.5 flex flex-col gap-2.5">
-                    <p class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-bold flex items-center gap-1.5"><i class="fa-solid fa-calendar-days"></i> Rentang Tanggal Custom</p>
-                    <div class="flex gap-2 items-center">
-                        <input type="date" id="analytics-range-start" class="flex-1 bg-black/40 rounded-lg p-2 text-[11px] outline-none border border-[var(--border-glass)] focus:border-emerald-400 text-white">
-                        <span class="text-[10px] text-[var(--text-muted)]">s/d</span>
-                        <input type="date" id="analytics-range-end" class="flex-1 bg-black/40 rounded-lg p-2 text-[11px] outline-none border border-[var(--border-glass)] focus:border-emerald-400 text-white">
-                    </div>
-                    <button onclick="window.applyCustomAnalyticsRange()" class="glass-panel py-2 rounded-lg text-[9px] font-bold text-accent hover:bg-white/10 active:scale-95 transition uppercase tracking-widest">Terapkan Rentang</button>
-                </div>
                 
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-panel p-3.5">
@@ -1118,4 +1104,155 @@
                     <div class="flex gap-3">
                         <div class="w-1/2">
                             <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal Mulai</label>
-                            <input type="date" id="goal-start-date" class="v-input w-full rounded-xl p-3 text-xs text-[var(--text-mute
+                            <input type="date" id="goal-start-date" class="v-input w-full rounded-xl p-3 text-xs text-[var(--text-muted)] outline-none">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tenggat Akhir</label>
+                            <input type="date" id="goal-end-date" class="v-input w-full rounded-xl p-3 text-xs text-[var(--text-muted)] outline-none">
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <div class="w-1/2">
+                            <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Angka Waktu</label>
+                            <input type="number" id="goal-period-val" placeholder="Cth: 1, 2" value="1" class="v-input w-full rounded-xl p-3 text-sm outline-none text-center">
+                        </div>
+                        <div class="w-1/2">
+                            <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Satuan (Per)</label>
+                            <div class="relative">
+                                <input type="hidden" id="goal-period-unit-val" value="bulan">
+                                <button type="button" onclick="window.openTimeUnitPicker('goal-period-unit-val', 'goal-period-unit-display')" class="v-input w-full rounded-xl p-3 text-xs text-left flex justify-between items-center bg-black focus:border-accent transition-colors outline-none">
+                                    <span id="goal-period-unit-display" class="text-white font-bold capitalize">Bulan</span>
+                                    <i class="fa-solid fa-chevron-down text-[10px] text-[var(--text-muted)]"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[9px] text-[var(--text-muted)] italic text-center">*Misal: Angka [1] & Satuan [Bulan] = Sistem akan menagih target menabung Anda setiap 1 Bulan sekali.</p>
+
+                    <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)] mt-2">Mulai Misi Menabung</button>
+                </div>
+
+                <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start pt-4 md:border-t md:border-[var(--border-glass)] mt-5 md:mt-8">
+                    
+                    <div>
+                        <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1"><i class="fa-solid fa-bullseye mr-1"></i> Misi Aktif</h3>
+                        <div id="goals-list-container" class="space-y-4"></div>
+                    </div>
+                    
+                    <div class="pt-6 md:pt-0 border-t border-[var(--border-glass)] md:border-t-0">
+                        <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-3 px-1"><i class="fa-solid fa-calendar-check mr-1"></i> Tagihan Otomatis</h3>
+                        
+                        <div id="budget-bills-container" class="space-y-3 mb-4"></div>
+
+                        <div class="glass-panel p-4 border-t-2 border-t-sky-400">
+                            <h4 class="text-[10px] font-bold text-sky-400 uppercase tracking-widest mb-3">➕ Tambah Tagihan Rutin</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nama Tagihan</label>
+                                    <input id="new-rec-name" placeholder="Cth: Listrik / Internet" class="v-input w-full rounded-xl p-3 text-xs outline-none">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nominal Target</label>
+                                    <input id="new-rec-amt" type="number" placeholder="0" class="v-input w-full rounded-xl p-3 text-xs outline-none">
+                                </div>
+                                <div class="flex gap-3">
+                                    <div class="w-1/2">
+                                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Tgl Eksekusi</label>
+                                        <input id="new-rec-date" type="number" placeholder="1-31" class="v-input w-full rounded-xl p-3 text-xs outline-none">
+                                    </div>
+                                    <div class="w-1/2">
+                                        <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Metode</label>
+                                        <select id="new-rec-method" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
+                                            <option value="cashless">Cashless</option>
+                                            <option value="tunai">Tunai</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button onclick="window.addRecurringPayment()" class="w-full mt-2 py-3 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 font-bold text-[10px] uppercase tracking-wider transition-all hover:bg-sky-500/30">
+                                    <i class="fa-solid fa-plus"></i> Tambah Tagihan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
+                <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-surface)] backdrop-blur-xl z-10 shrink-0 sticky top-0 shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/30 shadow-[0_0_15px_var(--accent-glow)]"><i class="fa-solid fa-brain text-accent text-lg"></i></div>
+                        <div>
+                            <h2 class="font-bold text-[var(--text-main)] text-sm tracking-wide">Aura Oracle V3</h2>
+                            <p class="text-[9px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-widest mt-0.5">
+                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Online
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="window.showModal('modal-settings')" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-sliders text-xs"></i></button>
+                </div>
+                <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar pb-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIyKSIvPgo8L3N2Zz4=')]"></div>
+                <div id="chat-anchor" class="h-4 shrink-0"></div>
+            </div>
+
+            <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
+                    <button onclick="window.switchView('transactions')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white active:scale-95 transition"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                </div>
+                <div id="trash-list-container" class="space-y-3"></div>
+            </div>
+        </main>
+
+        <div id="omnipresent-input" class="w-full px-4 pt-2 pb-3 bg-[var(--bg-surface)] backdrop-blur-2xl z-40 shrink-0 border-t border-[var(--border-glass)]">
+            <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">
+                <img id="img-preview" src="" class="h-16 rounded-xl object-cover shadow-lg border border-[var(--border-glass)]">
+                <button onclick="window.removeImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition shadow-lg"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="glass-panel p-1.5 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] bg-black/40 focus-within:border-[var(--accent-primary)] focus-within:bg-black/60 transition-all rounded-2xl">
+                <button onclick="document.getElementById('file-upload').click()" class="w-12 h-12 text-[var(--text-muted)] hover:text-accent rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
+                    <i class="fa-solid fa-camera text-lg"></i>
+                    <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="window.handleImage(event)">
+                </button>
+                <button id="btn-voice" onclick="window.startVoice()" class="w-12 h-12 text-[var(--text-muted)] hover:text-accent rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Rekam Suara">
+                    <i class="fa-solid fa-microphone text-lg"></i>
+                </button>
+                <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-[15px] text-[var(--text-main)] outline-none py-3.5 px-2 max-h-24 min-h-[48px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik transaksi / chat AI..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
+                <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--bg-base)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label ="Kirim Input">
+                    <i class="fa-solid fa-paper-plane text-base" id="icon-send"></i>
+                </button>
+            </div>
+        </div>
+
+        <nav class="w-full h-[70px] glass-nav flex justify-around md:justify-center md:gap-16 items-center px-2 z-50 shrink-0 safe-pb transition-all">
+            <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--accent-primary)] active:scale-90 transition group" data-target="dashboard">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-meteor text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
+            </button>
+            <button onclick="window.switchView('transactions')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="transactions">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-list-ul text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Log</span>
+            </button>
+            <button onclick="window.switchView('analytics')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="analytics">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-chart-pie text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Stats</span>
+            </button>
+            <button onclick="window.switchView('budgets')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="budgets">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-wallet text-[18px]"></i></div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Budget</span>
+            </button>
+            <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group relative" data-target="oracle">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition relative">
+                    <i class="fa-solid fa-brain text-[18px]"></i>
+                    <div class="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border border-[var(--bg-base)]"></div>
+                </div>
+                <span class="text-[8px] font-black tracking-widest uppercase">Oracle</span>
+            </button>
+        </nav>
+    </div>
+
+    <script type="module" src="./js/main.js?v=AURA_FINAL_CACHE_BUST"></script>
+
+</body>
+</html>
