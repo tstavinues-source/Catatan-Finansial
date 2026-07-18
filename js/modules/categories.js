@@ -74,6 +74,16 @@ export const CategoryManager = {
     },
     
     renderDropdowns: function() {
+        // PERBAIKAN: Sebelumnya fungsi ini menganggap 'manual-trx-category',
+        // 'add-item-cat', dan 'edit-item-cat' adalah elemen <select> — padahal
+        // di HTML-nya ketiganya sudah lama diganti jadi <input type="hidden">
+        // yang dikontrol lewat picker kustom (window.openCategoryPicker), bukan
+        // dropdown native lagi. 'manual-trx-category' bahkan sudah tidak ada
+        // sebagai ID sama sekali (senyap, tidak error). Tapi 'add-item-cat' dan
+        // 'edit-item-cat' MASIH ADA sebagai <input> — coba dibaca .options-nya
+        // (properti yang cuma dimiliki <select>) selalu error
+        // "undefined is not iterable" setiap kali fungsi ini dipanggil.
+        // Satu-satunya elemen yang MASIH benar-benar <select> adalah 'filter-category'.
         const allCats = this.getAllCategories();
         let optionsHtml = '';
         
@@ -81,23 +91,18 @@ export const CategoryManager = {
             optionsHtml += `<option value="${c.name}">${c.name}</option>`; 
         });
 
-        const targetIds = ['manual-trx-category', 'add-item-cat', 'edit-item-cat', 'filter-category'];
-        
-        targetIds.forEach(function(id) {
-            AuraUtils.safeDOM(id, function(el) {
-                const currentVal = el.value; 
-                let preHtml = (id === 'filter-category') ? `<option value="ALL">SEMUA KATEGORI</option>` : `<option value="Lainnya">Pilih Kategori...</option>`;
-                el.innerHTML = preHtml + optionsHtml;
-                
-                if (currentVal) { 
-                    const exists = Array.from(el.options).some(function(opt) {
-                        return opt.value === currentVal;
-                    }); 
-                    if (exists) {
-                        el.value = currentVal; 
-                    }
+        AuraUtils.safeDOM('filter-category', function(el) {
+            const currentVal = el.value; 
+            el.innerHTML = `<option value="ALL">SEMUA KATEGORI</option>` + optionsHtml;
+            
+            if (currentVal) { 
+                const exists = Array.from(el.options).some(function(opt) {
+                    return opt.value === currentVal;
+                }); 
+                if (exists) {
+                    el.value = currentVal; 
                 }
-            });
+            }
         });
     },
 
