@@ -340,9 +340,19 @@ export const FirebaseService = {
                 const cName = item.kategori_barang || item.kategori || item.category || item.sub_kategori;
                 
                 if (cName && cName.toLowerCase() !== targetParent.toLowerCase() && cName.toLowerCase() !== 'uncategorized' && cName.toLowerCase() !== 'lainnya') {
-                    let cId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase() && rawCats[id].parentId === pId);
-                    if (!cId) {
-                        cId = `cat_auto_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
+                    // PERBAIKAN KRITIS: Sebelumnya pengecekan "sudah ada atau belum" hanya
+                    // dicari SEBAGAI ANAK dari targetParent (kategori level transaksi).
+                    // Karena kategori level-transaksi sering tidak sinkron dengan kategori
+                    // per-item yang dipilih user (mis. transaksi tetap "Lainnya" walau user
+                    // ganti kategori item jadi "Makanan"), sistem selalu gagal menemukan
+                    // "Makanan" yang SUDAH ADA sebagai kategori induk sendiri, lalu bikin
+                    // "Makanan" baru sebagai anak dari "Lainnya" — jadi duplikat.
+                    // Sekarang: cek dulu apakah nama ini SUDAH ADA di MANAPUN di vault
+                    // (baik sebagai induk sendiri, maupun sebagai anak dari induk lain).
+                    // Kalau sudah ada di manapun, jangan buat baru.
+                    let cIdExisting = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase());
+                    if (!cIdExisting) {
+                        const cId = `cat_auto_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
                         rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
                         isUpdated = true;
                     }
