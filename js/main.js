@@ -258,36 +258,12 @@ window.AuraConfirm = function(message) {
 // FUNGSI PREFERENSI MATA UANG & KURS REALTIME
 // ==========================================
 
-window.setCurrency = function(curr) {
-    localStorage.setItem('aurafi_active_currency', curr);
-    
-    if (window.AuraState) {
-        window.AuraState.system.displayCurrency = curr; 
-        window.AuraState.system.currency = curr;
-    }
-    
-    const btnJpy = document.getElementById('btn-curr-jpy');
-    const btnIdr = document.getElementById('btn-curr-idr');
-    
-    if (btnJpy && btnIdr) {
-        if(curr === 'JPY') {
-            btnJpy.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]";
-            btnIdr.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]";
-        } else {
-            btnIdr.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]";
-            btnJpy.className = "px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]";
-        }
-    }
-    
-    if (typeof window.loadRealtimeDatabaseData === 'function') {
-        window.loadRealtimeDatabaseData(true); 
-    } else {
-        if(typeof window.renderDashboard === 'function') window.renderDashboard();
-        if(typeof window.renderTransactions === 'function') window.renderTransactions();
-        if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
-        if(typeof window.renderBudgets === 'function') window.renderBudgets();
-    }
-};
+// PERBAIKAN: window.setCurrency versi ini DIHAPUS karena duplikat dengan
+// handlers/navigation.js, dan versi ini tidak pernah menyimpan preferensi
+// mata uang ke Firebase (cuma localStorage) — jadi preferensi tidak sinkron
+// ke perangkat lain. Karena main.js dievaluasi paling akhir, definisi ini
+// dulu selalu menimpa punya navigation.js. Sekarang navigation.js adalah
+// satu-satunya sumber (sudah mencakup localStorage + sinkron ke Firebase).
 
 window.fetchLiveExchangeRate = async function() {
     const display = document.getElementById('live-rate-display');
