@@ -132,16 +132,36 @@ export const AuraUtils = {
         let start, end;
         
         if (mode === 'period') {
-            if (now.getDate() >= 16) {
-                start = new Date(now.getFullYear(), now.getMonth(), 16, 0, 0, 0);
-                end = new Date(now.getFullYear(), now.getMonth() + 1, 15, 23, 59, 59);
+            // FITUR BARU: siklus sebelumnya paten 16-15. Sekarang tanggal mulai
+            // bisa diatur user lewat Settings (AuraState.data.settings.cycleStartDay),
+            // default tetap 16 kalau belum pernah diatur.
+            const cycleDay = Math.min(28, Math.max(2, Number(AuraState.data.settings?.cycleStartDay) || 16));
+            if (now.getDate() >= cycleDay) {
+                start = new Date(now.getFullYear(), now.getMonth(), cycleDay, 0, 0, 0);
+                end = new Date(now.getFullYear(), now.getMonth() + 1, cycleDay - 1, 23, 59, 59);
             } else {
-                start = new Date(now.getFullYear(), now.getMonth() - 1, 16, 0, 0, 0);
-                end = new Date(now.getFullYear(), now.getMonth(), 15, 23, 59, 59);
+                start = new Date(now.getFullYear(), now.getMonth() - 1, cycleDay, 0, 0, 0);
+                end = new Date(now.getFullYear(), now.getMonth(), cycleDay - 1, 23, 59, 59);
             }
         } else if (mode === 'month') {
             start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
             end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        } else if (mode === 'custom') {
+            // FITUR BARU: rentang tanggal bebas dipilih user (dari Analytics).
+            // AuraState.filters.customStart/customEnd berisi string "YYYY-MM-DD"
+            // dari <input type="date">. Kalau tidak valid/kosong, aman fallback ke all-time.
+            const rawStart = AuraState.filters?.customStart;
+            const rawEnd = AuraState.filters?.customEnd;
+            const parsedStart = rawStart ? new Date(rawStart + 'T00:00:00') : null;
+            const parsedEnd = rawEnd ? new Date(rawEnd + 'T23:59:59') : null;
+            
+            if (parsedStart && !isNaN(parsedStart.getTime()) && parsedEnd && !isNaN(parsedEnd.getTime())) {
+                start = parsedStart;
+                end = parsedEnd;
+            } else {
+                start = new Date(1970, 0, 1);
+                end = new Date(2100, 0, 1);
+            }
         } else {
             start = new Date(1970, 0, 1);
             end = new Date(2100, 0, 1);
