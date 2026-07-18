@@ -76,8 +76,11 @@ export class GeminiFailoverEngine {
         }
         
         // Proteksi jika targetModel kosong atau tidak valid, kembalikan ke model unggulan
-        if (!targetModel || typeof targetModel !== 'string') {
-            targetModel = "gemini-3.5-flash";
+        // PERBAIKAN: sebelumnya fallback ke "gemini-3.5-flash" yang TIDAK ADA di
+        // this.availableModels (daftar tertinggi cuma sampai gemini-3.0-flash),
+        // jadi kalau user belum set preferensi model, request selalu gagal 404.
+        if (!targetModel || typeof targetModel !== 'string' || !this.availableModels.includes(targetModel)) {
+            targetModel = "gemini-2.5-flash";
         }
         
         let attempt = 0;
