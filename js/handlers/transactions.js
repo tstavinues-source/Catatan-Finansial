@@ -217,8 +217,10 @@ window.executeTransfer = async function() {
             }]
         };
 
-        await FirebaseService.saveTransaction(trxKeluar, true); 
-        await FirebaseService.saveTransaction(trxMasuk, false);
+        // PERBAIKAN: sebelumnya dua panggilan saveTransaction() terpisah — kalau
+        // yang kedua gagal di tengah jalan, dana "hilang" (sudah keluar dari
+        // sumber tapi tidak pernah masuk ke tujuan). Sekarang satu operasi atomik.
+        await FirebaseService.executeAtomicTransfer(trxKeluar, trxMasuk);
 
         if (typeof window.closeModal === 'function') window.closeModal('modal-transfer');
         if (window.showToast) window.showToast("Mutasi saldo berhasil dieksekusi!");
