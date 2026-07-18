@@ -11,7 +11,12 @@ import { AuraUtils } from '../core/utils.js';
 export const CategoryManager = {
     
     getAllCategories: function() {
-        const customCats = AuraState.data.settings?.categories || {};
+        // PERBAIKAN: Sebelumnya modul ini membaca dari `settings.categories`,
+        // padahal seluruh sistem lain (Firebase auto-register, Category Manager UI,
+        // Analytics, Harvester sync) menyimpan & membaca dari `settings.customCategories`.
+        // Akibatnya kategori buatan user / hasil auto-learn AI tidak pernah "terlihat" di sini.
+        // Sekarang disatukan ke satu sumber kebenaran: `settings.customCategories`.
+        const customCats = AuraState.data.settings?.customCategories || {};
         return { ...DEFAULT_SYSTEM_CATEGORIES, ...customCats };
     },
     
@@ -103,7 +108,8 @@ export const CategoryManager = {
         if (!itemsArray || !itemsArray.length) return;
         
         const existingCats = this.getAllCategories();
-        let customCats = AuraState.data.settings?.categories || {};
+        // PERBAIKAN: samakan dengan sumber kebenaran `customCategories`
+        let customCats = AuraState.data.settings?.customCategories || {};
         let isNewCategoryAdded = false;
 
         // Palet warna estetik untuk kategori baru buatan AI
@@ -134,6 +140,7 @@ export const CategoryManager = {
                     icon: finalIcon,
                     color: randomColor,
                     type: 'expense',
+                    parentId: null, // Konsisten dengan skema hierarki customCategories (parent/child)
                     isAutoLearned: true // Penanda bahwa ini hasil buatan AI
                 };
 
@@ -153,9 +160,9 @@ export const CategoryManager = {
         }
 
         if (isNewCategoryAdded) {
-            // 1. Update memory lokal
+            // 1. Update memory lokal (sumber kebenaran: customCategories)
             if (!AuraState.data.settings) AuraState.data.settings = {};
-            AuraState.data.settings.categories = customCats;
+            AuraState.data.settings.customCategories = customCats;
             
             // 2. Tanamkan ke Database Cloud Firebase secara diam-diam (Silent Sync)
             try {
@@ -163,7 +170,9 @@ export const CategoryManager = {
                 const { APP_CONFIG } = await import("../config/constants.js");
                 
                 if (AuraState.user.uid && AuraState.instances.db) {
-                    const dbPath = `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/categories`;
+                    // PERBAIKAN: path disamakan ke settings/customCategories (sebelumnya settings/categories,
+                    // sebuah node terpisah yang tidak pernah dibaca oleh modul manapun yang lain).
+                    const dbPath = `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/customCategories`;
                     await update(ref(AuraState.instances.db, dbPath), customCats);
                     
                     // Perbarui tampilan Dropdown di seluruh layar
