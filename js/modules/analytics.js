@@ -43,52 +43,14 @@ function getCategoryStyleFromDB(catName) {
     return null;
 }
 
-// FITUR BARU: terapkan rentang tanggal bebas pilih di halaman Statistik.
-// Menyatu dengan sistem filter periode yang sudah ada (AuraState.filters.periodMode)
-// supaya Dashboard, Analytics, dan Download CSV otomatis konsisten memakai rentang yang sama.
-window.applyCustomAnalyticsRange = function() {
-    const startEl = document.getElementById('analytics-range-start');
-    const endEl = document.getElementById('analytics-range-end');
-    const startVal = startEl ? startEl.value : '';
-    const endVal = endEl ? endEl.value : '';
-
-    if (!startVal || !endVal) {
-        if (window.showToast) window.showToast("Pilih tanggal mulai dan akhir dulu.", true);
-        return;
-    }
-    if (new Date(startVal) > new Date(endVal)) {
-        if (window.showToast) window.showToast("Tanggal mulai tidak boleh setelah tanggal akhir.", true);
-        return;
-    }
-
-    AuraState.filters.periodMode = 'custom';
-    AuraState.filters.customStart = startVal;
-    AuraState.filters.customEnd = endVal;
-
-    // Nonaktifkan highlight tombol mode siklus/bulan/semua di Dashboard karena sekarang custom
-    ['period', 'month', 'all'].forEach(m => {
-        AuraUtils.safeDOM(`btn-mode-${m}`, el => el.classList.remove('text-accent', 'bg-white/10'));
-    });
-
-    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
-    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    if (window.showToast) window.showToast(`Rentang diterapkan: ${startVal} s/d ${endVal}`);
-};
-
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
+    const now = new Date();
     
-    // 1. FILTER WAKTU
-    // PERBAIKAN KRITIS: sebelumnya baca AuraState.system.viewMode — properti yang
-    // TIDAK PERNAH di-set di manapun di seluruh kode (selalu undefined), jadi
-    // Analytics SELALU jatuh ke fallback 'period' (siklus 16-15) permanen,
-    // terlepas dari toggle "Bulan Ini"/"Semua" yang dipencet user di Dashboard
-    // (yang sebenarnya menyimpan pilihannya di AuraState.filters.periodMode,
-    // path yang berbeda). Sekarang disamakan, dan sekaligus pakai satu fungsi
-    // bersama AuraUtils.getPeriodRange() (bukan logika duplikat sendiri) supaya
-    // otomatis ikut mendukung siklus fleksibel & rentang tanggal custom.
+    // 1. FILTER WAKTU (Telah diperbaiki menggunakan sistem terpusat)
     const range = AuraUtils.getPeriodRange();
-    let startDate = range.start, endDate = range.end;
+    let startDate = range.start;
+    let endDate = range.end;
 
     if (typeof window.renderDynamicTrackers === 'function') {
         window.renderDynamicTrackers(startDate, endDate);
@@ -130,25 +92,6 @@ window.renderAnalytics = function() {
                 catMap[parentName].subs[cleanCat] = (catMap[parentName].subs[cleanCat] || 0) + val;
                 trxExpense += val;
             });
-
-            // PERBAIKAN: sebelumnya admin_fee/pajak transaksi TIDAK ikut dihitung
-            // di sini (hanya harga item), padahal Dashboard (reCalculateAll &
-            // periodSpent) memakai trx.nominal yang SUDAH termasuk admin_fee.
-            // Akibatnya total pengeluaran di Analytics selalu lebih kecil dari
-            // Dashboard untuk struk yang masih punya pajak terpisah (belum
-            // "distribute"/"separate" lewat staging AI). Dimasukkan sebagai
-            // kategori tersendiri "Pajak & Biaya Admin" agar total cocok dan
-            // tetap transparan (tidak dibaurkan ke kategori item mana pun).
-            const feeVal = Number(trx.admin_fee || 0);
-            if (feeVal > 0) {
-                const feeCatName = 'Pajak & Biaya Admin';
-                if (!catMap[feeCatName]) {
-                    catMap[feeCatName] = { total: 0, style: { icon: 'fa-file-invoice-dollar', hex: '#facc15' }, subs: {} };
-                }
-                catMap[feeCatName].total += feeVal;
-                catMap[feeCatName].subs[feeCatName] = (catMap[feeCatName].subs[feeCatName] || 0) + feeVal;
-                trxExpense += feeVal;
-            }
 
             merchantMap[safeMerchant] = (merchantMap[safeMerchant] || 0) + trxExpense;
             totalExpense += trxExpense;
@@ -384,10 +327,10 @@ window.openSubCategoryItems = function(parentName, subName) {
         document.body.appendChild(modal);
     }
 
-    // PERBAIKAN: sama seperti renderAnalytics, sebelumnya pakai AuraState.system.viewMode
-    // (selalu undefined) dan logika tanggal duplikat sendiri. Disamakan ke getPeriodRange().
+    // Menggunakan filter terpusat yang sama dengan Analytics Utama
     const range = AuraUtils.getPeriodRange();
-    let startDate = range.start, endDate = range.end;
+    const startDate = range.start; 
+    const endDate = range.end;
 
     const tx = AuraState.data.transactions || [];
     let itemsHtml = '';
