@@ -114,6 +114,15 @@ window.reCalculateAll = function() {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= (val + feeVal);
             else legacyCash -= (val + feeVal);
             legacyCashless += val; 
+        } else if (trx.tipe === 'nabung') {
+            // PERBAIKAN: sebelumnya tipe 'nabung' (setor ke misi tabungan, lihat
+            // goals.js) tidak punya cabang sama sekali di sini, jadi tidak pernah
+            // memotong saldo dompet manapun — padahal komentar desainnya sendiri
+            // bilang "MENABUNG MEMOTONG SALDO". Akibatnya uang yang disetor ke
+            // goal terhitung DUA KALI: tetap ada di saldo dompet, DAN ikut masuk
+            // ke savedAmount goal — Net Worth jadi lebih besar dari kenyataan.
+            if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= val;
+            else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
         }
     }
 
