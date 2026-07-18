@@ -177,6 +177,17 @@ window.processFileImport = async function(event) {
                 for(let i = 0; i < parsedTransactions.length; i++) {
                     const data = parsedTransactions[i];
                     data.user_id = AuraState.data.settings?.profile?.nickname || "Imported User";
+                    // PERBAIKAN: sebelumnya transaksi hasil import ditulis LANGSUNG ke
+                    // Firebase tanpa lewat _autoRegisterToVault (satu-satunya jalur yang
+                    // dipakai input manual/AI/staging) — jadi kategori dari data yang
+                    // diimpor tidak pernah terdaftar di customCategories, dan dropdown
+                    // kategori/ikon di Dashboard & Analytics tidak mengenalinya.
+                    // (Sengaja tidak memakai FirebaseService.saveTransaction() penuh di
+                    // sini agar tidak membuat satu entri audit log per baris — ringkasan
+                    // "DATA.IMPORT" di bawah sudah cukup mewakili.)
+                    await FirebaseService._autoRegisterToVault(data);
+                    data.nominal = Math.max(0, Number(data.nominal) || 0);
+                    if (!data.createdAt) data.createdAt = new Date().toISOString();
                     await push(ref(AuraState.instances.db, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
                     importSuccessCount++;
                 }
