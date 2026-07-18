@@ -106,6 +106,27 @@ JSON MURNI TANPA TAG:
             try {
                 const targetTrx = AuraState.data.transactions.find(t => t.id === resJson.target_id);
                 if (targetTrx) {
+                    // PERBAIKAN: Sebelumnya kategori item dari AI (resJson.new_items[].kategori_barang)
+                    // dipakai MENTAH-MENTAH tanpa validasi, beda dengan jalur scan struk (staging.js)
+                    // yang sudah menyaring tebakan kategori AI ke nama yang PERSIS SAMA dengan yang
+                    // sudah ada. Akibatnya kalau AI menulis kategori dengan variasi kapitalisasi/spasi
+                    // sedikit beda dari kategori yang sudah ada (mis. "minuman " vs "Minuman"),
+                    // _autoRegisterToVault gagal mencocokkan dan membuat kategori baru duplikat.
+                    // Sekarang disamakan persis dengan sanitizer di staging.js: cocokkan ke nama
+                    // kategori yang SUDAH ADA (case-insensitive), kalau tidak ketemu baru fallback ke "Lainnya".
+                    if (resJson.new_items && Array.isArray(resJson.new_items)) {
+                        const allCats = CategoryManager.getAllCategories();
+                        const validCategoryNames = Object.values(allCats).map(c => c.name);
+                        const validCategoryNamesLower = validCategoryNames.map(name => name.toLowerCase());
+                        
+                        resJson.new_items.forEach(newIt => {
+                            if (!newIt || typeof newIt !== 'object') return;
+                            let aiCat = (newIt.kategori_barang || "Lainnya").trim();
+                            let idx = validCategoryNamesLower.indexOf(aiCat.toLowerCase());
+                            newIt.kategori_barang = (idx !== -1) ? validCategoryNames[idx] : "Lainnya";
+                        });
+                    }
+
                     if (resJson.action === 'moveToTrash') {
                         await FirebaseService.moveToTrash(resJson.target_id);
                     } else if (resJson.action === 'update_transaction') {
