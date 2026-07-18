@@ -35,6 +35,9 @@ const forceUIRender = () => {
             console.warn(`Peringatan: Render tertahan di modul ${fn}`);
         }
     });
+    // Ikut memicu kalkulasi saldo dompet & statistik periode (sebelumnya dipicu
+    // secara terpisah oleh listener duplikat di dashboard.js).
+    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
 };
 
 const smartRender = () => {
@@ -47,6 +50,26 @@ const smartRender = () => {
         }
     }
     requestAnimationFrame(() => forceUIRender());
+};
+
+// ============================================================================
+// 🛡️ PENGELOLA SIKLUS HIDUP LISTENER REALTIME (ANTI-DUPLIKASI)
+// ============================================================================
+// PERBAIKAN KRITIS: Sebelumnya `dashboard.js` memasang SET LISTENER KEDUA yang
+// terpisah untuk path yang SAMA (transactions/settings/goals), sehingga kedua
+// listener menulis ke AuraState secara independen dan saling tumpang tindih
+// (race condition: urutan transaksi & koreksi tipe mutasi legacy jadi tidak
+// konsisten tergantung listener mana yang terakhir menembak). Sekarang HANYA
+// firebase.js yang boleh memasang listener realtime; semua unsubscribe-nya
+// dilacak di AuraState.listeners agar bisa dibersihkan saat re-login/logout.
+const detachAllRealtimeListeners = () => {
+    const listeners = AuraState.listeners || [];
+    for (let i = 0; i < listeners.length; i++) {
+        if (typeof listeners[i] === 'function') {
+            try { listeners[i](); } catch(e) { /* abaikan */ }
+        }
+    }
+    AuraState.listeners = [];
 };
 
 try {
@@ -66,6 +89,11 @@ try {
     });
 
     onAuthStateChanged(authInstance, (user) => {
+        // Selalu bersihkan listener lama dulu (mencegah listener dobel jika
+        // event auth berubah lagi sebelum listener sebelumnya sempat dilepas,
+        // misalnya saat ganti akun tanpa reload penuh).
+        detachAllRealtimeListeners();
+
         if (user) {
             AuraState.user.uid = user.uid;
             
@@ -78,8 +106,12 @@ try {
             
             const uid = user.uid;
 
+            // ====================================================================
+            // 1. TRANSAKSI (+ koreksi tipe mutasi legacy berbasis nama merchant,
+            //    digabung dari listener duplikat yang sebelumnya ada di dashboard.js)
+            // ====================================================================
             const txRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/transactions`);
-            onValue(txRef, (snapshot) => {
+            const txUnsub = onValue(txRef, (snapshot) => {
                 const data = snapshot.val();
                 const activeArr = [];
                 const trashArr = [];
@@ -87,6 +119,16 @@ try {
                 if (data) {
                     for (const key in data) {
                         const item = { id: key, ...data[key] };
+                        
+                        // 🛡️ Pencegat legacy: transaksi mutasi lama yang belum sempat
+                        // dimigrasi (belum punya tipe 'mutasi_keluar'/'mutasi_masuk')
+                        // masih dikenali lewat awalan nama merchant.
+                        if (item.tipe !== 'mutasi_keluar' && item.tipe !== 'mutasi_masuk' && typeof item.merchantName === 'string') {
+                            const mName = item.merchantName.toLowerCase();
+                            if (mName.startsWith('mutasi ke ')) item.tipe = 'mutasi_keluar';
+                            else if (mName.startsWith('mutasi dari ')) item.tipe = 'mutasi_masuk';
+                        }
+                        
                         if (item.is_deleted) trashArr.push(item);
                         else activeArr.push(item);
                     }
@@ -98,18 +140,56 @@ try {
                 AuraState.data.transactions = activeArr;
                 AuraState.data.trash = trashArr; 
                 initialDataArrived.transactions = true; 
+                
+                if (typeof window.populateUserFilterDropdown === 'function') window.populateUserFilterDropdown();
                 smartRender();
             });
+            AuraState.listeners.push(txUnsub);
 
+            // ====================================================================
+            // 2. SETTINGS (+ efek samping UI yang sebelumnya ada di listener
+            //    duplikat dashboard.js: budget, groq keys, preferensi AI, profil)
+            // ====================================================================
             const settingsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/settings`);
-            onValue(settingsRef, (snapshot) => {
-                AuraState.data.settings = snapshot.val() || {};
+            const settingsUnsub = onValue(settingsRef, (snapshot) => {
+                const data = snapshot.val() || {};
+                AuraState.data.settings = data;
+
+                if (data.monthlyBudget?.limit !== undefined) {
+                    AuraState.data.monthlyBudget = data.monthlyBudget.limit;
+                }
+
+                if (data.groqApiKeys) {
+                    AuraState.data.groqKeys = Object.keys(data.groqApiKeys).map(key => ({ id: key, ...data.groqApiKeys[key] }));
+                    if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+                }
+
+                if (data.aiPreferences) {
+                    AuraUtils.safeDOM('setting-ai-chat', el => el.value = data.aiPreferences.modelChat || 'Auto');
+                    AuraUtils.safeDOM('setting-ai-vision', el => el.value = data.aiPreferences.modelVision || 'Auto');
+                    AuraUtils.safeDOM('setting-ai-persona', el => el.value = data.aiPreferences.persona || 'Kombinasi Humble + Jenius + Profesional');
+                    AuraUtils.safeDOM('setting-ai-style', el => el.value = data.aiPreferences.style || 'Normal');
+                }
+
+                if (data.profile) {
+                    AuraUtils.safeDOM('user-fullname', el => el.value = data.profile.fullName || '');
+                    AuraUtils.safeDOM('user-nickname', el => el.value = data.profile.nickname || '');
+                }
+
+                if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
+                if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
+                if (typeof window.renderCategoryDropdowns === 'function') window.renderCategoryDropdowns();
+
                 initialDataArrived.settings = true; 
                 smartRender();
             });
+            AuraState.listeners.push(settingsUnsub);
 
+            // ====================================================================
+            // 3. GOALS
+            // ====================================================================
             const goalsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/goals`);
-            onValue(goalsRef, (snapshot) => {
+            const goalsUnsub = onValue(goalsRef, (snapshot) => {
                 const data = snapshot.val();
                 const arr = [];
                 if (data) {
@@ -119,6 +199,28 @@ try {
                 initialDataArrived.goals = true; 
                 smartRender();
             });
+            AuraState.listeners.push(goalsUnsub);
+
+            // ====================================================================
+            // 4. WALLETS (sebelumnya hanya dipasang lewat listener duplikat)
+            // ====================================================================
+            const walletsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/wallets`);
+            const walletsUnsub = onValue(walletsRef, (snapshot) => {
+                AuraState.data.wallets = snapshot.val() || {};
+                if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+            });
+            AuraState.listeners.push(walletsUnsub);
+
+            // ====================================================================
+            // 5. ORACLE CHATS (sebelumnya hanya dipasang lewat listener duplikat)
+            // ====================================================================
+            const chatRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/oracleChats`);
+            const chatUnsub = onValue(chatRef, (snapshot) => {
+                const data = snapshot.val() || {};
+                AuraState.data.oracleChats = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+                if (typeof window.renderOracleChats === 'function') window.renderOracleChats();
+            });
+            AuraState.listeners.push(chatUnsub);
             
         } else {
             AuraState.user.uid = null;
@@ -126,6 +228,8 @@ try {
             AuraState.data.settings = {};
             AuraState.data.goals = [];
             AuraState.data.trash = [];
+            AuraState.data.wallets = {};
+            AuraState.data.oracleChats = [];
             isInitialLoadComplete = false;
             if (typeof window.showModal === 'function') window.showModal('modal-login');
         }
@@ -135,6 +239,10 @@ try {
     Logger.error('Core', 'Gagal memuat arsitektur Firebase.', error);
 }
 
+// PERBAIKAN: fungsi ini TIDAK LAGI memasang listener baru (itu sudah eksklusif
+// dilakukan sekali di onAuthStateChanged di atas). Sekarang murni memicu
+// refresh tampilan dari state yang sudah ada di memori — dipanggil oleh tombol
+// "Refresh Data" manual dan oleh main.js setelah ganti preferensi (mis. mata uang).
 window.loadRealtimeDatabaseData = function(silent = false) {
     if (AuraState.user.uid) {
         requestAnimationFrame(() => forceUIRender());
