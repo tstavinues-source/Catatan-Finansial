@@ -84,6 +84,9 @@ window.toggleTheme = function() {
 
 window.changeViewMode = function(mode) {
     AuraState.filters.periodMode = mode;
+    // Bersihkan rentang custom kalau user balik ke mode siklus/bulan/semua
+    AuraState.filters.customStart = null;
+    AuraState.filters.customEnd = null;
     
     const modes = ['period', 'month', 'all'];
     for (let i = 0; i < modes.length; i++) {
@@ -97,6 +100,45 @@ window.changeViewMode = function(mode) {
     }
     
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    // FITUR BARU: Analytics sekarang ikut pakai AuraState.filters.periodMode
+    // yang sama (lihat perbaikan di analytics.js), jadi harus ikut di-refresh juga.
+    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+};
+
+// FITUR BARU: siklus "16-15" sebelumnya paten di kode. Sekarang tanggal mulainya
+// bisa diatur user sendiri (disimpan di settings.cycleStartDay), berlaku untuk
+// SEMUA fitur yang pakai mode 'period' (Dashboard, Analytics, Download CSV)
+// karena semuanya sudah disatukan lewat AuraUtils.getPeriodRange().
+window.promptCycleStartDay = function() {
+    const current = AuraState.data.settings?.cycleStartDay || 16;
+    window.AuraAlert.prompt("Tanggal berapa siklus bulanan dimulai? (2-28):", String(current), (val) => {
+        if (val === null) return;
+        const day = parseInt(val, 10);
+        if (isNaN(day) || day < 2 || day > 28) {
+            if (window.showToast) window.showToast("Masukkan angka 2-28.", true);
+            return;
+        }
+        
+        if (!AuraState.data.settings) AuraState.data.settings = {};
+        AuraState.data.settings.cycleStartDay = day;
+        
+        if (AuraState.user.uid && window.FirebaseService) {
+            window.FirebaseService.updateSettings({ cycleStartDay: day }).catch(err => Logger.warn('Navigation', 'Gagal simpan hari siklus', err));
+        }
+        
+        window.updateCycleButtonLabel();
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if (window.showToast) window.showToast(`Siklus diatur mulai tanggal ${day}.`);
+    });
+};
+
+// Perbarui label tombol "Siklus X-Y" supaya selalu mencerminkan tanggal yang sedang dipakai
+window.updateCycleButtonLabel = function() {
+    const day = AuraState.data.settings?.cycleStartDay || 16;
+    AuraUtils.safeDOM('btn-mode-period', el => {
+        el.innerHTML = `Siklus ${day}-${day - 1}`;
+    });
 };
 
 window.applyFilters = function() {
