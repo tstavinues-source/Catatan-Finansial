@@ -86,7 +86,24 @@ window.openTransferModal = function() {
     if(typeof window.showModal === 'function') window.showModal('modal-transfer');
 };
 
+// PERBAIKAN (RACE CONDITION): Sebelumnya window.executeTransfer tidak punya
+// penjaga anti-dobel-eksekusi. window.setProcessingStatus() yang dipanggil di
+// dalam fungsi ini HANYA men-disable tombol kirim chat Oracle (btn-send-main),
+// bukan tombol konfirmasi transfer. Kalau tombol konfirmasi di-tap 2x cepat
+// sebelum listener Firebase sempat mengupdate AuraState.data.transactions,
+// dua-duanya membaca saldo lama yang sama, dua-duanya lolos validasi saldo,
+// dan saldo bisa jadi minus. Sekarang dikunci pakai flag module-level SEBELUM
+// validasi & modal konfirmasi pun dimulai — tap kedua langsung ditolak.
+let isTransferProcessing = false;
+
 window.executeTransfer = async function() {
+    if (isTransferProcessing) {
+        if (window.showToast) window.showToast("Transfer sebelumnya masih diproses.", true);
+        return;
+    }
+    isTransferProcessing = true;
+
+    try {
     const sourceId = document.getElementById('transfer-source').value;
     const destId = document.getElementById('transfer-dest').value;
     const amountEl = document.getElementById('transfer-amount');
@@ -230,6 +247,10 @@ window.executeTransfer = async function() {
         if (window.showToast) window.showToast("Gagal mengeksekusi mutasi saldo.", true);
     } finally {
         if(typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
+    }
+    } finally {
+        // Kunci selalu dibuka lagi apa pun yang terjadi (sukses, gagal, cancel, atau return awal)
+        isTransferProcessing = false;
     }
 };
 
