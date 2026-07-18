@@ -391,6 +391,40 @@ export const FirebaseService = {
         forceUIRender();
     },
 
+    // PERBAIKAN KRITIS: Sebelumnya transfer/mutasi saldo antar dompet disimpan
+    // lewat DUA panggilan saveTransaction() TERPISAH secara berurutan (satu untuk
+    // "keluar", satu untuk "masuk"). Kalau panggilan kedua gagal (mis. koneksi
+    // putus di tengah proses), transaksi PERTAMA sudah kepalang tersimpan —
+    // dana tercatat KELUAR dari sumber tanpa pernah MASUK ke tujuan; dana
+    // "hilang" tanpa jejak dan tanpa rollback otomatis.
+    // Sekarang keduanya ditulis dalam SATU operasi update() multi-path yang
+    // atomik: Firebase Realtime Database menjamin either KEDUA path tertulis,
+    // ATAU TIDAK SAMA SEKALI (all-or-nothing) — tidak ada lagi kondisi
+    // "setengah jalan" dimana dana hilang tanpa pasangannya.
+    executeAtomicTransfer: async function(trxKeluar, trxMasuk) {
+        this._checkAuth();
+
+        const userLabel = AuraState.data.settings?.profile?.nickname || "User";
+        const nowIso = new Date().toISOString();
+        
+        trxKeluar.user_id = userLabel;
+        trxMasuk.user_id = userLabel;
+        trxKeluar.nominal = Math.max(0, Number(trxKeluar.nominal) || 0);
+        trxMasuk.nominal = Math.max(0, Number(trxMasuk.nominal) || 0);
+        if (!trxKeluar.createdAt) trxKeluar.createdAt = nowIso;
+        if (!trxMasuk.createdAt) trxMasuk.createdAt = nowIso;
+        if (!trxKeluar.id) throw new Error("trxKeluar wajib punya id sebelum transfer atomik.");
+        if (!trxMasuk.id) throw new Error("trxMasuk wajib punya id sebelum transfer atomik.");
+
+        const multiPathUpdate = {};
+        multiPathUpdate[`transactions/${trxKeluar.id}`] = trxKeluar;
+        multiPathUpdate[`transactions/${trxMasuk.id}`] = trxMasuk;
+
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}`), multiPathUpdate);
+        await this.saveAuditLog("MANUAL.TRANSFER", `Mutasi Saldo: ${trxKeluar.merchantName || 'Sumber'} → ${trxMasuk.merchantName || 'Tujuan'} (${AuraUtils.formatCurrency(trxKeluar.nominal)})`);
+        forceUIRender();
+    },
+
     updateTransaction: async function(id, data) { 
         this._checkAuth();
         if (!id) throw new Error("ID Referensi Transaksi tidak terdefinisi.");
