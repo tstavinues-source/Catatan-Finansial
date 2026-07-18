@@ -4,7 +4,14 @@
  */
 
 export const Logger = {
-    ENABLE_DEBUG: true,
+    // PERBAIKAN: sebelumnya di-hardcode true permanen — semua Logger.info/warn/error
+    // di seluruh app (yang membawa data transaksi, saldo, dll) selalu tercetak ke
+    // console, bisa dilihat siapa saja yang buka DevTools di device yang sama, bahkan
+    // di production. Sekarang otomatis mengikuti environment (aktif di localhost),
+    // dengan jalan pintas manual lewat localStorage untuk debugging production sesekali:
+    // jalankan `localStorage.setItem('aurafi_debug', 'true')` di console lalu reload.
+    ENABLE_DEBUG: (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ||
+                  (localStorage.getItem('aurafi_debug') === 'true'),
     
     _formatTime: function() {
         const d = new Date();
