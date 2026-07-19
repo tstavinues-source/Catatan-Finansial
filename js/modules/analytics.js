@@ -47,7 +47,7 @@ window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
     const now = new Date();
     
-    // 1. FILTER WAKTU (Telah diperbaiki menggunakan sistem terpusat)
+    // 1. FILTER WAKTU (Menggunakan sistem terpusat dari AuraUtils)
     const range = AuraUtils.getPeriodRange();
     let startDate = range.start;
     let endDate = range.end;
@@ -149,7 +149,6 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
-                        // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                         const subStyle = getCategoryStyleFromDB(sub.name) || CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
@@ -228,6 +227,33 @@ window.renderAnalytics = function() {
     AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.convertAndFormatCurrency(dailyAvg));
     AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.convertAndFormatCurrency(projected));
     drawCanvasChart(trend7Days);
+};
+
+// === FUNGSI TERAPKAN RENTANG CUSTOM ===
+window.applyCustomAnalyticsRange = function() {
+    const startEl = document.getElementById('custom-start-date');
+    const endEl = document.getElementById('custom-end-date');
+    
+    if (!startEl || !endEl || !startEl.value || !endEl.value) {
+        if (window.showToast) window.showToast("Pilih tanggal mulai dan akhir terlebih dahulu!", true);
+        return;
+    }
+    
+    AuraState.filters.customStart = startEl.value;
+    AuraState.filters.customEnd = endEl.value;
+    AuraState.filters.periodMode = 'custom';
+    
+    const modes = ['period', 'month', 'all'];
+    for (let i = 0; i < modes.length; i++) {
+        AuraUtils.safeDOM(`btn-mode-${modes[i]}`, el => {
+            el.classList.remove('text-accent', 'bg-white/10');
+        });
+    }
+    
+    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    window.renderAnalytics();
+    
+    if (window.showToast) window.showToast(`Rentang custom diterapkan: ${startEl.value} s/d ${endEl.value}`);
 };
 
 // === FUNGSI SINGLE ADD TO VAULT (TAMBAHKAN SATU KATEGORI KE GUDANG) ===
@@ -327,7 +353,6 @@ window.openSubCategoryItems = function(parentName, subName) {
         document.body.appendChild(modal);
     }
 
-    // Menggunakan filter terpusat yang sama dengan Analytics Utama
     const range = AuraUtils.getPeriodRange();
     const startDate = range.start; 
     const endDate = range.end;
@@ -356,7 +381,7 @@ window.openSubCategoryItems = function(parentName, subName) {
                     const dateStr = `${tDate.getDate().toString().padStart(2,'0')}/${(tDate.getMonth()+1).toString().padStart(2,'0')}`;
 
                     itemsHtml += `
-                    <div class="flex justify-between items-center p-3 border-b border-[var(--border-glass)] hover:bg-white/5 transition">
+                    <div class="flex justify-between items-center p-3 border-b border-white/5 last:border-0 hover:bg-white/10 transition">
                         <div class="flex-1 min-w-0 pr-3">
                             <p class="text-xs font-bold text-white truncate">${AuraUtils.escapeHtml(it.nama_barang || 'Item')}</p>
                             <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
@@ -466,7 +491,6 @@ window.renderDynamicTrackers = function(startDate, endDate) {
     container.innerHTML = html;
 };
 
-
 // === FUNGSI CUSTOM BOTTOM SHEET (PEMILIH INDUK DARI GUDANG) ===
 window.openParentPickerForMapping = function(subCat, currentParent) {
     let modal = document.getElementById('modal-parent-picker');
@@ -480,20 +504,17 @@ window.openParentPickerForMapping = function(subCat, currentParent) {
     const rawCats = AuraState.data.settings?.customCategories || {};
     const vaultParents = Object.values(rawCats).filter(c => !c.parentId);
     
-    // Default fallback agar pilihan standar selalu tersedia jika user belum membuat apa-apa di gudang
     let defaultParents = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
     
     let parentListHtml = '';
     const addedNames = new Set();
 
-    // 1. Tarik dari Gudang Database
     vaultParents.forEach(p => {
         addedNames.add(p.name.toLowerCase());
         const isSelected = p.name === currentParent;
         parentListHtml += buildParentOptionRow(p.name, p.icon, p.color, isSelected, subCat);
     });
 
-    // 2. Tambahkan sisa default yang belum ada di gudang
     defaultParents.forEach(dp => {
         if (!addedNames.has(dp.toLowerCase())) {
             const style = CategoryManager.resolveStyle(dp);
@@ -563,7 +584,6 @@ window.executeCategoryMapping = async function(subCat, newParent) {
     setTimeout(() => { window.openCategoryMapper(); }, 350); 
 };
 
-
 // === FUNGSI MANAJER KATEGORI (ATUR INDUK UTAMA) ===
 window.openCategoryMapper = function() {
     let modal = document.getElementById('modal-category-mapper');
@@ -589,7 +609,6 @@ window.openCategoryMapper = function() {
     Array.from(uniqueSubs).sort().forEach(sub => {
         const currentParent = getParentCategory(sub);
         
-        // Cek ID Kategori di database
         let catId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === sub.toLowerCase());
         
         let editBtnHtml = '';
@@ -674,26 +693,3 @@ function drawCanvasChart(dataArray) {
         }
     });
 }
-
-window.downloadCSV = function() {
-    const transactions = AuraState.data.transactions || [];
-    if (transactions.length === 0) { if (window.showToast) window.showToast("Tidak ada data untuk diunduh.", true); return; }
-    let csvContent = "TANGGAL,WAKTU,TIPE,METODE,MATA_UANG,MERCHANT,ITEM,KATEGORI,HARGA_SATUAN,QTY,TOTAL_BARANG\n";
-    transactions.forEach(trx => {
-        if (trx.is_deleted) return;
-        const dateObj = new Date(trx.tanggal || trx.createdAt);
-        const dateStr = dateObj.toLocaleDateString('id-ID'); const timeStr = dateObj.toLocaleTimeString('id-ID');
-        const safeMerchant = `"${(trx.merchantName || trx.storeName || 'Unknown').replace(/"/g, '""')}"`;
-        (trx.items || []).forEach(it => {
-            const safeItemName = `"${(it.nama_barang || 'Item').replace(/"/g, '""')}"`;
-            const safeCat = `"${(it.kategori_barang || 'Lainnya').replace(/"/g, '""')}"`;
-            const harga = Number(it.harga) || 0; const qty = Number(it.qty) || 1; const subtotal = harga * qty;
-            csvContent += `${dateStr},${timeStr},${trx.tipe.toUpperCase()},${trx.metode_pembayaran},${trx.mata_uang},${safeMerchant},${safeItemName},${safeCat},${harga},${qty},${subtotal}\n`;
-        });
-    });
-    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-    const link = document.createElement("a"); link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `AuraFi_Export_${new Date().getTime()}.csv`);
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    if (window.showToast) window.showToast("Data CSV berhasil diunduh!");
-};
