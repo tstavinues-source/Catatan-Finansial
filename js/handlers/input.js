@@ -10,7 +10,6 @@ window.handleImage = function(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Filter tipe file dan ukuran (Maksimal 10MB) agar browser tidak berat/crash
     if (!file.type.startsWith('image/')) {
         if (window.showToast) window.showToast("Hanya file gambar yang diperbolehkan.", true);
         event.target.value = ''; 
@@ -49,19 +48,16 @@ window.handleSend = async function() {
 
     if (!text && !base64Img) return;
 
-    // Bersihkan input setelah dikirim
     inputEl.value = "";
     window.removeImage();
 
     const activeView = AuraState.system.activeView;
 
-    // Arahkan pemrosesan berdasarkan tab aktif
     if (activeView === 'oracle') {
         if (typeof window.processOracleChat === 'function') {
             await window.processOracleChat(text, base64Img);
         }
     } else {
-        // Jika di dashboard/transactions, otomatis proses ekstraksi struk
         if (typeof window.processTransactionParsing === 'function') {
             await window.processTransactionParsing(text, base64Img);
         }
