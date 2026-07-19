@@ -523,6 +523,33 @@ export const FirebaseService = {
     pushOracleChat: async function(chatObj) { 
         if (!AuraState.user.uid || !dbInstance) return;
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/oracleChats`), chatObj); 
+    },
+
+    // ========================================================================
+    // GUDANG BRANKAS ARSIP (LAPORAN TUTUP BUKU)
+    // ========================================================================
+    saveArchive: async function(data) {
+        this._checkAuth();
+        await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/archives`), data);
+        await this.saveAuditLog("ARSIP.CREATE", `Tutup Buku: ${data.name}`);
+    },
+    
+    getArchives: async function() {
+        this._checkAuth();
+        const snapshot = await get(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/archives`));
+        const arr = [];
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            for (const key in data) arr.push({ id: key, ...data[key] });
+        }
+        // Urutkan dari yang terbaru
+        return arr.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    },
+    
+    deleteArchive: async function(id) {
+        this._checkAuth();
+        await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/archives/${id}`));
+        await this.saveAuditLog("ARSIP.DELETE", `Membakar Arsip Laporan ID: ${id}`);
     }
 };
 
