@@ -913,6 +913,9 @@
                     <button id="btn-mode-period" onclick="window.changeViewMode('period')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Siklus 16-15</button>
                     <button id="btn-mode-month" onclick="window.changeViewMode('month')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all text-accent bg-white/10">Bulan Ini</button>
                     <button id="btn-mode-all" onclick="window.changeViewMode('all')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Semua</button>
+                    <button onclick="window.promptCycleStartDay()" class="glass-panel w-10 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-accent transition active:scale-95" title="Atur Hari Mulai Siklus">
+                        <i class="fa-solid fa-gear text-[11px]"></i>
+                    </button>
                 </div>
 
                 <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8">
@@ -1035,6 +1038,16 @@
                     <button onclick="window.downloadCSV()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-bold text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-download"></i> CSV</button>
                 </div>
                 
+                <div class="glass-panel p-3.5 mb-2 bg-black/20 border-t-2 border-t-sky-400">
+                    <h3 class="text-[9px] font-bold uppercase tracking-widest text-sky-400 mb-2"><i class="fa-solid fa-calendar-day mr-1"></i> Rentang Kustom</h3>
+                    <div class="flex gap-2 items-center">
+                        <input type="date" id="custom-start-date" class="v-input flex-1 rounded-lg p-2 text-[10px] outline-none text-white bg-black/40 border border-[var(--border-glass)]">
+                        <span class="text-[10px] text-[var(--text-muted)]">-</span>
+                        <input type="date" id="custom-end-date" class="v-input flex-1 rounded-lg p-2 text-[10px] outline-none text-white bg-black/40 border border-[var(--border-glass)]">
+                        <button onclick="window.applyCustomAnalyticsRange()" class="bg-sky-500/20 text-sky-400 hover:bg-sky-500 hover:text-black border border-sky-500/50 px-3 py-2 rounded-lg text-[10px] font-bold transition active:scale-95 shadow-md">Terapkan</button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-panel p-3.5">
                         <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Rata-rata Harian</p>
