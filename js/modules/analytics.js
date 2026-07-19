@@ -43,14 +43,42 @@ function getCategoryStyleFromDB(catName) {
     return null;
 }
 
+// === FUNGSI TERAPKAN RENTANG CUSTOM ===
+window.applyCustomAnalyticsRange = function() {
+    // FIX: Menggunakan ID yang benar sesuai index.html Tahap 1
+    const startEl = document.getElementById('custom-start-date');
+    const endEl = document.getElementById('custom-end-date');
+    const startVal = startEl ? startEl.value : '';
+    const endVal = endEl ? endEl.value : '';
+
+    if (!startVal || !endVal) {
+        if (window.showToast) window.showToast("Pilih tanggal mulai dan akhir dulu.", true);
+        return;
+    }
+    if (new Date(startVal) > new Date(endVal)) {
+        if (window.showToast) window.showToast("Tanggal mulai tidak boleh setelah tanggal akhir.", true);
+        return;
+    }
+
+    AuraState.filters.periodMode = 'custom';
+    AuraState.filters.customStart = startVal;
+    AuraState.filters.customEnd = endVal;
+
+    ['period', 'month', 'all'].forEach(m => {
+        AuraUtils.safeDOM(`btn-mode-${m}`, el => el.classList.remove('text-accent', 'bg-white/10'));
+    });
+
+    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+    if (window.showToast) window.showToast(`Rentang diterapkan: ${startVal} s/d ${endVal}`);
+};
+
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
-    const now = new Date();
     
-    // 1. FILTER WAKTU (Telah diperbaiki menggunakan sistem terpusat)
     const range = AuraUtils.getPeriodRange();
-    let startDate = range.start;
-    let endDate = range.end;
+    let startDate = range.start, endDate = range.end;
+    const now = new Date();
 
     if (typeof window.renderDynamicTrackers === 'function') {
         window.renderDynamicTrackers(startDate, endDate);
@@ -81,7 +109,6 @@ window.renderAnalytics = function() {
                 
                 const parentName = getParentCategory(cleanCat);
                 
-                // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                 const styleInfo = getCategoryStyleFromDB(parentName) || CategoryManager.resolveStyle(parentName);
 
                 if (!catMap[parentName]) {
@@ -92,6 +119,18 @@ window.renderAnalytics = function() {
                 catMap[parentName].subs[cleanCat] = (catMap[parentName].subs[cleanCat] || 0) + val;
                 trxExpense += val;
             });
+
+            // FIX DARI CLAUDE: Pajak dimasukkan agar Sinkron dengan Dashboard
+            const feeVal = Number(trx.admin_fee || 0);
+            if (feeVal > 0) {
+                const feeCatName = 'Pajak & Biaya Admin';
+                if (!catMap[feeCatName]) {
+                    catMap[feeCatName] = { total: 0, style: { icon: 'fa-file-invoice-dollar', hex: '#facc15' }, subs: {} };
+                }
+                catMap[feeCatName].total += feeVal;
+                catMap[feeCatName].subs[feeCatName] = (catMap[feeCatName].subs[feeCatName] || 0) + feeVal;
+                trxExpense += feeVal;
+            }
 
             merchantMap[safeMerchant] = (merchantMap[safeMerchant] || 0) + trxExpense;
             totalExpense += trxExpense;
@@ -149,7 +188,6 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
-                        // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                         const subStyle = getCategoryStyleFromDB(sub.name) || CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
@@ -228,33 +266,6 @@ window.renderAnalytics = function() {
     AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.convertAndFormatCurrency(dailyAvg));
     AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.convertAndFormatCurrency(projected));
     drawCanvasChart(trend7Days);
-};
-
-// === FUNGSI TERAPKAN RENTANG CUSTOM ===
-window.applyCustomAnalyticsRange = function() {
-    const startEl = document.getElementById('custom-start-date');
-    const endEl = document.getElementById('custom-end-date');
-    
-    if (!startEl || !endEl || !startEl.value || !endEl.value) {
-        if (window.showToast) window.showToast("Pilih tanggal mulai dan akhir terlebih dahulu!", true);
-        return;
-    }
-    
-    AuraState.filters.customStart = startEl.value;
-    AuraState.filters.customEnd = endEl.value;
-    AuraState.filters.periodMode = 'custom';
-    
-    const modes = ['period', 'month', 'all'];
-    for (let i = 0; i < modes.length; i++) {
-        AuraUtils.safeDOM(`btn-mode-${modes[i]}`, el => {
-            el.classList.remove('text-accent', 'bg-white/10');
-        });
-    }
-    
-    if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    window.renderAnalytics();
-    
-    if (window.showToast) window.showToast(`Rentang custom diterapkan: ${startEl.value} s/d ${endEl.value}`);
 };
 
 // === FUNGSI SINGLE ADD TO VAULT (TAMBAHKAN SATU KATEGORI KE GUDANG) ===
@@ -355,8 +366,7 @@ window.openSubCategoryItems = function(parentName, subName) {
     }
 
     const range = AuraUtils.getPeriodRange();
-    const startDate = range.start; 
-    const endDate = range.end;
+    let startDate = range.start, endDate = range.end;
 
     const tx = AuraState.data.transactions || [];
     let itemsHtml = '';
@@ -407,8 +417,8 @@ window.openSubCategoryItems = function(parentName, subName) {
                 <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(displayName)}</h3>
                 <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.convertAndFormatCurrency(totalVal)}</p>
             </div>
-            <button onclick="document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
-                <i class="fa-solid fa-xmark text-sm"></i>
+            <button onclick=\"document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);\" class=\"w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]\">
+                <i class=\"fa-solid fa-xmark text-sm\"></i>
             </button>
         </div>
         <div class="flex-1 overflow-y-auto p-0 space-y-0 relative hide-scrollbar bg-black/20">
@@ -492,7 +502,6 @@ window.renderDynamicTrackers = function(startDate, endDate) {
     container.innerHTML = html;
 };
 
-
 // === FUNGSI CUSTOM BOTTOM SHEET (PEMILIH INDUK DARI GUDANG) ===
 window.openParentPickerForMapping = function(subCat, currentParent) {
     let modal = document.getElementById('modal-parent-picker');
@@ -506,20 +515,17 @@ window.openParentPickerForMapping = function(subCat, currentParent) {
     const rawCats = AuraState.data.settings?.customCategories || {};
     const vaultParents = Object.values(rawCats).filter(c => !c.parentId);
     
-    // Default fallback agar pilihan standar selalu tersedia jika user belum membuat apa-apa di gudang
     let defaultParents = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
     
     let parentListHtml = '';
     const addedNames = new Set();
 
-    // 1. Tarik dari Gudang Database
     vaultParents.forEach(p => {
         addedNames.add(p.name.toLowerCase());
         const isSelected = p.name === currentParent;
         parentListHtml += buildParentOptionRow(p.name, p.icon, p.color, isSelected, subCat);
     });
 
-    // 2. Tambahkan sisa default yang belum ada di gudang
     defaultParents.forEach(dp => {
         if (!addedNames.has(dp.toLowerCase())) {
             const style = CategoryManager.resolveStyle(dp);
@@ -589,7 +595,6 @@ window.executeCategoryMapping = async function(subCat, newParent) {
     setTimeout(() => { window.openCategoryMapper(); }, 350); 
 };
 
-
 // === FUNGSI MANAJER KATEGORI (ATUR INDUK UTAMA) ===
 window.openCategoryMapper = function() {
     let modal = document.getElementById('modal-category-mapper');
@@ -615,7 +620,6 @@ window.openCategoryMapper = function() {
     Array.from(uniqueSubs).sort().forEach(sub => {
         const currentParent = getParentCategory(sub);
         
-        // Cek ID Kategori di database
         let catId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === sub.toLowerCase());
         
         let editBtnHtml = '';
