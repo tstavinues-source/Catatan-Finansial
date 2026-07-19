@@ -73,6 +73,7 @@ import './handlers/goals.js';
 import './handlers/settings-ui.js'; 
 import './handlers/import-export.js';
 import './modules/staging.js';
+import './modules/onboarding.js';
 import './handlers/input.js';
 import './renderers/oracle.js';
 import './tools/migrateMutasi.js';
