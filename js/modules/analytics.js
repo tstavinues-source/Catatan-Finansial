@@ -47,7 +47,7 @@ window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
     const now = new Date();
     
-    // 1. FILTER WAKTU (Menggunakan sistem terpusat dari AuraUtils)
+    // 1. FILTER WAKTU (Telah diperbaiki menggunakan sistem terpusat)
     const range = AuraUtils.getPeriodRange();
     let startDate = range.start;
     let endDate = range.end;
@@ -149,6 +149,7 @@ window.renderAnalytics = function() {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
                         const safeSub = sub.name.replace(/'/g, "\\'");
                         
+                        // PRIORITAS: Gudang DB dulu, jika kosong baru tebak otomatis (Fallback)
                         const subStyle = getCategoryStyleFromDB(sub.name) || CategoryManager.resolveStyle(sub.name);
                         
                         subsHtml += `
@@ -381,7 +382,7 @@ window.openSubCategoryItems = function(parentName, subName) {
                     const dateStr = `${tDate.getDate().toString().padStart(2,'0')}/${(tDate.getMonth()+1).toString().padStart(2,'0')}`;
 
                     itemsHtml += `
-                    <div class="flex justify-between items-center p-3 border-b border-white/5 last:border-0 hover:bg-white/10 transition">
+                    <div class="flex justify-between items-center p-3 border-b border-[var(--border-glass)] hover:bg-white/5 transition">
                         <div class="flex-1 min-w-0 pr-3">
                             <p class="text-xs font-bold text-white truncate">${AuraUtils.escapeHtml(it.nama_barang || 'Item')}</p>
                             <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
@@ -491,6 +492,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
     container.innerHTML = html;
 };
 
+
 // === FUNGSI CUSTOM BOTTOM SHEET (PEMILIH INDUK DARI GUDANG) ===
 window.openParentPickerForMapping = function(subCat, currentParent) {
     let modal = document.getElementById('modal-parent-picker');
@@ -504,17 +506,20 @@ window.openParentPickerForMapping = function(subCat, currentParent) {
     const rawCats = AuraState.data.settings?.customCategories || {};
     const vaultParents = Object.values(rawCats).filter(c => !c.parentId);
     
+    // Default fallback agar pilihan standar selalu tersedia jika user belum membuat apa-apa di gudang
     let defaultParents = [ 'Makanan', 'Minuman', 'Elektronik', 'Bahan Pokok', 'Peralatan Rumah Tangga', 'Transportasi', 'Pakaian', 'Kesehatan', 'Pendidikan', 'Hiburan', 'Lainnya' ];
     
     let parentListHtml = '';
     const addedNames = new Set();
 
+    // 1. Tarik dari Gudang Database
     vaultParents.forEach(p => {
         addedNames.add(p.name.toLowerCase());
         const isSelected = p.name === currentParent;
         parentListHtml += buildParentOptionRow(p.name, p.icon, p.color, isSelected, subCat);
     });
 
+    // 2. Tambahkan sisa default yang belum ada di gudang
     defaultParents.forEach(dp => {
         if (!addedNames.has(dp.toLowerCase())) {
             const style = CategoryManager.resolveStyle(dp);
@@ -584,6 +589,7 @@ window.executeCategoryMapping = async function(subCat, newParent) {
     setTimeout(() => { window.openCategoryMapper(); }, 350); 
 };
 
+
 // === FUNGSI MANAJER KATEGORI (ATUR INDUK UTAMA) ===
 window.openCategoryMapper = function() {
     let modal = document.getElementById('modal-category-mapper');
@@ -609,6 +615,7 @@ window.openCategoryMapper = function() {
     Array.from(uniqueSubs).sort().forEach(sub => {
         const currentParent = getParentCategory(sub);
         
+        // Cek ID Kategori di database
         let catId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === sub.toLowerCase());
         
         let editBtnHtml = '';
@@ -693,3 +700,198 @@ function drawCanvasChart(dataArray) {
         }
     });
 }
+
+window.downloadCSV = function() {
+    const transactions = AuraState.data.transactions || [];
+    if (transactions.length === 0) { if (window.showToast) window.showToast("Tidak ada data untuk diunduh.", true); return; }
+    let csvContent = "TANGGAL,WAKTU,TIPE,METODE,MATA_UANG,MERCHANT,ITEM,KATEGORI,HARGA_SATUAN,QTY,TOTAL_BARANG\n";
+    transactions.forEach(trx => {
+        if (trx.is_deleted) return;
+        const dateObj = new Date(trx.tanggal || trx.createdAt);
+        const dateStr = dateObj.toLocaleDateString('id-ID'); const timeStr = dateObj.toLocaleTimeString('id-ID');
+        const safeMerchant = `"${(trx.merchantName || trx.storeName || 'Unknown').replace(/"/g, '""')}"`;
+        (trx.items || []).forEach(it => {
+            const safeItemName = `"${(it.nama_barang || 'Item').replace(/"/g, '""')}"`;
+            const safeCat = `"${(it.kategori_barang || 'Lainnya').replace(/"/g, '""')}"`;
+            const harga = Number(it.harga) || 0; const qty = Number(it.qty) || 1; const subtotal = harga * qty;
+            csvContent += `${dateStr},${timeStr},${trx.tipe.toUpperCase()},${trx.metode_pembayaran},${trx.mata_uang},${safeMerchant},${safeItemName},${safeCat},${harga},${qty},${subtotal}\n`;
+        });
+    });
+    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
+    const link = document.createElement("a"); link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `AuraFi_Export_${new Date().getTime()}.csv`);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    if (window.showToast) window.showToast("Data CSV berhasil diunduh!");
+};
+
+// ============================================================================
+// FITUR TUTUP BUKU & EVALUASI AKUNTAN AI (BRANKAS ARSIP)
+// ============================================================================
+window.closeAccountingBook = async function() {
+    const range = AuraUtils.getPeriodRange();
+    const transactions = AuraState.data.transactions || [];
+    
+    let periodIncome = 0;
+    let periodExpense = 0;
+    let catMap = {};
+    
+    // Kalkulasi rekapitulasi pada rentang siklus yang sedang aktif
+    transactions.forEach(trx => {
+        if (trx.is_deleted) return;
+        const tTime = new Date(trx.tanggal || trx.createdAt).getTime();
+        if (tTime >= range.start && tTime <= range.end) {
+            const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
+            if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') {
+                periodIncome += val;
+            } else if (trx.tipe === 'pengeluaran') {
+                periodExpense += val;
+                const cat = trx.kategori || 'Lainnya';
+                catMap[cat] = (catMap[cat] || 0) + val;
+            }
+        }
+    });
+
+    if (periodIncome === 0 && periodExpense === 0) {
+        if (window.showToast) window.showToast("Ditolak: Tidak ada transaksi di siklus ini untuk dievaluasi.", true);
+        return;
+    }
+
+    const reportName = await window.AuraPrompt(
+        "<i class='fa-solid fa-book-bookmark mr-1'></i> Tutup Buku Siklus", 
+        "Berikan nama untuk arsip laporan siklus ini:", 
+        "Contoh: Siklus Agustus 2026"
+    );
+
+    if (!reportName) return;
+
+    if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
+    if (window.showToast) window.showToast("Akuntan AI sedang menyusun Laporan Finansial...", false);
+
+    // Ambil 4 Kategori Pengeluaran Terbesar untuk bahan kritikan AI
+    const topCatsArr = Object.entries(catMap).sort((a,b) => b[1] - a[1]).slice(0,4);
+    const topCatsStr = topCatsArr.map(c => `${c[0]} (${AuraUtils.formatCurrency(c[1])})`).join(', ');
+
+    const sysPrompt = `Kamu adalah Auditor Finansial Profesional dan Wealth Manager pribadi dari pengguna AuraFi OS.
+TUGAS: Buat Laporan Tutup Buku (Closing) untuk siklus "${reportName}".
+
+DATA FAKTUAL SIKLUS INI:
+- Total Pemasukan: ${AuraUtils.formatCurrency(periodIncome)}
+- Total Pengeluaran: ${AuraUtils.formatCurrency(periodExpense)}
+- Sisa Dana (Surplus/Defisit): ${AuraUtils.formatCurrency(periodIncome - periodExpense)}
+- Top Kategori Pengeluaran Terbesar: ${topCatsStr || 'Tidak ada spesifik'}
+
+ATURAN OUTPUT:
+1. Tulis 3 paragraf narasi evaluasi keuangan yang elegan, analitis, profesional, namun blak-blakan.
+2. Analisis rasio pengeluaran vs pemasukan (apakah keuangannya sehat atau rawan?).
+3. Beri kritik/saran konkrit untuk siklus bulan depan berdasarkan 'Top Kategori Pengeluaran' di atas.
+4. Output harus MURNI TEKS (boleh pakai markdown **bold** untuk penekanan). DILARANG membungkus output dengan tag JSON.`;
+
+    try {
+        const aiReport = await window.executeAIWithFallback([{role: "user", content: "Buat Laporan Tutup Buku sekarang."}], sysPrompt, false);
+        
+        const archiveData = {
+            name: reportName,
+            startDate: new Date(range.start).toISOString(),
+            endDate: new Date(range.end).toISOString(),
+            income: periodIncome,
+            expense: periodExpense,
+            report: aiReport,
+            createdAt: new Date().toISOString()
+        };
+
+        // Simpan ke Firebase
+        await window.FirebaseService.saveArchive(archiveData);
+        if (window.showToast) window.showToast("Tutup Buku Berhasil! Laporan tersimpan di Brankas Arsip.");
+    } catch(e) {
+        console.error("Gagal menyusun laporan AI:", e);
+        if (window.showToast) window.showToast(`Gagal menyusun laporan AI: ${e.message}`, true);
+    } finally {
+        if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
+    }
+};
+
+window.openArchiveModal = async function() {
+    const container = document.getElementById('arsip-list-container');
+    if (!container) return;
+    
+    if (typeof window.showModal === 'function') window.showModal('modal-arsip');
+    container.innerHTML = '<div class="flex justify-center py-10"><i class="fa-solid fa-circle-notch animate-spin text-amber-400 text-2xl"></i></div>';
+    
+    try {
+        const archives = await window.FirebaseService.getArchives();
+        AuraState.temp.archives = archives; 
+        
+        if (archives.length === 0) {
+            container.innerHTML = '<p class="text-xs text-center text-[var(--text-muted)] mt-10">Belum ada buku laporan siklus yang ditutup.</p>';
+            return;
+        }
+        
+        let html = '';
+        archives.forEach(arc => {
+            const dateStr = new Date(arc.createdAt).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+            const incomeDisp = window.formatAuraCurrency ? window.formatAuraCurrency(arc.income || 0) : arc.income;
+            const expenseDisp = window.formatAuraCurrency ? window.formatAuraCurrency(arc.expense || 0) : arc.expense;
+            
+            html += `
+            <div class="glass-panel p-4 border-l-4 border-l-amber-400 group relative mb-3 hover:bg-white/5 transition">
+                <button onclick="window.deleteArchive('${arc.id}')" class="absolute top-3 right-3 text-rose-500 bg-black/40 w-7 h-7 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition shadow-lg active:scale-90"><i class="fa-solid fa-trash text-[10px]"></i></button>
+                <div class="cursor-pointer" onclick="window.viewArchiveDetail('${arc.id}')">
+                    <div class="flex justify-between items-start mb-2 pr-8">
+                        <div>
+                            <h4 class="font-bold text-sm text-white">${AuraUtils.escapeHtml(arc.name)}</h4>
+                            <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-0.5"><i class="fa-regular fa-calendar mr-1"></i> Disimpan: ${dateStr}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-3">
+                        <div>
+                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Pemasukan</p>
+                            <p class="text-xs font-mono font-bold text-[var(--color-income)]">${incomeDisp}</p>
+                        </div>
+                        <div>
+                            <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest mb-0.5">Pengeluaran</p>
+                            <p class="text-xs font-mono font-bold text-[var(--color-expense)]">${expenseDisp}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<p class="text-xs text-center text-rose-500 mt-10">Gagal memuat brankas arsip dari cloud.</p>';
+    }
+};
+
+window.viewArchiveDetail = function(id) {
+    const archives = AuraState.temp.archives || [];
+    const arc = archives.find(a => a.id === id);
+    if (!arc) return;
+
+    AuraUtils.safeDOM('arsip-detail-title', el => el.innerText = arc.name);
+    
+    const sd = new Date(arc.startDate).toLocaleDateString('id-ID', {day:'2-digit', month:'short'});
+    const ed = new Date(arc.endDate).toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'});
+    AuraUtils.safeDOM('arsip-detail-date', el => el.innerText = `Periode Evaluasi: ${sd} - ${ed}`);
+    
+    AuraUtils.safeDOM('arsip-detail-income', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(arc.income || 0) : arc.income);
+    AuraUtils.safeDOM('arsip-detail-expense', el => el.innerText = window.formatAuraCurrency ? window.formatAuraCurrency(arc.expense || 0) : arc.expense);
+    
+    const reportFormatted = AuraUtils.escapeHtml(arc.report || "Tidak ada narasi AI.")
+        .replace(/\n/g, '<br>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    AuraUtils.safeDOM('arsip-detail-report', el => el.innerHTML = reportFormatted);
+
+    if (typeof window.showModal === 'function') window.showModal('modal-arsip-detail');
+};
+
+window.deleteArchive = async function(id) {
+    const isConfirmed = await window.AuraConfirm("Bakar dan hapus laporan tutup buku ini selamanya dari brankas?");
+    if (!isConfirmed) return;
+
+    try {
+        await window.FirebaseService.deleteArchive(id);
+        window.openArchiveModal(); 
+        if (window.showToast) window.showToast("Arsip laporan telah dibakar.");
+    } catch(e) {
+        if (window.showToast) window.showToast("Gagal membakar arsip.", true);
+    }
+};
