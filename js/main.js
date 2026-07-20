@@ -75,6 +75,7 @@ import './handlers/import-export.js';
 import './modules/staging.js';
 import './modules/onboarding.js';
 import './handlers/input.js';
+import './handlers/telegram.js';
 import './renderers/oracle.js';
 import './tools/migrateMutasi.js';
 
