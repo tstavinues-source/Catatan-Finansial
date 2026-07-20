@@ -697,6 +697,41 @@
                         </div>
                         <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-advanced" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
+                    <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-telegram')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center"><i class="fa-brands fa-telegram text-sm"></i></div>
+                            <div class="text-left flex flex-col">
+                                <span class="text-xs font-bold text-white tracking-widest uppercase">Ekosistem Telegram</span>
+                            </div>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-telegram" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-telegram" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-4">
+                            
+                            <div class="flex justify-between items-center bg-black/30 p-3 rounded-xl border border-[var(--border-glass)]">
+                                <span class="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">Status Sync</span>
+                                <span id="tg-status-badge" class="text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono font-bold tracking-wider">TERPUTUS</span>
+                            </div>
+
+                            <div id="tg-binding-area" class="space-y-3">
+                                <p class="text-[11px] text-[var(--text-muted)] leading-relaxed">Hubungkan AuraFi OS dengan Telegram agar Anda bisa mencatat transaksi, kirim foto struk, atau cek saldo via chat secara personal.</p>
+                                
+                                <div id="tg-otp-display-box" class="hidden p-3.5 bg-indigo-950/20 border border-dashed border-indigo-500/40 rounded-xl text-center">
+                                    <p class="text-[9px] text-indigo-400 uppercase font-black tracking-widest mb-1">Kode Pasangkan Anda (OTP)</p>
+                                    <p id="tg-otp-code" class="text-xl font-mono font-black text-white tracking-widest my-1">AURA-XXXXX</p>
+                                    <p class="text-[8px] text-[var(--text-muted)] leading-normal mt-1">Buka bot Telegram Anda, lalu kirimkan perintah:<br><code class="text-white font-mono bg-black/50 px-1 py-0.5 rounded">/start [KODE_DI_ATAS]</code></p>
+                                </div>
+
+                                <button id="btn-tg-generate" onclick="window.requestTelegramPairingCode()" class="w-full py-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-blue-500/30">
+                                    <i class="fa-solid fa-key"></i> Dapatkan Kode OTP
+                                </button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
                     <div id="sec-advanced" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
                             <div class="grid grid-cols-2 gap-2">
