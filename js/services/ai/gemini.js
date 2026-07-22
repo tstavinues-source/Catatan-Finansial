@@ -16,14 +16,10 @@ export class GeminiFailoverEngine {
         
         // DAFTAR MODEL EKSKLUSIF (Berdasarkan ketersediaan AI Studio Anda)
         // Array ini bisa diakses oleh UI Pengaturan untuk membuat menu Dropdown
+        // Disederhanakan: hanya generasi terbaru (3.6 & 3.5-lite) yang dipakai.
         this.availableModels = [
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-            "gemini-2.5-flash",
-            "gemini-2.5-flash-lite",
-            "gemini-2.5-pro",
-            "gemini-3.0-flash",
-            
+            "gemini-3.6-flash",
+            "gemini-3.5-flash-lite",
         ];
     }
     
@@ -76,9 +72,7 @@ export class GeminiFailoverEngine {
         }
         
         // Proteksi jika targetModel kosong atau tidak valid, kembalikan ke model unggulan
-        // PERBAIKAN: sebelumnya fallback ke "gemini-3.6-flash" yang TIDAK ADA di
-        // this.availableModels (daftar tertinggi cuma sampai gemini-3.6-flash),
-        // jadi kalau user belum set preferensi model, request selalu gagal 404.
+        // Hanya satu versi yang didukung sekarang: gemini-3.6-flash.
         if (!targetModel || typeof targetModel !== 'string' || !this.availableModels.includes(targetModel)) {
             targetModel = "gemini-3.6-flash";
         }
