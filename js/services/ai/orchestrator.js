@@ -45,11 +45,10 @@ window.executeAIWithFallback = async function(messages, systemPrompt, requireJso
     const prefs = AuraState.data.settings?.aiPreferences || {};
     const chatModel = prefs.modelChat || 'Auto'; 
     
-    const modelMataOCR = prefs.modelOcr || 'gemini-2.5-flash'; 
-    // PERBAIKAN: sebelumnya default "gemini-3.5-flash" tidak ada di daftar model
-    // yang tersedia (lihat gemini.js availableModels), jadi request selalu gagal
-    // kalau user belum pernah set preferensi model secara eksplisit.
-    const modelOtakJSON = prefs.modelBrain || 'gemini-2.5-flash';
+    // Versi Gemini disederhanakan: hanya model terbaru yang dipakai
+    // (lihat gemini.js availableModels).
+    const modelMataOCR = prefs.modelOcr || 'gemini-3.6-flash';
+    const modelOtakJSON = prefs.modelBrain || 'gemini-3.6-flash';
 
     // ========================================================================
     // SKENARIO 1: DETEKSI STRUK GAMBAR (CHAIN OF SPECIALIZATION PIPELINE)
