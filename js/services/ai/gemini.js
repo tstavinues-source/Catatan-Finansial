@@ -70,17 +70,17 @@ export class GeminiFailoverEngine {
     
     // === MESIN EKSEKUSI AI DINAMIS ===
     // Menambahkan parameter 'targetModel' untuk kebebasan memilih versi AI
-    async fetch(payload, base64Image, targetModel = "gemini-2.5-flash") {
+    async fetch(payload, base64Image, targetModel = "gemini-3.6-flash") {
         if (this.keysPool.length === 0) {
             throw new Error("Sistem Gemini terkunci: Kunci API kosong atau PIN Anda tidak akurat.");
         }
         
         // Proteksi jika targetModel kosong atau tidak valid, kembalikan ke model unggulan
-        // PERBAIKAN: sebelumnya fallback ke "gemini-3.5-flash" yang TIDAK ADA di
-        // this.availableModels (daftar tertinggi cuma sampai gemini-3.0-flash),
+        // PERBAIKAN: sebelumnya fallback ke "gemini-3.6-flash" yang TIDAK ADA di
+        // this.availableModels (daftar tertinggi cuma sampai gemini-3.6-flash),
         // jadi kalau user belum set preferensi model, request selalu gagal 404.
         if (!targetModel || typeof targetModel !== 'string' || !this.availableModels.includes(targetModel)) {
-            targetModel = "gemini-2.5-flash";
+            targetModel = "gemini-3.6-flash";
         }
         
         let attempt = 0;
