@@ -8,54 +8,64 @@
 :root {
     --font-main: 'Outfit', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
+    /* Fondasi taktil: permukaan timbul / cekung / tertekan (bukan sekadar warna) */
+    --shadow-raised: 5px 5px 12px rgba(0, 0, 0, 0.42), -2px -2px 7px rgba(255, 255, 255, 0.045);
+    --shadow-inset: inset 3px 3px 7px rgba(0, 0, 0, 0.48), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
+    --shadow-nav: 0 -5px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 
 /* V3 ENHANCED COLOR PALETTE & GLASSMORPHISM */
+/* SISTEM TAKTIL SLATE — tiga varian di bawah ini BUKAN tema terpisah,
+   melainkan tiga warna (Tembaga / Sage / Frost) di atas fondasi
+   permukaan timbul-cekung yang sama. Tema terang lama (sakura pink,
+   serenity pastel) pensiun demi keterbacaan angka. */
 [data-theme="midnight"] {
-    --bg-base: #030712; 
-    --bg-surface: rgba(15, 23, 42, 0.75); 
-    --bg-glass: rgba(30, 41, 59, 0.45);
-    --text-main: #f8fafc; 
-    --text-muted: #94a3b8; 
-    --accent-primary: #38bdf8; 
-    --accent-glow: rgba(56, 189, 248, 0.4);
-    --color-income: #10b981; 
-    --color-expense: #f43f5e; 
-    --border-glass: rgba(255, 255, 255, 0.12);
-    --invert-contrast: #ffffff;
+    --bg-base: #22252b;
+    --bg-surface: rgba(34, 38, 45, 0.94);
+    --bg-glass: #2b3038;
+    --bg-glass-hi: #343b45;
+    --bg-inset: #1b1e24;
+    --text-main: #f4f1ea;
+    --text-muted: #9aa3ad;
+    --accent-primary: #e08a4c;
+    --accent-glow: rgba(224, 138, 76, 0.38);
+    --color-income: #35c48d;
+    --color-expense: #f2708a;
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --invert-contrast: #221a12;
 }
 
 [data-theme="sakura"] {
-    --bg-base: #fff5f5; 
-    --bg-surface: rgba(255, 228, 230, 0.85); 
-    --bg-glass: rgba(251, 207, 214, 0.65);
-    --text-main: #4c0519; 
-    --text-muted: #9f1239; 
-    --accent-primary: #db2777; 
-    --accent-glow: rgba(219, 39, 119, 0.3);
-    --color-income: #059669; 
-    --color-expense: #dc2626; 
-    --border-glass: rgba(159, 18, 57, 0.15);
-    --invert-contrast: #4c0519;
+    --bg-base: #22271f;
+    --bg-surface: rgba(35, 41, 32, 0.94);
+    --bg-glass: #2b332a;
+    --bg-glass-hi: #343d33;
+    --bg-inset: #1a1f19;
+    --text-main: #f0f2e9;
+    --text-muted: #a3ad9c;
+    --accent-primary: #a3b86b;
+    --accent-glow: rgba(163, 184, 107, 0.35);
+    --color-income: #4cc38a;
+    --color-expense: #f2708a;
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --invert-contrast: #1c2413;
 }
 
-/* ============================================================
-   TEMA BARU: SERENITY (GANTI NEON)
-   Perpaduan Pastel Lembut dari Referensi Pengguna
-   ============================================================ */
 [data-theme="serenity"] {
-    --bg-base: #fffcf8; /* Sangat pucat foundational cream (ekstraksi #ffecd2) */
-    --bg-surface: rgba(251, 194, 235, 0.5); /* Soft Lavender/Pink translucent (ekstraksi #fbc2eb) */
-    --bg-glass: rgba(166, 193, 238, 0.4); /* Soft Pastel Blue translucent (ekstraksi #a6c1ee) */
-    --text-main: #334155; /* Slate dark gray - kontras tinggi untuk light theme */
-    --text-muted: #64748b; /* Muted Slate gray */
-    --accent-primary: #ff9a9e; /* Vibrant Soft Pink/Peach dari referensi Anda */
-    --accent-glow: rgba(255, 154, 158, 0.3); /* Glow efph */
-    --color-income: #0d9488; /* Soft Teal green untuk pemasukan */
-    --color-expense: #e11d48; /* Soft Deep Rose red untuk pengeluaran */
-    --border-glass: rgba(0, 0, 0, 0.08); /* Border tipis gelap untuk panel kaca di bg terang */
-    --invert-contrast: #f8fafc; /* Off-white untuk teks di atas accent-primary */
+    --bg-base: #1f2631;
+    --bg-surface: rgba(32, 40, 52, 0.94);
+    --bg-glass: #28303e;
+    --bg-glass-hi: #303a4a;
+    --bg-inset: #181e28;
+    --text-main: #edf2f7;
+    --text-muted: #93a5ba;
+    --accent-primary: #7fb2d9;
+    --accent-glow: rgba(127, 178, 217, 0.35);
+    --color-income: #35c48d;
+    --color-expense: #fb8296;
+    --border-glass: rgba(255, 255, 255, 0.09);
+    --invert-contrast: #14202e;
 }
 
 
@@ -69,19 +79,19 @@ body {
     margin: 0; 
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background-image: radial-gradient(circle at 50% 0%, var(--bg-glass) 0%, transparent 70%);
+    background-image: radial-gradient(circle at 50% 0%, var(--bg-glass-hi) 0%, transparent 70%);
 }
 
 /* DITAMBAHKAN !important AGAR TAILWIND TIDAK BISA MENIMPA FONT INI */
 .font-display { font-family: var(--font-display) !important; }
 
 .glass-panel { 
-    background: var(--bg-glass); 
-    backdrop-filter: blur(24px); 
-    -webkit-backdrop-filter: blur(24px); 
+    background: linear-gradient(150deg, var(--bg-glass-hi), var(--bg-glass) 55%); 
+    backdrop-filter: blur(6px); 
+    -webkit-backdrop-filter: blur(6px); 
     border: 1px solid var(--border-glass); 
-    border-radius: 1.5rem; 
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    border-radius: 1.25rem; 
+    box-shadow: var(--shadow-raised);
 }
 
 .glass-nav { 
@@ -89,6 +99,7 @@ body {
     backdrop-filter: blur(30px); 
     -webkit-backdrop-filter: blur(30px);
     border-top: 1px solid var(--border-glass); 
+    box-shadow: var(--shadow-nav);
 }
 
 ::-webkit-scrollbar { width: 4px; }
@@ -108,11 +119,15 @@ body {
 }
 
 .living-core { 
-    background: radial-gradient(circle at 35% 35%, var(--bg-glass), var(--bg-base)); 
-    border: 1.5px solid var(--border-glass); 
+    background: var(--bg-glass); 
+    border: 1px solid var(--border-glass); 
+    box-shadow: var(--shadow-raised);
     animation: pulse-core 4s infinite ease-in-out; 
     transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1); 
 }
+.hero-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; }
+.hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(22, 24, 29, 0.58), rgba(22, 24, 29, 0.18) 55%, rgba(22, 24, 29, 0.38)); }
+.icon-chip { display: flex; align-items: center; justify-content: center; border-radius: 0.8rem; background: var(--bg-inset); box-shadow: var(--shadow-inset); }
 .living-core.danger { 
     background: radial-gradient(circle at 35% 35%, rgba(244, 63, 94, 0.2), var(--bg-base)); 
     border-color: rgba(244, 63, 94, 0.7); 
@@ -137,16 +152,17 @@ body {
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
 .v-input {
-    background: rgba(0,0,0,0.4);
-    border: 1px solid var(--border-glass);
+    background: var(--bg-inset);
+    border: 1px solid rgba(0,0,0,0.4);
+    box-shadow: var(--shadow-inset);
     color: var(--text-main);
     transition: all 0.3s ease;
 }
 .v-input:focus {
     border-color: var(--accent-primary);
-    box-shadow: 0 0 15px var(--accent-glow);
+    box-shadow: var(--shadow-inset), 0 0 0 3px var(--accent-glow);
     outline: none;
-    background: rgba(0,0,0,0.6);
+    background: var(--bg-inset);
 }
 
 .markdown-content p { margin-bottom: 0.7em; }
@@ -158,5 +174,5 @@ body {
     border-radius: 50%;
     background: conic-gradient(var(--border-glass) 0% 100%);
     transition: background 1s ease-out;
-    box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow-raised), inset 0 0 24px rgba(0,0,0,0.45);
 }

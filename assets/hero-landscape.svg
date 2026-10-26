@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a434f"/>
+      <stop offset="1" stop-color="#262c35"/>
+    </linearGradient>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <path d="M0,470 C200,430 380,500 620,478 C860,456 1040,420 1280,458 C1440,484 1540,470 1600,452 L1600,900 L0,900 Z" fill="#aebfa5"/>
+  <path d="M0,528 C220,492 420,556 680,532 C940,508 1120,478 1360,516 C1480,536 1560,524 1600,512 L1600,900 L0,900 Z" fill="#9db98f"/>
+  <path d="M0,592 C200,560 460,616 720,588 C980,560 1180,540 1400,578 C1500,594 1570,586 1600,578 L1600,900 L0,900 Z" fill="#79a79c"/>
+  <path d="M0,652 C240,622 480,672 760,646 C1020,622 1240,600 1440,636 C1520,650 1580,642 1600,636 L1600,900 L0,900 Z" fill="#5b857e"/>
+  <path d="M0,716 C220,684 500,736 780,708 C1060,682 1260,668 1460,700 C1530,712 1580,706 1600,700 L1600,900 L0,900 Z" fill="#dec096"/>
+  <path d="M0,782 C260,752 520,796 820,772 C1100,750 1300,738 1480,764 C1540,772 1580,768 1600,764 L1600,900 L0,900 Z" fill="#d99f63"/>
+  <path d="M0,838 C280,812 560,852 860,830 C1140,810 1340,800 1500,822 C1550,828 1580,826 1600,824 L1600,900 L0,900 Z" fill="#dd8448"/>
+  <rect width="1600" height="900" filter="url(#grain)"/>
+</svg>
