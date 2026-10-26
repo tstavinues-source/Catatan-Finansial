@@ -176,16 +176,19 @@ window.closeModal = function(id) {
 // ============================================================================
 // SISTEM TEMA WARNA DINAMIS (PERSISTEN KE CLOUD)
 // ============================================================================
+// Varian warna sistem taktil (mockup yang disetujui pengguna):
+// Tembaga (default), Sage, Frost. Kunci lama dipetakan otomatis di
+// applyAndSaveTheme agar preferensi tersimpan tidak rusak.
 const AURA_THEMES = {
-    emerald: { primary: '#10b981', glow: 'rgba(16,185,129,0.4)' },
-    sky: { primary: '#38bdf8', glow: 'rgba(56,189,248,0.4)' },
-    rose: { primary: '#fb7185', glow: 'rgba(251,113,133,0.4)' },
-    amber: { primary: '#fbbf24', glow: 'rgba(251,191,36,0.4)' },
-    violet: { primary: '#a78bfa', glow: 'rgba(167,139,250,0.4)' }
+    tembaga: { primary: '#e08a4c', glow: 'rgba(224,138,76,0.38)' },
+    sage: { primary: '#a3b86b', glow: 'rgba(163,184,107,0.35)' },
+    frost: { primary: '#7fb2d9', glow: 'rgba(127,178,217,0.35)' }
 };
 
 window.applyAndSaveTheme = async function(themeKey, skipSave = false) {
-    const theme = AURA_THEMES[themeKey] || AURA_THEMES['emerald'];
+    const LEGACY_ACCENT_MAP = { emerald: 'sage', sky: 'frost', rose: 'tembaga', amber: 'tembaga', violet: 'frost' };
+    if (!AURA_THEMES[themeKey]) themeKey = LEGACY_ACCENT_MAP[themeKey] || 'tembaga';
+    const theme = AURA_THEMES[themeKey];
     
     document.documentElement.style.setProperty('--accent-primary', theme.primary);
     document.documentElement.style.setProperty('--accent-glow', theme.glow);

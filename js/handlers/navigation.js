@@ -67,6 +67,9 @@ window.toggleTheme = function() {
     const nextTheme = themes[nextIndex];
     
     document.documentElement.setAttribute('data-theme', nextTheme);
+    // Satu gestur mengganti seluruh varian (dasar + aksen berpasangan)
+    const accentPair = { midnight: 'tembaga', sakura: 'sage', serenity: 'frost' };
+    if (typeof window.applyAndSaveTheme === 'function') window.applyAndSaveTheme(accentPair[nextTheme] || 'tembaga', true);
     AuraState.system.theme = nextTheme;
     
     if (AuraState.user.uid && window.FirebaseService) {
@@ -75,7 +78,8 @@ window.toggleTheme = function() {
         });
     }
     
-    if (window.showToast) window.showToast(`Tampilan berganti ke mode: ${nextTheme.toUpperCase()}`);
+    const themeLabel = { midnight: 'TEMBAGA', sakura: 'SAGE', serenity: 'FROST' };
+    if (window.showToast) window.showToast(`Tampilan berganti ke varian: ${themeLabel[nextTheme] || nextTheme.toUpperCase()}`);
 };
 
 // ============================================================================
