@@ -709,7 +709,7 @@ window.renderWawasan = function() {
         try {
             const range = AuraUtils.getPeriodRange();
             const txs = (AuraState.data.transactions || []).filter(function(t) { return !t.is_deleted && t.tanggal; });
-            const inRange = function(t, a, b) { const d = new Date(t.tanggal); return d >= a && d <= b; };
+            const inRange = function(t, a, b) { const d = new Date(t.tanggal).getTime(); return d >= Number(a) && d <= Number(b); };
             const cur = txs.filter(function(t) { return inRange(t, range.start, range.end); });
             if (cur.length === 0) {
                 el.innerHTML = '<p class="text-center text-xs text-[var(--text-muted)] p-8 leading-relaxed">Belum ada catatan pada siklus ini.<br>Wawasan akan muncul begitu ada transaksi.</p>';
@@ -734,7 +734,7 @@ window.renderWawasan = function() {
             const topTx = cur.filter(function(t) { return t.tipe === 'pengeluaran'; }).sort(function(a, b) { return (Number(b.nominal) || 0) - (Number(a.nominal) || 0); }).slice(0, 3);
             const topCat = Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
             const len = Math.max(86400000, range.end - range.start);
-            const prevEnd = new Date(range.start.getTime() - 1);
+            const prevEnd = new Date(Number(range.start) - 1);
             const prevStart = new Date(prevEnd.getTime() - len);
             let prevOut = 0;
             txs.forEach(function(t) { if (t.tipe === 'pengeluaran' && inRange(t, prevStart, prevEnd)) prevOut += Number(t.nominal) || 0; });
@@ -755,7 +755,10 @@ window.renderWawasan = function() {
                 + (prevOut > 0 ? ' — ' + (delta >= 0 ? '<span class="text-[var(--color-expense)] font-bold">naik ' + delta + '%</span>' : '<span class="text-[var(--color-income)] font-bold">turun ' + Math.abs(delta) + '%</span>') + ' dibanding siklus lalu (' + fmt(prevOut) + ').' : '.')
                 + '<br>Rata-rata pengeluaran pribadi: <b class="text-[var(--text-main)]">' + fmt(avgDaily) + '/hari</b>.</p></div>';
             el.innerHTML = html;
-        } catch (e) { console.warn('[Wawasan]', e); }
+        } catch (e) {
+            console.warn('[Wawasan]', e);
+            try { el.innerHTML = '<p class="text-center text-[10px] text-[var(--text-muted)] p-6">Wawasan gagal dimuat. Muat ulang aplikasi untuk mencoba lagi.</p>'; } catch (ignored) {}
+        }
     });
 };
 
