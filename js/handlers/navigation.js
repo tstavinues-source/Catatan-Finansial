@@ -46,6 +46,10 @@ window.switchView = function(viewId) {
         if (typeof window.populateUserFilterDropdown === 'function') window.populateUserFilterDropdown();
     } else if (viewId === 'budgets') {
         if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
+    } else if (viewId === 'oracle') {
+        if (typeof window.renderWawasan === 'function') window.renderWawasan();
+    } else if (viewId === 'brankas') {
+        if (typeof window.renderBrankas === 'function') window.renderBrankas();
     }
     
     window.scrollTo(0, 0);
