@@ -299,6 +299,14 @@ window.populateRecurringWalletSelect = function() {
     });
     selectEl.innerHTML = html;
     if (current && wallets[current]) selectEl.value = current;
+    // Pengaman: bila dropdown disentuh saat pilihannya belum terisi (data dompet
+    // tiba terlambat / render terlewat), isi ulang tepat sebelum pilihan dibuka.
+    if (!selectEl.dataset.walletLazyBound) {
+        selectEl.dataset.walletLazyBound = '1';
+        const refill = () => { if (selectEl.options.length <= 1) window.populateRecurringWalletSelect(); };
+        selectEl.addEventListener('pointerdown', refill);
+        selectEl.addEventListener('focus', refill);
+    }
 };
 
 window.addRecurringPayment = async function() {
