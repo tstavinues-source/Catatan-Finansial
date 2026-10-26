@@ -569,14 +569,6 @@
                                     </select>
                                 </div>
                             </div>
-                            <div class="mt-3 pt-3 border-t border-white/10">
-                                <label class="text-[9px] uppercase tracking-widest text-emerald-400 mb-1 block font-bold"><i class="fa-solid fa-palette mr-1"></i> Tema Warna Aplikasi</label>
-                                <select id="user-theme-color" class="v-input w-full rounded-xl p-2.5 text-xs outline-none bg-black text-white font-bold" onchange="window.applyAndSaveTheme(this.value)">
-                                    <option value="tembaga">Tembaga (Oranye Tembaga)</option>
-                                    <option value="sage">Sage (Hijau Lembut)</option>
-                                    <option value="frost">Frost (Biru Dingin)</option>
-                                </select>
-                            </div>
                             <button onclick="window.saveUserProfile()" class="w-full mt-3 py-3 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-yellow-500/30">
                                 <i class="fa-solid fa-floppy-disk"></i> Simpan Profil
                             </button>
@@ -589,7 +581,7 @@
                         <div class="flex items-center gap-4">
                             <div class="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center"><i class="fa-solid fa-robot text-sm"></i></div>
                             <div class="text-left">
-                                <span class="block text-xs font-bold text-white tracking-widest uppercase">Preferensi AI</span>
+                                <span class="block text-xs font-bold text-white tracking-widest uppercase">AI & Input Cepat</span>
                             </div>
                         </div>
                         <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-ai" class="fa-solid fa-plus transition-transform duration-300"></i></div>
@@ -637,23 +629,11 @@
                             <button onclick="window.saveAIPreferences()" class="w-full mt-2 py-3 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
                                 <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="relative group">
-                    <button onclick="window.toggleSettingsSection('sec-gemini')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
-                        <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center"><i class="fa-solid fa-eye text-sm"></i></div>
-                            <div class="text-left flex flex-col items-start gap-1">
-                                <span class="text-xs font-bold text-white tracking-widest uppercase">Gemini (Vision)</span>
-                                <span id="gemini-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">LOCKED</span>
-                            </div>
-                        </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-gemini" class="fa-solid fa-plus transition-transform duration-300"></i></div>
-                    </button>
-                    <div id="sec-gemini" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
-                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] block font-bold">Gemini (Vision — Baca Struk)</label>
+                                    <span id="gemini-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">LOCKED</span>
+                                </div>
                             <div>
                                 <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Master PIN Gemini</label>
                                 <input type="password" id="gemini-pin-input" class="v-input w-full rounded-xl p-3 text-xs font-mono outline-none" placeholder="Masukkan PIN Gemini Anda...">
@@ -661,29 +641,19 @@
                             <button onclick="window.syncGeminiEngine(false)" class="w-full mt-2 py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-indigo-500/30">
                                 <i class="fa-solid fa-unlock-keyhole"></i> Unlock & Sync Gemini
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="relative group">
-                    <button onclick="window.toggleSettingsSection('sec-groq')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
-                        <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-bolt text-sm"></i></div>
-                            <div class="text-left flex flex-col items-start gap-1">
-                                <span class="text-xs font-bold text-white tracking-widest uppercase">Groq (Chat)</span>
-                                <span id="groq-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">OFFLINE</span>
                             </div>
-                        </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-groq" class="fa-solid fa-plus transition-transform duration-300"></i></div>
-                    </button>
-                    <div id="sec-groq" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
-                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] block font-bold">Groq (Chat & Input Cepat)</label>
+                                    <span id="groq-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">OFFLINE</span>
+                                </div>
                             <div id="groq-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
                             <div class="flex gap-2">
                                 <input type="password" id="new-groq-key" class="v-input flex-1 rounded-xl p-3 text-xs font-mono outline-none" placeholder="API Key (gsk_...)">
                                 <button onclick="window.addGroqKey()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold transition">
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -706,18 +676,84 @@
                 </div>
 
                 <div class="relative group">
-                    <button onclick="window.toggleSettingsSection('sec-telegram')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                    <button onclick="window.toggleSettingsSection('sec-tampilan')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center"><i class="fa-brands fa-telegram text-sm"></i></div>
-                            <div class="text-left flex flex-col">
-                                <span class="text-xs font-bold text-white tracking-widest uppercase">Ekosistem Telegram</span>
+                            <div class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center"><i class="fa-solid fa-palette text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Tampilan & Tema</span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-tampilan" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-tampilan" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <button onclick="window.toggleTheme()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] text-xs font-bold transition flex items-center justify-center gap-2"><i class="fa-solid fa-swatchbook text-accent"></i> Ganti Varian (Tembaga / Sage / Frost)</button>
+                            <p class="text-[9px] text-[var(--text-muted)] italic text-center">Tiga varian warna di atas sistem taktil yang sama — sama seperti tombol tema di header.</p>
+                            <div class="mt-3 pt-3 border-t border-white/10">
+                                <label class="text-[9px] uppercase tracking-widest text-emerald-400 mb-1 block font-bold"><i class="fa-solid fa-palette mr-1"></i> Tema Warna Aplikasi</label>
+                                <select id="user-theme-color" class="v-input w-full rounded-xl p-2.5 text-xs outline-none bg-black text-white font-bold" onchange="window.applyAndSaveTheme(this.value)">
+                                    <option value="tembaga">Tembaga (Oranye Tembaga)</option>
+                                    <option value="sage">Sage (Hijau Lembut)</option>
+                                    <option value="frost">Frost (Biru Dingin)</option>
+                                </select>
                             </div>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-telegram" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-kurs')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center"><i class="fa-solid fa-coins text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Kurs & Mata Uang</span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-kurs" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
-                    <div id="sec-telegram" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
-                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-4">
-                            
+                    <div id="sec-kurs" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <div class="flex justify-between items-center bg-black/30 p-3 rounded-xl border border-[var(--border-glass)]">
+                                <span class="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">Kurs Live</span>
+                                <span id="settings-fx-rate" class="text-[11px] font-mono font-bold text-[var(--text-main)]">Memuat…</span>
+                            </div>
+                            <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Kurs JPY → IDR diambil langsung dari exchangerate-api dan disimpan lokal; seluruh konversi aplikasi memakai satu kurs kanonis ini. Mata uang tampilan (JPY/IDR) diganti lewat tombol di header.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-backup')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-box-archive text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Cadangan & Ekspor</span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-backup" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-backup" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <button onclick="window.downloadFullBackup()" class="w-full py-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-2 hover:bg-emerald-500/30"><i class="fa-solid fa-download"></i> Unduh Cadangan (JSON)</button>
+                            <button onclick="window.downloadCSV()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-file-csv"></i> Ekspor Transaksi (CSV)</button>
+                            <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Cadangan JSON berisi transaksi, dompet, misi/brankas, dan pengaturan — <b>tanpa</b> kunci API. Transaksi dapat dipulihkan lewat Konfigurasi Lanjutan → Impor Data.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-advanced')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-lg bg-gray-500/20 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-wrench text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Konfigurasi Lanjutan</span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-advanced" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-advanced" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="window.openWalletManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-wallet text-sky-400 text-lg"></i> Dompet & Bank</button>
+                                <button onclick="window.openCategoryManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-folder-tree text-emerald-400 text-lg"></i> Kategori</button>
+                                <button onclick="window.openTrackerManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-box-open text-amber-400 text-lg"></i> Trackers</button>
+                                <button onclick="window.openFamilyManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-users text-indigo-400 text-lg"></i> Keluarga</button>
+                                <button onclick="window.showModal('modal-import-data')" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-file-import text-emerald-400 text-lg"></i> Impor Data</button>
+                            </div>
+                            <div class="pt-3 mt-3 border-t border-[var(--border-glass)]">
+                                <p class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-bold mb-2"><i class="fa-brands fa-telegram mr-1"></i> Ekosistem Telegram</p>
                             <div class="flex justify-between items-center bg-black/30 p-3 rounded-xl border border-[var(--border-glass)]">
                                 <span class="text-[10px] uppercase font-bold tracking-widest text-[var(--text-muted)]">Status Sync</span>
                                 <span id="tg-status-badge" class="text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono font-bold tracking-wider">TERPUTUS</span>
@@ -736,27 +772,6 @@
                                     <i class="fa-solid fa-key"></i> Dapatkan Kode OTP
                                 </button>
                             </div>
-
-                        </div>
-                    </div>
-                </div>
-                <div class="relative group">
-                    <button onclick="window.toggleSettingsSection('sec-advanced')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
-                        <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-gray-500/20 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-wrench text-sm"></i></div>
-                            <span class="text-xs font-bold text-white tracking-widest uppercase">Konfigurasi Lanjutan</span>
-                        </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-advanced" class="fa-solid fa-plus transition-transform duration-300"></i></div>
-                    </button>
-                    <div id="sec-advanced" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
-                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
-                            <div class="grid grid-cols-2 gap-2">
-                                <button onclick="window.openWalletManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-wallet text-sky-400 text-lg"></i> Dompet & Bank</button>
-                                <button onclick="window.openCategoryManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-folder-tree text-emerald-400 text-lg"></i> Kategori</button>
-                                <button onclick="window.openTrackerManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-box-open text-amber-400 text-lg"></i> Trackers</button>
-                                <button onclick="window.openFamilyManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-users text-indigo-400 text-lg"></i> Keluarga</button>
-                                <button id="btn-show-audit" onclick="window.openAuditLogs()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-shield-halved text-gray-300 text-lg"></i> Audit Log</button>
-                                <button onclick="window.showModal('modal-import-data')" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-file-import text-emerald-400 text-lg"></i> Impor Data</button>
                             </div>
                         </div>
                     </div>
@@ -831,18 +846,6 @@
             <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
                 <input type="text" id="new-family-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Nama Anggota (Cth: Istri)">
                 <button onclick="window.addFamilyMember()" class="w-full py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-xs uppercase tracking-wider hover:bg-indigo-500/40 transition">Tambah Anggota</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="modal-audit-log" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
-        <div class="glass-panel p-5 w-full max-w-md shadow-2xl border-t-4 border-t-white h-[85vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4 shrink-0">
-                <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-shield-halved"></i> Security Audit Log</h3>
-                <button onclick="window.closeModal('modal-audit-log')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="audit-log-content" class="flex-1 overflow-y-auto no-scrollbar space-y-3 bg-black/40 p-3 rounded-xl border border-[var(--border-glass)]">
-                <p class="text-xs text-center text-[var(--text-muted)] mt-10">Mencari rekam jejak pada Cloud Firebase...</p>
             </div>
         </div>
     </div>
