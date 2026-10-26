@@ -34,18 +34,32 @@ if (window.AuraUtils) {
 }
 
 // 2. KONVERTER + FORMATTER (Khusus untuk Statistik & Modul yang butuh dikalikan)
-window.convertAndFormatCurrency = function(amount) {
+window.convertAndFormatCurrency = function(amount, compact = false) {
     const num = Number(amount) || 0;
     const curr = AuraState.system?.displayCurrency || 'JPY';
-    const rate = (curr === 'IDR') ? (AuraState.system?.exchangeRate || 110.27) : 1;
+    const rate = (curr === 'IDR') ? (AuraState.system?.exchangeRateIDR || 110.27) : 1;
     
     const finalAmount = Math.round(num * rate); // Kalikan kurs & bulatkan
     
     if (curr === 'IDR') {
+        if (compact && Math.abs(finalAmount) >= 1000000) {
+            return 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(finalAmount);
+        }
         return 'Rp ' + finalAmount.toLocaleString('id-ID');
     } else {
         return '¥' + finalAmount.toLocaleString('en-US');
     }
+};
+
+// FORMAT RINGKAS untuk blok ringkasan (dashboard): nominal IDR besar disingkat
+// (jt/rb) agar tidak meluber dari kartu. Daftar transaksi tetap format lengkap.
+window.formatAuraCurrencyCompact = function(amount) {
+    const curr = AuraState.system?.displayCurrency || 'JPY';
+    const num = Math.round(Number(amount) || 0);
+    if (curr === 'IDR' && Math.abs(num) >= 1000000) {
+        return 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(num);
+    }
+    return window.formatAuraCurrency(num);
 };
 
 // 2. Services & Modules Imports
@@ -270,30 +284,51 @@ window.AuraConfirm = function(message) {
 
 window.fetchLiveExchangeRate = async function() {
     const display = document.getElementById('live-rate-display');
-    if (!display) return;
+
+    // Terapkan SATU kurs kanonis ke semua jalur konversi aplikasi. Sebelumnya
+    // hasil unduhan hanya ditulis ke system.exchangeRate, sedangkan konverter
+    // utama (AuraUtils.convertCurrency) membaca system.exchangeRateIDR yang
+    // tidak pernah diperbarui — dashboard selamanya memakai kurs basi bawaan.
+    const applyRate = function(rate) {
+        if (window.AuraState) {
+            window.AuraState.data.exchangeRate = rate;
+            window.AuraState.system.exchangeRate = rate;
+            window.AuraState.system.exchangeRateIDR = rate;
+        }
+    };
+    const rateLabel = function(rate) { return `1 JPY = Rp ${Number(rate).toLocaleString('id-ID')}`; };
+
+    // Pakai kurs tersimpan dulu agar angka pertama yang tampil tidak basi,
+    // lalu segarkan dari API di latar belakang.
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem('aurafi_fx_jpy_idr') || 'null'); } catch (e) { cached = null; }
+    if (cached && Number(cached.rate) > 0) {
+        applyRate(Number(cached.rate));
+        if (display) display.innerText = rateLabel(cached.rate);
+    } else if (display) {
+        display.innerText = "Menarik data kurs dunia...";
+    }
 
     try {
-        display.innerText = "Menarik data kurs dunia...";
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/JPY');
         const data = await response.json();
-        const idrRate = data.rates.IDR;
-        
-        display.innerText = `1 JPY = Rp ${idrRate.toLocaleString('id-ID')}`;
+        const idrRate = Number(data && data.rates && data.rates.IDR);
+        if (!idrRate || isNaN(idrRate)) throw new Error('Kurs tidak valid');
 
-        if (window.AuraState) {
-            window.AuraState.data.exchangeRate = idrRate;
-            window.AuraState.system.exchangeRate = idrRate;
-        }
-        
+        try { localStorage.setItem('aurafi_fx_jpy_idr', JSON.stringify({ rate: idrRate, ts: Date.now() })); } catch (e) {}
+        applyRate(idrRate);
+        if (display) display.innerText = rateLabel(idrRate);
+
         if(typeof window.renderDashboard === 'function') window.renderDashboard();
         if(typeof window.renderTransactions === 'function') window.renderTransactions();
         if(typeof window.renderAnalytics === 'function') window.renderAnalytics();
         if(typeof window.renderBudgets === 'function') window.renderBudgets();
-
     } catch (e) {
-        display.innerText = "Kurs Offline (Gagal memuat)";
-        if (window.AuraState) {
-            window.AuraState.system.exchangeRate = 110.27; // Fallback jika offline
+        if (cached && Number(cached.rate) > 0) {
+            if (display) display.innerText = rateLabel(cached.rate) + ' (kurs tersimpan)';
+        } else {
+            applyRate(110.27); // Fallback terakhir jika offline dan belum ada cache
+            if (display) display.innerText = "Kurs Offline (Gagal memuat)";
         }
     }
 };
