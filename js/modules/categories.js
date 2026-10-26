@@ -8,6 +8,20 @@ import { DEFAULT_SYSTEM_CATEGORIES } from '../config/categories.js';
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
 
+/**
+ * Kelompok pengeluaran per item — selaras dengan pemisahan di Buku Kas:
+ * item berkategori kewajiban (istri, asuransi, nenkin, pajak penghasilan,
+ * apato, utilitas rumah, admin pengiriman) dipisahkan dari pengeluaran
+ * pribadi, agar pengeluaran pribadi murni bisa dibaca sendiri.
+ */
+const KEWAJIBAN_ITEM_CATEGORIES = ['istri', 'asuransi', 'nenkin', 'pajak penghasilan', 'apato (sewa)', 'kas apato', 'listrik, air & gas', 'admin pengiriman'];
+
+window.inferKelompokItem = function(kategoriBarang, tipe) {
+    if (tipe === 'pemasukan') return 'Pemasukan';
+    const key = (kategoriBarang || '').toString().trim().toLowerCase();
+    return KEWAJIBAN_ITEM_CATEGORIES.includes(key) ? 'Kewajiban Terpisah' : 'Pribadi';
+};
+
 export const CategoryManager = {
     
     getAllCategories: function() {

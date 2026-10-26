@@ -382,6 +382,15 @@
                         </button>
                     </div>
                 </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kelompok Item</label>
+                    <select id="add-item-kelompok" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <option value="">Otomatis (dari kategori)</option>
+                        <option value="Pribadi">Pribadi</option>
+                        <option value="Kewajiban Terpisah">Kewajiban Terpisah</option>
+                        <option value="Pemasukan">Pemasukan</option>
+                    </select>
+                </div>
             </div>
             <button onclick="window.saveAddItem()" class="w-full mt-6 py-4 rounded-xl bg-[var(--color-income)] text-white font-bold shadow-[0_0_20px_rgba(16,185,129,0.3)] transition"><i class="fa-solid fa-plus mr-2"></i> Masukkan Item</button>
         </div>
@@ -421,6 +430,15 @@
                             <i class="fa-solid fa-chevron-down text-xs text-[var(--text-muted)]"></i>
                         </button>
                     </div>
+                </div>
+                <div>
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Kelompok Item</label>
+                    <select id="edit-item-kelompok" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <option value="">Otomatis (dari kategori)</option>
+                        <option value="Pribadi">Pribadi</option>
+                        <option value="Kewajiban Terpisah">Kewajiban Terpisah</option>
+                        <option value="Pemasukan">Pemasukan</option>
+                    </select>
                 </div>
             </div>
             <button onclick="window.saveEditItem()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Terapkan Perubahan</button>
@@ -1053,6 +1071,14 @@
                             </div>
                         </div>
 
+                        <div class="glass-panel p-3 border-l-4 border-l-sky-400 mt-3">
+                            <div class="flex justify-between items-center">
+                                <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Pribadi Siklus</p>
+                                <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Kewajiban: <span class="font-mono font-bold text-[var(--text-main)]" id="dash-obligation-mth">0</span></p>
+                            </div>
+                            <p class="font-mono font-bold text-xs text-sky-400" id="dash-personal-mth">-0</p>
+                        </div>
+
                         <div class="glass-panel p-5 relative overflow-hidden">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-fire-flame-curved text-orange-500"></i> Burn Rate Limit</h3>
@@ -1162,7 +1188,14 @@
                 </div>
 
                 <div class="glass-panel p-5 flex flex-col items-center">
-                    <h3 class="font-bold text-xs w-full text-left mb-6 flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
+                    <div class="w-full flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
+                        <select id="stats-kelompok-filter" onchange="window.setAnalyticsKelompokFilter(this.value)" class="v-input rounded-lg px-2 py-1.5 text-[10px] outline-none bg-black">
+                            <option value="ALL">Semua Kelompok</option>
+                            <option value="Pribadi">Pribadi Saja</option>
+                            <option value="Kewajiban Terpisah">Kewajiban Saja</option>
+                        </select>
+                    </div>
                     <div id="category-pie-chart" class="w-40 h-40 pie-chart relative flex items-center justify-center mb-4">
                         <div class="w-24 h-24 bg-[var(--bg-base)] rounded-full absolute flex flex-col items-center justify-center shadow-lg">
                             <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest">Total</span>
