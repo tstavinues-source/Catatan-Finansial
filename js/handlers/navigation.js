@@ -12,7 +12,7 @@ import { Logger } from '../core/logger.js';
 // ============================================================================
 
 window.switchView = function(viewId) {
-    const views = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash'];
+    const views = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash', 'brankas'];
     
     for (let i = 0; i < views.length; i++) {
         AuraUtils.safeDOM(`view-${views[i]}`, function(el) {

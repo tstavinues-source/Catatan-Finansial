@@ -58,23 +58,32 @@ window.saveGoal = async function() {
     const periodVal = document.getElementById('goal-period-val')?.value;
     const periodUnit = document.getElementById('goal-period-unit-val')?.value;
 
-    if (!name || isNaN(amt) || !startDate || !endDate) {
+    const jenis = document.getElementById('goal-jenis')?.value || 'misi';
+    const isSimpanan = jenis === 'simpanan';
+
+    if (!name || (!isSimpanan && (isNaN(amt) || !startDate || !endDate))) {
         if (window.showToast) window.showToast("Harap lengkapi semua isian formulir!", true);
         return;
     }
 
     const freqDays = getFreqDays(periodVal, periodUnit);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const finalAmt = isSimpanan ? (isNaN(amt) ? 0 : amt) : amt;
+    const finalStart = startDate || todayStr;
+    const finalEnd = endDate || todayStr;
+    const finalFreq = isSimpanan ? 1 : freqDays;
 
     try {
         await FirebaseService.saveGoal({ 
             name: name, 
-            targetAmount: amt, 
+            targetAmount: finalAmt, 
             savedAmount: 0, 
-            startDate: startDate,         
-            targetDate: endDate,
-            frequencyDays: freqDays,
+            startDate: finalStart,         
+            targetDate: finalEnd,
+            frequencyDays: finalFreq,
             periodVal: periodVal,
             periodUnit: periodUnit,
+            jenis: jenis,
             currency: AuraState.system.displayCurrency || 'JPY'
         });
 
@@ -84,9 +93,11 @@ window.saveGoal = async function() {
         document.getElementById('goal-name').value = "";
         document.getElementById('goal-target').value = ""; 
         document.getElementById('goal-start-date').value = ""; 
-        document.getElementById('goal-end-date').value = ""; 
+        document.getElementById('goal-end-date').value = "";
+        const jenisEl = document.getElementById('goal-jenis'); if (jenisEl) jenisEl.value = 'misi';
+        if (typeof window.onGoalJenisChange === 'function') window.onGoalJenisChange(); 
         
-        if (window.showToast) window.showToast("Misi Tabungan Berhasil Ditambahkan!");
+        if (window.showToast) window.showToast((isSimpanan ? "Kantong Simpanan Berhasil Ditambahkan!" : "Misi Tabungan Berhasil Ditambahkan!"));
     } catch(e) {
         if (window.showToast) window.showToast("Gagal menyimpan misi baru.", true);
     }
@@ -228,4 +239,28 @@ window.saveProgressGoal = async function() {
     } catch(e) {
         if (window.showToast) window.showToast("Gagal menyetor tabungan.", true);
     }
+};
+
+
+// ============================================================================
+// JENIS KANTONG BRANKAS: Simpanan (bebas) vs Misi (target + tenggat)
+// ============================================================================
+window.onGoalJenisChange = function() {
+    const jenis = document.getElementById('goal-jenis')?.value || 'misi';
+    const fields = document.getElementById('goal-misi-fields');
+    if (fields) fields.classList.toggle('hidden', jenis === 'simpanan');
+    const btn = document.getElementById('goal-submit-btn');
+    if (btn) btn.innerText = jenis === 'simpanan' ? 'Buat Kantong Simpanan' : 'Mulai Misi Menabung';
+    const nameInput = document.getElementById('goal-name');
+    if (nameInput) nameInput.placeholder = jenis === 'simpanan' ? 'Nama Kantong (Misal: Dana Darurat, Cadangan)' : 'Nama Misi (Misal: Liburan Tokyo, Laptop Baru)';
+};
+
+window.openNewGoal = function(jenis) {
+    if (typeof window.switchView === 'function') window.switchView('budgets');
+    const form = document.getElementById('goal-form');
+    if (form && form.classList.contains('hidden') && typeof window.toggleGoalForm === 'function') window.toggleGoalForm();
+    const sel = document.getElementById('goal-jenis');
+    if (sel) sel.value = jenis === 'simpanan' ? 'simpanan' : 'misi';
+    if (typeof window.onGoalJenisChange === 'function') window.onGoalJenisChange();
+    if (form) form.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
