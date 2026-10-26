@@ -148,7 +148,7 @@ window.renderAnalytics = function() {
 
     // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
-    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.convertAndFormatCurrency(totalExpense));
+    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.convertAndFormatCurrency(totalExpense, true));
     AuraUtils.safeDOM('stats-kelompok-filter', el => el.value = kelFilter);
     
     const sortedParents = Object.keys(catMap).map(k => ({
@@ -707,7 +707,7 @@ function drawCanvasChart(dataArray) {
         else { ctx.fillRect(x, y, barWidth, barHeight); }
         if (val > 0) {
             ctx.globalAlpha = 1.0; ctx.fillStyle = '#9ca3af'; ctx.font = "bold 9px 'Space Grotesk', monospace"; ctx.textAlign = "center";
-            const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRate || 105) : 1;
+            const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRateIDR || 110.27) : 1;
             const convertedVal = val * rate;
             const displayStr = AuraState.system.displayCurrency === 'IDR' ? (convertedVal / 1000).toFixed(0) + 'k' : (convertedVal / 1000).toFixed(1) + 'k';
             ctx.fillText(displayStr, x + barWidth / 2, y - 5);

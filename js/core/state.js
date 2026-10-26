@@ -10,7 +10,7 @@ export const AuraState = {
         theme: APP_CONFIG.DEFAULT_THEME,
         activeView: 'dashboard',
         isProcessing: false,
-        exchangeRateIDR: 105,
+        exchangeRateIDR: 110.27, // Fallback terakhir; nilai live menimpa ini saat aplikasi berjalan
         displayCurrency: APP_CONFIG.DEFAULT_CURRENCY,
         base64Upload: "",
         isRatesLoaded: false,

@@ -135,7 +135,7 @@ window.reCalculateAll = function() {
         breakdownCashHtml += `
         <div class="flex justify-between w-full text-[9px] mt-2 opacity-50 border-b border-white/10 pb-0.5">
             <span class="truncate pr-1">Dana Fisik Lawas</span>
-            <span>${window.formatAuraCurrency(legacyCash)}</span>
+            <span>${window.formatAuraCurrencyCompact(legacyCash)}</span>
         </div>`;
     }
 
@@ -144,7 +144,7 @@ window.reCalculateAll = function() {
         breakdownCashlessHtml += `
         <div class="flex justify-between w-full text-[9px] mt-2 opacity-50 border-b border-white/10 pb-0.5">
             <span class="truncate pr-1">Rekening Lawas</span>
-            <span>${window.formatAuraCurrency(legacyCashless)}</span>
+            <span>${window.formatAuraCurrencyCompact(legacyCashless)}</span>
         </div>`;
     }
 
@@ -159,7 +159,7 @@ window.reCalculateAll = function() {
         const lineHtml = `
         <div class="flex justify-between w-full text-[10px] mt-2 border-b border-white/5 pb-1 font-sans font-medium transition-all ${hiddenStyle}">
             <span class="truncate pr-1">${AuraUtils.escapeHtml(w.name)} ${iconEye}</span>
-            <span class="font-mono font-bold">${window.formatAuraCurrency(bal)}</span>
+            <span class="font-mono font-bold">${window.formatAuraCurrencyCompact(bal)}</span>
         </div>`;
 
         if (w.type === 'cashless') {
@@ -290,16 +290,16 @@ window.reCalculateAll = function() {
         totalBrankas += AuraUtils.convertCurrency(g.savedAmount || 0, g.currency || 'JPY');
     }
 
-    AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrency(totalActiveWealth));
-    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); 
-    AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
-    AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
-    AuraUtils.safeDOM('dash-personal-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodPersonal));
-    AuraUtils.safeDOM('dash-obligation-mth', el => el.innerText = window.formatAuraCurrency(periodObligation));
+    AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrencyCompact(totalActiveWealth));
+    AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrencyCompact(totalBrankas)); 
+    AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrencyCompact(periodIncome));
+    AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrencyCompact(periodSpent));
+    AuraUtils.safeDOM('dash-personal-mth', el => el.innerText = '-' + window.formatAuraCurrencyCompact(periodPersonal));
+    AuraUtils.safeDOM('dash-obligation-mth', el => el.innerText = window.formatAuraCurrencyCompact(periodObligation));
 
     AuraUtils.safeDOM('dash-cash', el => {
         el.innerHTML = `
-            ${window.formatAuraCurrency(totalCashBal)}
+            ${window.formatAuraCurrencyCompact(totalCashBal)}
             <div id="breakdown-cash" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">
                 ${breakdownCashHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}
             </div>
@@ -312,7 +312,7 @@ window.reCalculateAll = function() {
 
     AuraUtils.safeDOM('dash-cashless', el => {
         el.innerHTML = `
-            ${window.formatAuraCurrency(totalCashlessBal)}
+            ${window.formatAuraCurrencyCompact(totalCashlessBal)}
             <div id="breakdown-cashless" class="mt-3 w-full text-left bg-black/40 rounded-xl p-2.5 border border-[var(--border-glass)] shadow-inner hidden transition-all max-h-40 overflow-y-auto no-scrollbar">
                 ${breakdownCashlessHtml || '<span class="text-[8px] text-gray-500 block text-center mt-1">Kosong</span>'}
             </div>
@@ -332,7 +332,7 @@ window.reCalculateAll = function() {
         el.style.width = `${Math.min(burnPct, 100)}%`; 
         el.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; 
     });
-    AuraUtils.safeDOM('burn-spent', el => el.innerText = `Terpakai: ${window.formatAuraCurrency(periodSpent)}`);
+    AuraUtils.safeDOM('burn-spent', el => el.innerText = `Terpakai: ${window.formatAuraCurrencyCompact(periodSpent)}`);
     AuraUtils.safeDOM('burn-limit', el => el.innerText = `Limit: ${window.formatAuraCurrency(limitVal)}`);
     
     if (burnPct > 90 && !AuraState.system.hasShownBudgetAlert) {
