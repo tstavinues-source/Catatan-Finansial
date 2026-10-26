@@ -48,7 +48,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 
-    <link rel="stylesheet" href="./css/style.css?v=AURA_FINAL_CACHE_BUST">
+    <script>
+    // PENYEMBUHAN CACHE: setiap rilis menaikkan nomor versi di bawah ini.
+    // Saat versi berubah, service worker lama dicabut dan seluruh cache
+    // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
+    // tampilan campuran antara rilis lama dan baru di HP pengguna.
+    (function () { var V = '2026-10-27-r8'; try {
+        if (localStorage.getItem('aurafi_app_ver') !== V) {
+            localStorage.setItem('aurafi_app_ver', V);
+            var jobs = [];
+            if ('serviceWorker' in navigator) jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) { rs.forEach(function (r) { r.unregister(); }); }).catch(function () {}));
+            if (window.caches) jobs.push(caches.keys().then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); }).catch(function () {}));
+            if (!sessionStorage.getItem('aurafi_purged_' + V)) {
+                sessionStorage.setItem('aurafi_purged_' + V, '1');
+                Promise.all(jobs).then(function () { location.reload(); });
+            }
+        } } catch (e) {} })();
+    </script>
+    <link rel="stylesheet" href="./css/style.css?v=20261027c">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -1033,13 +1050,13 @@
 
                         <div class="grid grid-cols-2 gap-3">
                             <div class="glass-panel p-4 flex flex-col items-center text-center hover:bg-white/5 transition">
-                                <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-2"><i class="fa-solid fa-money-bill-wave text-[var(--text-muted)] text-base"></i></div>
+                                <div class="w-10 h-10 icon-chip mb-2"><i class="fa-solid fa-money-bill-wave text-[var(--text-muted)] text-base"></i></div>
                                 <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Dompet Tunai</p>
                                 <p class="font-extrabold text-sm" id="dash-cash">0</p>
                             </div>
                             <div class="glass-panel p-4 flex flex-col items-center text-center border-[var(--accent-primary)]/30 relative overflow-hidden group">
                                 <div class="absolute -right-4 -top-4 w-16 h-16 bg-[var(--accent-primary)]/10 rounded-full blur-xl group-hover:bg-[var(--accent-primary)]/20 transition"></div>
-                                <div class="w-10 h-10 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center mb-2"><i class="fa-solid fa-credit-card text-accent text-base"></i></div>
+                                <div class="w-10 h-10 icon-chip mb-2"><i class="fa-solid fa-credit-card text-accent text-base"></i></div>
                                 <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Rekening Bank</p>
                                 <p class="font-extrabold text-sm text-accent" id="dash-cashless">0</p>
                             </div>
@@ -1379,7 +1396,7 @@
                 <button onclick="window.removeImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition shadow-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="glass-panel p-1.5 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] bg-black/40 focus-within:border-[var(--accent-primary)] focus-within:bg-black/60 transition-all rounded-2xl">
+            <div class="glass-panel p-1.5 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] focus-within:border-[var(--accent-primary)] transition-all rounded-2xl">
                 <button onclick="document.getElementById('file-upload').click()" class="w-12 h-12 text-[var(--text-muted)] hover:text-accent rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
                     <i class="fa-solid fa-camera text-lg"></i>
                     <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="window.handleImage(event)">
@@ -1420,7 +1437,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=AURA_FINAL_CACHE_BUST"></script>
+    <script type="module" src="./js/main.js?v=20261027c"></script>
 
 </body>
 </html>

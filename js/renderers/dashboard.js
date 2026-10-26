@@ -474,11 +474,11 @@ window.reCalculateAll = function() {
                     <button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 p-2 text-sm transition bg-black/60 rounded-full shadow-lg z-10"><i class="fa-solid fa-trash"></i></button>
                     <div class="flex justify-between items-start mb-2 pr-20">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style="background-color: ${catStyle.hex}15; border: 1px solid ${catStyle.hex}30;">
+                            <div class="w-10 h-10 icon-chip shrink-0" style="background-color: ${catStyle.hex}15;">
                                 ${iconHtml}
                             </div>
                             <div class="overflow-hidden">
-                                <h4 class="font-bold text-sm text-[var(--accent-primary)] truncate">${titleDisp}</h4>
+                                <h4 class="font-bold text-sm text-[var(--text-main)] truncate">${titleDisp}</h4>
                                 <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
                             </div>
                         </div>
