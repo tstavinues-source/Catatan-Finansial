@@ -53,14 +53,10 @@ window.handleSend = async function() {
 
     const activeView = AuraState.system.activeView;
 
-    if (activeView === 'oracle') {
-        if (typeof window.processOracleChat === 'function') {
-            await window.processOracleChat(text, base64Img);
-        }
-    } else {
-        if (typeof window.processTransactionParsing === 'function') {
-            await window.processTransactionParsing(text, base64Img);
-        }
+    // Chat Oracle sudah pensiun (diganti Wawasan yang hanya-baca):
+    // semua input kini diproses sebagai transaksi/catatan.
+    if (typeof window.processTransactionParsing === 'function') {
+        await window.processTransactionParsing(text, base64Img);
     }
 };
 

@@ -327,13 +327,13 @@ window.reCalculateAll = function() {
     const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
     const remainingBudget = limitVal - periodSpent;
     
-    AuraUtils.safeDOM('living-core', el => el.className = `w-48 h-48 rounded-full living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden cursor-pointer`);
+    AuraUtils.safeDOM('living-core', el => el.className = `w-full h-44 living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden cursor-pointer rounded-[1.5rem]`);
     AuraUtils.safeDOM('burn-progress', el => { 
         el.style.width = `${Math.min(burnPct, 100)}%`; 
         el.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; 
     });
     AuraUtils.safeDOM('burn-spent', el => el.innerText = `Terpakai: ${window.formatAuraCurrencyCompact(periodSpent)}`);
-    AuraUtils.safeDOM('burn-limit', el => el.innerText = `Limit: ${window.formatAuraCurrency(limitVal)}`);
+    AuraUtils.safeDOM('burn-limit', el => el.innerText = `Limit: ${window.formatAuraCurrencyCompact(limitVal)}`);
     
     if (burnPct > 90 && !AuraState.system.hasShownBudgetAlert) {
         AuraState.system.hasShownBudgetAlert = true;
@@ -351,7 +351,7 @@ window.reCalculateAll = function() {
             el.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> KEDARURATAN KAS:</span> Limit telah terlampaui. Pengereman ekstrim disarankan!`; 
             el.style.borderColor = 'var(--color-expense)'; 
         } else { 
-            el.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN TERKENDALI:</span> Pola stabil.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Celah Defensif Sisa Dana: ${window.formatAuraCurrency(remainingBudget)}</span>`; 
+            el.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN TERKENDALI:</span> Pola stabil.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa aman siklus ini: ${window.formatAuraCurrency(remainingBudget)}</span>`; 
             el.style.borderColor = 'var(--border-glass)'; 
         }
     });
@@ -507,6 +507,9 @@ window.reCalculateAll = function() {
     });
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+    if (typeof window.renderNextBill === 'function') window.renderNextBill();
+    if (typeof window.renderWawasan === 'function') window.renderWawasan();
+    if (typeof window.renderBrankas === 'function') window.renderBrankas();
     
     AuraUtils.safeDOM('goals-list-container', el => {
         const glList = AuraState.data.goals || [];
@@ -662,3 +665,156 @@ window.toggleExpandedReceipt = function(trxId) {
 // `services/firebase.js`. Definisi `window.loadRealtimeDatabaseData` yang aktif
 // juga sudah dipindah ke sana sebagai fungsi refresh tampilan murni (tanpa buat
 // listener baru). Lihat services/firebase.js untuk implementasi barunya.
+
+
+// ============================================================================
+// TAGIHAN BERIKUTNYA (sekilas di kartu Analisa Kas Siklus)
+// ============================================================================
+window.computeNextBill = function() {
+    try {
+        const rp = (AuraState.data.settings && AuraState.data.settings.recurringPayments) || {};
+        const now = new Date();
+        const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        let best = null;
+        Object.values(rp).forEach(function(b) {
+            if (!b || !b.date) return;
+            const day = Math.min(Number(b.date) || 1, 28);
+            let due = new Date(now.getFullYear(), now.getMonth(), day);
+            const key = due.getFullYear() + '-' + (due.getMonth() + 1);
+            if (due < today0 || b.lastExecutedMonth === key) {
+                due = new Date(now.getFullYear(), now.getMonth() + 1, day);
+            }
+            if (!best || due < best.date) {
+                best = { name: b.name || 'Tagihan', amount: Number(b.amount) || 0, date: due, days: Math.round((due - today0) / 86400000) };
+            }
+        });
+        return best;
+    } catch (e) { return null; }
+};
+
+window.renderNextBill = function() {
+    AuraUtils.safeDOM('dash-next-bill', function(el) {
+        const nb = window.computeNextBill();
+        if (!nb) { el.innerText = 'Tidak ada tagihan rutin'; return; }
+        const tgl = new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(nb.date);
+        el.innerText = nb.name + ' \u2022 ' + window.formatAuraCurrency(nb.amount) + ' \u2022 ' + tgl + ' (' + (nb.days === 0 ? 'hari ini' : nb.days + ' hari lagi') + ')';
+    });
+};
+
+// ============================================================================
+// WAWASAN (pengganti Oracle): ringkasan yang dihitung dari catatan sendiri
+// ============================================================================
+window.renderWawasan = function() {
+    AuraUtils.safeDOM('wawasan-container', function(el) {
+        try {
+            const range = AuraUtils.getPeriodRange();
+            const txs = (AuraState.data.transactions || []).filter(function(t) { return !t.is_deleted && t.tanggal; });
+            const inRange = function(t, a, b) { const d = new Date(t.tanggal); return d >= a && d <= b; };
+            const cur = txs.filter(function(t) { return inRange(t, range.start, range.end); });
+            if (cur.length === 0) {
+                el.innerHTML = '<p class="text-center text-xs text-[var(--text-muted)] p-8 leading-relaxed">Belum ada catatan pada siklus ini.<br>Wawasan akan muncul begitu ada transaksi.</p>';
+                return;
+            }
+            const fmt = window.formatAuraCurrency;
+            const fmtTgl = function(v) { return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(v)); };
+            let pribadi = 0, kewajiban = 0, totalOut = 0;
+            const catMap = {};
+            cur.forEach(function(t) {
+                if (t.tipe !== 'pengeluaran') return;
+                totalOut += Number(t.nominal) || 0;
+                (t.items || []).forEach(function(it) {
+                    const sub = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+                    const kel = it.kelompok || (typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(it.kategori_barang, t.tipe) : 'Pribadi');
+                    if (kel === 'Kewajiban Terpisah') kewajiban += sub;
+                    else { pribadi += sub; const k = it.kategori_barang || 'Lainnya'; catMap[k] = (catMap[k] || 0) + sub; }
+                });
+            });
+            const split = pribadi + kewajiban;
+            const pctP = split > 0 ? Math.round(pribadi / split * 100) : 0;
+            const topTx = cur.filter(function(t) { return t.tipe === 'pengeluaran'; }).sort(function(a, b) { return (Number(b.nominal) || 0) - (Number(a.nominal) || 0); }).slice(0, 3);
+            const topCat = Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
+            const len = Math.max(86400000, range.end - range.start);
+            const prevEnd = new Date(range.start.getTime() - 1);
+            const prevStart = new Date(prevEnd.getTime() - len);
+            let prevOut = 0;
+            txs.forEach(function(t) { if (t.tipe === 'pengeluaran' && inRange(t, prevStart, prevEnd)) prevOut += Number(t.nominal) || 0; });
+            const delta = prevOut > 0 ? Math.round((totalOut - prevOut) / prevOut * 100) : 0;
+            const days = Math.max(1, Math.round(len / 86400000));
+            const avgDaily = Math.round(pribadi / days);
+            const head = function(icon, title) { return '<h3 class="font-bold text-xs flex items-center gap-2 mb-3"><i class="fa-solid ' + icon + ' text-accent"></i> ' + title + '</h3>'; };
+            let html = '';
+            html += '<div class="glass-panel p-4">' + head('fa-scale-balanced', 'Pribadi vs Kewajiban — Siklus Ini')
+                + '<div class="flex h-2.5 rounded-full overflow-hidden bg-black/50 mb-2"><div style="width:' + pctP + '%; background: var(--accent-primary)"></div><div style="width:' + (100 - pctP) + '%; background: var(--color-expense); opacity: .75"></div></div>'
+                + '<div class="flex justify-between text-[10px] font-mono"><span>Pribadi <b class="text-[var(--text-main)]">' + fmt(pribadi) + '</b> (' + pctP + '%)</span><span>Kewajiban <b class="text-[var(--text-main)]">' + fmt(kewajiban) + '</b></span></div></div>';
+            html += '<div class="glass-panel p-4">' + head('fa-arrow-trend-up', 'Pengeluaran Terbesar Siklus Ini')
+                + (topTx.length ? topTx.map(function(t) { return '<div class="flex justify-between items-center py-1.5 border-b border-[var(--border-glass)] last:border-0"><div><p class="text-xs font-bold">' + (t.merchantName || t.storeName || '-') + '</p><p class="text-[9px] text-[var(--text-muted)]">' + fmtTgl(t.tanggal) + '</p></div><p class="font-mono font-bold text-xs text-[var(--color-expense)]">-' + fmt(t.nominal) + '</p></div>'; }).join('') : '<p class="text-[10px] text-[var(--text-muted)]">Tidak ada pengeluaran.</p>') + '</div>';
+            html += '<div class="glass-panel p-4">' + head('fa-tags', 'Kategori Pribadi Teratas')
+                + (topCat.length ? topCat.map(function(c) { return '<div class="flex justify-between items-center py-1.5 border-b border-[var(--border-glass)] last:border-0"><p class="text-xs font-bold">' + c[0] + '</p><p class="font-mono font-bold text-xs">' + fmt(c[1]) + '</p></div>'; }).join('') : '<p class="text-[10px] text-[var(--text-muted)]">Tidak ada data kategori.</p>') + '</div>';
+            html += '<div class="glass-panel p-4">' + head('fa-gauge-high', 'Laju Belanja')
+                + '<p class="text-[11px] leading-relaxed text-[var(--text-muted)]">Total pengeluaran siklus ini <b class="text-[var(--text-main)]">' + fmt(totalOut) + '</b>'
+                + (prevOut > 0 ? ' — ' + (delta >= 0 ? '<span class="text-[var(--color-expense)] font-bold">naik ' + delta + '%</span>' : '<span class="text-[var(--color-income)] font-bold">turun ' + Math.abs(delta) + '%</span>') + ' dibanding siklus lalu (' + fmt(prevOut) + ').' : '.')
+                + '<br>Rata-rata pengeluaran pribadi: <b class="text-[var(--text-main)]">' + fmt(avgDaily) + '/hari</b>.</p></div>';
+            el.innerHTML = html;
+        } catch (e) { console.warn('[Wawasan]', e); }
+    });
+};
+
+// ============================================================================
+// BRANKAS: kantong Simpanan (bebas) & Misi (target + tenggat + rencana)
+// Isi brankas TIDAK masuk Kekayaan Bersih — lihat reCalculateAll (dash-savings
+// memang selalu terpisah dari total dompet).
+// ============================================================================
+window.renderBrankas = function() {
+    const goals = AuraState.data.goals || [];
+    const fmt = window.formatAuraCurrency;
+    const esc = function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+    const escQ = function(v) { return esc(v).replace(/'/g, "\\'"); };
+    const conv = function(g, v) { return AuraUtils.convertCurrency(Number(v) || 0, g.currency || 'JPY'); };
+    let totalAll = 0;
+    const simpanan = [], misi = [];
+    goals.forEach(function(g) {
+        totalAll += conv(g, g.savedAmount);
+        if (g.jenis === 'simpanan' || !(Number(g.targetAmount) > 0)) simpanan.push(g); else misi.push(g);
+    });
+    AuraUtils.safeDOM('brankas-total', function(el) { el.innerText = fmt(totalAll); });
+    AuraUtils.safeDOM('brankas-simpanan-list', function(el) {
+        if (simpanan.length === 0) { el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center py-3 opacity-70">Belum ada kantong simpanan. Buat satu untuk cadangan bebasmu.</p>'; return; }
+        el.innerHTML = simpanan.map(function(g) {
+            const gid = g.id || '';
+            return '<div class="glass-panel p-4 flex items-center justify-between gap-3"><div class="flex items-center gap-3 min-w-0"><div class="w-10 h-10 icon-chip shrink-0 text-emerald-400"><i class="fa-solid fa-piggy-bank"></i></div><div class="min-w-0"><p class="font-bold text-sm truncate">' + esc(g.name) + '</p><p class="font-mono font-bold text-xs text-emerald-400">' + fmt(conv(g, g.savedAmount)) + '</p></div></div>'
+                + '<div class="flex gap-2 shrink-0"><button onclick="window.openTopupGoal(\'' + gid + '\', \'' + escQ(g.name) + '\')" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-bold text-accent active:scale-95 transition"><i class="fa-solid fa-plus"></i> Isi</button>'
+                + '<button onclick="window.openEditGoalFull(\'' + gid + '\')" class="glass-panel w-9 h-9 rounded-xl flex items-center justify-center text-[var(--text-muted)] active:scale-95 transition"><i class="fa-solid fa-pen text-[10px]"></i></button></div></div>';
+        }).join('');
+    });
+    AuraUtils.safeDOM('brankas-misi-list', function(el) {
+        if (misi.length === 0) { el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center py-3 opacity-70">Belum ada misi. Buat misi pertamamu — misal laptop impianmu.</p>'; return; }
+        const now = new Date(); const today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const fmtTgl = function(v) { return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(v)); };
+        el.innerHTML = misi.map(function(g) {
+            const gid = g.id || '';
+            const target = conv(g, g.targetAmount), saved = conv(g, g.savedAmount);
+            const pct = target > 0 ? Math.min(100, Math.round(saved / target * 100)) : 0;
+            const start = new Date(g.startDate || now), end = new Date(g.targetDate || now);
+            const freq = Math.max(1, parseInt(g.frequencyDays) || 30);
+            const totalPeriods = Math.max(1, Math.ceil(Math.max(1, (end - start) / 86400000) / freq));
+            const elapsed = Math.min(totalPeriods, Math.max(0, Math.floor(Math.max(0, (today0 - start) / 86400000) / freq)));
+            const expected = Math.min(target, (target / totalPeriods) * elapsed);
+            const remaining = Math.max(0, target - saved);
+            const daysLeft = Math.max(0, Math.ceil((end - today0) / 86400000));
+            const periodsLeft = Math.max(1, Math.ceil(daysLeft / freq));
+            const planNext = remaining / periodsLeft;
+            let chip, chipCls;
+            if (saved >= target && target > 0) { chip = 'Tercapai'; chipCls = 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10'; }
+            else if (saved >= expected) { chip = 'Sesuai Rencana'; chipCls = 'text-[var(--color-income)] border-[var(--color-income)]/30 bg-[var(--color-income)]/10'; }
+            else if (saved >= expected * 0.8) { chip = 'Hampir Sesuai'; chipCls = 'text-amber-400 border-amber-400/30 bg-amber-400/10'; }
+            else { chip = 'Tertinggal ' + fmt(expected - saved); chipCls = 'text-[var(--color-expense)] border-[var(--color-expense)]/30 bg-[var(--color-expense)]/10'; }
+            return '<div class="glass-panel p-4"><div class="flex justify-between items-start gap-2 mb-2"><p class="font-bold text-sm">' + esc(g.name) + '</p><span class="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full border ' + chipCls + ' shrink-0">' + chip + '</span></div>'
+                + '<div class="w-full h-2 bg-black/50 rounded-full overflow-hidden mb-2"><div class="h-full bg-accent rounded-full transition-all duration-700" style="width:' + pct + '%"></div></div>'
+                + '<div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-2"><span>' + fmt(saved) + ' terkumpul (' + pct + '%)</span><span>Target ' + fmt(target) + '</span></div>'
+                + '<div class="text-[10px] text-[var(--text-muted)] space-y-1"><p><i class="fa-regular fa-calendar mr-1"></i> Tenggat ' + fmtTgl(g.targetDate) + ' \u2022 ' + daysLeft + ' hari lagi</p>'
+                + '<p><i class="fa-solid fa-coins mr-1"></i> Rencana periode berikut: <b class="text-[var(--text-main)]">' + fmt(planNext) + '</b></p></div>'
+                + '<div class="flex gap-2 mt-3"><button onclick="window.openTopupGoal(\'' + gid + '\', \'' + escQ(g.name) + '\')" class="flex-1 bg-accent text-[var(--bg-base)] font-bold py-2.5 rounded-xl text-[11px] active:scale-[0.98] transition"><i class="fa-solid fa-plus"></i> Nabung</button>'
+                + '<button onclick="window.openEditGoalFull(\'' + gid + '\')" class="glass-panel px-4 rounded-xl text-[11px] font-bold text-[var(--text-muted)] active:scale-95 transition"><i class="fa-solid fa-pen"></i></button></div></div>';
+        }).join('');
+    });
+};

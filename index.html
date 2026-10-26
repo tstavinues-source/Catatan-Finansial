@@ -1042,7 +1042,7 @@
                             </div>
                         </div>
 
-                        <div class="glass-panel p-4 flex justify-between items-center mt-3 border-l-4 border-l-emerald-400 hover:bg-white/5 transition">
+                        <div onclick="window.switchView('brankas')" class="glass-panel p-4 flex justify-between items-center mt-3 border-l-4 border-l-emerald-400 hover:bg-white/5 transition cursor-pointer active:scale-[0.99]">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20"><i class="fa-solid fa-vault text-emerald-400 text-base"></i></div>
                                 <div class="text-left">
@@ -1050,61 +1050,61 @@
                                     <p class="font-extrabold text-sm text-emerald-400 font-mono" id="dash-savings">0</p>
                                 </div>
                             </div>
+                            <i class="fa-solid fa-chevron-right text-[var(--text-muted)] text-xs"></i>
                         </div>
                     </div>
 
                     <div class="space-y-5 mt-5 md:mt-0">
-                        <div class="flex justify-between items-center md:mt-0">
-                            <span class="text-[10px] text-[var(--text-muted)] uppercase font-extrabold tracking-widest">Analisa Kas Siklus</span>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="glass-panel p-3 border-l-4 border-l-[var(--color-income)]">
-                                <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pemasukan Siklus</p>
-                                <p class="font-mono font-bold text-xs text-[var(--color-income)]" id="dash-income-mth">+0</p>
-                            </div>
-                            <div class="glass-panel p-3 border-l-4 border-l-[var(--color-expense)]">
-                                <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Siklus</p>
-                                <p class="font-mono font-bold text-xs text-[var(--color-expense)]" id="dash-expense-mth">-0</p>
-                            </div>
-                        </div>
-
-                        <div class="glass-panel p-3 border-l-4 border-l-sky-400 mt-3">
-                            <div class="flex justify-between items-center">
-                                <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Pribadi Siklus</p>
-                                <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Kewajiban: <span class="font-mono font-bold text-[var(--text-main)]" id="dash-obligation-mth">0</span></p>
-                            </div>
-                            <p class="font-mono font-bold text-xs text-sky-400" id="dash-personal-mth">-0</p>
-                        </div>
-
                         <div class="glass-panel p-5 relative overflow-hidden">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-fire-flame-curved text-orange-500"></i> Burn Rate Limit</h3>
+                                <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Analisa Kas Siklus</h3>
                                 <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] bg-white/5 px-2 py-1 rounded hover:text-white transition"><i class="fa-solid fa-pen"></i> Set Limit</button>
                             </div>
-                            
-                            <div class="w-full h-3 bg-black/50 rounded-full overflow-hidden mb-3 border border-[var(--border-glass)] shadow-inner">
-                                <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000 relative">
-                                    <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div class="p-3 rounded-xl" style="background: var(--bg-inset); box-shadow: var(--shadow-inset); border-left: 3px solid var(--color-income)">
+                                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pemasukan Siklus</p>
+                                    <p class="font-mono font-bold text-xs text-[var(--color-income)]" id="dash-income-mth">+0</p>
+                                </div>
+                                <div class="p-3 rounded-xl" style="background: var(--bg-inset); box-shadow: var(--shadow-inset); border-left: 3px solid var(--color-expense)">
+                                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Siklus</p>
+                                    <p class="font-mono font-bold text-xs text-[var(--color-expense)]" id="dash-expense-mth">-0</p>
                                 </div>
                             </div>
-                            <div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-4">
-                                <span id="burn-spent" class="font-bold text-white">Terpakai: 0</span>
-                                <span id="burn-limit" class="font-bold">Limit: 0</span>
-                            </div>
-
-                            <div class="mb-4 pt-4 border-t border-[var(--border-glass)]">
-                                <div class="flex justify-between text-[8px] text-[var(--text-muted)] font-bold mb-1.5 uppercase tracking-widest">
-                                    <span id="period-progress-text">PROGRES SIKLUS: 0%</span>
-                                    <span id="period-days-left">0 HARI TERSISA</span>
+                            <div class="p-3 rounded-xl mb-4" style="background: var(--bg-inset); box-shadow: var(--shadow-inset); border-left: 3px solid #38bdf8">
+                                <div class="flex justify-between items-center">
+                                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Pribadi Siklus</p>
+                                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Kewajiban: <span class="font-mono font-bold text-[var(--text-main)]" id="dash-obligation-mth">0</span></p>
                                 </div>
-                                <div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden">
+                                <p class="font-mono font-bold text-xs text-sky-400" id="dash-personal-mth">-0</p>
+                            </div>
+                            <div class="pt-4 border-t border-[var(--border-glass)]">
+                                <div class="flex justify-between items-center mb-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]"><i class="fa-solid fa-fire-flame-curved text-orange-500 mr-1"></i> Burn Rate</p>
+                                    <div class="flex gap-3 text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">
+                                        <span id="period-progress-text">PROGRES SIKLUS: 0%</span>
+                                        <span id="period-days-left">0 HARI TERSISA</span>
+                                    </div>
+                                </div>
+                                <div class="w-full h-3 bg-black/50 rounded-full overflow-hidden mb-3 border border-[var(--border-glass)] shadow-inner">
+                                    <div id="burn-progress" class="h-full bg-[var(--color-income)] rounded-full transition-all duration-1000 relative">
+                                        <div class="absolute inset-0 bg-white/20 w-full animate-[shimmer_2s_infinite]"></div>
+                                    </div>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-4">
+                                    <span id="burn-spent" class="font-bold text-white">Terpakai: 0</span>
+                                    <span id="burn-limit" class="font-bold">Limit: 0</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden mb-4">
                                     <div id="period-progress-bar" class="h-full bg-accent transition-all duration-500" style="width:0%"></div>
                                 </div>
-                            </div>
-
-                            <div id="burn-insight-box" class="p-3.5 rounded-xl bg-black/40 border border-[var(--border-glass)] text-[11px] leading-relaxed text-[var(--text-muted)]">
-                                Menganalisis sistem keuangan...
+                                <div id="burn-insight-box" class="p-3.5 rounded-xl bg-black/40 border border-[var(--border-glass)] text-[11px] leading-relaxed text-[var(--text-muted)]">
+                                    Menganalisis sistem keuangan...
+                                </div>
+                                <div class="flex items-center gap-2 mt-4 pt-3 border-t border-[var(--border-glass)]">
+                                    <i class="fa-solid fa-file-invoice text-accent text-xs"></i>
+                                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold shrink-0">Tagihan Berikutnya</span>
+                                    <span id="dash-next-bill" class="text-[10px] font-bold text-[var(--text-main)] truncate">—</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1223,7 +1223,15 @@
                         <button onclick="window.toggleGoalForm()" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-[var(--text-muted)] transition"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     
+                    <div>
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis Kantong</label>
+                        <select id="goal-jenis" onchange="window.onGoalJenisChange()" class="v-input w-full rounded-xl p-3 text-sm outline-none font-bold">
+                            <option value="misi">Misi — target &amp; tenggat (mis. beli laptop)</option>
+                            <option value="simpanan">Simpanan — cadangan bebas tanpa target</option>
+                        </select>
+                    </div>
                     <input type="text" id="goal-name" placeholder="Nama Misi (Misal: Liburan Tokyo, Dana Darurat)" class="v-input w-full rounded-xl p-3.5 text-sm outline-none">
+                    <div id="goal-misi-fields" class="space-y-4">
                     
                     <div>
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Target Dana Terkumpul</label>
@@ -1258,8 +1266,9 @@
                         </div>
                     </div>
                     <p class="text-[9px] text-[var(--text-muted)] italic text-center">*Misal: Angka [1] & Satuan [Bulan] = Sistem akan menagih target menabung Anda setiap 1 Bulan sekali.</p>
+                    </div>
 
-                    <button onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)] mt-2">Mulai Misi Menabung</button>
+                    <button id="goal-submit-btn" onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)] mt-2">Mulai Misi Menabung</button>
                 </div>
 
                 <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start pt-4 md:border-t md:border-[var(--border-glass)] mt-5 md:mt-8">
@@ -1313,24 +1322,46 @@
                 </div>
             </div>
 
+                        <div id="view-brankas" class="hidden p-4 space-y-4 pb-12 view-transition">
+                <div class="flex justify-between items-center mb-1">
+                    <h2 class="text-lg font-display font-black flex items-center gap-2"><i class="fa-solid fa-vault text-emerald-400"></i> Brankas</h2>
+                    <button onclick="window.switchView('dashboard')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white active:scale-95 transition"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
+                </div>
+                <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Isi brankas <b class="text-[var(--text-main)]">tidak dihitung</b> ke Kekayaan Bersih maupun saldo belanja — uangnya aman tersimpan, tidak terasa seperti uang bebas.</p>
+                <div class="glass-panel p-5 text-center">
+                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1 font-bold">Total Isi Brankas</p>
+                    <p class="font-display font-black text-2xl text-emerald-400" id="brankas-total">0</p>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest"><i class="fa-solid fa-piggy-bank mr-1"></i> Simpanan</h3>
+                        <button onclick="window.openNewGoal('simpanan')" class="text-[10px] font-bold text-accent bg-white/5 px-2.5 py-1.5 rounded-lg active:scale-95 transition"><i class="fa-solid fa-plus"></i> Kantong Baru</button>
+                    </div>
+                    <div id="brankas-simpanan-list" class="space-y-3"></div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <h3 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest"><i class="fa-solid fa-bullseye mr-1"></i> Misi</h3>
+                        <button onclick="window.openNewGoal('misi')" class="text-[10px] font-bold text-accent bg-white/5 px-2.5 py-1.5 rounded-lg active:scale-95 transition"><i class="fa-solid fa-plus"></i> Misi Baru</button>
+                    </div>
+                    <div id="brankas-misi-list" class="space-y-3"></div>
+                </div>
+            </div>
+
             <div id="view-oracle" class="hidden flex-col h-full w-full absolute inset-0 bg-[var(--bg-base)] z-20">
                 <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-surface)] backdrop-blur-xl z-10 shrink-0 sticky top-0 shadow-sm">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/30 shadow-[0_0_15px_var(--accent-glow)]"><i class="fa-solid fa-brain text-accent text-lg"></i></div>
+                        <div class="w-10 h-10 icon-chip text-accent"><i class="fa-solid fa-lightbulb text-lg"></i></div>
                         <div>
-                            <h2 class="font-bold text-[var(--text-main)] text-sm tracking-wide">Aura Oracle V3</h2>
-                            <p class="text-[9px] text-[var(--text-muted)] flex items-center gap-1 font-mono uppercase tracking-widest mt-0.5">
-                                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_5px_#10b981]"></span> Online
-                            </p>
+                            <h2 class="font-bold text-[var(--text-main)] text-sm tracking-wide">Wawasan</h2>
+                            <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-widest mt-0.5">Dari catatan keuanganmu sendiri</p>
                         </div>
                     </div>
-                    <button onclick="window.showModal('modal-settings')" class="w-8 h-8 rounded-full glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-sliders text-xs"></i></button>
                 </div>
-                <div id="oracle-chat-box" class="flex-1 overflow-y-auto p-4 space-y-5 no-scrollbar pb-10 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8Y2lyY2xlIGN4PSIyIiBjeT0iMiIgcj0iMSIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjIyKSIvPgo8L3N2Zz4=')]"></div>
-                <div id="chat-anchor" class="h-4 shrink-0"></div>
+                <div id="wawasan-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar pb-10"></div>
             </div>
 
-            <div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
+<div id="view-trash" class="hidden p-4 space-y-4 pb-12 view-transition">
                 <div class="flex justify-between items-center mb-2">
                     <h2 class="text-lg font-display font-black text-[var(--color-expense)] flex items-center gap-2"><i class="fa-solid fa-dumpster"></i> Tempat Sampah</h2>
                     <button onclick="window.switchView('transactions')" class="glass-panel px-3 py-1.5 rounded-xl text-[10px] font-bold text-[var(--text-muted)] hover:text-white active:scale-95 transition"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
@@ -1379,10 +1410,9 @@
             </button>
             <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group relative" data-target="oracle">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition relative">
-                    <i class="fa-solid fa-brain text-[18px]"></i>
-                    <div class="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full border border-[var(--bg-base)]"></div>
+                    <i class="fa-solid fa-lightbulb text-[18px]"></i>
                 </div>
-                <span class="text-[8px] font-black tracking-widest uppercase">Oracle</span>
+                <span class="text-[8px] font-black tracking-widest uppercase">Wawasan</span>
             </button>
         </nav>
     </div>
