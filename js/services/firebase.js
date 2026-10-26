@@ -210,6 +210,11 @@ try {
             const walletsUnsub = onValue(walletsRef, (snapshot) => {
                 AuraState.data.wallets = snapshot.val() || {};
                 if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+                // Dropdown dompet tagihan rutin diisi ulang di sini karena data
+                // dompet bisa tiba SETELAH tampilan budget dirender (listener
+                // settings jalan lebih dulu) — tanpa ini dropdown-nya kosong.
+                if (typeof window.populateRecurringWalletSelect === 'function') window.populateRecurringWalletSelect();
+                if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
             });
             AuraState.listeners.push(walletsUnsub);
 
