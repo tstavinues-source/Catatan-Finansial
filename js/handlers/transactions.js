@@ -69,8 +69,9 @@ window.openTransferModal = function() {
     const wallets = AuraState.data.wallets || {};
     let optionsHtml = '';
 
-    optionsHtml += '<option value="legacy_cash">📦 Dana Fisik Lawas (Tunai)</option>';
-    optionsHtml += '<option value="legacy_cashless">💳 Rekening Lawas (Cashless)</option>';
+    // Ember lawas (legacy_cash / legacy_cashless) tidak lagi ditawarkan:
+    // semua mutasi wajib berpindah antar dompet asli agar saldo selalu
+    // tervalidasi dan tidak ada transaksi tanpa wallet_id.
 
     Object.keys(wallets).forEach(key => {
         const w = wallets[key];
@@ -120,15 +121,15 @@ window.executeTransfer = async function() {
 
     const wallets = AuraState.data.wallets || {};
 
-    let sourceName = ""; let sourceType = "cashless"; let realSourceWalletId = null;
-    if (sourceId === 'legacy_cash') { sourceName = "Dana Fisik Lawas"; sourceType = "tunai"; }
-    else if (sourceId === 'legacy_cashless') { sourceName = "Rekening Lawas"; sourceType = "cashless"; }
-    else { sourceName = wallets[sourceId].name; sourceType = wallets[sourceId].type; realSourceWalletId = sourceId; }
+    // Semua sisi mutasi wajib dompet asli (opsi lawas sudah dicabut dari modal),
+    // sehingga validasi saldo di bawah selalu berjalan untuk kedua sisi.
+    if (!wallets[sourceId] || !wallets[destId]) {
+        if (window.showToast) window.showToast("Dompet sumber/tujuan tidak ditemukan!", true);
+        return;
+    }
 
-    let destName = ""; let destType = "cashless"; let realDestWalletId = null;
-    if (destId === 'legacy_cash') { destName = "Dana Fisik Lawas"; destType = "tunai"; }
-    else if (destId === 'legacy_cashless') { destName = "Rekening Lawas"; destType = "cashless"; }
-    else { destName = wallets[destId].name; destType = wallets[destId].type; realDestWalletId = destId; }
+    let sourceName = wallets[sourceId].name; let sourceType = wallets[sourceId].type; let realSourceWalletId = sourceId;
+    let destName = wallets[destId].name; let destType = wallets[destId].type; let realDestWalletId = destId;
 
     // VALIDASI SALDO ON-THE-FLY
     if (realSourceWalletId) {

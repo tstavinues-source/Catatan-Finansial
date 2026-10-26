@@ -285,27 +285,51 @@ window.syncGeminiEngine = async function(silent = false) {
 // 3. MANAJEMEN TAGIHAN RUTIN (RECURRING PAYMENTS)
 // ============================================================================
 
+// Mengisi dropdown dompet pembayar pada form tagihan rutin dari daftar dompet asli
+window.populateRecurringWalletSelect = function() {
+    const selectEl = document.getElementById('new-rec-wallet');
+    if (!selectEl) return;
+    const wallets = AuraState.data.wallets || {};
+    const current = selectEl.value;
+    let html = '<option value="">— Pilih Dompet —</option>';
+    Object.keys(wallets).forEach(key => {
+        const w = wallets[key];
+        const symbol = w.type === 'cashless' ? '💳' : '💵';
+        html += `<option value="${key}">${symbol} ${AuraUtils.escapeHtml(w.name)}</option>`;
+    });
+    selectEl.innerHTML = html;
+    if (current && wallets[current]) selectEl.value = current;
+};
+
 window.addRecurringPayment = async function() {
     const nameEl = document.getElementById('new-rec-name');
     const amtEl = document.getElementById('new-rec-amt');
     const dateEl = document.getElementById('new-rec-date');
     const methodEl = document.getElementById('new-rec-method');
+    const walletEl = document.getElementById('new-rec-wallet');
     
     if(!nameEl || !amtEl || !dateEl) return;
     
     const name = nameEl.value.trim();
     const amt = parseFloat(amtEl.value);
     const date = parseInt(dateEl.value);
-    const method = methodEl ? methodEl.value : 'cashless';
+    const walletId = walletEl ? walletEl.value : '';
+    const wallet = walletId ? (AuraState.data.wallets || {})[walletId] : null;
+    // Metode mengikuti tipe dompet pembayar (dompet adalah sumber kebenaran)
+    const method = wallet ? wallet.type : (methodEl ? methodEl.value : 'cashless');
     
     if(!name || isNaN(amt) || isNaN(date) || date < 1 || date > 31) {
         if(window.showToast) window.showToast("Form tidak valid!", true);
         return;
     }
+    if(!wallet) {
+        if(window.showToast) window.showToast("Pilih dompet pembayar dulu!", true);
+        return;
+    }
     
     const recId = `rec_${Date.now()}`;
     const updates = {};
-    updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method };
+    updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method, wallet_id: walletId };
     
     try {
         await FirebaseService.updateSettings(updates);
@@ -341,6 +365,7 @@ window.removeRecurringPayment = async function(id) {
 };
 
 window.renderRecurringUI = function() {
+    if (typeof window.populateRecurringWalletSelect === 'function') window.populateRecurringWalletSelect();
     AuraUtils.safeDOM('recurring-list', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
@@ -356,7 +381,7 @@ window.renderRecurringUI = function() {
             <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
                 <div class="flex flex-col">
                     <span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span>
-                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)}</span>
+                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | 💳 ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | ⚠ Belum ada dompet'}</span>
                 </div>
                 <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
                     <i class="fa-solid fa-trash-can text-xs"></i>
@@ -369,6 +394,7 @@ window.renderRecurringUI = function() {
 };
 
 window.renderRecurringUIForBudget = function() {
+    if (typeof window.populateRecurringWalletSelect === 'function') window.populateRecurringWalletSelect();
     AuraUtils.safeDOM('budget-bills-container', function(el) {
         const rPayments = AuraState.data.settings?.recurringPayments || {};
         const entries = Object.entries(rPayments);
@@ -390,7 +416,7 @@ window.renderRecurringUIForBudget = function() {
                         </button>
                     </h4>
                     <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">
-                        Tgl Eksekusi: ${rp.date} / Bulan
+                        Tgl Eksekusi: ${rp.date} / Bulan${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | 💳 ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | ⚠ Belum ada dompet'}
                     </p>
                 </div>
                 <p class="font-bold text-sm font-mono text-[var(--text-main)]">
@@ -698,6 +724,15 @@ window.processRecurringBills = async function() {
         
         // Jika tagihan untuk siklus ini belum dieksekusi (Belum Lunas)
         if (rp.lastExecutedMonth !== dueMonthKey) {
+            // Tagihan wajib punya dompet pembayar. Tagihan lama tanpa wallet_id
+            // dilewati agar tidak menciptakan transaksi tanpa dompet (ember
+            // "Rekening Lawas") — buat ulang tagihannya dengan memilih dompet.
+            const billWallet = rp.wallet_id ? (AuraState.data.wallets || {})[rp.wallet_id] : null;
+            if (!billWallet) {
+                console.warn(`[Auto-Biller] Tagihan "${rp.name}" dilewati: belum memiliki dompet pembayar (wallet_id).`);
+                continue;
+            }
+            const billMethod = billWallet.type || rp.method || 'cashless';
             const timestamp = new Date().toISOString();
             
             const newTrx = {
@@ -707,7 +742,8 @@ window.processRecurringBills = async function() {
                 createdAt: timestamp,
                 nominal: Number(rp.amount),
                 mata_uang: AuraState.system.displayCurrency || 'JPY',
-                metode_pembayaran: rp.method || 'cashless',
+                wallet_id: rp.wallet_id,
+                metode_pembayaran: billMethod,
                 tipe: 'pengeluaran',
                 kategori: 'Utilitas', 
                 description: `[AUTO-BILL] Tagihan rutin otomatis untuk siklus ${dueMonthKey}`,
@@ -720,7 +756,7 @@ window.processRecurringBills = async function() {
                     qty: 1,
                     kategori_barang: 'Utilitas',
                     tax_rate: 0,
-                    paymentMethod: rp.method || 'cashless',
+                    paymentMethod: billMethod,
                     timestamp: timestamp
                 }]
             };
