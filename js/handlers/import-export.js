@@ -136,8 +136,15 @@ window.processFileImport = async function(event) {
             try {
                 let parsedTransactions = [];
                 if (file.name.endsWith('.json')) {
-                    parsedTransactions = JSON.parse(contents);
-                    if (!Array.isArray(parsedTransactions)) {
+                    const parsedJson = JSON.parse(contents);
+                    if (Array.isArray(parsedJson)) {
+                        parsedTransactions = parsedJson;
+                    } else if (parsedJson && parsedJson.data && Array.isArray(parsedJson.data.transactions)) {
+                        // Format Cadangan Penuh AuraFi: ambil bagian transaksinya.
+                        parsedTransactions = parsedJson.data.transactions;
+                    } else if (parsedJson && Array.isArray(parsedJson.transactions)) {
+                        parsedTransactions = parsedJson.transactions;
+                    } else {
                         throw new Error("Akar objek JSON harus berupa kumpulan Array Transaksi.");
                     }
                 } else if (file.name.endsWith('.csv')) {
@@ -214,5 +221,33 @@ window.processFileImport = async function(event) {
         reader.readAsText(file);
     } else {
         event.target.value = '';
+    }
+};
+
+
+// ============================================================================
+// CADANGAN PENUH (DOWNLOAD JSON) — seluruh data, kunci API disisihkan.
+// Berkas ini dapat dipulihkan: bagian transaksinya diterima processFileImport.
+// ============================================================================
+window.downloadFullBackup = function() {
+    try {
+        const clone = JSON.parse(JSON.stringify(AuraState.data || {}));
+        if (clone.settings) {
+            Object.keys(clone.settings).forEach(function(k) {
+                if (/key|pin|token|secret|password/i.test(k)) delete clone.settings[k];
+            });
+        }
+        const payload = { app: 'AuraFi', kind: 'full-backup', exportedAt: new Date().toISOString(), data: clone };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'aurafi-backup-' + new Date().toISOString().split('T')[0] + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { URL.revokeObjectURL(a.href); }, 4000);
+        if (window.showToast) window.showToast('Cadangan JSON diunduh.');
+    } catch (e) {
+        if (window.showToast) window.showToast('Gagal membuat cadangan.', true);
     }
 };

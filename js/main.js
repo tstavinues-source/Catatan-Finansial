@@ -298,6 +298,8 @@ window.fetchLiveExchangeRate = async function() {
             window.AuraState.system.exchangeRate = rate;
             window.AuraState.system.exchangeRateIDR = rate;
         }
+        const fxEl = document.getElementById('settings-fx-rate');
+        if (fxEl) fxEl.innerText = rateLabel(rate);
     };
     const rateLabel = function(rate) { return `1 JPY = Rp ${Number(rate).toLocaleString('id-ID')}`; };
 
