@@ -331,6 +331,7 @@ window.saveManualTransaction = async function() {
             harga: amount,
             qty: 1,
             kategori_barang: category,
+            kelompok: (typeof window.inferKelompokItem === 'function') ? window.inferKelompokItem(category, type) : 'Pribadi',
             tax_rate: 0,
             paymentMethod: walletType,
             timestamp: timestamp
@@ -450,6 +451,7 @@ window.openAddItemModal = function(trxId) {
         }
     });
 
+    AuraUtils.safeDOM('add-item-kelompok', el => el.value = "");
     if (typeof window.showModal === 'function') window.showModal('modal-add-item');
 };
 
@@ -482,6 +484,7 @@ window.saveAddItem = async function() {
     }
     
     const category = catEl ? catEl.value || 'Lainnya' : 'Lainnya';
+    const kelompokEl = document.getElementById('add-item-kelompok');
 
     const newItem = { 
         itemId: AuraUtils.generateId('itm'), 
@@ -489,6 +492,7 @@ window.saveAddItem = async function() {
         harga: price, 
         qty: qty, 
         kategori_barang: category, 
+        kelompok: (kelompokEl && kelompokEl.value) ? kelompokEl.value : ((typeof window.inferKelompokItem === 'function') ? window.inferKelompokItem(category, trx.tipe) : 'Pribadi'),
         tax_rate: 0, 
         paymentMethod: trx.metode_pembayaran, 
         timestamp: new Date().toISOString() 
@@ -560,6 +564,7 @@ window.openEditItem = function(trxId, itemId) {
         }
     });
     
+    AuraUtils.safeDOM('edit-item-kelompok', el => el.value = item.kelompok || '');
     if (typeof window.showModal === 'function') window.showModal('modal-edit-item');
 };
 
@@ -581,6 +586,7 @@ window.saveEditItem = async function() {
         const qtyEl = document.getElementById('edit-item-qty');
         const priceEl = document.getElementById('edit-item-price');
         const catEl = document.getElementById('edit-item-cat');
+        const kelompokEl = document.getElementById('edit-item-kelompok');
 
         const storeNameVal = storeEl ? storeEl.value.trim() : '';
         const newName = nameEl ? nameEl.value.trim() : '';
@@ -606,7 +612,8 @@ window.saveEditItem = async function() {
                     nama_barang: newName || it.nama_barang, 
                     qty: newQty, 
                     harga: newPrice, 
-                    kategori_barang: newCategory || it.kategori_barang 
+                    kategori_barang: newCategory || it.kategori_barang,
+                    kelompok: (kelompokEl && kelompokEl.value) ? kelompokEl.value : ((typeof window.inferKelompokItem === 'function') ? window.inferKelompokItem(newCategory || it.kategori_barang, trx.tipe) : (it.kelompok || 'Pribadi'))
                 };
             }
             nItems.push(it);

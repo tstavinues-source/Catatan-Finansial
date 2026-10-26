@@ -181,6 +181,7 @@ window.reCalculateAll = function() {
     const fUser = (AuraState.filters && AuraState.filters.user) ? AuraState.filters.user : "ALL";
     
     let periodSpent = 0, periodIncome = 0;
+    let periodPersonal = 0, periodObligation = 0;
     let groupedTrx = {};
     let filteredTx = [];
     
@@ -256,6 +257,21 @@ window.reCalculateAll = function() {
             if (!isHiddenTrx) {
                 periodSpent += actualSpend;
             }
+            if (trx.tipe === 'pengeluaran' && !isHiddenTrx) {
+                // Rincian kelompok dihitung per ITEM agar kewajiban (istri, pajak,
+                // nenkin, asuransi, apato, utilitas) terpisah dari pribadi.
+                if (trx.items && trx.items.length > 0) {
+                    for (let j = 0; j < trx.items.length; j++) {
+                        const it = trx.items[j];
+                        const itemVal = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), trx.mata_uang || 'JPY');
+                        const kel = it.kelompok || (typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(it.kategori_barang, trx.tipe) : 'Pribadi');
+                        if (kel === 'Kewajiban Terpisah') periodObligation += itemVal; else periodPersonal += itemVal;
+                    }
+                } else {
+                    const kel = typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(trx.kategori, trx.tipe) : 'Pribadi';
+                    if (kel === 'Kewajiban Terpisah') periodObligation += val; else periodPersonal += val;
+                }
+            }
             groupedTrx[dStr].total -= actualSpend; 
         } else if (trx.tipe === 'mutasi_masuk') {
             groupedTrx[dStr].total += val;
@@ -278,6 +294,8 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrency(totalBrankas)); 
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrency(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodSpent));
+    AuraUtils.safeDOM('dash-personal-mth', el => el.innerText = '-' + window.formatAuraCurrency(periodPersonal));
+    AuraUtils.safeDOM('dash-obligation-mth', el => el.innerText = window.formatAuraCurrency(periodObligation));
 
     AuraUtils.safeDOM('dash-cash', el => {
         el.innerHTML = `

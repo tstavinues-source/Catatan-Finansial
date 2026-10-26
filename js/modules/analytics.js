@@ -73,6 +73,12 @@ window.applyCustomAnalyticsRange = function() {
     if (window.showToast) window.showToast(`Rentang diterapkan: ${startVal} s/d ${endVal}`);
 };
 
+window.setAnalyticsKelompokFilter = function(value) {
+    if (!AuraState.temp) AuraState.temp = {};
+    AuraState.temp.analyticsKelompok = value || 'ALL';
+    if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+};
+
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
     
@@ -87,6 +93,7 @@ window.renderAnalytics = function() {
     let catMap = {}; 
     let merchantMap = {};
     let totalExpense = 0;
+    const kelFilter = (AuraState.temp && AuraState.temp.analyticsKelompok) || 'ALL';
     const trend7Days = [0, 0, 0, 0, 0, 0, 0];
 
     // 2. PROSES DATA TRANSAKSI
@@ -104,6 +111,8 @@ window.renderAnalytics = function() {
 
             (trx.items || []).forEach(it => {
                 let rawCat = (it.kategori_barang || 'Lainnya').trim();
+                const itemKelompok = it.kelompok || (typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(rawCat, 'pengeluaran') : 'Pribadi');
+                if (kelFilter !== 'ALL' && itemKelompok !== kelFilter) return;
                 let cleanCat = rawCat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                 let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                 
@@ -122,7 +131,7 @@ window.renderAnalytics = function() {
 
             // FIX DARI CLAUDE: Pajak dimasukkan agar Sinkron dengan Dashboard
             const feeVal = Number(trx.admin_fee || 0);
-            if (feeVal > 0) {
+            if (feeVal > 0 && kelFilter !== 'Kewajiban Terpisah') {
                 const feeCatName = 'Pajak & Biaya Admin';
                 if (!catMap[feeCatName]) {
                     catMap[feeCatName] = { total: 0, style: { icon: 'fa-file-invoice-dollar', hex: '#facc15' }, subs: {} };
@@ -140,6 +149,7 @@ window.renderAnalytics = function() {
     // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
     AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.convertAndFormatCurrency(totalExpense));
+    AuraUtils.safeDOM('stats-kelompok-filter', el => el.value = kelFilter);
     
     const sortedParents = Object.keys(catMap).map(k => ({
         name: k, total: catMap[k].total, style: catMap[k].style, subs: catMap[k].subs

@@ -391,6 +391,13 @@ export const FirebaseService = {
 
         data.user_id = AuraState.data.settings?.profile?.nickname || "User";
         data.nominal = Math.max(0, Number(data.nominal) || 0); 
+        // Kelompok item (Pribadi / Kewajiban Terpisah / Pemasukan) diisi otomatis
+        // dari kategori bila belum ditetapkan — jaring pengaman untuk semua
+        // jalur simpan (manual, AI, tagihan otomatis, impor).
+        if (Array.isArray(data.items) && typeof window.inferKelompokItem === 'function') {
+            data.items = data.items.map(it => (it && !it.kelompok) ? { ...it, kelompok: window.inferKelompokItem(it.kategori_barang, data.tipe) } : it);
+        }
+
         if (!data.createdAt) data.createdAt = new Date().toISOString();
         
         await push(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/transactions`), data);
