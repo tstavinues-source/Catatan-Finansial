@@ -84,6 +84,35 @@ window.setAnalyticsKelompokFilter = function(value) {
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
 };
 
+// ============================================================================
+// GRAFIK PROFESIONAL (Chart.js) — registry instance agar grafik lama
+// dihancurkan sebelum digambar ulang. Bila CDN gagal dimuat, pemanggil
+// memakai gambar manual cadangan.
+// ============================================================================
+window._auraCharts = window._auraCharts || {};
+function auraMakeChart(canvasId, config) {
+    const el = document.getElementById(canvasId);
+    if (!el || typeof window.Chart === 'undefined') return false;
+    if (!window._auraChartDefaultsSet) {
+        window._auraChartDefaultsSet = true;
+        window.Chart.defaults.font.family = "'Space Grotesk', sans-serif";
+        window.Chart.defaults.color = '#94a3b8';
+    }
+    if (window._auraCharts[canvasId]) { try { window._auraCharts[canvasId].destroy(); } catch (e) {} }
+    try { window._auraCharts[canvasId] = new window.Chart(el, config); return true; } catch (e) { return false; }
+}
+function auraGradient(topColor, bottomColor) {
+    return function(context) {
+        const area = context.chart.chartArea;
+        if (!area) return topColor;
+        const g = context.chart.ctx.createLinearGradient(0, area.bottom, 0, area.top);
+        g.addColorStop(0, bottomColor); g.addColorStop(1, topColor);
+        return g;
+    };
+}
+const AURA_TOOLTIP = { backgroundColor: 'rgba(10,14,20,0.92)', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, padding: 10 };
+const AURA_AXIS_X = { grid: { display: false }, border: { display: false }, ticks: { color: '#94a3b8', font: { size: 9 } } };
+
 window.renderAnalytics = function() {
     const transactions = AuraState.data.transactions || [];
     
@@ -99,6 +128,7 @@ window.renderAnalytics = function() {
     let merchantMap = {};
     let totalExpense = 0;
     const kelFilter = (AuraState.temp && AuraState.temp.analyticsKelompok) || 'ALL';
+    const rateNow = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRateIDR || 110.27) : 1;
     const trend7Days = [0, 0, 0, 0, 0, 0, 0];
 
     // 2. PROSES DATA TRANSAKSI
@@ -160,7 +190,14 @@ window.renderAnalytics = function() {
         name: k, total: catMap[k].total, style: catMap[k].style, subs: catMap[k].subs
     })).sort((a,b) => b.total - a.total);
 
+    const donutRawTotal = sortedParents.reduce((a, p) => a + p.total, 0);
+    const donutCreated = donutRawTotal > 0 && auraMakeChart('category-donut-chart', {
+        type: 'doughnut',
+        data: { labels: sortedParents.map(p => p.name), datasets: [{ data: sortedParents.map(p => Math.round(p.total * rateNow)), backgroundColor: sortedParents.map(p => p.style.hex), borderColor: 'rgba(10,14,20,0.85)', borderWidth: 2, hoverOffset: 10 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: Object.assign({}, AURA_TOOLTIP, { callbacks: { label: function(c) { const p = sortedParents[c.dataIndex]; const pct = donutRawTotal > 0 ? Math.round(p.total / donutRawTotal * 100) : 0; return ' ' + p.name + ': ' + window.convertAndFormatCurrency(p.total) + ' (' + pct + '%)'; } } }) } }
+    });
     AuraUtils.safeDOM('category-pie-chart', el => {
+        if (donutCreated) { el.style.background = 'transparent'; return; }
         if (totalExpense > 0 && sortedParents.length > 0) {
             let conicStops = []; let currentAngle = 0;
             for (let i = 0; i < sortedParents.length; i++) {
@@ -285,6 +322,33 @@ window.renderAnalytics = function() {
     AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.convertAndFormatCurrency(dailyAvg));
     AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.convertAndFormatCurrency(projected));
     drawCanvasChart(trend7Days);
+
+    // TREN 6 BULAN: pemasukan vs pengeluaran per bulan kalender (seluruh data)
+    const mLabels = [], mIn = [], mOut = [];
+    const mBase = new Date(); mBase.setDate(1); mBase.setHours(0, 0, 0, 0);
+    for (let mi = 5; mi >= 0; mi--) {
+        const mStart = new Date(mBase.getFullYear(), mBase.getMonth() - mi, 1);
+        const mEnd = new Date(mBase.getFullYear(), mBase.getMonth() - mi + 1, 1);
+        mLabels.push(mStart.toLocaleDateString('id-ID', { month: 'short' }));
+        let inc = 0, out = 0;
+        transactions.forEach(trx => {
+            if (trx.is_deleted) return;
+            const tt = new Date(trx.tanggal || trx.createdAt).getTime();
+            if (tt >= mStart.getTime() && tt < mEnd.getTime()) {
+                const v = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
+                if (trx.tipe === 'pemasukan') inc += v; else if (trx.tipe === 'pengeluaran') out += v;
+            }
+        });
+        mIn.push(Math.round(inc)); mOut.push(Math.round(out));
+    }
+    auraMakeChart('canvas-6months', {
+        type: 'bar',
+        data: { labels: mLabels, datasets: [
+            { label: 'Pemasukan', data: mIn, backgroundColor: auraGradient('#34d399', '#0ea5e9'), borderRadius: 6, maxBarThickness: 20 },
+            { label: 'Pengeluaran', data: mOut, backgroundColor: auraGradient('#fb7185', '#f97316'), borderRadius: 6, maxBarThickness: 20 }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: Object.assign({}, AURA_TOOLTIP, { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + window.formatAuraCurrency(c.parsed.y); } } }) }, scales: { x: AURA_AXIS_X, y: { display: false, beginAtZero: true } } }
+    });
 };
 
 // === FUNGSI SINGLE ADD TO VAULT (TAMBAHKAN SATU KATEGORI KE GUDANG) ===
@@ -700,6 +764,24 @@ window.updateCategoryMapping = async function(subCat, newParent) {
 
 // === FUNGSI CHART & EXPORT ===
 function drawCanvasChart(dataArray) {
+    const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRateIDR || 110.27) : 1;
+    const data = (dataArray || []).map(v => Math.round((Number(v) || 0) * rate));
+    const labels = [];
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) { const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i); labels.push(d.toLocaleDateString('id-ID', { weekday: 'short' })); }
+    const avg = data.length ? Math.round(data.reduce((a, b) => a + b, 0) / data.length) : 0;
+    const ok = auraMakeChart('canvas-7days', {
+        type: 'bar',
+        data: { labels: labels, datasets: [
+            { type: 'bar', label: 'Pengeluaran', data: data, backgroundColor: auraGradient('#38bdf8', '#7c3aed'), borderRadius: 7, maxBarThickness: 34 },
+            { type: 'line', label: 'Rata-rata', data: data.map(() => avg), borderColor: '#fbbf24', borderWidth: 1.5, borderDash: [5, 5], pointRadius: 0 }
+        ]},
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: Object.assign({}, AURA_TOOLTIP, { callbacks: { label: function(c) { return ' ' + c.dataset.label + ': ' + window.formatAuraCurrency(c.parsed.y); } } }) }, scales: { x: AURA_AXIS_X, y: { display: false, beginAtZero: true } } }
+    });
+    if (!ok) drawCanvasChartManual(dataArray);
+}
+
+function drawCanvasChartManual(dataArray) {
     const canvas = document.getElementById('canvas-7days');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');

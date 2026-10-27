@@ -47,13 +47,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
     <script>
     // PENYEMBUHAN CACHE: setiap rilis menaikkan nomor versi di bawah ini.
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r19'; try {
+    (function () { var V = '2026-10-27-r20'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -65,7 +66,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027n">
+    <link rel="stylesheet" href="./css/style.css?v=20261027o">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -1251,9 +1252,17 @@
 
                 <div class="glass-panel p-5">
                     <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase"><i class="fa-solid fa-chart-line text-accent mr-1.5"></i>Tren Pengeluaran 7 Hari</h3>
-                    <canvas id="canvas-7days" width="350" height="150" class="w-full"></canvas>
+                    <div class="relative h-[170px]"><canvas id="canvas-7days" class="w-full h-full"></canvas></div>
                 </div>
 
+                <div class="glass-panel p-5">
+                    <h3 class="text-[10px] font-black mb-5 text-[var(--text-muted)] text-center tracking-widest uppercase"><i class="fa-solid fa-chart-column text-accent mr-1.5"></i>Tren 6 Bulan Terakhir</h3>
+                    <div class="relative h-[180px]"><canvas id="canvas-6months" class="w-full h-full"></canvas></div>
+                    <div class="flex justify-center gap-5 mt-3 text-[9px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(180deg, #34d399, #0ea5e9)"></span> Pemasukan</span>
+                        <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm" style="background: linear-gradient(180deg, #fb7185, #f97316)"></span> Pengeluaran</span>
+                    </div>
+                </div>
                 <div class="glass-panel p-5 flex flex-col items-center">
                     <div class="w-full flex justify-between items-center mb-6">
                         <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
@@ -1263,8 +1272,9 @@
                             <option value="Kewajiban Terpisah">Kewajiban Saja</option>
                         </select>
                     </div>
-                    <div id="category-pie-chart" class="w-40 h-40 pie-chart relative flex items-center justify-center mb-4">
-                        <div class="w-24 h-24 bg-[var(--bg-base)] rounded-full absolute flex flex-col items-center justify-center shadow-lg">
+                    <div id="category-pie-chart" class="w-44 h-44 pie-chart relative flex items-center justify-center mb-4">
+                        <canvas id="category-donut-chart" class="absolute inset-0 w-full h-full"></canvas>
+                        <div class="w-24 h-24 rounded-full absolute flex flex-col items-center justify-center pointer-events-none">
                             <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest">Total</span>
                             <span class="text-xs font-bold font-mono" id="pie-total-label">0</span>
                         </div>
@@ -1486,7 +1496,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027n"></script>
+    <script type="module" src="./js/main.js?v=20261027o"></script>
 
 </body>
 </html>

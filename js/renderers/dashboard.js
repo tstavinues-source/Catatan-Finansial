@@ -742,7 +742,7 @@ window.renderWawasan = function() {
                 el.innerHTML = '<p class="text-center text-xs text-[var(--text-muted)] p-8 leading-relaxed">Belum ada catatan pada siklus ini.<br>Wawasan akan muncul begitu ada transaksi.</p>';
                 return;
             }
-            const fmt = window.formatAuraCurrency;
+            const fmt = window.convertAndFormatCurrency; // Semua angka Wawasan berbasis JPY — wajib lewat konverter (satu sistem kurs).
             const fmtTgl = function(v) { return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short' }).format(new Date(v)); };
             let pribadi = 0, kewajiban = 0, totalOut = 0;
             const catMap = {};
