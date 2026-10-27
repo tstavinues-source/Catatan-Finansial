@@ -148,6 +148,7 @@ window.reCalculateAll = function() {
         </div>`;
     }
 
+    let walletCardsHtml = '';
     Object.keys(wallets).forEach(wId => {
         const w = wallets[wId];
         const bal = walletBalances[wId];
@@ -161,6 +162,18 @@ window.reCalculateAll = function() {
             <span class="truncate pr-1">${AuraUtils.escapeHtml(w.name)} ${iconEye}</span>
             <span class="font-mono font-bold">${window.formatAuraCurrencyCompact(bal)}</span>
         </div>`;
+
+        // Kartu dompet terpisah ala mockup untuk seksi "Dompet Saya"
+        const cardHtml = `
+        <div class="glass-panel p-3.5 ${isHidden ? 'opacity-50' : ''}">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 icon-chip shrink-0"><i class="fa-solid ${w.type === 'cashless' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-accent text-xs"></i></div>
+                <span class="text-xs font-bold truncate">${AuraUtils.escapeHtml(w.name)}${iconEye}</span>
+            </div>
+            <p class="font-display font-extrabold text-[15px] mt-2.5 ${hiddenStyle}">${window.formatAuraCurrencyCompact(bal)}</p>
+            <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-0.5 font-semibold">${w.type === 'cashless' ? 'Rekening Digital' : 'Tunai Fisik'}</p>
+        </div>`;
+        walletCardsHtml += cardHtml;
 
         if (w.type === 'cashless') {
             totalCashlessBal += bal;
@@ -325,6 +338,8 @@ window.reCalculateAll = function() {
             document.getElementById('breakdown-cashless').classList.toggle('hidden');
         };
     });
+
+    AuraUtils.safeDOM('dash-wallets', el => { el.innerHTML = walletCardsHtml || '<p class="text-[10px] text-[var(--text-muted)] col-span-2">Belum ada dompet.</p>'; });
 
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
     const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;

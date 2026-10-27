@@ -53,7 +53,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r16'; try {
+    (function () { var V = '2026-10-27-r17'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -65,7 +65,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027k">
+    <link rel="stylesheet" href="./css/style.css?v=20261027l">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -911,7 +911,7 @@
                 </button>
             </div>
             
-            <div id="wallet-list-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-black/40 pb-6">
+            <div id="wallet-list-container" class="flex-1 overflow-y-auto no-scrollbar p-4 grid grid-cols-2 gap-3 content-start items-start bg-black/40 pb-6">
                 </div>
         </div>
     </div>
@@ -1102,6 +1102,14 @@
                                 </div>
                             </div>
                             <i class="fa-solid fa-chevron-right text-[var(--text-muted)] text-xs"></i>
+                        </div>
+
+                        <div class="mt-5">
+                            <div class="flex justify-between items-center mb-3 px-0.5">
+                                <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-wallet text-accent"></i> Dompet Saya</h3>
+                                <button onclick="window.openWalletManager()" class="text-[10px] text-[var(--text-muted)] hover:text-white transition font-bold uppercase tracking-widest">Kelola</button>
+                            </div>
+                            <div id="dash-wallets" class="grid grid-cols-2 gap-3"></div>
                         </div>
                     </div>
 
@@ -1468,7 +1476,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027k"></script>
+    <script type="module" src="./js/main.js?v=20261027l"></script>
 
 </body>
 </html>
