@@ -341,6 +341,13 @@ window.reCalculateAll = function() {
 
     AuraUtils.safeDOM('dash-wallets', el => { el.innerHTML = walletCardsHtml || '<p class="text-[10px] text-[var(--text-muted)] col-span-2">Belum ada dompet.</p>'; });
 
+    const splitTotal = breakdownCashTotals.total + breakdownCashlessTotals.total;
+    const cashSplitPct = splitTotal > 0 ? Math.round((breakdownCashTotals.total / splitTotal) * 100) : 0;
+    AuraUtils.safeDOM('dash-split-cash', el => el.style.width = `${cashSplitPct}%`);
+    AuraUtils.safeDOM('dash-split-bank', el => el.style.width = `${100 - cashSplitPct}%`);
+    AuraUtils.safeDOM('dash-split-cash-pct', el => el.innerText = `${cashSplitPct}%`);
+    AuraUtils.safeDOM('dash-split-bank-pct', el => el.innerText = `${100 - cashSplitPct}%`);
+
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
     const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
     const remainingBudget = limitVal - periodSpent;
@@ -393,6 +400,7 @@ window.reCalculateAll = function() {
             const dObj = new Date(dateStr);
             const dateDisplay = !isNaN(dObj.getTime()) ? dObj.getDate().toString().padStart(2,'0') : '--';
             const dayDisplay = !isNaN(dObj.getTime()) ? dObj.toLocaleDateString('id-ID', {weekday:'short'}) : '---';
+            const monthDisplay = !isNaN(dObj.getTime()) ? dObj.toLocaleDateString('id-ID', {month:'short', year:'numeric'}) : '';
             const totalPrefix = g.total >= 0 ? '+' : ''; 
             const totalColor = g.total >= 0 ? 'text-[var(--color-income)]' : 'text-[var(--text-main)]';
             
@@ -513,6 +521,7 @@ window.reCalculateAll = function() {
                     <div class="flex items-baseline gap-1.5">
                         <span class="text-xl font-display font-black leading-none">${dateDisplay}</span>
                         <span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold">${dayDisplay}</span>
+                        <span class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-extrabold opacity-60">· ${monthDisplay}</span>
                     </div>
                     <span class="text-xs font-mono font-bold ${totalColor}">${totalPrefix}${window.formatAuraCurrency(g.total)}</span>
                 </div>
