@@ -54,7 +54,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r20'; try {
+    (function () { var V = '2026-10-27-r21'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -66,7 +66,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027o">
+    <link rel="stylesheet" href="./css/style.css?v=20261027p">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -1496,7 +1496,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027o"></script>
+    <script type="module" src="./js/main.js?v=20261027p"></script>
 
 </body>
 </html>

@@ -341,8 +341,8 @@ window.reCalculateAll = function() {
 
     AuraUtils.safeDOM('dash-wallets', el => { el.innerHTML = walletCardsHtml || '<p class="text-[10px] text-[var(--text-muted)] col-span-2">Belum ada dompet.</p>'; });
 
-    const splitTotal = breakdownCashTotals.total + breakdownCashlessTotals.total;
-    const cashSplitPct = splitTotal > 0 ? Math.round((breakdownCashTotals.total / splitTotal) * 100) : 0;
+    const splitTotal = totalCashBal + totalCashlessBal;
+    const cashSplitPct = splitTotal > 0 ? Math.round((totalCashBal / splitTotal) * 100) : 0;
     AuraUtils.safeDOM('dash-split-cash', el => el.style.width = `${cashSplitPct}%`);
     AuraUtils.safeDOM('dash-split-bank', el => el.style.width = `${100 - cashSplitPct}%`);
     AuraUtils.safeDOM('dash-split-cash-pct', el => el.innerText = `${cashSplitPct}%`);
