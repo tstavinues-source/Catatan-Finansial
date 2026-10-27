@@ -199,7 +199,7 @@ export const WalletManager = {
         const walletKeys = Object.keys(wallets);
 
         if(walletKeys.length === 0) {
-            container.innerHTML = "<div class='text-center p-8 border border-dashed border-[var(--border-glass)] rounded-2xl bg-black/20 mt-4'>" +
+            container.innerHTML = "<div class='col-span-2 text-center p-8 border border-dashed border-[var(--border-glass)] rounded-2xl bg-black/20 mt-4'>" +
                 "<div class='w-12 h-12 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-3'><i class='fa-solid fa-ghost text-gray-500 text-lg'></i></div>" +
                 "<p class='text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-bold'>Kekosongan Terdeteksi</p>" +
                 "<p class='text-xs text-gray-500 mt-1'>Anda belum mengonfigurasi dompet atau rekening fisik/digital apa pun.</p>" +
@@ -207,28 +207,40 @@ export const WalletManager = {
             return;
         }
 
+        // Saldo per dompet dihitung dari transaksi — aturan yang sama dengan dashboard
+        const balances = {};
+        walletKeys.forEach(k => balances[k] = 0);
+        (AuraState.data.transactions || []).forEach(trx => {
+            if (!trx || trx.is_deleted || !trx.wallet_id || balances[trx.wallet_id] === undefined) return;
+            const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
+            const fee = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+            if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') balances[trx.wallet_id] += val;
+            else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') balances[trx.wallet_id] -= val;
+            else if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') balances[trx.wallet_id] -= (val + fee);
+            else if (trx.tipe === 'nabung') balances[trx.wallet_id] -= val;
+        });
+
         let html = '';
         walletKeys.forEach(key => {
             const w = wallets[key];
-            const icon = w.type === 'cashless' ? "<i class='fa-solid fa-credit-card text-sky-400'></i>" : "<i class='fa-solid fa-money-bill-wave text-emerald-400'></i>";
-            const bgIcon = w.type === 'cashless' ? "bg-sky-500/10 border-sky-500/30 shadow-[0_0_10px_rgba(56,189,248,0.2)]" : "bg-emerald-500/10 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]";
-            
-            const eyeIcon = w.is_hidden ? "<i class='fa-solid fa-eye-slash text-rose-400'></i>" : "<i class='fa-solid fa-eye text-[var(--text-muted)] group-hover:text-emerald-400'></i>";
-            const hiddenBadge = w.is_hidden ? "<span class='text-[8px] text-rose-400 border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-[0.15em] ml-2 font-bold animate-pulse'>Gaib</span>" : "";
-            const borderGlow = w.is_hidden ? "border-l-rose-500 opacity-60" : (w.type === 'cashless' ? "border-l-sky-400" : "border-l-emerald-400");
+            const icon = w.type === 'cashless' ? "fa-credit-card" : "fa-money-bill-wave";
+            const eyeIcon = w.is_hidden ? "<i class='fa-solid fa-eye-slash text-rose-400'></i>" : "<i class='fa-solid fa-eye text-[var(--text-muted)]'></i>";
+            const hiddenBadge = w.is_hidden ? "<span class='text-[8px] text-rose-400 border border-rose-500/30 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-[0.15em] ml-1 font-bold'>Gaib</span>" : "";
             const walletTypeLabel = w.type === 'cashless' ? "Rekening Digital" : "Tunai Fisik";
+            const balText = (typeof window.formatAuraCurrencyCompact === 'function') ? window.formatAuraCurrencyCompact(balances[key]) : balances[key];
 
-            html += "<div class='glass-panel p-4 flex items-center justify-between border-l-[3px] " + borderGlow + " transition-all duration-300 hover:bg-white/5 group'>" +
-                "<div class='flex items-center gap-3'>" +
-                "<div class='w-11 h-11 rounded-xl flex items-center justify-center border " + bgIcon + " shrink-0 transition-transform group-hover:scale-105'>" + icon + "</div>" +
-                "<div><h4 class='text-sm font-bold text-white tracking-wide'>" + AuraUtils.escapeHtml(w.name) + " " + hiddenBadge + "</h4>" +
-                "<p class='text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-1 font-semibold'>" + walletTypeLabel + "</p></div>" +
-                "</div>" +
-                "<div class='flex items-center gap-1.5 shrink-0'>" +
-                "<button onclick=\"window.toggleWalletVisibility('" + key + "')\" class='w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 shadow-md group' title='Sembunyikan dari Net Worth'>" + eyeIcon + "</button>" +
-                "<button onclick=\"window.editWallet('" + key + "')\" class='w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 text-[var(--text-muted)] hover:text-white shadow-md'><i class='fa-solid fa-pen text-[10px]'></i></button>" +
-                "<button onclick=\"window.deleteWallet('" + key + "')\" class='w-8 h-8 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-rose-500/20 transition-all active:scale-90 text-[var(--text-muted)] hover:text-rose-400 shadow-md'><i class='fa-solid fa-trash text-[10px]'></i></button>" +
-                "</div></div>";
+            html += "<div class='glass-panel p-3.5 flex flex-col gap-2.5 " + (w.is_hidden ? "opacity-60" : "") + "'>" +
+                "<div class='flex items-start justify-between gap-2'>" +
+                "<div class='w-10 h-10 icon-chip shrink-0'><i class='fa-solid " + icon + " text-accent'></i></div>" +
+                "<div class='flex gap-1 shrink-0'>" +
+                "<button onclick=\"window.toggleWalletVisibility('" + key + "')\" class='w-7 h-7 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 text-[10px]' title='Sembunyikan dari Net Worth'>" + eyeIcon + "</button>" +
+                "<button onclick=\"window.editWallet('" + key + "')\" class='w-7 h-7 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-white/10 transition-all active:scale-90 text-[var(--text-muted)] hover:text-white text-[10px]'><i class='fa-solid fa-pen'></i></button>" +
+                "<button onclick=\"window.deleteWallet('" + key + "')\" class='w-7 h-7 rounded-full bg-black/60 border border-[var(--border-glass)] flex items-center justify-center hover:bg-rose-500/20 transition-all active:scale-90 text-[var(--text-muted)] hover:text-rose-400 text-[10px]'><i class='fa-solid fa-trash'></i></button>" +
+                "</div></div>" +
+                "<div><h4 class='text-[13px] font-bold text-white tracking-wide leading-tight'>" + AuraUtils.escapeHtml(w.name) + hiddenBadge + "</h4>" +
+                "<p class='text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-0.5 font-semibold'>" + walletTypeLabel + "</p></div>" +
+                "<p class='font-display font-extrabold text-[15px] mt-auto " + (w.is_hidden ? "line-through text-rose-400" : "") + "'>" + balText + "</p>" +
+                "</div>";
         });
 
         container.innerHTML = html;

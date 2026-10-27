@@ -487,7 +487,8 @@ window.syncCategoriesData = async function() {
         let pId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === pNameLower && !rawCats[id].parentId);
         if (!pId && !tombstones.includes(pNameLower)) {
             pId = `cat_sync_p_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-            rawCats[pId] = { name: pName, type: type, icon: 'fa-box-archive', color: '#a1a1aa', parentId: null };
+            const pStyleH = window.getCategoryDisplayStyle(pName);
+            rawCats[pId] = { name: pName, type: type, icon: pStyleH.icon, color: pStyleH.hex, parentId: null };
             isUpdated = true;
         }
         
@@ -501,7 +502,8 @@ window.syncCategoriesData = async function() {
                     let cExists = Object.values(rawCats).some(cat => cat.name.toLowerCase() === cNameLower);
                     if (!cExists && !tombstones.includes(cNameLower) && pId) {
                         let cId = `cat_sync_c_${Date.now()}_${Math.floor(Math.random()*10000)}`;
-                        rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
+                        const cStyleH = window.getCategoryDisplayStyle(cName);
+                        rawCats[cId] = { name: cName, type: type, icon: cStyleH.icon, color: cStyleH.hex, parentId: pId };
                         isUpdated = true;
                     }
                 }
@@ -519,6 +521,58 @@ window.syncCategoriesData = async function() {
             }
         }
     }
+};
+
+// SUMBER TUNGGAL daftar kategori untuk menu pengelola & pemilih: gabungan
+// kategori kustom (Firebase) + bawaan script, didedupe per nama. Ikon &
+// warna TIDAK dibaca dari simpanan — selalu dari CategoryManager
+// .resolveStyle (script menang), jadi menu tidak kehilangan ikon lagi
+// setelah ikon dipindah permanen ke script.
+window.getDisplayCategories = function() {
+    const CM = window.CategoryManager;
+    const rawCustom = AuraState.data.settings?.customCategories || {};
+    const mappings = AuraState.data.settings?.categoryMappings || {};
+    const byName = new Map();
+    
+    Object.entries(rawCustom).forEach(([id, data]) => {
+        if (!data || !data.name) return;
+        byName.set(data.name.toLowerCase(), {
+            id, name: data.name, type: data.type || 'expense',
+            parentId: data.parentId || null, builtin: false
+        });
+    });
+    
+    if (CM && typeof CM.getAllCategories === 'function') {
+        Object.entries(CM.getAllCategories()).forEach(([id, data]) => {
+            if (!data || !data.isSystem || !data.name) return;
+            const key = data.name.toLowerCase();
+            if (!byName.has(key)) {
+                byName.set(key, { id, name: data.name, type: data.type || 'expense', parentId: null, builtin: true });
+            }
+        });
+    }
+    
+    // Nama yang sama dengan bawaan script terkunci sebagai bawaan
+    byName.forEach(entry => {
+        if (CM && typeof CM.getSystemStyle === 'function' && CM.getSystemStyle(entry.name)) entry.builtin = true;
+    });
+    
+    // Induk bagi entri tanpa parentId: dari categoryMappings
+    byName.forEach(entry => {
+        if (!entry.parentId && mappings[entry.name]) {
+            const parent = byName.get(String(mappings[entry.name]).toLowerCase());
+            if (parent && parent.id !== entry.id) entry.parentId = parent.id;
+        }
+    });
+    
+    return [...byName.values()];
+};
+
+window.getCategoryDisplayStyle = function(name) {
+    if (window.CategoryManager && typeof window.CategoryManager.resolveStyle === 'function') {
+        return window.CategoryManager.resolveStyle(name);
+    }
+    return { icon: 'fa-tag', hex: '#52525b' };
 };
 
 window.openCategoryManager = async function() {
@@ -544,8 +598,7 @@ window.switchCatTab = function(type) {
 };
 
 window.renderCategoryList = function() {
-    const rawCategories = AuraState.data.settings?.customCategories || {};
-    const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
+    const allCats = window.getDisplayCategories();
     const filteredCats = allCats.filter(c => c.type === currentCatTab);
     
     const parents = filteredCats.filter(c => !c.parentId);
@@ -562,40 +615,42 @@ window.renderCategoryList = function() {
     let html = '';
     parents.forEach(parent => {
         const mySubs = children.filter(sub => sub.parentId === parent.id);
+        const pStyle = window.getCategoryDisplayStyle(parent.name);
         
         html += `
         <div class="glass-panel p-3 flex flex-col mb-3 animate-[fadeIn_0.3s_ease-out]">
             <div class="flex justify-between items-center">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border border-white/10 shadow-lg" style="background-color: ${parent.color}20; color: ${parent.color}">
-                        <i class="fa-solid ${parent.icon} text-lg"></i>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center shrink-0 border border-white/10 shadow-lg" style="background-color: ${pStyle.hex}20; color: ${pStyle.hex}">
+                        <i class="fa-solid ${pStyle.icon} text-lg"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-sm text-[var(--text-main)] leading-tight">${AuraUtils.escapeHtml(parent.name)}</h4>
                         <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest">${mySubs.length} Sub-Kategori</p>
                     </div>
                 </div>
-                <div class="flex gap-1">
+                ${parent.builtin ? '<span class="text-[8px] font-bold uppercase tracking-widest text-[var(--text-muted)] border border-[var(--border-glass)] px-2 py-1 rounded-full">Bawaan</span>' : `<div class="flex gap-1">
                     <button onclick="window.editCategory('${parent.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/5 transition"><i class="fa-solid fa-pen text-xs"></i></button>
                     <button onclick="window.deleteCategory('${parent.id}')" class="w-8 h-8 rounded-full flex items-center justify-center text-rose-500 hover:bg-rose-500/10 transition"><i class="fa-solid fa-trash text-xs"></i></button>
-                </div>
+                </div>`}
             </div>`;
         
         if (mySubs.length > 0) {
             html += `<div class="ml-5 mt-2 pl-4 border-l-2 border-[var(--border-glass)] space-y-2">`;
             mySubs.forEach(sub => {
+                const sStyle = window.getCategoryDisplayStyle(sub.name);
                 html += `
                 <div class="flex justify-between items-center group">
                     <div class="flex items-center gap-2">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sub.color}">
-                            <i class="fa-solid ${sub.icon} text-[10px]"></i>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sStyle.hex}">
+                            <i class="fa-solid ${sStyle.icon} text-[10px]"></i>
                         </div>
                         <span class="text-xs text-[var(--text-muted)] group-hover:text-white transition">${AuraUtils.escapeHtml(sub.name)}</span>
                     </div>
-                    <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    ${sub.builtin ? '<span class="text-[8px] font-bold uppercase tracking-widest text-[var(--text-muted)]">Bawaan</span>' : `<div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onclick="window.editCategory('${sub.id}')" class="p-1.5 text-[var(--text-muted)] hover:text-white"><i class="fa-solid fa-pen text-[10px]"></i></button>
                         <button onclick="window.deleteCategory('${sub.id}')" class="p-1.5 text-rose-500 hover:text-rose-400"><i class="fa-solid fa-trash text-[10px]"></i></button>
-                    </div>
+                    </div>`}
                 </div>`;
             });
             html += `</div>`;
@@ -618,8 +673,7 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
     
     await window.syncCategoriesData();
 
-    const rawCategories = AuraState.data.settings?.customCategories || {};
-    const allCats = Object.entries(rawCategories).map(([id, data]) => ({ id, ...data }));
+    const allCats = window.getDisplayCategories();
     
     let mappedType = 'expense'; 
     if (trxType) {
@@ -643,11 +697,12 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
         parents.forEach(parent => {
             const mySubs = children.filter(sub => sub.parentId === parent.id);
             const safeParentName = parent.name.replace(/'/g, "\\'");
+            const pStyle = window.getCategoryDisplayStyle(parent.name);
             
             html += `
             <button onclick="window.selectCategoryFromPicker('${safeParentName}', '${safeParentName}')" class="w-full text-left p-3 rounded-xl hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group border border-transparent hover:border-[var(--border-glass)]">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${parent.color}20; color: ${parent.color}">
-                    <i class="fa-solid ${parent.icon || 'fa-tag'} text-sm"></i>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${pStyle.hex}20; color: ${pStyle.hex}">
+                    <i class="fa-solid ${pStyle.icon} text-sm"></i>
                 </div>
                 <div class="flex-1">
                     <h4 class="font-bold text-sm text-[var(--text-main)] group-hover:text-white transition">${AuraUtils.escapeHtml(parent.name)}</h4>
@@ -658,10 +713,11 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
                 html += `<div class="ml-4 pl-4 border-l border-[var(--border-glass)] space-y-1 mb-2">`;
                 mySubs.forEach(sub => {
                     const safeSubName = sub.name.replace(/'/g, "\\'");
+                    const sStyle = window.getCategoryDisplayStyle(sub.name);
                     html += `
                     <button onclick="window.selectCategoryFromPicker('${safeSubName}', '${safeParentName}')" class="w-full text-left p-2.5 rounded-lg hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sub.color || parent.color}">
-                            <i class="fa-solid ${sub.icon || 'fa-tag'} text-[10px]"></i>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center shrink-0" style="color: ${sStyle.hex}">
+                            <i class="fa-solid ${sStyle.icon} text-[10px]"></i>
                         </div>
                         <span class="text-xs text-[var(--text-muted)] group-hover:text-white transition">${AuraUtils.escapeHtml(sub.name)}</span>
                     </button>`;
@@ -744,6 +800,10 @@ window.editCategory = function(id) {
     const rawCategories = AuraState.data.settings?.customCategories || {};
     const cat = rawCategories[id];
     if (!cat) return;
+    if (window.CategoryManager && typeof window.CategoryManager.getSystemStyle === 'function' && window.CategoryManager.getSystemStyle(cat.name)) {
+        if (window.showToast) window.showToast("Kategori bawaan script tidak dapat diubah dari menu ini.", true);
+        return;
+    }
 
     document.getElementById('cat-form-id').value = id;
     document.getElementById('cat-form-type').value = cat.type;
@@ -1008,6 +1068,11 @@ window.saveCategoryData = async function() {
 // HAPUS KATEGORI & MASUKKAN KE BUKU HITAM
 // ============================================================================
 window.deleteCategory = async function(id) {
+    const catGuard = (AuraState.data.settings?.customCategories || {})[id];
+    if (!catGuard || (window.CategoryManager && typeof window.CategoryManager.getSystemStyle === 'function' && window.CategoryManager.getSystemStyle(catGuard.name))) {
+        if (window.showToast) window.showToast("Kategori bawaan script tidak dapat dihapus dari menu ini.", true);
+        return;
+    }
     const isConfirmed = await window.AuraConfirm("Yakin ingin menghapus kategori ini? Sistem akan memblokirnya agar tidak muncul lagi dari riwayat lama.");
     
     if (!isConfirmed) return; 
