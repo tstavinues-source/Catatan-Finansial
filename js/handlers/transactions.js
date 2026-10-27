@@ -272,6 +272,12 @@ window.openManualTrxModal = function() {
     // Suntikkan dompet dari Firebase ke dalam Dropdown Modal ini
     window.populateWalletDropdowns('manual-trx-wallet');
 
+    // Kolom tanggal & jam: bawaan hari ini + jam sekarang (waktu lokal)
+    const nowOpen = new Date();
+    const padOpen = n => String(n).padStart(2, '0');
+    AuraUtils.safeDOM('manual-trx-date', el => el.value = `${nowOpen.getFullYear()}-${padOpen(nowOpen.getMonth() + 1)}-${padOpen(nowOpen.getDate())}`);
+    AuraUtils.safeDOM('manual-trx-time', el => el.value = `${padOpen(nowOpen.getHours())}:${padOpen(nowOpen.getMinutes())}`);
+
     if (typeof window.showModal === 'function') {
         window.showModal('modal-manual-trx');
     }
@@ -284,6 +290,8 @@ window.saveManualTransaction = async function() {
     const currInput = document.getElementById('manual-trx-curr');
     const amtInput = document.getElementById('manual-trx-amount');
     const catInput = document.getElementById('manual-trx-category-val');
+    const dateInput = document.getElementById('manual-trx-date');
+    const timeInput = document.getElementById('manual-trx-time');
 
     if (!storeInput || !amtInput) return;
     
@@ -310,11 +318,18 @@ window.saveManualTransaction = async function() {
     // Tentukan metode fallback untuk item agar tidak hancur kompatibilitasnya
     const walletType = AuraState.data.wallets[walletId]?.type || 'cashless';
 
-    const timestamp = new Date().toISOString();
+    // Tanggal & jam dari kolom form (lokal). Sebelumnya tanggal diambil dari
+    // toISOString() (UTC) sehingga entri pagi hari bisa tercatat kemarin.
+    const pad2 = n => String(n).padStart(2, '0');
+    const nowFb = new Date();
+    const dateVal = (dateInput && dateInput.value) ? dateInput.value : `${nowFb.getFullYear()}-${pad2(nowFb.getMonth() + 1)}-${pad2(nowFb.getDate())}`;
+    const timeVal = (timeInput && timeInput.value) ? timeInput.value : `${pad2(nowFb.getHours())}:${pad2(nowFb.getMinutes())}`;
+    const chosen = new Date(`${dateVal}T${timeVal}:00`);
+    const timestamp = isNaN(chosen.getTime()) ? new Date().toISOString() : chosen.toISOString();
     const data = {
         merchantName: store,
         storeName: store,
-        tanggal: timestamp.split('T')[0],
+        tanggal: dateVal,
         createdAt: timestamp,
         nominal: amount,
         mata_uang: currency,
@@ -377,6 +392,11 @@ window.openEditTrxModal = function(id) {
     AuraUtils.safeDOM('edit-global-nominal', el => el.value = trx.nominal || 0);
     AuraUtils.safeDOM('edit-global-type', el => el.value = trx.tipe || 'pengeluaran');
     AuraUtils.safeDOM('edit-global-desc', el => el.value = AuraUtils.escapeHtml(trx.description || trx.catatan_ai || ''));
+    AuraUtils.safeDOM('edit-global-date', el => el.value = trx.tanggal || '');
+    AuraUtils.safeDOM('edit-global-time', el => {
+        const cd = trx.createdAt ? new Date(trx.createdAt) : null;
+        el.value = (cd && !isNaN(cd.getTime())) ? `${String(cd.getHours()).padStart(2, '0')}:${String(cd.getMinutes()).padStart(2, '0')}` : '12:00';
+    });
     
     if (typeof window.showModal === 'function') window.showModal('modal-edit-trx');
 };
@@ -391,6 +411,8 @@ window.saveEditTrx = async function() {
     const nominalEl = document.getElementById('edit-global-nominal');
     const typeEl = document.getElementById('edit-global-type');
     const descEl = document.getElementById('edit-global-desc');
+    const dateEl = document.getElementById('edit-global-date');
+    const timeEl = document.getElementById('edit-global-time');
 
     const storeName = storeEl ? storeEl.value.trim() : ''; 
     const curr = currEl ? currEl.value : 'JPY';
@@ -415,6 +437,14 @@ window.saveEditTrx = async function() {
         nominal: nominal, 
         tipe: tipe 
     };
+
+    const dateVal = dateEl ? dateEl.value : '';
+    const timeVal = timeEl ? timeEl.value : '';
+    if (dateVal) {
+        updates.tanggal = dateVal;
+        const chosenEdit = new Date(`${dateVal}T${timeVal || '12:00'}:00`);
+        if (!isNaN(chosenEdit.getTime())) updates.createdAt = chosenEdit.toISOString();
+    }
 
     if (desc) { 
         updates.description = desc; 

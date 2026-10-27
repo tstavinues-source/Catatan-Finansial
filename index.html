@@ -53,7 +53,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r15'; try {
+    (function () { var V = '2026-10-27-r16'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -65,7 +65,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027j">
+    <link rel="stylesheet" href="./css/style.css?v=20261027k">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -299,6 +299,16 @@
                         <input type="number" id="manual-trx-amount" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold text-accent" placeholder="0">
                     </div>
                 </div>
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal</label>
+                        <input type="date" id="manual-trx-date" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jam</label>
+                        <input type="time" id="manual-trx-time" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                    </div>
+                </div>
                 <div>
                     <label id="lbl-manual-store" class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Nama Toko / Merchant / Sumber</label>
                     <input type="text" id="manual-trx-store" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Contoh: 7-Eleven / Gaji / ATM">
@@ -357,6 +367,16 @@
                     <div class="w-2/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold font-mono">Total Manual</label>
                         <input type="number" id="edit-global-nominal" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono">
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal</label>
+                        <input type="date" id="edit-global-date" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jam</label>
+                        <input type="time" id="edit-global-time" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                     </div>
                 </div>
                 <div>
@@ -1448,7 +1468,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027j"></script>
+    <script type="module" src="./js/main.js?v=20261027k"></script>
 
 </body>
 </html>

@@ -6,6 +6,7 @@
 .hidden { display: none !important; }
 
 :root {
+    color-scheme: dark; /* daftar pilihan <select>, pemilih tanggal/jam & scrollbar bawaan browser ikut gelap */
     --font-main: 'Outfit', sans-serif;
     --font-display: 'Space Grotesk', sans-serif;
     /* Fondasi taktil: permukaan timbul / cekung / tertekan (bukan sekadar warna) */
