@@ -10,8 +10,20 @@ import { AuraUtils } from '../core/utils.js';
 export const CategoryManager = {
     
     getAllCategories: function() {
-        const customCats = AuraState.data.settings?.categories || {};
+        const customCats = AuraState.data.settings?.customCategories || {};
         return { ...DEFAULT_SYSTEM_CATEGORIES, ...customCats };
+    },
+    
+    // Ikon & warna kategori sistem bersifat PERMANEN dari script
+    // (js/config/categories.js). Nilai icon/color tersimpan di Firebase
+    // tidak boleh menimpa kategori sistem.
+    getSystemStyle: function(catName) {
+        if (!catName || typeof catName !== 'string') return null;
+        const safeName = catName.toLowerCase().trim();
+        const sys = Object.values(DEFAULT_SYSTEM_CATEGORIES).find(function(c) {
+            return c.name && c.name.toLowerCase() === safeName;
+        });
+        return sys ? { icon: sys.icon || 'fa-tag', hex: sys.color || '#52525b', name: sys.name } : null;
     },
     
     resolveStyle: function(catName) {
@@ -21,6 +33,8 @@ export const CategoryManager = {
         }
 
         const safeName = catName.toLowerCase().trim();
+        const systemStyle = this.getSystemStyle(catName);
+        if (systemStyle) return systemStyle;
         const exactMatch = Object.values(allCats).find(function(c) {
             return c.name && c.name.toLowerCase() === safeName;
         });
@@ -35,18 +49,18 @@ export const CategoryManager = {
 
         // Aturan fallback berbasis kecocokan kata kunci (Smart Keyword Matcher)
         const rules = [
-            { words: ['makan', 'kuliner', 'cemilan', 'snack', 'food', 'resto'], icon: 'fa-burger', hex: '#fb923c', name: 'Makanan' },
-            { words: ['minum', 'kopi', 'teh', 'cafe', 'drink', 'beverage'], icon: 'fa-mug-hot', hex: '#60a5fa', name: 'Minuman' },
-            { words: ['tagihan', 'utilitas', 'listrik', 'air', 'wifi', 'pajak', 'internet', 'bill'], icon: 'fa-file-invoice-dollar', hex: '#facc15', name: 'Utilitas' },
-            { words: ['gaji', 'masuk', 'transferan', 'bonus', 'pendapatan', 'income', 'salary'], icon: 'fa-money-bill-wave', hex: '#10b981', name: 'Pemasukan' },
-            { words: ['obat', 'sehat', 'dokter', 'klinik', 'rs', 'health', 'hospital'], icon: 'fa-kit-medical', hex: '#fb7185', name: 'Kesehatan' },
-            { words: ['baju', 'pakaian', 'fashion', 'celana', 'sepatu', 'aksesoris'], icon: 'fa-shirt', hex: '#e879f9', name: 'Pakaian' },
-            { words: ['hibur', 'main', 'game', 'bioskop', 'rekreasi', 'entertainment'], icon: 'fa-gamepad', hex: '#c084fc', name: 'Hiburan' },
-            { words: ['online', 'shopee', 'tokopedia', 'amazon', 'gojek', 'grab'], icon: 'fa-box-open', hex: '#f472b6', name: 'Belanja Online' },
-            { words: ['transport', 'kereta', 'bus', 'bensin', 'parkir', 'tol', 'travel'], icon: 'fa-train', hex: '#34d399', name: 'Transportasi' },
-            { words: ['pokok', 'pasar', 'supermarket', 'groceries', 'mart'], icon: 'fa-basket-shopping', hex: '#4ade80', name: 'Bahan Pokok' },
+            { words: ['makan', 'kuliner', 'cemilan', 'snack', 'food', 'resto'], icon: 'fa-utensils', hex: '#cf8a5f', name: 'Makanan' },
+            { words: ['minum', 'kopi', 'teh', 'cafe', 'drink', 'beverage'], icon: 'fa-mug-hot', hex: '#7ea6c9', name: 'Minuman' },
+            { words: ['tagihan', 'utilitas', 'listrik', 'air', 'wifi', 'pajak', 'internet', 'bill'], icon: 'fa-file-invoice-dollar', hex: '#7fb2d9', name: 'Utilitas' },
+            { words: ['gaji', 'masuk', 'transferan', 'bonus', 'pendapatan', 'income', 'salary'], icon: 'fa-money-bill-wave', hex: '#82b366', name: 'Pemasukan' },
+            { words: ['obat', 'sehat', 'dokter', 'klinik', 'rs', 'health', 'hospital'], icon: 'fa-kit-medical', hex: '#d48a8a', name: 'Kesehatan' },
+            { words: ['baju', 'pakaian', 'fashion', 'celana', 'sepatu', 'aksesoris'], icon: 'fa-shirt', hex: '#c48bb0', name: 'Pakaian' },
+            { words: ['hibur', 'main', 'game', 'bioskop', 'rekreasi', 'entertainment'], icon: 'fa-gamepad', hex: '#a58bd4', name: 'Hiburan' },
+            { words: ['online', 'shopee', 'tokopedia', 'amazon', 'gojek', 'grab'], icon: 'fa-box-open', hex: '#a390c9', name: 'Belanja Online' },
+            { words: ['transport', 'kereta', 'bus', 'bensin', 'parkir', 'tol', 'travel'], icon: 'fa-train', hex: '#6fa8a0', name: 'Transportasi' },
+            { words: ['pokok', 'pasar', 'supermarket', 'groceries', 'mart'], icon: 'fa-basket-shopping', hex: '#a3b86b', name: 'Bahan Pokok' },
             { words: ['elektronik', 'gadget', 'laptop', 'hp', 'device'], icon: 'fa-laptop', hex: '#94a3b8', name: 'Elektronik' },
-            { words: ['didik', 'sekolah', 'kursus', 'buku', 'edukasi', 'education'], icon: 'fa-graduation-cap', hex: '#22d3ee', name: 'Pendidikan' }
+            { words: ['didik', 'sekolah', 'kursus', 'buku', 'edukasi', 'education'], icon: 'fa-graduation-cap', hex: '#7ea8c4', name: 'Pendidikan' }
         ];
 
         for (let i = 0; i < rules.length; i++) {
