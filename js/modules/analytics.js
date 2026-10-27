@@ -30,6 +30,11 @@ function getParentCategory(catName) {
 }
 
 function getCategoryStyleFromDB(catName) {
+    // Kategori sistem: ikon & warna permanen dari script, bukan dari Firebase.
+    if (CategoryManager.getSystemStyle) {
+        const sysStyle = CategoryManager.getSystemStyle(catName);
+        if (sysStyle) return sysStyle;
+    }
     if (!AuraState.data.settings || !AuraState.data.settings.customCategories) return null;
     const rawCats = AuraState.data.settings.customCategories;
     const foundId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === catName.toLowerCase());

@@ -331,12 +331,11 @@ export const FirebaseService = {
         if (!pId) {
             pId = `cat_auto_p_${Date.now()}_${Math.floor(Math.random()*1000)}`;
             
-            let icon = 'fa-layer-group';
-            if(targetParent === 'Makanan') icon = 'fa-burger';
-            if(targetParent === 'Minuman') icon = 'fa-mug-hot';
-            if(targetParent === 'Transportasi') icon = 'fa-car';
+            const pStyle = (window.CategoryManager && window.CategoryManager.resolveStyle) ? window.CategoryManager.resolveStyle(targetParent) : null;
+            const icon = (pStyle && pStyle.icon) ? pStyle.icon : 'fa-layer-group';
+            const color = (pStyle && pStyle.hex) ? pStyle.hex : '#818cf8';
             
-            rawCats[pId] = { name: targetParent, type: type, icon: icon, color: '#818cf8', parentId: null };
+            rawCats[pId] = { name: targetParent, type: type, icon: icon, color: color, parentId: null };
             isUpdated = true;
         }
 
@@ -360,7 +359,8 @@ export const FirebaseService = {
                     let cIdExisting = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === cName.toLowerCase());
                     if (!cIdExisting) {
                         const cId = `cat_auto_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-                        rawCats[cId] = { name: cName, type: type, icon: 'fa-tag', color: rawCats[pId].color, parentId: pId };
+                        const cStyle = (window.CategoryManager && window.CategoryManager.resolveStyle) ? window.CategoryManager.resolveStyle(cName) : null;
+                        rawCats[cId] = { name: cName, type: type, icon: (cStyle && cStyle.icon) ? cStyle.icon : 'fa-tag', color: (cStyle && cStyle.hex) ? cStyle.hex : rawCats[pId].color, parentId: pId };
                         isUpdated = true;
                     }
                 }
