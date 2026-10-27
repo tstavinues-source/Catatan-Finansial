@@ -234,7 +234,10 @@ window.reCalculateAll = function() {
         
         let dStrRaw = trx.tanggal || trx.createdAt || new Date().toISOString();
         const dStr = dStrRaw.includes('T') ? dStrRaw.split('T')[0] : dStrRaw;
-        const timeFormatted = AuraUtils.formatDateToReadable(dStrRaw);
+        // Jam tampil WAJIB dari createdAt (waktu transaksi dicatat). Memakai
+        // dStrRaw (tanggal saja "YYYY-MM-DD") membuat new Date() membacanya
+        // sebagai tengah malam UTC = 09:00 JST untuk SEMUA transaksi.
+        const timeFormatted = AuraUtils.formatDateToReadable(trx.createdAt || dStrRaw);
         
         const wId = trx.wallet_id;
         const isHiddenTrx = wId && wallets[wId] && wallets[wId].is_hidden;
