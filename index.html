@@ -53,7 +53,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r11'; try {
+    (function () { var V = '2026-10-27-r12'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -65,7 +65,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027f">
+    <link rel="stylesheet" href="./css/style.css?v=20261027g">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -651,8 +651,16 @@
                                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] block font-bold">Gemini (Vision — Baca Struk)</label>
                                     <span id="gemini-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">LOCKED</span>
                                 </div>
+                            <div id="gemini-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
+                            <div class="flex gap-2 mb-2">
+                                <input type="password" id="new-gemini-key" class="v-input flex-1 rounded-xl p-3 text-xs font-mono outline-none" placeholder="API Key Gemini (AIza... / AQ....)">
+                                <button onclick="window.addGeminiKey()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 rounded-xl text-xs font-bold transition">
+                                    <i class="fa-solid fa-plus"></i>
+                                </button>
+                            </div>
+                            <p class="text-[9px] text-[var(--text-muted)] italic mb-3">Kunci manual dipakai lebih dulu. PIN di bawah hanya cadangan untuk Vault Nexus.</p>
                             <div>
-                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Master PIN Gemini</label>
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Master PIN Gemini (Cadangan — Vault Nexus)</label>
                                 <input type="password" id="gemini-pin-input" class="v-input w-full rounded-xl p-3 text-xs font-mono outline-none" placeholder="Masukkan PIN Gemini Anda...">
                             </div>
                             <button onclick="window.syncGeminiEngine(false)" class="w-full mt-2 py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-indigo-500/30">
@@ -1437,7 +1445,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027f"></script>
+    <script type="module" src="./js/main.js?v=20261027g"></script>
 
 </body>
 </html>

@@ -162,6 +162,7 @@ try {
                 if (data.groqApiKeys) {
                     AuraState.data.groqKeys = Object.keys(data.groqApiKeys).map(key => ({ id: key, ...data.groqApiKeys[key] }));
                     if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
+                    if (typeof window.renderGeminiKeysUI === 'function') window.renderGeminiKeysUI();
                 }
 
                 if (data.aiPreferences) {

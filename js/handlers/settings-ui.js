@@ -227,17 +227,143 @@ window.renderGroqKeysUI = function() {
     });
 };
 
+window.addGeminiKey = async function() {
+    const input = document.getElementById('new-gemini-key');
+    if (!input) return;
+    const key = input.value.trim();
+    
+    if (!key || !(key.startsWith('AIza') || key.startsWith('AQ.'))) {
+        if (window.showToast) {
+            window.showToast("Format API Key Gemini tidak valid!", true);
+        }
+        return;
+    }
+    
+    const secret = AuraState.user?.uid || "aura_secret_fallback";
+    let result = '';
+    for (let i = 0; i < key.length; i++) {
+        result += String.fromCharCode(key.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+    }
+    const encryptedBase64 = btoa(result);
+    
+    try {
+        let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
+        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
+        currentKeys.push(encryptedBase64);
+        
+        await FirebaseService.updateSettings({ geminiKeysEncrypted: currentKeys });
+        
+        if(!AuraState.data.settings) {
+            AuraState.data.settings = {};
+        }
+        AuraState.data.settings.geminiKeysEncrypted = currentKeys;
+        
+        input.value = '';
+        
+        if (window.showToast) {
+            window.showToast(`Kunci Gemini Ke-${currentKeys.length} diamankan ke Cloud!`);
+        }
+        window.renderGeminiKeysUI();
+        if (typeof window.syncGeminiEngine === 'function') window.syncGeminiEngine(true);
+    } catch(e) {
+        if (window.showToast) {
+            window.showToast("Gagal mengunggah kunci ke Cloud.", true);
+        }
+    }
+};
+
+window.removeGeminiKey = async function(index) {
+    const isConfirmed = await window.AuraConfirm("Yakin ingin mencabut Key Gemini ini dari Cloud?");
+    if (!isConfirmed) return;
+
+    try {
+        let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
+        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
+        currentKeys.splice(index, 1);
+        
+        await FirebaseService.updateSettings({ geminiKeysEncrypted: currentKeys });
+        
+        if(AuraState.data.settings) {
+            AuraState.data.settings.geminiKeysEncrypted = currentKeys;
+        }
+        
+        if (window.showToast) {
+            window.showToast("Kunci dihancurkan dari Pool.");
+        }
+        window.renderGeminiKeysUI();
+        if (typeof window.syncGeminiEngine === 'function') window.syncGeminiEngine(true);
+    } catch(e) {
+        if (window.showToast) {
+            window.showToast("Gagal mencabut kunci.", true);
+        }
+    }
+};
+
+window.renderGeminiKeysUI = function() {
+    AuraUtils.safeDOM('gemini-keys-container', function(el) {
+        let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
+        let keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
+        
+        if (keys.length === 0) {
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Gemini manual. Mesin memakai Vault Nexus (PIN) bila ter-unlock.</p>';
+            return;
+        }
+
+        let html = '';
+        const secret = AuraState.user?.uid || "aura_secret_fallback";
+        
+        keys.forEach((encKey, index) => {
+            let dec = null;
+            try {
+                let text = atob(encKey);
+                let result = '';
+                for (let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+                }
+                dec = result;
+            } catch(e) {
+            }
+
+            const isValid = dec && (dec.startsWith('AIza') || dec.startsWith('AQ.'));
+            const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
+            const statusColor = isValid ? 'text-emerald-400' : 'text-rose-400';
+
+            html += `
+            <div class="flex justify-between items-center bg-[var(--bg-base)] p-2.5 rounded-xl border border-emerald-900/30 bg-emerald-900/10 mb-2 last:mb-0">
+                <div class="flex flex-col">
+                    <span class="font-mono text-xs font-bold ${statusColor} flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-check"></i> ${display}
+                    </span>
+                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-wider mt-0.5">
+                        Pool Manual Ke-${index + 1} • Tersinkronisasi Firebase
+                    </span>
+                </div>
+                <button onclick="window.removeGeminiKey(${index})" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+            </div>`;
+        });
+        
+        el.innerHTML = html;
+    });
+};
+
 window.syncGeminiEngine = async function(silent = false) {
     const pinEl = document.getElementById('gemini-pin-input');
     const pinInput = pinEl ? pinEl.value.trim() : '';
     const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
     
-    if (!pin || pin.length < 3) {
+    const manualRaw = AuraState.data.settings?.geminiKeysEncrypted || [];
+    const manualCount = (Array.isArray(manualRaw) ? manualRaw : Object.values(manualRaw)).length;
+    if ((!pin || pin.length < 3) && manualCount === 0) {
         if (!silent && window.showToast) {
-            window.showToast("HARAP MASUKKAN PIN GEMINI!", true);
+            window.showToast("HARAP MASUKKAN PIN GEMINI ATAU PASANG KUNCI MANUAL!", true);
         }
         return;
     }
+    const effectivePin = pin || '';
     
     const gBadge = document.getElementById('gemini-status-badge');
     
@@ -251,12 +377,12 @@ window.syncGeminiEngine = async function(silent = false) {
             throw new Error("Modul AI belum siap.");
         }
         
-        const geminiEngine = new window.GeminiFailoverEngine(pin);
+        const geminiEngine = new window.GeminiFailoverEngine(effectivePin);
         const gCount = await geminiEngine.init();
         
         if (gCount > 0) {
             AuraState.instances.geminiEngine = geminiEngine;
-            localStorage.setItem('aurafi_gemini_pin', pin);
+            if (pin) localStorage.setItem('aurafi_gemini_pin', pin);
             
             if (gBadge) {
                 gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono";
@@ -705,6 +831,7 @@ window.openAuditLogs = async function() {
 // 6. AUTO-SYNC OBSERVER & AUTO-BILLER ENGINE (CCTV PEMANTAU & PENAGIH)
 // ============================================================================
 let lastGroqKeysStr = null;
+let lastGeminiKeysStr = null;
 let lastRecStr = null;
 let isProcessingBills = false;
 
@@ -804,6 +931,13 @@ setInterval(() => {
     if (currentGroqKeys !== lastGroqKeysStr) {
         if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
         lastGroqKeysStr = currentGroqKeys;
+    }
+
+    // 1b. Pantau Perubahan Kunci Gemini Manual
+    const currentGeminiKeys = JSON.stringify(AuraState.data.settings.geminiKeysEncrypted || []);
+    if (currentGeminiKeys !== lastGeminiKeysStr) {
+        if (typeof window.renderGeminiKeysUI === 'function') window.renderGeminiKeysUI();
+        lastGeminiKeysStr = currentGeminiKeys;
     }
 
     // 2. Pantau Perubahan Data Tagihan Rutin UI
