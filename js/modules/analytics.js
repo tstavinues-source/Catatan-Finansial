@@ -727,7 +727,8 @@ window.downloadCSV = function() {
     transactions.forEach(trx => {
         if (trx.is_deleted) return;
         const dateObj = new Date(trx.tanggal || trx.createdAt);
-        const dateStr = dateObj.toLocaleDateString('id-ID'); const timeStr = dateObj.toLocaleTimeString('id-ID');
+        const timeObj = new Date(trx.createdAt || trx.tanggal);
+        const dateStr = dateObj.toLocaleDateString('id-ID'); const timeStr = timeObj.toLocaleTimeString('id-ID');
         const safeMerchant = `"${(trx.merchantName || trx.storeName || 'Unknown').replace(/"/g, '""')}"`;
         (trx.items || []).forEach(it => {
             const safeItemName = `"${(it.nama_barang || 'Item').replace(/"/g, '""')}"`;
