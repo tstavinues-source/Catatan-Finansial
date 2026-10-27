@@ -515,7 +515,7 @@ window.renderRecurringUI = function() {
             <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
                 <div class="flex flex-col">
                     <span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span>
-                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${AuraUtils.formatCurrency(rp.amount)}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | 💳 ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | ⚠ Belum ada dompet'}</span>
+                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | 💳 ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | ⚠ Belum ada dompet'}</span>
                 </div>
                 <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
                     <i class="fa-solid fa-trash-can text-xs"></i>
@@ -554,7 +554,7 @@ window.renderRecurringUIForBudget = function() {
                     </p>
                 </div>
                 <p class="font-bold text-sm font-mono text-[var(--text-main)]">
-                    ${AuraUtils.formatCurrency(rp.amount)}
+                    ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}
                 </p>
             </div>`;
         });
