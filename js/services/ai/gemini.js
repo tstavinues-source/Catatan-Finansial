@@ -28,6 +28,29 @@ export class GeminiFailoverEngine {
         this.keysPool = [];
         if (!AuraState.instances.db) return 0;
         
+        // === KUNCI MANUAL DARI PENGATURAN (pola sama seperti Groq) ===
+        // Kunci yang dipasang sendiri oleh pengguna dipakai LEBIH DULU;
+        // Vault Nexus di bawah hanya menjadi cadangan.
+        try {
+            let rawManual = AuraState.data?.settings?.geminiKeysEncrypted || [];
+            let encManual = Array.isArray(rawManual) ? rawManual : Object.values(rawManual);
+            const secret = AuraState.user?.uid || "aura_secret_fallback";
+            for (const enc of encManual) {
+                try {
+                    let text = atob(enc); let result = '';
+                    for (let i = 0; i < text.length; i++) {
+                        result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+                    }
+                    const key = result.trim();
+                    if (key.startsWith('AIza') || key.startsWith('AQ.')) {
+                        this.keysPool.push({ id: 'Manual', value: key });
+                    }
+                } catch (e) { /* abaikan entri rusak */ }
+            }
+        } catch (e) { /* kunci manual tidak tersedia */ }
+        
+        // === MESIN GEMBOK NEXUS (cadangan, hanya bila ada PIN) ===
+        if (this.pin) {
         const snapshot = await get(ref(AuraState.instances.db, 'nexus_api_vault'));
         if (snapshot.exists()) {
             const vaultData = snapshot.val();
@@ -60,6 +83,7 @@ export class GeminiFailoverEngine {
                     });
                 }
             }
+        }
         }
         return this.keysPool.length;
     }
