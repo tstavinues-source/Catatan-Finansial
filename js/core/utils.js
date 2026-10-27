@@ -129,19 +129,44 @@ export const AuraUtils = {
     getPeriodRange: function() {
         const now = new Date();
         const mode = AuraState.filters?.periodMode || 'month'; // Fallback aman
-        let start, end;
+        let start, end, prevStart = null, prevEnd = null;
         
         if (mode === 'period') {
-            // FITUR BARU: siklus sebelumnya paten 16-15. Sekarang tanggal mulai
-            // bisa diatur user lewat Settings (AuraState.data.settings.cycleStartDay),
-            // default tetap 16 kalau belum pernah diatur.
-            const cycleDay = Math.min(28, Math.max(2, Number(AuraState.data.settings?.cycleStartDay) || 16));
-            if (now.getDate() >= cycleDay) {
-                start = new Date(now.getFullYear(), now.getMonth(), cycleDay, 0, 0, 0);
-                end = new Date(now.getFullYear(), now.getMonth() + 1, cycleDay - 1, 23, 59, 59);
+            // Siklus mengikuti tanggal gajian NYATA (jangkar di
+            // settings.cycleAnchors), bukan tanggal paten — tanggal gajian
+            // pengguna tidak tetap (mis. 13 Mar, 8 Agu, 16 Sep). Jangkar
+            // terakhir yang sudah lewat menjadi awal siklus berjalan; jangkar
+            // sebelumnya menjadi awal siklus lalu (prevStart/prevEnd).
+            // cycleStartDay lama hanya cadangan bila belum ada jangkar.
+            const anchorDates = (AuraState.data.settings?.cycleAnchors || [])
+                .map(function(a) { const d = new Date(a + 'T00:00:00'); return isNaN(d.getTime()) ? null : d; })
+                .filter(Boolean)
+                .sort(function(a, b) { return a - b; });
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+            const elapsed = anchorDates.filter(function(d) { return d <= todayStart; });
+            
+            if (elapsed.length > 0) {
+                start = elapsed[elapsed.length - 1];
+                const idx = anchorDates.indexOf(start);
+                if (idx >= 0 && idx + 1 < anchorDates.length) {
+                    const nd = anchorDates[idx + 1];
+                    end = new Date(nd.getFullYear(), nd.getMonth(), nd.getDate() - 1, 23, 59, 59);
+                } else {
+                    end = new Date(start.getFullYear(), start.getMonth() + 1, start.getDate() - 1, 23, 59, 59);
+                }
+                if (elapsed.length > 1) {
+                    prevStart = elapsed[elapsed.length - 2].getTime();
+                    prevEnd = new Date(start.getFullYear(), start.getMonth(), start.getDate() - 1, 23, 59, 59).getTime();
+                }
             } else {
-                start = new Date(now.getFullYear(), now.getMonth() - 1, cycleDay, 0, 0, 0);
-                end = new Date(now.getFullYear(), now.getMonth(), cycleDay - 1, 23, 59, 59);
+                const cycleDay = Math.min(28, Math.max(2, Number(AuraState.data.settings?.cycleStartDay) || 16));
+                if (now.getDate() >= cycleDay) {
+                    start = new Date(now.getFullYear(), now.getMonth(), cycleDay, 0, 0, 0);
+                    end = new Date(now.getFullYear(), now.getMonth() + 1, cycleDay - 1, 23, 59, 59);
+                } else {
+                    start = new Date(now.getFullYear(), now.getMonth() - 1, cycleDay, 0, 0, 0);
+                    end = new Date(now.getFullYear(), now.getMonth(), cycleDay - 1, 23, 59, 59);
+                }
             }
         } else if (mode === 'month') {
             start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
@@ -167,7 +192,9 @@ export const AuraUtils = {
             end = new Date(2100, 0, 1);
         }
         
-        return { start: start.getTime(), end: end.getTime(), startObj: start, endObj: end };
+        const rangeResult = { start: start.getTime(), end: end.getTime(), startObj: start, endObj: end };
+        if (prevStart !== null && prevEnd !== null) { rangeResult.prevStart = prevStart; rangeResult.prevEnd = prevEnd; }
+        return rangeResult;
     },
 
     debounce: function(func, wait) {

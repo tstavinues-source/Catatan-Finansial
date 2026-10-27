@@ -141,11 +141,58 @@ window.promptCycleStartDay = function() {
     });
 };
 
-// Perbarui label tombol "Siklus X-Y" supaya selalu mencerminkan tanggal yang sedang dipakai
+// FITUR BARU: siklus mengikuti tanggal gajian nyata. Tombol "Mulai Siklus
+// Baru" mencatat tanggal gajian (bawaan: hari ini, boleh diubah) sebagai
+// jangkar siklus baru di settings.cycleAnchors. getPeriodRange memakai
+// jangkar terakhir sebagai awal siklus berjalan, jadi siklus tidak lagi
+// paten di tanggal tetap. Ren juga memasang jangkar yang sama setiap kali
+// gaji dicatat, jadi tombol ini jalur manual cadangannya.
+window.startNewCycle = function() {
+    const now = new Date();
+    const pad = function(n) { return String(n).padStart(2, '0'); };
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    window.AuraAlert.prompt("Mulai siklus baru — tanggal gajian (YYYY-MM-DD):", todayStr, (val) => {
+        if (val === null) return;
+        const str = String(val).trim();
+        const d = new Date(str + 'T00:00:00');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(str) || isNaN(d.getTime())) {
+            if (window.showToast) window.showToast("Format tanggal tidak valid.", true);
+            return;
+        }
+        if (d.getTime() > now.getTime()) {
+            if (window.showToast) window.showToast("Tanggal gajian tidak boleh di masa depan.", true);
+            return;
+        }
+        
+        if (!AuraState.data.settings) AuraState.data.settings = {};
+        const anchors = Array.isArray(AuraState.data.settings.cycleAnchors) ? [...AuraState.data.settings.cycleAnchors] : [];
+        if (!anchors.includes(str)) anchors.push(str);
+        anchors.sort();
+        AuraState.data.settings.cycleAnchors = anchors;
+        AuraState.data.settings.cycleAnchorDate = str;
+        
+        if (AuraState.user.uid && window.FirebaseService) {
+            window.FirebaseService.updateSettings({ cycleAnchors: anchors, cycleAnchorDate: str }).catch(err => Logger.warn('Navigation', 'Gagal simpan jangkar siklus', err));
+        }
+        
+        window.updateCycleButtonLabel();
+        if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
+        if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
+        if (window.showToast) window.showToast(`Siklus baru dimulai ${str}.`);
+    });
+};
+
+// Perbarui label tombol "Siklus" supaya mencerminkan jangkar yang dipakai
 window.updateCycleButtonLabel = function() {
-    const day = AuraState.data.settings?.cycleStartDay || 16;
+    const anchorStr = AuraState.data.settings?.cycleAnchorDate;
+    const anchor = anchorStr ? new Date(anchorStr + 'T00:00:00') : null;
     AuraUtils.safeDOM('btn-mode-period', el => {
-        el.innerHTML = `Siklus ${day}-${day - 1}`;
+        if (anchor && !isNaN(anchor.getTime())) {
+            el.innerHTML = `Siklus ${anchor.getDate()}/${anchor.getMonth() + 1}`;
+        } else {
+            const day = AuraState.data.settings?.cycleStartDay || 16;
+            el.innerHTML = `Siklus ${day}-${day - 1}`;
+        }
     });
 };
 
