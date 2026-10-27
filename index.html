@@ -53,7 +53,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r18'; try {
+    (function () { var V = '2026-10-27-r19'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -65,7 +65,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027m">
+    <link rel="stylesheet" href="./css/style.css?v=20261027n">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -1093,6 +1093,16 @@
                             </div>
                         </div>
 
+                        <div class="mt-3 px-0.5">
+                            <div class="flex h-1.5 rounded-full overflow-hidden bg-black/50">
+                                <div id="dash-split-cash" style="width:50%; background: var(--color-income); transition: width .7s"></div>
+                                <div id="dash-split-bank" style="width:50%; background: var(--accent-primary); transition: width .7s"></div>
+                            </div>
+                            <div class="flex justify-between text-[8px] font-bold uppercase tracking-widest text-[var(--text-muted)] mt-1.5">
+                                <span>Tunai <span id="dash-split-cash-pct" class="text-[var(--text-main)]">0%</span></span>
+                                <span>Bank <span id="dash-split-bank-pct" class="text-[var(--text-main)]">0%</span></span>
+                            </div>
+                        </div>
                         <div onclick="window.switchView('brankas')" class="glass-panel p-4 flex justify-between items-center mt-3 border-l-4 border-l-emerald-400 hover:bg-white/5 transition cursor-pointer active:scale-[0.99]">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20"><i class="fa-solid fa-vault text-emerald-400 text-base"></i></div>
@@ -1218,11 +1228,11 @@
 
                 <div class="grid grid-cols-2 gap-3">
                     <div class="glass-panel p-3.5">
-                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Rata-rata Harian</p>
+                        <div class="flex items-center gap-2 mb-1.5"><div class="w-6 h-6 icon-chip shrink-0"><i class="fa-solid fa-calendar-day text-[10px] text-accent"></i></div><p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)]">Rata-rata Harian</p></div>
                         <p class="font-mono font-bold text-sm text-[var(--text-main)]" id="stats-daily-avg">0</p>
                     </div>
                     <div class="glass-panel p-3.5">
-                        <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-1">Proyeksi Akhir Siklus</p>
+                        <div class="flex items-center gap-2 mb-1.5"><div class="w-6 h-6 icon-chip shrink-0"><i class="fa-solid fa-chart-line text-[10px] text-orange-400"></i></div><p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)]">Proyeksi Akhir Siklus</p></div>
                         <p class="font-mono font-bold text-sm text-orange-400" id="stats-proj-mth">0</p>
                     </div>
                 </div>
@@ -1240,7 +1250,7 @@
                 </div>
 
                 <div class="glass-panel p-5">
-                    <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase">Tren Pengeluaran 7 Hari</h3>
+                    <h3 class="text-[10px] font-black mb-6 text-[var(--text-muted)] text-center tracking-widest uppercase"><i class="fa-solid fa-chart-line text-accent mr-1.5"></i>Tren Pengeluaran 7 Hari</h3>
                     <canvas id="canvas-7days" width="350" height="150" class="w-full"></canvas>
                 </div>
 
@@ -1476,7 +1486,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027m"></script>
+    <script type="module" src="./js/main.js?v=20261027n"></script>
 
 </body>
 </html>

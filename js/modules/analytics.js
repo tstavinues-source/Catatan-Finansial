@@ -259,15 +259,19 @@ window.renderAnalytics = function() {
         if (sortedMerchants.length === 0) {
             merchantContainer.innerHTML = '<p class="text-xs text-center text-[var(--text-muted)] py-4">Belum ada toko yang dikunjungi.</p>';
         } else {
+            const maxMerchant = sortedMerchants[0].total || 1;
             sortedMerchants.forEach((m, idx) => {
                 let rankColor = idx === 0 ? 'text-amber-400' : (idx === 1 ? 'text-slate-300' : (idx === 2 ? 'text-orange-400' : 'text-[var(--text-muted)]'));
                 merchantContainer.innerHTML += `
-                <div class="flex justify-between items-center bg-black/30 p-2.5 rounded-lg border border-[var(--border-glass)] mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
-                        <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
+                <div class="bg-black/30 p-2.5 rounded-lg border border-[var(--border-glass)] mb-2">
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
+                            <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
+                        </div>
+                        <span class="text-[10px] font-mono text-accent font-bold">${window.convertAndFormatCurrency(m.total)}</span>
                     </div>
-                    <span class="text-[10px] font-mono text-accent font-bold">${window.convertAndFormatCurrency(m.total)}</span>
+                    <div class="flex h-1 rounded-full overflow-hidden bg-black/60 mt-2"><div style="width: ${Math.max(4, Math.round((m.total / maxMerchant) * 100))}%; background: var(--accent-primary)"></div></div>
                 </div>`;
             });
         }

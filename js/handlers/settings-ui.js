@@ -513,9 +513,12 @@ window.renderRecurringUI = function() {
         entries.forEach(([id, rp]) => {
             htmlCompiled += `
             <div class="flex justify-between items-center bg-[var(--bg-base)] p-2 rounded-xl border border-[var(--border-glass)]">
-                <div class="flex flex-col">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 icon-chip shrink-0 text-sky-400 ml-1"><i class="fa-solid fa-file-invoice text-[10px]"></i></div>
+                    <div class="flex flex-col">
                     <span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span>
-                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | 💳 ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | ⚠ Belum ada dompet'}</span>
+                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | <i class="fa-solid fa-credit-card"></i> ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Belum ada dompet'}</span>
+                    </div>
                 </div>
                 <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
                     <i class="fa-solid fa-trash-can text-xs"></i>
@@ -542,7 +545,9 @@ window.renderRecurringUIForBudget = function() {
         entries.forEach(([id, rp]) => {
             compiledBudgets += `
             <div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
-                <div>
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 icon-chip shrink-0 text-sky-400"><i class="fa-solid fa-file-invoice text-xs"></i></div>
+                    <div>
                     <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
                         ${AuraUtils.escapeHtml(rp.name)} 
                         <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100">
@@ -550,8 +555,9 @@ window.renderRecurringUIForBudget = function() {
                         </button>
                     </h4>
                     <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">
-                        Tgl Eksekusi: ${rp.date} / Bulan${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | 💳 ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | ⚠ Belum ada dompet'}
+                        Tgl Eksekusi: ${rp.date} / Bulan${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | <i class="fa-solid fa-credit-card"></i> ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Belum ada dompet'}
                     </p>
+                    </div>
                 </div>
                 <p class="font-bold text-sm font-mono text-[var(--text-main)]">
                     ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}
