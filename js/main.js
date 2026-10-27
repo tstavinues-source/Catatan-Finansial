@@ -91,7 +91,6 @@ import './modules/onboarding.js';
 import './handlers/input.js';
 import './renderers/oracle.js';
 import './tools/migrateMutasi.js';
-import './handlers/cloud-sync.js';
 
 
 // ============================================================================
