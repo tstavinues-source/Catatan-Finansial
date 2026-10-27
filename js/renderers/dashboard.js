@@ -733,9 +733,9 @@ window.renderWawasan = function() {
             const pctP = split > 0 ? Math.round(pribadi / split * 100) : 0;
             const topTx = cur.filter(function(t) { return t.tipe === 'pengeluaran'; }).sort(function(a, b) { return (Number(b.nominal) || 0) - (Number(a.nominal) || 0); }).slice(0, 3);
             const topCat = Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
-            const len = Math.max(86400000, range.end - range.start);
-            const prevEnd = new Date(Number(range.start) - 1);
-            const prevStart = new Date(prevEnd.getTime() - len);
+            const hasRealPrev = typeof range.prevStart === 'number' && typeof range.prevEnd === 'number';
+            const prevEnd = hasRealPrev ? new Date(range.prevEnd) : new Date(Number(range.start) - 1);
+            const prevStart = hasRealPrev ? new Date(range.prevStart) : new Date(prevEnd.getTime() - Math.max(86400000, range.end - range.start));
             let prevOut = 0;
             txs.forEach(function(t) { if (t.tipe === 'pengeluaran' && inRange(t, prevStart, prevEnd)) prevOut += Number(t.nominal) || 0; });
             const delta = prevOut > 0 ? Math.round((totalOut - prevOut) / prevOut * 100) : 0;

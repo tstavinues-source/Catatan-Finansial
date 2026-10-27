@@ -53,7 +53,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-27-r12'; try {
+    (function () { var V = '2026-10-27-r13'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -65,7 +65,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261027g">
+    <link rel="stylesheet" href="./css/style.css?v=20261027h">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -1035,8 +1035,11 @@
                     <button id="btn-mode-period" onclick="window.changeViewMode('period')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Siklus 16-15</button>
                     <button id="btn-mode-month" onclick="window.changeViewMode('month')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all text-accent bg-white/10">Bulan Ini</button>
                     <button id="btn-mode-all" onclick="window.changeViewMode('all')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Semua</button>
-                    <button onclick="window.promptCycleStartDay()" class="glass-panel w-10 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-accent transition active:scale-95" title="Atur Hari Mulai Siklus">
+                    <button onclick="window.promptCycleStartDay()" class="glass-panel w-10 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-accent transition active:scale-95" title="Atur Hari Mulai Siklus (Cadangan)">
                         <i class="fa-solid fa-gear text-[11px]"></i>
+                    </button>
+                    <button onclick="window.startNewCycle()" class="glass-panel w-10 flex items-center justify-center rounded-xl text-accent hover:text-accent transition active:scale-95" title="Mulai Siklus Baru (Hari Ini Gajian)">
+                        <i class="fa-solid fa-calendar-plus text-[11px]"></i>
                     </button>
                 </div>
 
@@ -1445,7 +1448,7 @@
         </nav>
     </div>
 
-    <script type="module" src="./js/main.js?v=20261027g"></script>
+    <script type="module" src="./js/main.js?v=20261027h"></script>
 
 </body>
 </html>
