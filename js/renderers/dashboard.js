@@ -757,21 +757,34 @@ window.renderWawasan = function() {
             let prevOut = 0;
             txs.forEach(function(t) { if (t.tipe === 'pengeluaran' && inRange(t, prevStart, prevEnd)) prevOut += Number(t.nominal) || 0; });
             const delta = prevOut > 0 ? Math.round((totalOut - prevOut) / prevOut * 100) : 0;
-            const days = Math.max(1, Math.round(len / 86400000));
-            const avgDaily = Math.round(pribadi / days);
+            const cycleDays = Math.max(1, Math.round((Number(range.end) - Number(range.start)) / 86400000));
+            const today0 = new Date(); today0.setHours(0, 0, 0, 0);
+            const daysElapsed = Math.min(cycleDays, Math.max(1, Math.floor((today0.getTime() - Number(range.start)) / 86400000) + 1));
+            const avgDaily = Math.round(pribadi / daysElapsed);
             const head = function(icon, title) { return '<h3 class="font-bold text-xs flex items-center gap-2 mb-3"><i class="fa-solid ' + icon + ' text-accent"></i> ' + title + '</h3>'; };
+            const pm = AuraState.filters?.periodMode || 'month';
+            const modeLabel = pm === 'period' ? 'Siklus gajian' : (pm === 'month' ? 'Bulan ini' : 'Rentang terpilih');
+            const elapsedPct = Math.min(100, Math.round(daysElapsed / cycleDays * 100));
             let html = '';
+            html += '<div class="glass-panel p-4">'
+                + '<div class="flex justify-between items-center gap-2 mb-2"><p class="text-xs font-bold flex items-center gap-2"><i class="fa-solid fa-lightbulb text-accent"></i> ' + modeLabel + ' · ' + fmtTgl(range.start) + ' – ' + fmtTgl(range.end) + '</p><span class="text-[9px] font-bold px-2 py-1 rounded-full border border-[var(--border-glass)] text-[var(--text-muted)] shrink-0">Hari ke-' + daysElapsed + ' dari ' + cycleDays + '</span></div>'
+                + '<div class="flex h-1.5 rounded-full overflow-hidden bg-black/50"><div style="width:' + elapsedPct + '%; background: var(--accent-primary)"></div></div>'
+                + '<p class="text-[10px] text-[var(--text-muted)] mt-2">Ringkasan dari ' + cur.length + ' catatan pada rentang ini.</p></div>';
             html += '<div class="glass-panel p-4">' + head('fa-scale-balanced', 'Pribadi vs Kewajiban — Siklus Ini')
                 + '<div class="flex h-2.5 rounded-full overflow-hidden bg-black/50 mb-2"><div style="width:' + pctP + '%; background: var(--accent-primary)"></div><div style="width:' + (100 - pctP) + '%; background: var(--color-expense); opacity: .75"></div></div>'
-                + '<div class="flex justify-between text-[10px] font-mono"><span>Pribadi <b class="text-[var(--text-main)]">' + fmt(pribadi) + '</b> (' + pctP + '%)</span><span>Kewajiban <b class="text-[var(--text-main)]">' + fmt(kewajiban) + '</b></span></div></div>';
+                + '<div class="flex justify-between text-[10px] font-mono"><span>Pribadi <b class="text-[var(--text-main)]">' + fmt(pribadi) + '</b> (' + pctP + '%)</span><span>Kewajiban <b class="text-[var(--text-main)]">' + fmt(kewajiban) + '</b> (' + (100 - pctP) + '%)</span></div></div>';
             html += '<div class="glass-panel p-4">' + head('fa-arrow-trend-up', 'Pengeluaran Terbesar Siklus Ini')
-                + (topTx.length ? topTx.map(function(t) { return '<div class="flex justify-between items-center py-1.5 border-b border-[var(--border-glass)] last:border-0"><div><p class="text-xs font-bold">' + (t.merchantName || t.storeName || '-') + '</p><p class="text-[9px] text-[var(--text-muted)]">' + fmtTgl(t.tanggal) + '</p></div><p class="font-mono font-bold text-xs text-[var(--color-expense)]">-' + fmt(t.nominal) + '</p></div>'; }).join('') : '<p class="text-[10px] text-[var(--text-muted)]">Tidak ada pengeluaran.</p>') + '</div>';
+                + (topTx.length ? topTx.map(function(t) { const cs = CategoryManager.resolveStyle(t.kategori || 'Lainnya'); return '<div class="flex justify-between items-center py-1.5 border-b border-[var(--border-glass)] last:border-0"><div class="flex items-center gap-2.5 min-w-0"><div class="w-8 h-8 icon-chip shrink-0" style="color:' + cs.hex + '"><i class="fa-solid ' + cs.icon + ' text-xs"></i></div><div class="min-w-0"><p class="text-xs font-bold truncate">' + AuraUtils.escapeHtml(t.merchantName || t.storeName || '-') + '</p><p class="text-[9px] text-[var(--text-muted)]">' + fmtTgl(t.tanggal) + ' · ' + AuraUtils.escapeHtml(t.kategori || '') + '</p></div></div><p class="font-mono font-bold text-xs text-[var(--color-expense)] shrink-0 ml-2">-' + fmt(t.nominal) + '</p></div>'; }).join('') : '<p class="text-[10px] text-[var(--text-muted)]">Tidak ada pengeluaran.</p>') + '</div>';
             html += '<div class="glass-panel p-4">' + head('fa-tags', 'Kategori Pribadi Teratas')
-                + (topCat.length ? topCat.map(function(c) { return '<div class="flex justify-between items-center py-1.5 border-b border-[var(--border-glass)] last:border-0"><p class="text-xs font-bold">' + c[0] + '</p><p class="font-mono font-bold text-xs">' + fmt(c[1]) + '</p></div>'; }).join('') : '<p class="text-[10px] text-[var(--text-muted)]">Tidak ada data kategori.</p>') + '</div>';
+                + (topCat.length ? topCat.map(function(c) { const cs = CategoryManager.resolveStyle(c[0]); const pctC = Math.max(4, Math.round(c[1] / topCat[0][1] * 100)); return '<div class="py-1.5 border-b border-[var(--border-glass)] last:border-0"><div class="flex justify-between items-center"><div class="flex items-center gap-2.5"><div class="w-7 h-7 icon-chip shrink-0" style="color:' + cs.hex + '"><i class="fa-solid ' + cs.icon + ' text-[10px]"></i></div><p class="text-xs font-bold">' + AuraUtils.escapeHtml(c[0]) + '</p></div><p class="font-mono font-bold text-xs">' + fmt(c[1]) + '</p></div><div class="flex h-1 rounded-full overflow-hidden bg-black/50 mt-1.5 ml-9"><div style="width:' + pctC + '%; background:' + cs.hex + '"></div></div></div>'; }).join('') : '<p class="text-[10px] text-[var(--text-muted)]">Tidak ada data kategori.</p>') + '</div>';
+            const tile = function(icon, label, val) { return '<div class="p-3 rounded-xl" style="background: var(--bg-inset); box-shadow: var(--shadow-inset)"><p class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] font-bold flex items-center gap-1.5"><i class="fa-solid ' + icon + ' text-accent"></i> ' + label + '</p><p class="font-mono font-extrabold text-sm mt-1">' + val + '</p></div>'; };
             html += '<div class="glass-panel p-4">' + head('fa-gauge-high', 'Laju Belanja')
-                + '<p class="text-[11px] leading-relaxed text-[var(--text-muted)]">Total pengeluaran siklus ini <b class="text-[var(--text-main)]">' + fmt(totalOut) + '</b>'
-                + (prevOut > 0 ? ' — ' + (delta >= 0 ? '<span class="text-[var(--color-expense)] font-bold">naik ' + delta + '%</span>' : '<span class="text-[var(--color-income)] font-bold">turun ' + Math.abs(delta) + '%</span>') + ' dibanding siklus lalu (' + fmt(prevOut) + ').' : '.')
-                + '<br>Rata-rata pengeluaran pribadi: <b class="text-[var(--text-main)]">' + fmt(avgDaily) + '/hari</b>.</p></div>';
+                + '<div class="grid grid-cols-2 gap-3">'
+                + tile('fa-receipt', 'Total Siklus Ini', fmt(totalOut))
+                + tile('fa-calendar-day', 'Rata-rata Pribadi', fmt(avgDaily) + '/hari')
+                + '</div>'
+                + (prevOut > 0 ? '<p class="text-[11px] leading-relaxed text-[var(--text-muted)] mt-3">Dibanding siklus lalu (' + fmt(prevOut) + '): ' + (delta >= 0 ? '<span class="text-[var(--color-expense)] font-bold">▲ naik ' + delta + '%</span>' : '<span class="text-[var(--color-income)] font-bold">▼ turun ' + Math.abs(delta) + '%</span>') + '.</p>' : '<p class="text-[11px] text-[var(--text-muted)] mt-3">Belum ada siklus lalu untuk dibandingkan.</p>')
+                + '</div>';
             el.innerHTML = html;
         } catch (e) {
             console.warn('[Wawasan]', e);
