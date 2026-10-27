@@ -172,6 +172,7 @@ window.reCalculateAll = function() {
             </div>
             <p class="font-display font-extrabold text-[15px] mt-2.5 ${hiddenStyle}">${window.formatAuraCurrencyCompact(bal)}</p>
             <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-0.5 font-semibold">${w.type === 'cashless' ? 'Rekening Digital' : 'Tunai Fisik'}</p>
+            <button onclick="window.openReconcileModal('${wId}')" class="mt-2.5 w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-white transition active:scale-95"><i class="fa-solid fa-scale-balanced mr-1"></i> Cek Saldo Nyata</button>
         </div>`;
         walletCardsHtml += cardHtml;
 
@@ -260,10 +261,11 @@ window.reCalculateAll = function() {
         }
 
         if (trx.tipe === 'pemasukan') {
-            if (!isHiddenTrx) periodIncome += val;
+            if (!isHiddenTrx && trx.kategori !== 'Penyesuaian Saldo') periodIncome += val;
             groupedTrx[dStr].total += val;
         } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai' || trx.tipe === 'nabung') {
             let actualSpend = val;
+            if (trx.kategori === 'Penyesuaian Saldo') actualSpend = 0; // Koreksi saldo bukan belanja
             if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') {
                 actualSpend = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
             } else if (trx.tipe === 'nabung') {
@@ -273,7 +275,7 @@ window.reCalculateAll = function() {
             if (!isHiddenTrx) {
                 periodSpent += actualSpend;
             }
-            if (trx.tipe === 'pengeluaran' && !isHiddenTrx) {
+            if (trx.tipe === 'pengeluaran' && !isHiddenTrx && trx.kategori !== 'Penyesuaian Saldo') {
                 // Rincian kelompok dihitung per ITEM agar kewajiban (istri, pajak,
                 // nenkin, asuransi, apato, utilitas) terpisah dari pribadi.
                 if (trx.items && trx.items.length > 0) {
@@ -307,6 +309,20 @@ window.reCalculateAll = function() {
     }
 
     AuraUtils.safeDOM('dash-total-balance', el => el.innerText = window.formatAuraCurrencyCompact(totalActiveWealth));
+    AuraUtils.safeDOM('dash-total-balance-alt', el => {
+        // Tampilan dua mata uang: padanan dalam mata uang satunya ditampilkan
+        // berdampingan agar tidak perlu gonta-ganti mode tampilan.
+        const disp = AuraState.system?.displayCurrency || 'JPY';
+        const rate = AuraState.system?.exchangeRateIDR || 110.27;
+        if (disp === 'IDR') {
+            el.innerText = '≈ ' + window.formatAuraCurrency(totalActiveWealth / rate, 'JPY');
+        } else {
+            const idrVal = totalActiveWealth * rate;
+            el.innerText = '≈ ' + (Math.abs(idrVal) >= 1000000
+                ? 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(Math.round(idrVal))
+                : window.formatAuraCurrency(idrVal, 'IDR'));
+        }
+    });
     AuraUtils.safeDOM('dash-savings', el => el.innerText = window.formatAuraCurrencyCompact(totalBrankas)); 
     AuraUtils.safeDOM('dash-income-mth', el => el.innerText = '+' + window.formatAuraCurrencyCompact(periodIncome));
     AuraUtils.safeDOM('dash-expense-mth', el => el.innerText = '-' + window.formatAuraCurrencyCompact(periodSpent));
@@ -732,6 +748,9 @@ window.renderNextBill = function() {
 // WAWASAN (pengganti Oracle): ringkasan yang dihitung dari catatan sendiri
 // ============================================================================
 window.renderWawasan = function() {
+    // Checklist pengingat tinggal di wadah terpisah dan dirender lebih dulu
+    // dengan try/catch sendiri — kegagalannya tidak boleh mengosongkan Wawasan.
+    try { if (typeof window.renderObligationChecklist === 'function') window.renderObligationChecklist(); } catch (ignored) {}
     AuraUtils.safeDOM('wawasan-container', function(el) {
         try {
             const range = AuraUtils.getPeriodRange();
@@ -748,23 +767,25 @@ window.renderWawasan = function() {
             const catMap = {};
             cur.forEach(function(t) {
                 if (t.tipe !== 'pengeluaran') return;
+                if (t.kategori === 'Penyesuaian Saldo') return; // Koreksi saldo bukan belanja
                 totalOut += Number(t.nominal) || 0;
                 (t.items || []).forEach(function(it) {
                     const sub = (Number(it.harga) || 0) * (Number(it.qty) || 1);
                     const kel = it.kelompok || (typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(it.kategori_barang, t.tipe) : 'Pribadi');
                     if (kel === 'Kewajiban Terpisah') kewajiban += sub;
+                    else if (kel === 'Penyesuaian') { /* koreksi saldo: bukan pribadi/kewajiban */ }
                     else { pribadi += sub; const k = it.kategori_barang || 'Lainnya'; catMap[k] = (catMap[k] || 0) + sub; }
                 });
             });
             const split = pribadi + kewajiban;
             const pctP = split > 0 ? Math.round(pribadi / split * 100) : 0;
-            const topTx = cur.filter(function(t) { return t.tipe === 'pengeluaran'; }).sort(function(a, b) { return (Number(b.nominal) || 0) - (Number(a.nominal) || 0); }).slice(0, 3);
+            const topTx = cur.filter(function(t) { return t.tipe === 'pengeluaran' && t.kategori !== 'Penyesuaian Saldo'; }).sort(function(a, b) { return (Number(b.nominal) || 0) - (Number(a.nominal) || 0); }).slice(0, 3);
             const topCat = Object.entries(catMap).sort(function(a, b) { return b[1] - a[1]; }).slice(0, 3);
             const hasRealPrev = typeof range.prevStart === 'number' && typeof range.prevEnd === 'number';
             const prevEnd = hasRealPrev ? new Date(range.prevEnd) : new Date(Number(range.start) - 1);
             const prevStart = hasRealPrev ? new Date(range.prevStart) : new Date(prevEnd.getTime() - Math.max(86400000, range.end - range.start));
             let prevOut = 0;
-            txs.forEach(function(t) { if (t.tipe === 'pengeluaran' && inRange(t, prevStart, prevEnd)) prevOut += Number(t.nominal) || 0; });
+            txs.forEach(function(t) { if (t.tipe === 'pengeluaran' && t.kategori !== 'Penyesuaian Saldo' && inRange(t, prevStart, prevEnd)) prevOut += Number(t.nominal) || 0; });
             const delta = prevOut > 0 ? Math.round((totalOut - prevOut) / prevOut * 100) : 0;
             const cycleDays = Math.max(1, Math.round((Number(range.end) - Number(range.start)) / 86400000));
             const today0 = new Date(); today0.setHours(0, 0, 0, 0);
