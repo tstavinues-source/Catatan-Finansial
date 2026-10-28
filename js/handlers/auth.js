@@ -59,7 +59,8 @@ window.loginWithGoogle = async function() {
     } catch (error) {
         Logger.error('Auth', 'Gagal login Google:', error);
         if (typeof window.showToast === 'function') {
-            window.showToast("Akses Google ditolak atau dibatalkan.", true);
+            const detail = error && error.message ? error.message : "Akses Google ditolak atau dibatalkan.";
+            window.showToast("Login Google gagal: " + detail, true);
         }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
