@@ -8,7 +8,7 @@ import {
     getDatabase, ref, push, update, remove, onValue, get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
-    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged
+    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { FIREBASE_CONFIG, APP_CONFIG } from '../config/constants.js';
@@ -260,11 +260,45 @@ window.loadRealtimeDatabaseData = function(silent = false) {
 
 export const FirebaseService = {
     loginWithEmail: async function(email, password) { return await signInWithEmailAndPassword(authInstance, email, password); },
-    loginWithGoogle: async function() { return await signInWithPopup(authInstance, googleAuthProviderInstance); },
+    loginWithGoogle: async function() {
+        // Di aplikasi Android, popup web selalu gagal ("missing initial state /
+        // storage-partitioned") karena WebView tidak bisa menuntaskan alur
+        // firebaseapp.com. Bila plugin autentikasi native tersedia, pakai
+        // pemilih akun Google bawaan Android lalu tukar tokennya ke sesi web.
+        const Cap = window.Capacitor;
+        const nativeAuth = Cap && Cap.Plugins && Cap.Plugins.FirebaseAuthentication;
+        const isNative = !!(Cap && typeof Cap.isNativePlatform === "function" && Cap.isNativePlatform());
+        if (isNative && nativeAuth && typeof nativeAuth.signInWithGoogle === "function") {
+            const res = await nativeAuth.signInWithGoogle();
+            const idToken = res && res.credential && res.credential.idToken;
+            if (!idToken) throw new Error("Token Google tidak diterima dari perangkat.");
+            const cred = GoogleAuthProvider.credential(idToken);
+            return await signInWithCredential(authInstance, cred);
+        }
+        return await signInWithPopup(authInstance, googleAuthProviderInstance);
+    },
     logout: async function() { return await signOut(authInstance); },
 
     _checkAuth: function() {
         if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) throw new Error("Sesi pengguna tidak valid.");
+    },
+
+    // Kode Koneksi Muse: kredensial milik pengguna yang sedang masuk —
+    // token penyegar Firebase Auth-nya sendiri, dibungkus bersama konfigurasi
+    // publik aplikasi. Muse milik pengguna menukar token penyegar ini
+    // menjadi token akses jangka pendek dan hanya menyentuh subpohon
+    // aurafi_ledger/<uid pengguna itu>. Bukan kunci basis data proyek.
+    getConnectionCode: function() {
+        if (!authInstance || !authInstance.currentUser) throw new Error("Sesi pengguna tidak valid.");
+        const u = authInstance.currentUser;
+        const payload = {
+            app: "AuraFi", version: 1,
+            apiKey: FIREBASE_CONFIG.apiKey,
+            databaseURL: FIREBASE_CONFIG.databaseURL,
+            uid: u.uid,
+            refreshToken: u.refreshToken,
+        };
+        return "AURAFI1:" + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
     },
 
     // ========================================================================

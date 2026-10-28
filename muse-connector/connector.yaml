@@ -1,0 +1,14 @@
+id: "custom.aurafi"
+title: "AuraFi (konektor pengguna)"
+description: "Connect a user's own Muse to their AuraFi account using the personal connection code generated in the app (Pengaturan -> Hubungkan ke Muse). Reads and writes only that user's ledger subtree; no project secrets are involved."
+include_in_prompt: true
+require_auth: true
+aliases: ["AuraFi", "aurafi", "catatan keuangan"]
+auth:
+  kind: "api_key"
+  label: "Kode Koneksi AuraFi"
+  help: "In the AuraFi app, open Pengaturan -> Hubungkan ke Muse -> Tampilkan Kode Koneksi, then paste the code here. It stays in the secure vault and is handed to the helper as a file at call time."
+  fields:
+    - key: "code"
+      label: "Kode Koneksi (diawali AURAFI1:)"
+      secret: true
