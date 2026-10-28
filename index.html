@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r42'; try {
+    (function () { var V = '2026-10-29-r43'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,7 +74,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029n">
+    <link rel="stylesheet" href="./css/style.css?v=20261029o">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -127,7 +127,7 @@
         <div class="glass-panel w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border-t-4 border-t-accent">
             <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-folder-tree text-accent"></i> Kategori Sistem</h3>
-                <button onclick="window.closeModal('modal-category-manager')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-category-manager')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex border-b border-[var(--border-glass)] shrink-0 bg-black/20">
                 <button id="tab-cat-expense" onclick="window.switchCatTab('expense')" class="flex-1 py-3 text-xs font-bold uppercase tracking-widest text-[var(--color-expense)] border-b-2 border-[var(--color-expense)] transition-all">Pengeluaran</button>
@@ -146,7 +146,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
                 <h3 id="cat-form-title" class="text-lg font-bold text-accent font-display">Kategori Baru</h3>
-                <button onclick="window.closeModal('modal-category-form')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-category-form')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <input type="hidden" id="cat-form-id">
             <input type="hidden" id="cat-form-type">
@@ -235,7 +235,7 @@
         <div class="glass-panel w-full max-w-lg h-[90vh] flex flex-col shadow-2xl border-t-4 border-t-accent overflow-hidden">
             <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-glass)]">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-microscope"></i> AI Staging Area</h3>
-                <button onclick="window.closeModal('modal-ai-staging')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-ai-staging')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
                 <div class="flex gap-2">
@@ -294,7 +294,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</h3>
-                <button onclick="window.closeModal('modal-manual-trx')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-manual-trx')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div class="flex gap-3">
@@ -360,7 +360,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-sliders"></i> Edit Induk Transaksi</h3>
-                <button onclick="window.closeModal('modal-edit-trx')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-edit-trx')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div class="flex gap-3">
@@ -420,7 +420,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-cart-plus"></i> Tambah Item Baru</h3>
-                <button onclick="window.closeModal('modal-add-item')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-add-item')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
@@ -465,7 +465,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-nib"></i> Edit Instrumen</h3>
-                <button onclick="window.closeModal('modal-edit-item')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-edit-item')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
@@ -526,7 +526,7 @@
 
     <div id="modal-reconcile" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm border-t-4 border-t-accent shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
-            <button onclick="window.closeModal('modal-reconcile')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="window.closeModal('modal-reconcile')" class="aura-icon-btn absolute top-4 right-4"><i class="fa-solid fa-xmark"></i></button>
             <div class="w-14 h-14 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center mx-auto mb-3 border border-[var(--accent-primary)]/30">
                 <i class="fa-solid fa-scale-balanced text-xl text-accent"></i>
             </div>
@@ -542,7 +542,7 @@
             </div>
             <p id="reconcile-diff" class="text-xs text-center mb-3 leading-relaxed"></p>
             <div id="reconcile-modes" class="space-y-2 mb-4 text-left"></div>
-            <button id="reconcile-submit" onclick="window.submitReconcile()" disabled class="w-full py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-sm transition hover:opacity-90 active:scale-95 opacity-50 cursor-not-allowed"><i class="fa-solid fa-scale-balanced"></i> Bukukan Selisih</button>
+            <button id="reconcile-submit" onclick="window.submitReconcile()" disabled class="aura-action-btn"><i class="fa-solid fa-scale-balanced"></i> Bukukan Selisih</button>
         </div>
     </div>
 
@@ -550,7 +550,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-500 max-h-[90vh] overflow-y-auto no-scrollbar relative">
             <div class="flex justify-between items-center mb-5">
                 <h3 id="reminder-editor-title" class="text-lg font-bold font-display text-amber-400">Tambah Pengingat</h3>
-                <button onclick="window.closeModal('modal-reminder')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-reminder')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
@@ -587,7 +587,7 @@
 
     <div id="modal-topup-goal" class="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-emerald-500 shadow-2xl relative overflow-hidden">
-            <button onclick="window.closeModal('modal-topup-goal')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="window.closeModal('modal-topup-goal')" class="aura-icon-btn absolute top-4 right-4"><i class="fa-solid fa-xmark"></i></button>
             <div class="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3 border border-emerald-500/30">
                 <i class="fa-solid fa-piggy-bank text-xl text-emerald-500 animate-bounce"></i>
             </div>
@@ -609,7 +609,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar relative">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 z-10 backdrop-blur-md">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-sliders"></i> Edit Misi Tabungan</h3>
-                <button onclick="window.closeModal('modal-edit-goal-full')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-edit-goal-full')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <input type="text" id="edit-goal-name" placeholder="Nama Misi" class="v-input w-full rounded-xl p-3.5 text-sm outline-none">
@@ -658,7 +658,7 @@
         <div class="glass-panel settings-drawer-card p-5 absolute right-0 top-0 h-full w-[88%] max-w-sm shadow-2xl border-l-4 border-l-accent overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-5 sticky top-0 bg-[var(--bg-glass)] pb-2 z-20 backdrop-blur-md border-b border-[var(--border-glass)]">
                 <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-microchip"></i> AURA SETTINGS</h3>
-                <button onclick="window.closeModal('modal-settings')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-settings')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="mb-4">
                 <p class="text-[9px] font-black tracking-[0.2em] text-[var(--text-muted)] mb-2">JALAN PINTAS</p>
@@ -713,7 +713,7 @@
                                     </select>
                                 </div>
                             </div>
-                            <button onclick="window.saveUserProfile()" class="w-full mt-3 py-3 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-yellow-500/30">
+                            <button onclick="window.saveUserProfile()" class="aura-action-btn mt-3">
                                 <i class="fa-solid fa-floppy-disk"></i> Simpan Profil
                             </button>
                         </div>
@@ -770,7 +770,7 @@
                                     <option value="Detail">Detail (Panjang & Lengkap)</option>
                                 </select>
                             </div>
-                            <button onclick="window.saveAIPreferences()" class="w-full mt-2 py-3 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-violet-500/30">
+                            <button onclick="window.saveAIPreferences()" class="aura-action-btn mt-2">
                                 <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
                             </button>
                             <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
@@ -790,7 +790,7 @@
                                 <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Master PIN Gemini (Cadangan — Vault Nexus)</label>
                                 <input type="password" id="gemini-pin-input" class="v-input w-full rounded-xl p-3 text-xs font-mono outline-none" placeholder="Masukkan PIN Gemini Anda...">
                             </div>
-                            <button onclick="window.syncGeminiEngine(false)" class="w-full mt-2 py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-2 hover:bg-indigo-500/30">
+                            <button onclick="window.syncGeminiEngine(false)" class="aura-action-btn mt-2">
                                 <i class="fa-solid fa-unlock-keyhole"></i> Unlock & Sync Gemini
                             </button>
                             </div>
@@ -908,7 +908,7 @@
                     </button>
                     <div id="sec-backup" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
-                            <button onclick="window.downloadFullBackup()" class="w-full py-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-2 hover:bg-emerald-500/30"><i class="fa-solid fa-download"></i> Unduh Cadangan (JSON)</button>
+                            <button onclick="window.downloadFullBackup()" class="aura-action-btn"><i class="fa-solid fa-download"></i> Unduh Cadangan (JSON)</button>
                             <button onclick="window.downloadCSV()" class="w-full py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-file-csv"></i> Ekspor Transaksi (CSV)</button>
                             <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Cadangan JSON berisi transaksi, dompet, misi/brankas, dan pengaturan — <b>tanpa</b> kunci API. Transaksi dapat dipulihkan lewat Konfigurasi Lanjutan → Impor Data.</p>
                         </div>
@@ -926,7 +926,7 @@
                     <div id="sec-muse" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
                             <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Berikan kode ini kepada <b class="text-white">Muse milikmu</b> agar ia bisa membaca dan mencatat keuanganmu di AuraFi. Kode ini adalah kunci pribadimu — <b class="text-white">jangan dibagikan ke siapa pun</b>. Cabut akses kapan pun dengan mengganti kata sandi akunmu.</p>
-                            <button onclick="window.showClaudeConnectCode()" class="w-full py-3 rounded-xl bg-violet-500/20 text-violet-300 border border-violet-500/30 font-bold text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-2 hover:bg-violet-500/30"><i class="fa-solid fa-key"></i> Tampilkan Kode Koneksi</button>
+                            <button onclick="window.showClaudeConnectCode()" class="aura-action-btn"><i class="fa-solid fa-key"></i> Tampilkan Kode Koneksi</button>
                             <div id="claude-connect-area" class="hidden space-y-2">
                                 <textarea id="claude-connect-code" readonly rows="4" class="w-full bg-black/50 border border-[var(--border-glass)] rounded-xl p-3 text-[9px] font-mono text-violet-200 break-all"></textarea>
                                 <button onclick="window.copyClaudeConnectCode()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-copy"></i> Salin Kode</button>
@@ -969,7 +969,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-emerald-400">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-emerald-400 font-display"><i class="fa-solid fa-file-import"></i> Impor Transaksi</h3>
-                <button onclick="window.closeModal('modal-import-data')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-import-data')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4 text-center">
                 <p class="text-xs text-[var(--text-muted)]">Unggah file JSON atau CSV (Format AuraFi) untuk merestorasi riwayat transaksi lama Anda.</p>
@@ -985,7 +985,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-400 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-amber-400 font-display"><i class="fa-solid fa-box-open"></i> Tracker Dinamis</h3>
-                <button onclick="window.closeModal('modal-edit-tracker')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-edit-tracker')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="tracker-list-container" class="space-y-3 mb-5"></div>
             <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
@@ -1004,7 +1004,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-rose-400 font-display"><i class="fa-solid fa-fire-flame-curved"></i> Batas Burn Rate</h3>
-                <button onclick="window.closeModal('modal-edit-budget')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-edit-budget')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
@@ -1020,7 +1020,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-400 font-display"><i class="fa-solid fa-users"></i> Anggota Keluarga</h3>
-                <button onclick="window.closeModal('modal-family')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-family')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="family-list-container" class="space-y-3 mb-5"></div>
             <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
@@ -1034,7 +1034,7 @@
         <div class="glass-panel w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border-t-4 border-t-accent">
             <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-vault text-accent"></i> Manajemen Brankas & Kas</h3>
-                <button onclick="window.closeModal('modal-wallet-manager');" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-wallet-manager');" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <div class="p-4 shrink-0 bg-[var(--bg-base)] z-10 shadow-md flex gap-2">
@@ -1055,7 +1055,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar relative">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
                 <h3 id="wallet-form-title" class="text-lg font-bold text-accent font-display">Akun Dompet Baru</h3>
-                <button onclick="window.closeModal('modal-wallet-form')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-wallet-form')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
             <input type="hidden" id="wallet-form-id">
@@ -1086,7 +1086,7 @@
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 relative">
             <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-3">
                 <h3 class="text-lg font-bold text-indigo-400 font-display"><i class="fa-solid fa-money-bill-transfer"></i> Mutasi Saldo</h3>
-                <button onclick="window.closeModal('modal-transfer')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white hover:bg-white/10 transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-transfer')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="space-y-4">
                 <div>
@@ -1115,7 +1115,7 @@
         <div class="glass-panel w-full max-w-md shadow-2xl border-t-4 border-t-amber-400 h-[85vh] flex flex-col overflow-hidden">
             <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0 bg-black/40">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-amber-400 font-display"><i class="fa-solid fa-vault"></i> Brankas Laporan</h3>
-                <button onclick="window.closeModal('modal-arsip')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-arsip')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="arsip-list-container" class="flex-1 overflow-y-auto no-scrollbar p-4 space-y-3 bg-black/20"></div>
         </div>
@@ -1128,7 +1128,7 @@
                     <h3 id="arsip-detail-title" class="text-base font-bold text-indigo-400 font-display">Laporan Siklus</h3>
                     <p id="arsip-detail-date" class="text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-widest mt-0.5">Tanggal</p>
                 </div>
-                <button onclick="window.closeModal('modal-arsip-detail')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition bg-white/5"><i class="fa-solid fa-xmark"></i></button>
+                <button onclick="window.closeModal('modal-arsip-detail')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto no-scrollbar p-5 space-y-5 bg-[var(--bg-base)]">
                 <div class="grid grid-cols-2 gap-3">
@@ -1641,7 +1641,7 @@
                     <p id="lap-title-name" class="text-xs font-bold text-white mt-1">Siklus</p>
                     <p id="lap-title-period" class="text-[10px] text-[var(--text-muted)] font-mono"></p>
                 </div>
-                <button onclick="window.closeModal('modal-laporan')" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]"><i class="fa-solid fa-xmark text-sm"></i></button>
+                <button onclick="window.closeModal('modal-laporan')" class="aura-icon-btn danger"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
             <div class="flex-1 overflow-y-auto p-4 space-y-4 hide-scrollbar bg-black/20">
                 <div id="lap-summary" class="grid grid-cols-2 gap-2"></div>
@@ -1681,7 +1681,7 @@
         <div class="glass-panel w-full max-w-sm flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent rounded-t-3xl sm:rounded-3xl">
             <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
                 <h3 class="font-bold text-sm text-accent font-display"><i class="fa-solid fa-file-pdf mr-1"></i> Pilih Isi PDF</h3>
-                <button onclick="window.closeModal('modal-pdf-opsi')" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]"><i class="fa-solid fa-xmark text-sm"></i></button>
+                <button onclick="window.closeModal('modal-pdf-opsi')" class="aura-icon-btn danger"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
             <div class="p-4 space-y-2 bg-black/20">
                 <label class="flex items-center gap-3 bg-black/30 border border-[var(--border-glass)] rounded-xl px-3 py-2.5 cursor-pointer"><input type="checkbox" id="pdf-sec-ringkasan" checked class="w-4 h-4" style="accent-color: var(--accent-primary)"><span class="text-xs font-bold">Ringkasan &amp; analisis jujur</span></label>
@@ -1698,8 +1698,8 @@
         </div>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029n"></script>
-    <script type="module" src="./js/main.js?v=20261029n"></script>
+    <script src="./js/hachi-art.js?v=20261029o"></script>
+    <script type="module" src="./js/main.js?v=20261029o"></script>
 
 </body>
 </html>
