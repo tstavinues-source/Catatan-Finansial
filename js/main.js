@@ -377,6 +377,7 @@ window.addEventListener('DOMContentLoaded', () => {
             });
         }
     } catch (e) {}
+    if (window.updatePeriodRangeLabel) window.updatePeriodRangeLabel();
     
     window.fetchLiveExchangeRate();
     
