@@ -1,1 +1,10 @@
-{"appId":"id.my.aurafinance","appName":"AuraFi","server":{"androidScheme":"https"},"webDir":"www"}
+{
+  "appId": "id.my.aurafinance",
+  "appName": "AuraFi",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "url": "https://aurafinance.my.id",
+    "errorPath": "index.html"
+  }
+}
