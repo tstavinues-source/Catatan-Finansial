@@ -95,3 +95,11 @@ Semua build CI ditandatangani dengan kunci debug yang sama
 build baru selalu bisa dipasang **menimpa** aplikasi lama sebagai pembaruan.
 Tanpa kunci tetap, tiap mesin build memakai kunci acaknya sendiri dan
 Android menolak pembaruan dengan pesan "Aplikasi tidak diinstal".
+
+## Hachi keliling
+
+Maskot tampil sebagai stiker gambar ikon asli (`js/hachi-sprite.js`, data
+URI WebP 512px) yang berjalan bebas di tepi bawah semua tab lewat
+`js/handlers/hachi.js` — bukan lagi kartu di dasbor. Gelembung sapaannya
+memakai mesin pesan yang sama dari data pengguna; Hachi menyingkir sendiri
+saat modal atau keyboard terbuka.
