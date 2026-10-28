@@ -41,11 +41,44 @@
     return { kas: kas, total: total, count: txs.length };
   }
 
+  function computePesan(kas) {
+    // Pesan singkat Hachi untuk widget — logika ringan dari data yang sama:
+    // kewajiban belum tercatat lebih dulu, sisanya sapaan + keadaan kas.
+    try {
+      const data = (window.AuraState && window.AuraState.data) || {};
+      const S = data.settings || {};
+      const txs = (data.transactions || []).filter((t) => t && !t.is_deleted);
+      const anchors = (Array.isArray(S.cycleAnchors) ? S.cycleAnchors.slice() : []).sort();
+      const now = new Date();
+      const p = (x) => String(x).padStart(2, "0");
+      const today = now.getFullYear() + "-" + p(now.getMonth() + 1) + "-" + p(now.getDate());
+      let start = null;
+      for (const a of anchors) if (a <= today) start = a;
+      const remsRaw = S.obligationReminders;
+      const rems = Array.isArray(remsRaw) ? remsRaw : remsRaw && typeof remsRaw === "object" ? Object.values(remsRaw) : [];
+      for (const r of rems) {
+        const merch = String(r.merchantName || "").trim().toLowerCase();
+        const paid = txs.some((t) => {
+          if (!start || t.tanggal < start || t.tipe !== "pengeluaran") return false;
+          if (merch) return String(t.merchantName || t.storeName || "").trim().toLowerCase() === merch;
+          return t.kategori === r.kategori;
+        });
+        if (!paid) return "Jangan lupa: " + r.name + " belum tercatat siklus ini.";
+      }
+      const h = now.getHours();
+      const sapa = h < 11 ? "Selamat pagi" : h < 15 ? "Selamat siang" : h < 19 ? "Selamat sore" : "Selamat malam";
+      return sapa + "! Kas ¥" + Math.round(kas).toLocaleString("ja-JP") + " — tetap semangat mencatat.";
+    } catch (e) {
+      return "Tetap semangat mencatat!";
+    }
+  }
+
   async function syncOnce() {
     try {
       if (!window.AuraState || !window.AuraState.user || !window.AuraState.user.uid) return;
       const r = compute();
-      const fp = r.kas + "|" + r.total + "|" + r.count;
+      const pesan = computePesan(r.kas);
+      const fp = r.kas + "|" + r.total + "|" + r.count + "|" + pesan;
       if (fp === lastFingerprint) return;
       lastFingerprint = fp;
       const now = new Date();
@@ -54,7 +87,7 @@
       const label = now.getDate() + " " + BULAN[now.getMonth()] + " " + hh + ":" + mm;
       await Prefs.set({
         key: "aurafi_widget",
-        value: JSON.stringify({ kas: r.kas, total: r.total, updatedAt: label }),
+        value: JSON.stringify({ kas: r.kas, total: r.total, updatedAt: label, pesan: pesan }),
       });
     } catch (e) {
       console.warn("[Widget] Sinkronisasi gagal:", e);
