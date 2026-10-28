@@ -444,7 +444,7 @@ window.openSubCategoryItems = function(parentName, subName) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'modal-subcat-items';
-        modal.className = 'fixed inset-0 bg-black/90 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        modal.className = 'fixed inset-0 bg-black/90 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 opacity-0 hidden';
         document.body.appendChild(modal);
     }
 
@@ -601,7 +601,7 @@ window.openTrackerDetail = function(trackerId) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'modal-subcat-items';
-        modal.className = 'fixed inset-0 bg-black/90 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        modal.className = 'fixed inset-0 bg-black/90 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 opacity-0 hidden';
         document.body.appendChild(modal);
     }
 
@@ -669,7 +669,7 @@ window.openParentPickerForMapping = function(subCat, currentParent) {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'modal-parent-picker';
-        modal.className = 'fixed inset-0 bg-black/90 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        modal.className = 'fixed inset-0 bg-black/90 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 opacity-0 hidden';
         document.body.appendChild(modal);
     }
 
@@ -761,7 +761,7 @@ window.openCategoryMapper = function() {
     let modal = document.getElementById('modal-category-mapper');
     if (!modal) {
         modal = document.createElement('div'); modal.id = 'modal-category-mapper';
-        modal.className = 'fixed inset-0 bg-black/90 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        modal.className = 'fixed inset-0 bg-black/90 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 transition-all duration-300 opacity-0 hidden';
         document.body.appendChild(modal);
     }
 
