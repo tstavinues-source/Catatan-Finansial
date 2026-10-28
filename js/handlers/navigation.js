@@ -152,6 +152,7 @@ window.toggleTheme = function() {
 
 window.changeViewMode = function(mode) {
     AuraState.filters.periodMode = mode;
+    if (window.updatePeriodRangeLabel) window.updatePeriodRangeLabel();
     // Ingat pilihan rentang terakhir agar tidak kembali ke Bulan Ini
     // setiap aplikasi ditutup/dibuka lagi.
     try { localStorage.setItem('aurafi_period_mode', mode); } catch (e) {}
@@ -355,4 +356,17 @@ window.promptBudget = function() {
             }
         }
     });
+};
+
+// Keterangan rentang tanggal yang sedang ditampilkan (di atas pemilih Siklus/Bulan Ini/Semua)
+window.updatePeriodRangeLabel = function() {
+    const el = document.getElementById('period-range-label');
+    if (!el) return;
+    const mode = (window.AuraState && AuraState.filters && AuraState.filters.periodMode) || 'month';
+    if (mode === 'all') { el.textContent = 'Menampilkan semua data yang tercatat'; return; }
+    try {
+        const r = AuraUtils.getPeriodRange();
+        const fmt = function(ts) { return new Date(ts).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); };
+        el.textContent = 'Data: ' + fmt(r.start) + ' – ' + fmt(r.end);
+    } catch (e) { el.textContent = ''; }
 };
