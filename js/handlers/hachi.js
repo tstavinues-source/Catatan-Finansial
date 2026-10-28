@@ -49,7 +49,8 @@
 
   function kasTunai() {
     const data = AuraState.data || {};
-    const wallets = data.wallets || [];
+    const walletsRaw = data.wallets;
+    const wallets = Array.isArray(walletsRaw) ? walletsRaw : (walletsRaw && typeof walletsRaw === "object" ? Object.values(walletsRaw) : []);
     const dw =
       wallets.find((w) => w && typeof w.name === "string" && w.name.toLowerCase().includes("dompet hidup")) ||
       wallets.find((w) => w && (w.type === "tunai" || w.tipe === "tunai"));
@@ -127,7 +128,8 @@
     }
 
     // 4) Kemajuan misi tabungan
-    const goals = Array.isArray(data.goals) ? data.goals : [];
+    const goalsRaw = data.goals;
+    const goals = Array.isArray(goalsRaw) ? goalsRaw : (goalsRaw && typeof goalsRaw === "object" ? Object.values(goalsRaw) : []);
     for (const g of goals) {
       const target = Number(g.targetAmount) || 0;
       const saved = Number(g.savedAmount) || 0;
@@ -153,95 +155,15 @@
     return { mood: "ramah", text: sapa + "! " + MOTIVASI[motivasiIdx] + kasInfo };
   }
 
-  // --- Hachi karakter kartun: berjalan dengan langkah kaki (profil),
-  // duduk menghadapmu saat berhenti, ekspresi mengikuti isi pesannya
-  // (senang/khawatir/ngantuk), ekor bergoyang, mata berkedip. Bebas di
-  // semua tab; minggir sendiri saat modal/keyboard terbuka. ---
-  const PET_W = 122;
-  const HACHI_SVG = `<svg class="hachi-svg2" viewBox="0 0 220 190" width="122" height="105" aria-label="Hachi, maskot AuraFi">
-  <g class="hachi-g-walk">
-    <path class="hachi-tail-w" d="M58,88 C30,84 22,58 36,44 C46,34 60,38 62,48 C63,56 56,60 51,56" fill="none" stroke="#E08A4C" stroke-width="14" stroke-linecap="round"/>
-    <circle cx="50" cy="55" r="7" fill="#FFEFD6"/>
-    <g class="leg leg-b" transform="translate(80,118)"><rect x="-7" y="0" width="14" height="32" rx="7" fill="#C5712F"/><ellipse cx="3" cy="33" rx="9" ry="5" fill="#C5712F"/></g>
-    <g class="leg leg-a" transform="translate(126,118)"><rect x="-7" y="0" width="14" height="32" rx="7" fill="#C5712F"/><ellipse cx="3" cy="33" rx="9" ry="5" fill="#C5712F"/></g>
-    <g class="hachi-body-bob">
-      <ellipse cx="106" cy="102" rx="49" ry="31" fill="#E08A4C"/>
-      <ellipse cx="114" cy="116" rx="29" ry="17" fill="#FFEFD6"/>
-      <g class="hachi-head-w">
-        <polygon points="126,36 136,10 150,30" fill="#C5712F"/>
-        <circle cx="154" cy="56" r="31" fill="#E08A4C"/>
-        <polygon points="140,32 155,4 168,28" fill="#E08A4C"/>
-        <polygon points="147,26 155,13 162,25" fill="#FFEFD6"/>
-        <ellipse cx="160" cy="40" rx="4.6" ry="3" fill="#FFEFD6"/>
-        <ellipse cx="172" cy="66" rx="17" ry="12" fill="#FFEFD6"/>
-        <ellipse cx="186" cy="60" rx="6" ry="4.6" fill="#33231A"/>
-        <path d="M172,72 q7,5 13,2" stroke="#33231A" stroke-width="2" fill="none" stroke-linecap="round"/>
-        <circle cx="160" cy="50" r="4.2" fill="#33231A"/>
-        <circle cx="161.5" cy="48.5" r="1.3" fill="#FFFFFF"/>
-        <ellipse cx="148" cy="68" rx="6" ry="4" fill="#F2A65A" opacity="0.55"/>
-      </g>
-      <polygon points="124,78 170,84 148,104" fill="#A3B86B"/>
-      <circle cx="126" cy="82" r="5.5" fill="#8CA85A"/>
-      <polygon points="126,82 114,96 126,98" fill="#A3B86B"/>
-      <g class="hachi-pouch" transform="translate(144,98)">
-        <path d="M0,-11 C9,-11 13,-4 13,3 C13,12 7,17 0,17 C-7,17 -13,12 -13,3 C-13,-4 -9,-11 0,-11 Z" fill="#EFA85C"/>
-        <rect x="-6" y="-12" width="12" height="4" rx="2" fill="#D98E3B"/>
-        <circle cx="0" cy="-14" r="5.5" fill="#F2C14E" stroke="#D9A62E" stroke-width="1.5"/>
-      </g>
-    </g>
-    <g class="leg leg-a" transform="translate(90,120)"><rect x="-7" y="0" width="14" height="32" rx="7" fill="#E08A4C"/><ellipse cx="3" cy="33" rx="9" ry="5" fill="#FFEFD6"/></g>
-    <g class="leg leg-b" transform="translate(136,120)"><rect x="-7" y="0" width="14" height="32" rx="7" fill="#E08A4C"/><ellipse cx="3" cy="33" rx="9" ry="5" fill="#FFEFD6"/></g>
-  </g>
-  <g class="hachi-g-sit">
-    <path class="hachi-tail-s" d="M160,140 C184,136 190,116 178,106 C168,98 156,104 158,114 C159,121 166,122 169,117" fill="none" stroke="#E08A4C" stroke-width="12" stroke-linecap="round"/>
-    <circle cx="169" cy="116" r="6" fill="#FFEFD6"/>
-    <g class="hachi-sit-bob">
-      <path d="M100,86 C130,86 148,108 148,134 C148,152 134,162 100,162 C66,162 52,152 52,134 C52,108 70,86 100,86 Z" fill="#E08A4C"/>
-      <ellipse cx="100" cy="133" rx="23" ry="19" fill="#FFEFD6"/>
-      <ellipse cx="50" cy="156" rx="13" ry="6" transform="rotate(-16 50 156)" fill="#E08A4C"/>
-      <ellipse cx="150" cy="156" rx="13" ry="6" transform="rotate(16 150 156)" fill="#E08A4C"/>
-      <rect x="83" y="116" width="11" height="30" rx="5.5" fill="#E08A4C"/>
-      <rect x="106" y="116" width="11" height="30" rx="5.5" fill="#E08A4C"/>
-      <rect x="83" y="136" width="11" height="10" rx="5" fill="#FFEFD6"/>
-      <rect x="106" y="136" width="11" height="10" rx="5" fill="#FFEFD6"/>
-      <ellipse cx="88.5" cy="152" rx="10" ry="5" fill="#FFEFD6"/>
-      <ellipse cx="111.5" cy="152" rx="10" ry="5" fill="#FFEFD6"/>
-      <g class="hachi-arm-l"><path d="M64,102 q-10,16 -4,30" stroke="#E08A4C" stroke-width="11" fill="none" stroke-linecap="round"/></g>
-      <g class="hachi-arm-r"><path d="M136,102 q10,16 4,30" stroke="#E08A4C" stroke-width="11" fill="none" stroke-linecap="round"/></g>
-      <polygon points="66,96 134,96 100,120" fill="#A3B86B"/>
-      <circle cx="131" cy="99" r="5.5" fill="#8CA85A"/>
-      <polygon points="131,99 141,110 129,112" fill="#A3B86B"/>
-      <g class="hachi-pouch" transform="translate(100,124) scale(1.05)">
-        <path d="M0,-11 C9,-11 13,-4 13,3 C13,12 7,17 0,17 C-7,17 -13,12 -13,3 C-13,-4 -9,-11 0,-11 Z" fill="#EFA85C"/>
-        <rect x="-6" y="-12" width="12" height="4" rx="2" fill="#D98E3B"/>
-        <circle cx="0" cy="-14" r="5.5" fill="#F2C14E" stroke="#D9A62E" stroke-width="1.5"/>
-      </g>
-      <g class="hachi-ear-l"><polygon points="68,40 78,8 98,30" fill="#E08A4C"/><polygon points="74,32 79,17 90,28" fill="#FFEFD6"/></g>
-      <g class="hachi-ear-r"><polygon points="132,40 122,8 102,30" fill="#E08A4C"/><polygon points="126,32 121,17 110,28" fill="#FFEFD6"/></g>
-      <circle cx="100" cy="62" r="37" fill="#E08A4C"/>
-      <ellipse cx="100" cy="44" rx="12" ry="14" fill="#FFEFD6" opacity="0.95"/>
-      <ellipse cx="83" cy="50" rx="5" ry="3.2" fill="#FFEFD6"/>
-      <ellipse cx="117" cy="50" rx="5" ry="3.2" fill="#FFEFD6"/>
-      <g class="brow-worried"><path d="M76,43 l13,4" stroke="#FFEFD6" stroke-width="3" stroke-linecap="round"/><path d="M124,43 l-13,4" stroke="#FFEFD6" stroke-width="3" stroke-linecap="round"/></g>
-      <ellipse cx="100" cy="79" rx="23" ry="15" fill="#FFEFD6"/>
-      <g class="eyes-normal"><g class="hachi-blink"><circle cx="85" cy="62" r="4.6" fill="#33231A"/><circle cx="115" cy="62" r="4.6" fill="#33231A"/></g><circle cx="86.5" cy="60.3" r="1.4" fill="#FFFFFF"/><circle cx="116.5" cy="60.3" r="1.4" fill="#FFFFFF"/></g>
-      <g class="eyes-happy"><path d="M77,63 q8,-9 16,0" stroke="#33231A" stroke-width="3.2" fill="none" stroke-linecap="round"/><path d="M107,63 q8,-9 16,0" stroke="#33231A" stroke-width="3.2" fill="none" stroke-linecap="round"/></g>
-      <g class="eyes-sleepy"><path d="M77,61 q8,6 16,0" stroke="#33231A" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M107,61 q8,6 16,0" stroke="#33231A" stroke-width="3" fill="none" stroke-linecap="round"/></g>
-      <ellipse cx="100" cy="73" rx="6.5" ry="5" fill="#33231A"/>
-      <circle cx="98" cy="71" r="1.6" fill="#FFFFFF" opacity="0.8"/>
-      <path class="mouth-normal" d="M100,79 v3 M100,82 q-4,5 -9,2 M100,82 q4,5 9,2" stroke="#33231A" stroke-width="2" fill="none" stroke-linecap="round"/>
-      <g class="mouth-happy"><path d="M89,80 q11,11 22,0 q-2,10 -11,10 q-9,0 -11,-10 Z" fill="#7A3B2E"/><ellipse cx="100" cy="87" rx="5.5" ry="3.4" fill="#F28BA8"/></g>
-      <circle class="mouth-worry" cx="100" cy="86" r="3.2" fill="none" stroke="#33231A" stroke-width="2"/>
-      <ellipse cx="72" cy="74" rx="5.5" ry="3.4" fill="#F2A65A" opacity="0.5"/>
-      <ellipse cx="128" cy="74" rx="5.5" ry="3.4" fill="#F2A65A" opacity="0.5"/>
-    </g>
-    <g class="hachi-zzz"><text x="140" y="36" class="hachi-z1">Z</text><text x="154" y="24" class="hachi-z2">Z</text></g>
-  </g>
-</svg>`;
+  // --- Hachi keliling: stiker ikon asli berjalan bebas di semua tab ---
+  // Bukan lagi kartu di dasbor: Hachi adalah sosok fixed yang berjalan di
+  // tepi bawah layar, berhenti, berbalik arah, dan menyapa lewat gelembung
+  // di sampingnya. Ia minggir sendiri saat modal/keyboard terbuka.
+  const PET_W = 86;
   const reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  let pet = null, flipEl = null, charEl = null, bubbleEl = null;
-  let posX = 24, dir = 1, targetX = 140, mode = "pause", pauseUntil = 0, pauseStart = 0, lastTs = 0;
-  let bubbleTimer = null, kbOpen = false, started = false, happyTimer = null;
+  let pet = null, flipEl = null, imgEl = null, bubbleEl = null;
+  let posX = 24, dir = 1, targetX = 140, mode = "pause", pauseUntil = 0, lastTs = 0;
+  let bubbleTimer = null, kbOpen = false, started = false;
 
   function maxX() { return Math.max(12, window.innerWidth - PET_W - 12); }
   function pickTarget() {
@@ -250,7 +172,7 @@
   }
   function laneBottom() {
     const inp = document.getElementById("main-input-field");
-    return (inp && inp.offsetParent !== null) ? 158 : 100;
+    return (inp && inp.offsetParent !== null) ? 150 : 94;
   }
   function modalOpen() {
     const ms = document.querySelectorAll('[id^="modal-"]');
@@ -263,35 +185,24 @@
     if (!bubbleEl) return;
     if (text) { bubbleEl.textContent = text; lastText = text; }
     const vw = window.innerWidth;
-    bubbleEl.classList.toggle("hachi-bubble-left", posX < 110);
-    bubbleEl.classList.toggle("hachi-bubble-right", posX > vw - 240);
+    bubbleEl.classList.toggle("hachi-bubble-left", posX < 100);
+    bubbleEl.classList.toggle("hachi-bubble-right", posX > vw - 210);
     bubbleEl.classList.add("hachi-bubble-show");
     if (bubbleTimer) clearTimeout(bubbleTimer);
     bubbleTimer = setTimeout(() => { bubbleEl.classList.remove("hachi-bubble-show"); }, holdMs || 6000);
   }
   function render() {
     const msg = computeMessage();
-    if (!msg) return;
-    if (pet && msg.mood) pet.dataset.mood = msg.mood;
-    if (msg.text && msg.text !== lastText) showBubble(msg.text, 6500);
+    if (msg && msg.text && msg.text !== lastText) showBubble(msg.text, 6500);
   }
   function onTap() {
-    if (!charEl) return;
-    pet.classList.remove("is-sleepy");
-    charEl.classList.remove("hachi-jump");
-    void charEl.offsetWidth;
-    charEl.classList.add("hachi-jump");
-    if (pet) {
-      pet.classList.add("flash-happy");
-      if (happyTimer) clearTimeout(happyTimer);
-      happyTimer = setTimeout(() => { pet.classList.remove("flash-happy"); }, 1400);
-    }
+    if (!imgEl) return;
+    imgEl.classList.remove("hachi-jump");
+    void imgEl.offsetWidth;
+    imgEl.classList.add("hachi-jump");
     motivasiIdx = (motivasiIdx === null ? 0 : motivasiIdx + 1) % MOTIVASI.length;
     const msg = computeMessage();
     showBubble(msg && msg.text ? msg.text : MOTIVASI[motivasiIdx], 6000);
-  }
-  function setState(s) {
-    if (pet) pet.dataset.state = s;
   }
   function tick(ts) {
     requestAnimationFrame(tick);
@@ -304,18 +215,13 @@
       posX += dir * 30 * dt;
       if ((dir > 0 && posX >= targetX) || (dir < 0 && posX <= targetX)) {
         mode = "pause";
-        pauseStart = now;
-        pauseUntil = now + 3000 + Math.random() * 3800;
-        setState("sit");
+        pauseUntil = now + 2600 + Math.random() * 3400;
+        imgEl.classList.remove("hachi-walking");
       }
-    } else {
-      if (now - pauseStart > 22000 && pet.dataset.mood === "ramah") pet.classList.add("is-sleepy");
-      if (now >= pauseUntil) {
-        pet.classList.remove("is-sleepy");
-        pickTarget();
-        mode = "walk";
-        setState("walk");
-      }
+    } else if (now >= pauseUntil) {
+      pickTarget();
+      mode = "walk";
+      imgEl.classList.add("hachi-walking");
     }
     posX = Math.max(6, Math.min(posX, maxX()));
     pet.style.transform = "translate3d(" + posX.toFixed(1) + "px,0,0)";
@@ -325,14 +231,14 @@
     pet = document.createElement("div");
     pet.id = "hachi-pet";
     pet.title = "Hachi";
-    pet.dataset.state = "sit";
-    pet.dataset.mood = "ramah";
     flipEl = document.createElement("div");
-    flipEl.className = "hachi-flip";
-    charEl = document.createElement("div");
-    charEl.className = "hachi-char";
-    charEl.innerHTML = HACHI_SVG;
-    flipEl.appendChild(charEl);
+    flipEl.className = "hachi-pet-flip";
+    imgEl = document.createElement("img");
+    imgEl.className = "hachi-pet-img";
+    imgEl.alt = "Hachi, maskot AuraFi";
+    imgEl.draggable = false;
+    if (window.HACHI_SPRITE) imgEl.src = window.HACHI_SPRITE;
+    flipEl.appendChild(imgEl);
     bubbleEl = document.createElement("div");
     bubbleEl.id = "hachi-bubble";
     pet.appendChild(bubbleEl);
@@ -340,8 +246,6 @@
     document.body.appendChild(pet);
     pet.addEventListener("click", onTap);
     pet.style.bottom = laneBottom() + "px";
-    pauseStart = performance.now();
-    pauseUntil = pauseStart + 2500;
     if (reducedMotion) {
       posX = maxX() - 6;
       pet.style.transform = "translate3d(" + posX + "px,0,0)";
@@ -375,4 +279,3 @@
   }, 1000);
   setTimeout(() => clearInterval(timer), 90000);
 })();
-
