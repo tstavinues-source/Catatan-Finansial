@@ -37,6 +37,23 @@ npm run android:setup   # salin aset + buat platform + sinkron
 npm run android:sync    # setelah mengubah aset web
 ```
 
+## Notifikasi Push (FCM)
+
+Aplikasi Android mendukung push notification dari server Ren (pengingat
+gajian, kurs, dan kabar penting lain) lewat Firebase Cloud Messaging:
+
+- Plugin `@capacitor/push-notifications` + handler `js/handlers/push.js`
+  (hanya aktif di aplikasi native; web tidak terpengaruh). Setelah login,
+  aplikasi meminta izin notifikasi, mendaftar ke FCM, dan menyimpan token
+  perangkat ke Firebase `settings/pushTokens`.
+- File `android-config/google-services.json` (dari Firebase Console, proyek
+  agrivision-574be, package `id.my.aurafinance`) disalin otomatis ke
+  `android/app/` oleh hook `capacitor:sync:after`
+  (`scripts/apply-android-extras.mjs`). Tanpa file itu build tetap jalan,
+  push saja yang nonaktif.
+- Pengiriman dilakukan Ren dari server memakai kunci service account yang
+  tersimpan di Secure Vault (bukan di repo).
+
 ## Langkah berikutnya (belum termasuk di tahap ini)
 
 - Ikon aplikasi khusus (saat ini masih ikon bawaan Capacitor).

@@ -1,11 +1,11 @@
 {
   "dependencies": {
     "@capacitor/android": "^8.5.3",
-    "@capacitor/core": "^8.5.3"
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/push-notifications": "^8.1.3"
   },
   "description": "AuraFi — aplikasi keuangan pribadi (web + pembungkus Android via Capacitor)",
   "devDependencies": {
-    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.3"
   },
   "name": "aurafi",
@@ -14,7 +14,7 @@
     "android:setup": "npm run sync:www && npx cap add android && npx cap sync android",
     "android:sync": "npm run sync:www && npx cap sync android",
     "sync:www": "node scripts/sync-www.mjs",
-    "capacitor:sync:after": "node scripts/apply-android-branding.mjs"
+    "capacitor:sync:after": "node scripts/apply-android-extras.mjs"
   },
   "version": "1.0.0"
 }
