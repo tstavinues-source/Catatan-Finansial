@@ -153,57 +153,127 @@
     return { mood: "ramah", text: sapa + "! " + MOTIVASI[motivasiIdx] + kasInfo };
   }
 
-  function render() {
-    const el = document.getElementById("hachi-text");
-    if (!el) return;
-    let msg;
-    try {
-      msg = computeMessage();
-    } catch (e) {
-      return;
+  // --- Hachi keliling: stiker ikon asli berjalan bebas di semua tab ---
+  // Bukan lagi kartu di dasbor: Hachi adalah sosok fixed yang berjalan di
+  // tepi bawah layar, berhenti, berbalik arah, dan menyapa lewat gelembung
+  // di sampingnya. Ia minggir sendiri saat modal/keyboard terbuka.
+  const PET_W = 86;
+  const reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  let pet = null, flipEl = null, imgEl = null, bubbleEl = null;
+  let posX = 24, dir = 1, targetX = 140, mode = "pause", pauseUntil = 0, lastTs = 0;
+  let bubbleTimer = null, kbOpen = false, started = false;
+
+  function maxX() { return Math.max(12, window.innerWidth - PET_W - 12); }
+  function pickTarget() {
+    targetX = 12 + Math.random() * Math.max(10, maxX() - 12);
+    dir = targetX >= posX ? 1 : -1;
+  }
+  function laneBottom() {
+    const inp = document.getElementById("main-input-field");
+    return (inp && inp.offsetParent !== null) ? 150 : 94;
+  }
+  function modalOpen() {
+    const ms = document.querySelectorAll('[id^="modal-"]');
+    for (let i = 0; i < ms.length; i++) {
+      if (!ms[i].classList.contains("hidden")) return true;
     }
-    if (msg.text !== lastText) {
-      lastText = msg.text;
-      el.textContent = msg.text;
-      el.classList.remove("hachi-bubble-in");
-      void el.offsetWidth;
-      el.classList.add("hachi-bubble-in");
-      const card = document.getElementById("hachi-card");
-      if (card) card.setAttribute("data-mood", msg.mood);
+    return false;
+  }
+  function showBubble(text, holdMs) {
+    if (!bubbleEl) return;
+    if (text) { bubbleEl.textContent = text; lastText = text; }
+    const vw = window.innerWidth;
+    bubbleEl.classList.toggle("hachi-bubble-left", posX < 100);
+    bubbleEl.classList.toggle("hachi-bubble-right", posX > vw - 210);
+    bubbleEl.classList.add("hachi-bubble-show");
+    if (bubbleTimer) clearTimeout(bubbleTimer);
+    bubbleTimer = setTimeout(() => { bubbleEl.classList.remove("hachi-bubble-show"); }, holdMs || 6000);
+  }
+  function render() {
+    const msg = computeMessage();
+    if (msg && msg.text && msg.text !== lastText) showBubble(msg.text, 6500);
+  }
+  function onTap() {
+    if (!imgEl) return;
+    imgEl.classList.remove("hachi-jump");
+    void imgEl.offsetWidth;
+    imgEl.classList.add("hachi-jump");
+    motivasiIdx = (motivasiIdx === null ? 0 : motivasiIdx + 1) % MOTIVASI.length;
+    const msg = computeMessage();
+    showBubble(msg && msg.text ? msg.text : MOTIVASI[motivasiIdx], 6000);
+  }
+  function tick(ts) {
+    requestAnimationFrame(tick);
+    if (!pet) return;
+    const dt = Math.min(0.05, lastTs ? (ts - lastTs) / 1000 : 0.016);
+    lastTs = ts;
+    if (reducedMotion || pet.classList.contains("hachi-pet-hidden")) return;
+    const now = performance.now();
+    if (mode === "walk") {
+      posX += dir * 30 * dt;
+      if ((dir > 0 && posX >= targetX) || (dir < 0 && posX <= targetX)) {
+        mode = "pause";
+        pauseUntil = now + 2600 + Math.random() * 3400;
+        imgEl.classList.remove("hachi-walking");
+      }
+    } else if (now >= pauseUntil) {
+      pickTarget();
+      mode = "walk";
+      imgEl.classList.add("hachi-walking");
+    }
+    posX = Math.max(6, Math.min(posX, maxX()));
+    pet.style.transform = "translate3d(" + posX.toFixed(1) + "px,0,0)";
+    flipEl.style.transform = "scaleX(" + dir + ")";
+  }
+  function buildPet() {
+    pet = document.createElement("div");
+    pet.id = "hachi-pet";
+    pet.title = "Hachi";
+    flipEl = document.createElement("div");
+    flipEl.className = "hachi-pet-flip";
+    imgEl = document.createElement("img");
+    imgEl.className = "hachi-pet-img";
+    imgEl.alt = "Hachi, maskot AuraFi";
+    imgEl.draggable = false;
+    if (window.HACHI_SPRITE) imgEl.src = window.HACHI_SPRITE;
+    flipEl.appendChild(imgEl);
+    bubbleEl = document.createElement("div");
+    bubbleEl.id = "hachi-bubble";
+    pet.appendChild(bubbleEl);
+    pet.appendChild(flipEl);
+    document.body.appendChild(pet);
+    pet.addEventListener("click", onTap);
+    pet.style.bottom = laneBottom() + "px";
+    if (reducedMotion) {
+      posX = maxX() - 6;
+      pet.style.transform = "translate3d(" + posX + "px,0,0)";
     }
   }
-
   function init() {
-    const char = document.getElementById("hachi-char");
-    if (char) {
-      char.addEventListener("click", () => {
-        char.classList.remove("hachi-excited");
-        void char.offsetWidth;
-        char.classList.add("hachi-excited");
-        motivasiIdx = motivasiIdx === null ? 0 : (motivasiIdx + 1) % MOTIVASI.length;
-        lastText = "";
-        render();
-      });
-    }
+    buildPet();
     render();
     setInterval(render, 45000);
+    setInterval(() => {
+      if (!pet) return;
+      pet.classList.toggle("hachi-pet-hidden", modalOpen() || kbOpen);
+      pet.style.bottom = laneBottom() + "px";
+    }, 800);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", () => {
+        kbOpen = (window.innerHeight - window.visualViewport.height) > 120;
+      });
+    }
+    requestAnimationFrame(tick);
   }
 
-  let tries = 0;
   const timer = setInterval(() => {
-    tries++;
-    const ready =
-      window.AuraState &&
-      AuraState.user &&
-      AuraState.user.uid &&
-      AuraState.data &&
-      AuraState.data.settings &&
-      Array.isArray(AuraState.data.transactions);
-    if (ready) {
+    const ready = window.AuraState && window.AuraState.user && window.AuraState.user.uid &&
+      window.AuraState.data && Array.isArray(window.AuraState.data.transactions);
+    if (ready && !started) {
+      started = true;
       clearInterval(timer);
       init();
-    } else if (tries > 90) {
-      clearInterval(timer);
     }
   }, 1000);
+  setTimeout(() => clearInterval(timer), 90000);
 })();

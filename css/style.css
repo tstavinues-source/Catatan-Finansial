@@ -165,50 +165,21 @@ body {
     box-shadow: var(--shadow-raised), inset 0 0 24px rgba(0,0,0,0.45);
 }
 
-/* ===== Hachi — maskot hidup di dasbor ===== */
-.hachi-svg {
-    animation: hachiBob 2.6s ease-in-out infinite;
-    transform-origin: 50% 90%;
-    overflow: visible;
-}
-@keyframes hachiBob {
-    0%, 100% { transform: translateY(0) rotate(-1deg); }
-    50% { transform: translateY(-5px) rotate(1deg); }
-}
-.hachi-eyes {
-    transform-box: fill-box;
-    transform-origin: center;
-    animation: hachiBlink 4.8s infinite;
-}
-@keyframes hachiBlink {
-    0%, 92%, 100% { transform: scaleY(1); }
-    95% { transform: scaleY(0.08); }
-    97.5% { transform: scaleY(1); }
-}
-.hachi-ear-l, .hachi-ear-r {
-    transform-box: fill-box;
-    animation: hachiEar 7s infinite;
-}
-.hachi-ear-l { transform-origin: bottom right; }
-.hachi-ear-r { transform-origin: bottom left; animation-delay: 3.5s; }
-@keyframes hachiEar {
-    0%, 88%, 100% { transform: rotate(0deg); }
-    91% { transform: rotate(-7deg); }
-    94% { transform: rotate(0deg); }
-}
-#hachi-char.hachi-excited .hachi-svg {
-    animation: hachiJump 0.6s ease;
-}
-@keyframes hachiJump {
-    0% { transform: translateY(0) scale(1, 1); }
-    35% { transform: translateY(-14px) scale(0.96, 1.05); }
-    70% { transform: translateY(0) scale(1.05, 0.94); }
-    100% { transform: translateY(0) scale(1, 1); }
-}
-#hachi-card .hachi-bubble-in {
-    animation: hachiBubbleIn 0.45s ease;
-}
-@keyframes hachiBubbleIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+/* === Hachi keliling: stiker ikon asli, bebas di semua tab === */
+#hachi-pet { position: fixed; left: 0; bottom: 94px; width: 86px; z-index: 60; cursor: pointer; transition: opacity .35s ease, bottom .3s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+#hachi-pet.hachi-pet-hidden { opacity: 0; pointer-events: none; }
+.hachi-pet-flip { transition: transform .18s ease; }
+.hachi-pet-img { width: 86px; height: 86px; border-radius: 50%; border: 2px solid rgba(224,138,76,.55); box-shadow: 0 10px 24px rgba(0,0,0,.45); display: block; background: #16222e; }
+.hachi-walking { animation: hachiWalkBob .38s ease-in-out infinite; }
+@keyframes hachiWalkBob { 0% { transform: translateY(0) rotate(-2.5deg); } 50% { transform: translateY(-5px) rotate(2.5deg); } 100% { transform: translateY(0) rotate(-2.5deg); } }
+.hachi-pet-img.hachi-jump { animation: hachiPetJump .55s ease; }
+@keyframes hachiPetJump { 0% { transform: translateY(0) scale(1,1); } 30% { transform: translateY(3px) scale(1.06,.9); } 55% { transform: translateY(-16px) scale(.96,1.05); } 80% { transform: translateY(0) scale(1.03,.97); } 100% { transform: translateY(0) scale(1,1); } }
+#hachi-bubble { position: absolute; bottom: 96px; left: 50%; transform: translate(-50%, 6px) scale(.95); width: max-content; max-width: 228px; background: #1d2c3b; color: #e8eef4; border: 1px solid rgba(224,138,76,.35); border-radius: 14px; padding: 8px 11px; font-size: 11.5px; line-height: 1.45; box-shadow: 0 12px 28px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+#hachi-bubble.hachi-bubble-show { opacity: 1; transform: translate(-50%, 0) scale(1); }
+#hachi-bubble::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; margin-left: -6px; background: #1d2c3b; border-right: 1px solid rgba(224,138,76,.35); border-bottom: 1px solid rgba(224,138,76,.35); transform: rotate(45deg); }
+#hachi-bubble.hachi-bubble-left { left: -4px; transform: translate(0, 6px) scale(.95); }
+#hachi-bubble.hachi-bubble-left.hachi-bubble-show { transform: translate(0, 0) scale(1); }
+#hachi-bubble.hachi-bubble-left::after { left: 34px; }
+#hachi-bubble.hachi-bubble-right { left: auto; right: -4px; transform: translate(0, 6px) scale(.95); }
+#hachi-bubble.hachi-bubble-right.hachi-bubble-show { transform: translate(0, 0) scale(1); }
+#hachi-bubble.hachi-bubble-right::after { left: auto; right: 34px; margin-left: 0; }
