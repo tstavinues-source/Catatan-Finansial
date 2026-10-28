@@ -8,7 +8,7 @@ import {
     getDatabase, ref, push, update, remove, onValue, get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
-    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInAnonymously, signOut, onAuthStateChanged
+    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut, onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { FIREBASE_CONFIG, APP_CONFIG } from '../config/constants.js';
@@ -261,7 +261,6 @@ window.loadRealtimeDatabaseData = function(silent = false) {
 export const FirebaseService = {
     loginWithEmail: async function(email, password) { return await signInWithEmailAndPassword(authInstance, email, password); },
     loginWithGoogle: async function() { return await signInWithPopup(authInstance, googleAuthProviderInstance); },
-    loginAnonymously: async function() { return await signInAnonymously(authInstance); },
     logout: async function() { return await signOut(authInstance); },
 
     _checkAuth: function() {
