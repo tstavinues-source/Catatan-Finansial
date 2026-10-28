@@ -159,11 +159,22 @@
   // Bukan lagi kartu di dasbor: Hachi adalah sosok fixed yang berjalan di
   // tepi bawah layar, berhenti, berbalik arah, dan menyapa lewat gelembung
   // di sampingnya. Ia minggir sendiri saat modal/keyboard terbuka.
-  const PET_W = 86;
+  const PET_W = 124;
   const reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   let pet = null, flipEl = null, imgEl = null, bubbleEl = null;
   let posX = 24, dir = 1, targetX = 140, mode = "pause", pauseUntil = 0, lastTs = 0;
   let bubbleTimer = null, kbOpen = false, started = false;
+
+  // Gambar asli karya Gmr (js/hachi-art.js): bingkai siklus berjalan.
+  // Saat berhenti, Hachi bertumpu pada bingkai 3 (kedua kaki menapak).
+  const WALK_FRAMES = (window.HACHI_ART && Array.isArray(window.HACHI_ART.walk)) ? window.HACHI_ART.walk : [];
+  const IDLE_FRAME = 2;
+  let frameIdx = IDLE_FRAME;
+  function setFrame(i) {
+    if (!imgEl || !WALK_FRAMES.length) return;
+    frameIdx = ((i % WALK_FRAMES.length) + WALK_FRAMES.length) % WALK_FRAMES.length;
+    imgEl.src = WALK_FRAMES[frameIdx];
+  }
 
   function maxX() { return Math.max(12, window.innerWidth - PET_W - 12); }
   function pickTarget() {
@@ -205,6 +216,11 @@
     showBubble(msg && msg.text ? msg.text : MOTIVASI[motivasiIdx], 6000);
   }
   function tick(ts) {
+    setInterval(() => {
+      if (mode === "walk" && pet && !pet.classList.contains("hachi-pet-hidden") && !reducedMotion) {
+        setFrame(frameIdx + 1);
+      }
+    }, 150);
     requestAnimationFrame(tick);
     if (!pet) return;
     const dt = Math.min(0.05, lastTs ? (ts - lastTs) / 1000 : 0.016);
@@ -217,6 +233,7 @@
         mode = "pause";
         pauseUntil = now + 2600 + Math.random() * 3400;
         imgEl.classList.remove("hachi-walking");
+        setFrame(IDLE_FRAME);
       }
     } else if (now >= pauseUntil) {
       pickTarget();
@@ -237,7 +254,7 @@
     imgEl.className = "hachi-pet-img";
     imgEl.alt = "Hachi, maskot AuraFi";
     imgEl.draggable = false;
-    if (window.HACHI_SPRITE) imgEl.src = window.HACHI_SPRITE;
+    setFrame(IDLE_FRAME);
     flipEl.appendChild(imgEl);
     bubbleEl = document.createElement("div");
     bubbleEl.id = "hachi-bubble";
@@ -265,6 +282,11 @@
         kbOpen = (window.innerHeight - window.visualViewport.height) > 120;
       });
     }
+    setInterval(() => {
+      if (mode === "walk" && pet && !pet.classList.contains("hachi-pet-hidden") && !reducedMotion) {
+        setFrame(frameIdx + 1);
+      }
+    }, 150);
     requestAnimationFrame(tick);
   }
 
