@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "732120986243-imakp75je8o6dvg1qi7f9nsgm9mh4hqj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "id.my.aurafinance",
+            "certificate_hash": "60ac8fd6eb7bedbbe434c57b20fa2db4080180ba"
+          }
+        },
+        {
           "client_id": "732120986243-0g0ajoa934hj8aa3bqu1sutnub36u9uj.apps.googleusercontent.com",
           "client_type": 3
         }
