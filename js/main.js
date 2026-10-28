@@ -90,6 +90,8 @@ import './handlers/push.js';
 import './handlers/widget-sync.js';
 import './handlers/hachi.js';
 import './handlers/picker.js';
+import './handlers/nav-gestures.js';
+import './handlers/chatbar.js';
 import './handlers/import-export.js';
 import './modules/staging.js';
 import './modules/onboarding.js';
