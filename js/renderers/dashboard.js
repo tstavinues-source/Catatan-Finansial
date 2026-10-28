@@ -496,7 +496,7 @@ window.reCalculateAll = function() {
                                 <span><i class="fa-solid fa-list mr-1"></i> ${t.items.length} Barang</span> 
                                 <i class="fa-solid fa-chevron-${isExp ? 'up' : 'down'} ml-1"></i>
                             </button>
-                            <button onclick="window.openAddItemModal('${t.id}')" class="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-md text-[8px] font-bold text-white transition">+ ITEM BARU</button>
+                            <button onclick="window.openAddItemModal('${t.id}')" class="aura-pill-btn">+ ITEM BARU</button>
                         </div>
                         <div class="${isExp ? 'block' : 'hidden'} mt-2 space-y-1.5">
                             ${receiptLines}
@@ -505,15 +505,15 @@ window.reCalculateAll = function() {
                 } else {
                     innerReceiptHtml = `
                     <div class="mt-2.5 pt-2 border-t border-[var(--border-glass)]">
-                        <button onclick="window.openAddItemModal('${t.id}')" class="bg-white/5 border border-[var(--border-glass)] w-full py-1.5 rounded-md text-[9px] font-bold text-[var(--text-muted)] hover:text-white transition">+ SUNTIKKAN ITEM BARU</button>
+                        <button onclick="window.openAddItemModal('${t.id}')" class="aura-pill-btn w-full py-1.5">+ SUNTIKKAN ITEM BARU</button>
                     </div>`;
                 }
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
-                    <button onclick="window.openEditTrxModal('${t.id}')" class="absolute top-3 right-12 text-[var(--text-muted)] hover:text-accent opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 p-2 text-sm transition bg-black/60 rounded-full shadow-lg z-10"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button onclick="window.confirmDelTrx('${t.id}')" class="absolute top-3 right-3 text-[var(--text-muted)] hover:text-[var(--color-expense)] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 p-2 text-sm transition bg-black/60 rounded-full shadow-lg z-10"><i class="fa-solid fa-trash"></i></button>
+                    <button onclick="window.openEditTrxModal('${t.id}')" class="aura-icon-btn absolute top-3 right-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button onclick="window.confirmDelTrx('${t.id}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>
                     <div class="flex justify-between items-start mb-2 pr-20">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 icon-chip shrink-0" style="background-color: ${catStyle.hex}15;">
