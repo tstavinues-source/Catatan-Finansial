@@ -6,5 +6,13 @@
     "androidScheme": "https",
     "url": "https://aurafinance.my.id",
     "errorPath": "index.html"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "skipNativeAuth": false,
+      "providers": [
+        "google.com"
+      ]
+    }
   }
 }
