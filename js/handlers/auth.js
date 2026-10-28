@@ -66,22 +66,6 @@ window.loginWithGoogle = async function() {
     }
 };
 
-window.loginAnonymously = async function() {
-    if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
-    
-    try {
-        Logger.info('Auth', 'Memasuki Mode Tamu (Anonim)...');
-        await FirebaseService.loginAnonymously();
-    } catch (error) {
-        Logger.error('Auth', 'Gagal login anonim:', error);
-        if (typeof window.showToast === 'function') {
-            window.showToast("Sistem gagal membuat sesi Tamu.", true);
-        }
-    } finally {
-        if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
-    }
-};
-
 window.logoutAccount = async function() {
     // PERBAIKAN: sebelumnya pakai confirm() bawaan browser (nge-block thread,
     // tampilannya beda sendiri dibanding modal konfirmasi custom yang dipakai
