@@ -86,3 +86,12 @@ Hachi tampil lewat ikon aplikasi dan satu baris pesan singkat (kunci
 - Notifikasi push (pengingat tagihan, gajian, checklist kewajiban).
 - Widget layar utama untuk saldo.
 - Build rilis bertandatangan + Play Store, bila nanti diperlukan.
+
+## Kunci build tetap
+
+Semua build CI ditandatangani dengan kunci debug yang sama
+(`resources/debug.keystore.b64`, didekode oleh
+`scripts/apply-android-extras.mjs` ke proyek Android). Berkat itu APK hasil
+build baru selalu bisa dipasang **menimpa** aplikasi lama sebagai pembaruan.
+Tanpa kunci tetap, tiap mesin build memakai kunci acaknya sendiri dan
+Android menolak pembaruan dengan pesan "Aplikasi tidak diinstal".
