@@ -459,3 +459,47 @@ html[data-skin="brutal"] .aura-logo, html[data-skin="clay"] .aura-logo {
 /* --- Sisa tingkat bg-black yang belum terpetakan di kulit terang --- */
 html[data-skin="brutal"] .bg-black\/25, html[data-skin="clay"] .bg-black\/25 { background-color: rgba(22, 19, 14, 0.06) !important; }
 html[data-skin="brutal"] .bg-black\/60, html[data-skin="clay"] .bg-black\/60 { background-color: rgba(22, 19, 14, 0.14) !important; }
+
+/* ================= KOMPONEN BAKU (Tahap Perapian 1) =================
+   Satu bahasa untuk kontrol yang sebelumnya bergaya sendiri-sendiri.
+   Semua berbasis variabel tema agar kelima kulit mengikutinya. */
+.aura-icon-btn {
+    width: 2rem; height: 2rem;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 9999px;
+    background: var(--bg-inset);
+    color: var(--text-muted);
+    border: 1px solid var(--border-glass);
+    box-shadow: var(--shadow-inset);
+    font-size: 0.85rem;
+    transition: all .2s ease;
+}
+.aura-icon-btn:hover { color: var(--accent-primary); }
+.aura-icon-btn.danger:hover { color: var(--color-expense); }
+.aura-pill-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
+    padding: .32rem .65rem;
+    border-radius: 9999px;
+    background: var(--bg-inset);
+    color: var(--text-main);
+    border: 1px solid var(--border-glass);
+    font-size: 8px; font-weight: 800;
+    letter-spacing: .08em; text-transform: uppercase;
+    transition: all .2s ease;
+}
+.aura-pill-btn:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
+.aura-section-title {
+    font-size: 10px; font-weight: 800;
+    letter-spacing: .14em; text-transform: uppercase;
+    color: var(--text-muted);
+}
+html[data-skin="brutal"] .aura-icon-btn, html[data-skin="brutal"] .aura-pill-btn {
+    border: 2px solid #16130e; box-shadow: 2px 2px 0 #16130e;
+}
+html[data-skin="clay"] .aura-icon-btn, html[data-skin="clay"] .aura-pill-btn {
+    box-shadow: 3px 3px 8px rgba(94, 72, 180, 0.18), -2px -2px 6px rgba(255, 255, 255, 0.7);
+}
+
+/* --- Tingkat bg-black tersisa yang belum terpetakan di kulit terang --- */
+html[data-skin="brutal"] .bg-black\/35, html[data-skin="clay"] .bg-black\/35 { background-color: rgba(22, 19, 14, 0.08) !important; }
+html[data-skin="brutal"] .bg-black\/50, html[data-skin="clay"] .bg-black\/50 { background-color: rgba(22, 19, 14, 0.12) !important; }
