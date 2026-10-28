@@ -28,6 +28,7 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
         String kas = "—";
         String total = "—";
         String updated = "Buka AuraFi untuk sinkron";
+        String pesan = "Tetap semangat mencatat!";
         try {
             SharedPreferences prefs = context.getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
             String raw = prefs.getString("aurafi_widget", null);
@@ -37,6 +38,8 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
                 total = yen(o.optLong("total", 0));
                 String u = o.optString("updatedAt", "");
                 if (!u.isEmpty()) updated = "Diperbarui " + u;
+                String ps = o.optString("pesan", "");
+                if (!ps.isEmpty()) pesan = ps;
             }
         } catch (Exception e) {
             // Biarkan nilai bawaan "—" tampil bila data belum ada/rusak.
@@ -44,6 +47,7 @@ public class BalanceWidgetProvider extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_kas, kas);
         views.setTextViewText(R.id.widget_total, total);
+        views.setTextViewText(R.id.widget_pesan, pesan);
         views.setTextViewText(R.id.widget_updated, updated + " • ketuk untuk membuka AuraFi");
 
         Intent intent = new Intent(context, MainActivity.class);
