@@ -21,7 +21,8 @@
   function compute() {
     const data = (window.AuraState && window.AuraState.data) || {};
     const txs = data.transactions || [];
-    const wallets = data.wallets || [];
+    const walletsRaw = data.wallets;
+    const wallets = Array.isArray(walletsRaw) ? walletsRaw : (walletsRaw && typeof walletsRaw === "object" ? Object.values(walletsRaw) : []);
     const perWallet = {};
     txs.forEach((t) => {
       if (!t || t.is_deleted || !t.wallet_id) return;
