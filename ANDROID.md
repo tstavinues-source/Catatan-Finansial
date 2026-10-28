@@ -54,6 +54,21 @@ gajian, kurs, dan kabar penting lain) lewat Firebase Cloud Messaging:
 - Pengiriman dilakukan Ren dari server memakai kunci service account yang
   tersimpan di Secure Vault (bukan di repo).
 
+## Widget Saldo (layar utama)
+
+Widget Android menampilkan Kas Tunai dan Total Saldo sekilas:
+
+- Sumber native disimpan di `android-widget/` (ditulis dalam Java agar cocok
+  dengan templat Capacitor berbasis Java, tanpa tambalan Gradle) dan disalin
+  ke proyek oleh hook yang sama (`scripts/apply-android-extras.mjs`), yang
+  juga mendaftarkan receiver-nya di AndroidManifest.xml.
+- Aplikasi menulis angka ringkas ke Capacitor Preferences (kunci
+  `aurafi_widget`) lewat `js/handlers/widget-sync.js` setiap ada perubahan
+  saldo; widget membacanya dari SharedPreferences "CapacitorStorage".
+- Android membatasi penyegaran widget berkala (paling cepat ±30 menit);
+  angka selalu disertai cap waktu "Diperbarui …". Ketuk widget membuka
+  aplikasi.
+
 ## Langkah berikutnya (belum termasuk di tahap ini)
 
 - Ikon aplikasi khusus (saat ini masih ikon bawaan Capacitor).
