@@ -1,9 +1,15 @@
 # AuraFi untuk Android
 
 AuraFi kini bisa dibungkus menjadi aplikasi Android asli memakai
-[Capacitor](https://capacitorjs.com). Kode web-nya tetap satu — aplikasi
-Android memakai aset yang sama persis dengan versi web di aurafinance.my.id,
-jadi setiap perbaikan di web ikut terbawa ke aplikasi saat APK dibangun ulang.
+[Capacitor](https://capacitorjs.com). Kode web-nya tetap satu.
+
+**Mode situs live (sejak PR #49):** aplikasi memuat langsung
+https://aurafinance.my.id (`server.url` di `capacitor.config.json`), jadi
+setiap perbaikan web langsung terasa saat aplikasi dibuka — tanpa memasang
+ulang APK. Memasang ulang hanya perlu bila yang berubah adalah bagian
+natifnya (ikon, plugin, widget, atau konfigurasi ini). Bila situs gagal
+dimuat (mis. tidak ada internet), aplikasi menampilkan salinan bawaan APK
+(`server.errorPath`) — tetapi data tetap butuh internet karena Firebase.
 
 ## Cara mendapatkan APK
 
