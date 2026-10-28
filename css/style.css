@@ -99,6 +99,10 @@ body {
     box-shadow: var(--shadow-nav);
 }
 
+/* Kepala seksi & tombol jalan pintas — memakai variabel permukaan agar
+   ikut berubah mengikuti kulit tema (sebelumnya hex keras #11131a). */
+.aura-head-bg { background-color: var(--bg-inset); }
+
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-glass); border-radius: 10px; }
@@ -135,7 +139,20 @@ body {
 }
 
 .safe-pb { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-.view-transition { transition: opacity 0.3s ease, transform 0.3s ease; animation: fadeIn 0.4s ease-out; }
+.view-transition { }
+
+/* --- Lapisan tampilan: tiap tab lapisan mandiri agar bisa meluncur --- */
+#view-container { overflow: hidden; }
+#view-container > [id^="view-"] { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* --- Pop-up masuk dengan gerak halus (bukan kedip) --- */
+[id^="modal-"]:not(.hidden):not(#modal-settings):not(#modal-category-picker):not(#modal-parent-picker) > * {
+    animation: auraPopIn .26s cubic-bezier(.32,.72,.24,1);
+}
+@keyframes auraPopIn {
+    from { opacity: 0; transform: translateY(14px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -368,7 +385,7 @@ html[data-skin="brutal"] .hero-shade { background: linear-gradient(180deg, rgba(
     --invert-contrast: #ffffff;
     --font-main: 'Nunito', sans-serif;
     --font-display: 'Nunito', sans-serif;
-    --shadow-raised: 8px 8px 20px rgba(94, 72, 180, 0.18), -6px -6px 16px rgba(255, 255, 255, 0.75);
+    --shadow-raised: 6px 6px 14px rgba(94, 72, 180, 0.16), -4px -4px 10px rgba(255, 255, 255, 0.6);
     --shadow-inset: inset 4px 4px 10px rgba(94, 72, 180, 0.15), inset -4px -4px 10px rgba(255, 255, 255, 0.7);
     --shadow-nav: 0 -8px 20px rgba(94, 72, 180, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
@@ -401,3 +418,16 @@ html[data-skin="brutal"] .bg-white\/10, html[data-skin="clay"] .bg-white\/10 { b
 html[data-skin="brutal"] .border-white\/10, html[data-skin="clay"] .border-white\/10 { border-color: rgba(22, 19, 14, 0.22) !important; }
 html[data-skin="clay"] .living-core .text-white { color: #ffffff !important; }
 html[data-skin="clay"] .living-core .text-\[var\(--text-muted\)\] { color: rgba(255, 255, 255, 0.75) !important; }
+
+/* --- Kelancaran geser: selama animasi pindah tab berjalan, bayangan panel
+   disederhanakan agar komposit murah di GPU (terutama kulit Clay). --- */
+html.view-anim .glass-panel { box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16) !important; }
+
+/* --- Kontrol formulir bg-black di kulit terang: samakan dengan permukaan
+   cekung kulit agar tidak ada bidang hitam yang tertinggal. --- */
+html[data-skin="brutal"] select.bg-black, html[data-skin="clay"] select.bg-black,
+html[data-skin="brutal"] input.bg-black, html[data-skin="clay"] input.bg-black,
+html[data-skin="brutal"] textarea.bg-black, html[data-skin="clay"] textarea.bg-black,
+html[data-skin="brutal"] button.bg-black, html[data-skin="clay"] button.bg-black {
+    background-color: var(--bg-inset) !important;
+}

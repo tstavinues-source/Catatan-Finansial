@@ -34,6 +34,7 @@ function finalizeViewAnim() {
         el.style.boxShadow = '';
     });
     viewAnim = null;
+    document.documentElement.classList.remove('view-anim');
 }
 
 window.switchView = function(viewId) {
@@ -80,6 +81,7 @@ window.switchView = function(viewId) {
             { duration: 300, easing: easing }
         );
         viewAnim = { anims: [inAnim, outAnim], prevEl: prevEl, targetEl: targetEl };
+        document.documentElement.classList.add('view-anim');
         inAnim.onfinish = function() { finalizeViewAnim(); };
     } else if (prevEl && prevEl !== targetEl) {
         prevEl.classList.add('hidden');
