@@ -12,7 +12,7 @@ export const injectMissingModals = function() {
             <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-emerald-400">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-bold flex items-center gap-2 text-emerald-400 font-display"><i class="fa-solid fa-file-import"></i> Impor Transaksi</h3>
-                    <button onclick="window.closeModal('modal-import-data')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="window.closeModal('modal-import-data')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-4 text-center">
                     <p class="text-xs text-[var(--text-muted)]">Unggah file JSON atau CSV (Format AuraFi) untuk merestorasi riwayat transaksi lama Anda.</p>
@@ -32,7 +32,7 @@ export const injectMissingModals = function() {
             <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-400 max-h-[90vh] overflow-y-auto no-scrollbar">
                 <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
                     <h3 class="text-lg font-bold flex items-center gap-2 text-amber-400 font-display"><i class="fa-solid fa-box-open"></i> Tracker Dinamis</h3>
-                    <button onclick="window.closeModal('modal-edit-tracker')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="window.closeModal('modal-edit-tracker')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="tracker-list-container" class="space-y-3 mb-5"></div>
                 <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
@@ -53,7 +53,7 @@ export const injectMissingModals = function() {
             <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
                 <div class="flex justify-between items-center mb-6">
                     <h3 class="text-lg font-bold flex items-center gap-2 text-rose-400 font-display"><i class="fa-solid fa-fire-flame-curved"></i> Batas Burn Rate</h3>
-                    <button onclick="window.closeModal('modal-edit-budget')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="window.closeModal('modal-edit-budget')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div class="space-y-4">
                     <div>
@@ -73,7 +73,7 @@ export const injectMissingModals = function() {
             <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
                 <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
                     <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-400 font-display"><i class="fa-solid fa-users"></i> Anggota Keluarga</h3>
-                    <button onclick="window.closeModal('modal-family')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="window.closeModal('modal-family')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="family-list-container" class="space-y-3 mb-5"></div>
                 <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
@@ -91,7 +91,7 @@ export const injectMissingModals = function() {
             <div class="glass-panel p-5 w-full max-w-md shadow-2xl border-t-4 border-t-white h-[85vh] flex flex-col">
                 <div class="flex justify-between items-center mb-4 shrink-0">
                     <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-shield-halved"></i> Security Audit Log</h3>
-                    <button onclick="window.closeModal('modal-audit-log')" class="w-8 h-8 rounded-full flex items-center justify-center text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
+                    <button onclick="window.closeModal('modal-audit-log')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
                 </div>
                 <div id="audit-log-content" class="flex-1 overflow-y-auto no-scrollbar space-y-3 bg-black/40 p-3 rounded-xl border border-[var(--border-glass)]">
                     <p class="text-xs text-center text-[var(--text-muted)] mt-10">Mencari rekam jejak pada Cloud Firebase...</p>
