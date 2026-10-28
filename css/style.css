@@ -164,3 +164,51 @@ body {
     transition: background 1s ease-out;
     box-shadow: var(--shadow-raised), inset 0 0 24px rgba(0,0,0,0.45);
 }
+
+/* ===== Hachi — maskot hidup di dasbor ===== */
+.hachi-svg {
+    animation: hachiBob 2.6s ease-in-out infinite;
+    transform-origin: 50% 90%;
+    overflow: visible;
+}
+@keyframes hachiBob {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-5px) rotate(1deg); }
+}
+.hachi-eyes {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: hachiBlink 4.8s infinite;
+}
+@keyframes hachiBlink {
+    0%, 92%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.08); }
+    97.5% { transform: scaleY(1); }
+}
+.hachi-ear-l, .hachi-ear-r {
+    transform-box: fill-box;
+    animation: hachiEar 7s infinite;
+}
+.hachi-ear-l { transform-origin: bottom right; }
+.hachi-ear-r { transform-origin: bottom left; animation-delay: 3.5s; }
+@keyframes hachiEar {
+    0%, 88%, 100% { transform: rotate(0deg); }
+    91% { transform: rotate(-7deg); }
+    94% { transform: rotate(0deg); }
+}
+#hachi-char.hachi-excited .hachi-svg {
+    animation: hachiJump 0.6s ease;
+}
+@keyframes hachiJump {
+    0% { transform: translateY(0) scale(1, 1); }
+    35% { transform: translateY(-14px) scale(0.96, 1.05); }
+    70% { transform: translateY(0) scale(1.05, 0.94); }
+    100% { transform: translateY(0) scale(1, 1); }
+}
+#hachi-card .hachi-bubble-in {
+    animation: hachiBubbleIn 0.45s ease;
+}
+@keyframes hachiBubbleIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

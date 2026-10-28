@@ -69,6 +69,17 @@ Widget Android menampilkan Kas Tunai dan Total Saldo sekilas:
   angka selalu disertai cap waktu "Diperbarui …". Ketuk widget membuka
   aplikasi.
 
+## Hachi — maskot hidup
+
+Hachi (shiba) tampil sebagai karakter SVG beranimasi di kartu "Hachi menyapa"
+pada dasbor (`js/handlers/hachi.js`): berkedip, telinga bergerak, melompat
+saat diketuk. Gelembung ucapannya dihitung dari data pengguna sendiri —
+pengingat kewajiban belum tercatat (aturan cocok yang sama dengan checklist
+di `reconcile.js`), hari gajian, laju belanja pribadi antar-siklus, kemajuan
+misi tabungan, dan sapaan sesuai jam plus info kas. Di widget layar utama
+Hachi tampil lewat ikon aplikasi dan satu baris pesan singkat (kunci
+`pesan` pada data widget yang sama).
+
 ## Langkah berikutnya (belum termasuk di tahap ini)
 
 - Ikon aplikasi khusus (saat ini masih ikon bawaan Capacitor).
