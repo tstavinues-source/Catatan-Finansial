@@ -227,3 +227,7 @@ body {
 #hachi-bubble.hachi-bubble-right::after { left: auto; right: 42px; margin-left: 0; }
 #hachi-pet .hachi-pet-img { height: 112px; width: auto; display: block; }
 .hachi-flip { transition: transform .18s ease; }
+
+/* --- laci pengaturan: geser masuk dari kanan --- */
+#modal-settings:not(.hidden) .settings-drawer-card { animation: auraDrawerIn .34s cubic-bezier(.32,.72,.24,1) both; }
+@keyframes auraDrawerIn { from { transform: translateX(103%); } to { transform: translateX(0); } }

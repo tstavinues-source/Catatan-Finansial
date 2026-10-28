@@ -185,6 +185,13 @@
     const inp = document.getElementById("main-input-field");
     return (inp && inp.offsetParent !== null) ? 150 : 94;
   }
+  function petWanted() {
+    // Maskot disembunyikan secara bawaan (keputusan Gmr 2026-10-29: Hachi
+    // menghalangi konten). Ia hanya tampil bila saklar "Maskot Hachi" di
+    // Pengaturan dihidupkan (settings.hachiVisible === true).
+    const S = (window.AuraState && AuraState.data && AuraState.data.settings) || {};
+    return S.hachiVisible === true;
+  }
   function modalOpen() {
     const ms = document.querySelectorAll('[id^="modal-"]');
     for (let i = 0; i < ms.length; i++) {
@@ -274,7 +281,7 @@
     setInterval(render, 45000);
     setInterval(() => {
       if (!pet) return;
-      pet.classList.toggle("hachi-pet-hidden", modalOpen() || kbOpen);
+      pet.classList.toggle("hachi-pet-hidden", modalOpen() || kbOpen || !petWanted());
       pet.style.bottom = laneBottom() + "px";
     }, 800);
     if (window.visualViewport) {

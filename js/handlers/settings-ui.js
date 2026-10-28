@@ -983,3 +983,32 @@ window.toggleSettingsSection = function(sectionId) {
         icon.parentElement.classList.replace('bg-rose-500/20', 'bg-blue-600/20');
     }
 };
+
+
+// --- Saklar Maskot Hachi (Pengaturan -> Jalan Pintas) ---
+window.syncHachiToggle = function () {
+    const btn = document.getElementById('hachi-toggle-btn');
+    if (!btn) return;
+    const S = (window.AuraState && AuraState.data && AuraState.data.settings) || {};
+    const on = S.hachiVisible === true;
+    btn.textContent = on ? 'AKTIF' : 'SEMBUNYI';
+    btn.className = on
+        ? 'px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider bg-accent text-[var(--bg-base)] transition'
+        : 'px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider bg-white/10 text-[var(--text-muted)] transition';
+};
+window.toggleHachiPet = async function () {
+    const S = (window.AuraState && AuraState.data && AuraState.data.settings) || {};
+    const next = S.hachiVisible !== true;
+    try {
+        await FirebaseService.updateSettings({ hachiVisible: next });
+        if (window.AuraState && AuraState.data && AuraState.data.settings) {
+            AuraState.data.settings.hachiVisible = next;
+        }
+        window.syncHachiToggle();
+        if (typeof window.showToast === 'function') {
+            window.showToast(next ? 'Hachi ditampilkan. Halo!' : 'Hachi disembunyikan.');
+        }
+    } catch (e) {
+        if (typeof window.showToast === 'function') window.showToast('Gagal mengubah saklar Hachi.');
+    }
+};
