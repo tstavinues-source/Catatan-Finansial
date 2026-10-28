@@ -135,22 +135,7 @@ body {
 }
 
 .safe-pb { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-.view-transition { }
-
-/* --- Lapisan tampilan: tiap tab lapisan mandiri agar bisa meluncur --- */
-#view-container { overflow: hidden; }
-#view-container > [id^="view-"] { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
-
-/* --- Pop-up masuk dengan gerak halus (bukan kedip) ---
-   Panel pada modal meluncur naik tipis + membesar dari 98,5% saat modal
-   tampil. Laci Pengaturan dan pemilih kategori punya animasinya sendiri. */
-[id^="modal-"]:not(.hidden):not(#modal-settings):not(#modal-category-picker):not(#modal-parent-picker) > * {
-    animation: auraPopIn .26s cubic-bezier(.32,.72,.24,1);
-}
-@keyframes auraPopIn {
-    from { opacity: 0; transform: translateY(14px) scale(.985); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
+.view-transition { transition: opacity 0.3s ease, transform 0.3s ease; animation: fadeIn 0.4s ease-out; }
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -246,3 +231,173 @@ body {
 /* --- laci pengaturan: geser masuk dari kanan --- */
 #modal-settings:not(.hidden) .settings-drawer-card { animation: auraDrawerIn .34s cubic-bezier(.32,.72,.24,1); }
 @keyframes auraDrawerIn { from { transform: translateX(103%); } to { transform: translateX(0); } }
+
+/* ============================================================
+   SISTEM KULIT TEMA (data-skin) — mengganti SELURUH rasa aplikasi:
+   palet, font, radius, bayangan, border, dan perlakuan ikon.
+   Tata letak tidak berubah. Blok-blok ini sengaja ditaruh paling
+   akhir agar menang atas varian [data-theme]; atribut dihapus =
+   kembali ke Slate (tampilan sekarang). Dipilih lewat Pengaturan →
+   Tampilan & Tema → Kulit Tema, tersimpan di settings.skin.
+   ============================================================ */
+
+/* ---------- 1. LUXURY — arang hangat, emas, serif ---------- */
+[data-skin="luxury"] {
+    --bg-base: #131110;
+    --bg-surface: rgba(19, 17, 16, 0.96);
+    --bg-glass: #1c1917;
+    --bg-glass-hi: #262019;
+    --bg-inset: #100e0d;
+    --text-main: #f3ead9;
+    --text-muted: #a79c8a;
+    --accent-primary: #c9a86a;
+    --accent-glow: rgba(201, 168, 106, 0.30);
+    --color-income: #8fbc94;
+    --color-expense: #d98a8a;
+    --border-glass: rgba(201, 168, 106, 0.22);
+    --invert-contrast: #1a1508;
+    --font-main: 'Inter', sans-serif;
+    --font-display: 'Playfair Display', serif;
+    --shadow-raised: 0 1px 0 rgba(201, 168, 106, 0.06), 0 12px 32px rgba(0, 0, 0, 0.45);
+    --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.03), inset 0 -8px 18px rgba(0, 0, 0, 0.25);
+    --shadow-nav: 0 -8px 24px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(201, 168, 106, 0.15);
+}
+html[data-skin="luxury"] .glass-panel {
+    background: linear-gradient(180deg, var(--bg-glass-hi), var(--bg-glass));
+    border-radius: 0.9rem;
+}
+html[data-skin="luxury"] .icon-chip {
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid var(--border-glass);
+    border-radius: 999px;
+    color: var(--accent-primary);
+}
+html[data-skin="luxury"] .v-input { border-color: rgba(201, 168, 106, 0.18); box-shadow: none; }
+html[data-skin="luxury"] .font-display { letter-spacing: 0.01em; }
+html[data-skin="luxury"] .hero-shade { background: linear-gradient(180deg, rgba(10, 8, 6, 0.66), rgba(10, 8, 6, 0.25) 55%, rgba(10, 8, 6, 0.45)); }
+
+/* ---------- 2. NEON CYBER — hitam pekat, sudut terpotong, pijar neon ---------- */
+[data-skin="cyber"] {
+    --bg-base: #05060a;
+    --bg-surface: rgba(5, 6, 10, 0.97);
+    --bg-glass: #0a0e18;
+    --bg-glass-hi: #101828;
+    --bg-inset: #04050a;
+    --text-main: #e8fbff;
+    --text-muted: #7d8aa5;
+    --accent-primary: #22d3ee;
+    --accent-glow: rgba(34, 211, 238, 0.45);
+    --color-income: #34f5c5;
+    --color-expense: #ff3d81;
+    --border-glass: rgba(34, 211, 238, 0.28);
+    --invert-contrast: #04121a;
+    --font-main: 'Rajdhani', sans-serif;
+    --font-display: 'Orbitron', sans-serif;
+    --shadow-raised: 0 0 0 1px rgba(34, 211, 238, 0.07), 0 0 18px rgba(34, 211, 238, 0.12);
+    --shadow-inset: inset 0 0 12px rgba(34, 211, 238, 0.07), inset 2px 2px 6px rgba(0, 0, 0, 0.6);
+    --shadow-nav: 0 -6px 20px rgba(34, 211, 238, 0.12), inset 0 1px 0 rgba(34, 211, 238, 0.25);
+}
+html[data-skin="cyber"] .glass-panel {
+    border-radius: 0.35rem;
+    clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+html[data-skin="cyber"] .icon-chip {
+    background: #0a1420;
+    box-shadow: 0 0 10px rgba(34, 211, 238, 0.18);
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    border-radius: 0.25rem;
+    color: var(--accent-primary);
+}
+html[data-skin="cyber"] .v-input { border-color: rgba(34, 211, 238, 0.25); }
+html[data-skin="cyber"] .font-display { letter-spacing: 0.06em; }
+html[data-skin="cyber"] .hero-shade { background: linear-gradient(180deg, rgba(2, 4, 10, 0.72), rgba(2, 4, 10, 0.3) 55%, rgba(2, 4, 10, 0.5)); }
+
+/* ---------- 3. NEO-BRUTAL — krem, bingkai hitam, bayangan keras ---------- */
+[data-skin="brutal"] {
+    color-scheme: light;
+    --bg-base: #f4ead8;
+    --bg-surface: #fff8ea;
+    --bg-glass: #fffdf6;
+    --bg-glass-hi: #ffffff;
+    --bg-inset: #efe6d2;
+    --text-main: #16130e;
+    --text-muted: #5c5546;
+    --accent-primary: #e0a400;
+    --accent-glow: rgba(255, 199, 0, 0.40);
+    --color-income: #1d9e57;
+    --color-expense: #e5484d;
+    --border-glass: rgba(22, 19, 14, 0.55);
+    --invert-contrast: #ffffff;
+    --font-main: 'Archivo', sans-serif;
+    --font-display: 'Archivo Black', sans-serif;
+    --shadow-raised: 5px 5px 0 #16130e;
+    --shadow-inset: inset 0 0 0 2px rgba(22, 19, 14, 0.12);
+    --shadow-nav: 0 -4px 0 rgba(22, 19, 14, 0.9);
+}
+html[data-skin="brutal"] .glass-panel {
+    background: #fffdf6;
+    border: 2.5px solid #16130e;
+    border-radius: 0.9rem;
+}
+html[data-skin="brutal"] .icon-chip {
+    background: #ffd02f;
+    box-shadow: 2px 2px 0 #16130e;
+    border: 2px solid #16130e;
+    border-radius: 0.6rem;
+    color: #16130e;
+}
+html[data-skin="brutal"] .v-input { border: 2px solid #16130e; box-shadow: 3px 3px 0 rgba(22, 19, 14, 0.85); }
+html[data-skin="brutal"] .hero-shade { background: linear-gradient(180deg, rgba(244, 234, 216, 0.35), rgba(244, 234, 216, 0.05) 55%, rgba(244, 234, 216, 0.2)); }
+
+/* ---------- 4. CLAY 3D — lavender cembung serba bundar ---------- */
+[data-skin="clay"] {
+    color-scheme: light;
+    --bg-base: #dcd6f7;
+    --bg-surface: rgba(239, 234, 255, 0.97);
+    --bg-glass: #efeaff;
+    --bg-glass-hi: #ffffff;
+    --bg-inset: #ddd3f8;
+    --text-main: #3b2f5e;
+    --text-muted: #7a6fa3;
+    --accent-primary: #7c3aed;
+    --accent-glow: rgba(124, 58, 237, 0.35);
+    --color-income: #0ea47a;
+    --color-expense: #ec4899;
+    --border-glass: rgba(124, 58, 237, 0.16);
+    --invert-contrast: #ffffff;
+    --font-main: 'Nunito', sans-serif;
+    --font-display: 'Nunito', sans-serif;
+    --shadow-raised: 8px 8px 20px rgba(94, 72, 180, 0.18), -6px -6px 16px rgba(255, 255, 255, 0.75);
+    --shadow-inset: inset 4px 4px 10px rgba(94, 72, 180, 0.15), inset -4px -4px 10px rgba(255, 255, 255, 0.7);
+    --shadow-nav: 0 -8px 20px rgba(94, 72, 180, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+html[data-skin="clay"] .glass-panel { border-radius: 1.75rem; }
+html[data-skin="clay"] .icon-chip {
+    background: linear-gradient(145deg, #a78bfa, #7c3aed);
+    box-shadow: 3px 5px 12px rgba(124, 58, 237, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    border: none;
+    border-radius: 1rem;
+    color: #ffffff;
+}
+html[data-skin="clay"] .v-input { border-color: rgba(124, 58, 237, 0.15); }
+html[data-skin="clay"] .font-display { font-weight: 800; letter-spacing: 0.01em; }
+html[data-skin="clay"] .living-core {
+    background: linear-gradient(135deg, #7c3aed, #b04fd8 55%, #ec4899);
+    border: none;
+}
+html[data-skin="clay"] .hero-shade { background: linear-gradient(180deg, rgba(59, 47, 94, 0.18), rgba(59, 47, 94, 0.02) 55%, rgba(59, 47, 94, 0.12)); }
+
+/* ---------- Penyesuaian kulit TERANG (brutal & clay) ----------
+   Banyak markup memakai utilitas Tailwind berwarna gelap-latar
+   (text-white, bg-black/30, ...). Di dalam dua kulit terang ini,
+   utilitas itu dipetakan ulang agar tetap terbaca. */
+html[data-skin="brutal"] .text-white, html[data-skin="clay"] .text-white { color: var(--text-main) !important; }
+html[data-skin="brutal"] .bg-black\/20, html[data-skin="clay"] .bg-black\/20 { background-color: rgba(22, 19, 14, 0.05) !important; }
+html[data-skin="brutal"] .bg-black\/30, html[data-skin="clay"] .bg-black\/30 { background-color: rgba(22, 19, 14, 0.07) !important; }
+html[data-skin="brutal"] .bg-black\/40, html[data-skin="clay"] .bg-black\/40 { background-color: rgba(22, 19, 14, 0.09) !important; }
+html[data-skin="brutal"] .bg-white\/5, html[data-skin="clay"] .bg-white\/5 { background-color: rgba(22, 19, 14, 0.05) !important; }
+html[data-skin="brutal"] .bg-white\/10, html[data-skin="clay"] .bg-white\/10 { background-color: rgba(22, 19, 14, 0.08) !important; }
+html[data-skin="brutal"] .border-white\/10, html[data-skin="clay"] .border-white\/10 { border-color: rgba(22, 19, 14, 0.22) !important; }
+html[data-skin="clay"] .living-core .text-white { color: #ffffff !important; }
+html[data-skin="clay"] .living-core .text-\[var\(--text-muted\)\] { color: rgba(255, 255, 255, 0.75) !important; }
