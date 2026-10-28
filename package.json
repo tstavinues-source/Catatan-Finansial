@@ -6,6 +6,7 @@
   },
   "description": "AuraFi — aplikasi keuangan pribadi (web + pembungkus Android via Capacitor)",
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.3"
   },
   "name": "aurafi",

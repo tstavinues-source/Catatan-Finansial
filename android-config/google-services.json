@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "732120986243",
+    "firebase_url": "https://agrivision-574be-default-rtdb.firebaseio.com",
+    "project_id": "agrivision-574be",
+    "storage_bucket": "agrivision-574be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:732120986243:android:ce7da370da668bcd92a1b6",
+        "android_client_info": {
+          "package_name": "id.my.aurafinance"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "732120986243-0g0ajoa934hj8aa3bqu1sutnub36u9uj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBAX2oKT-qpPtwKF5ervKwtjnqcuRN5xV8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "732120986243-0g0ajoa934hj8aa3bqu1sutnub36u9uj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
