@@ -526,7 +526,7 @@ window.reCalculateAll = function() {
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
                     </div>
-                    ${descDisp ? `<div class="bg-black/25 p-2.5 rounded-xl text-xs text-accent italic mb-2">"${descDisp}"</div>` : ''}
+                    ${descDisp ? `<div class="trx-note p-2.5 rounded-xl text-xs italic mb-2">"${descDisp}"</div>` : ''}
                     ${innerReceiptHtml}
                 </div>`;
             }

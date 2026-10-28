@@ -88,6 +88,23 @@ try {
         AuraState.system.isOnline = snap.val() === true;
     });
 
+    // Gerbang masuk: menutupi aplikasi sampai panggilan pertama pengamat
+    // auth selesai, supaya dasbor tidak terlihat berkedip sebelum jendela
+    // login tampil (atau sebelum sesi terkonfirmasi masuk).
+    function hideAuthGate() {
+        const g = document.getElementById('auth-gate');
+        if (!g) return;
+        g.classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(function() { if (g.parentNode) g.remove(); }, 400);
+    }
+    setTimeout(function() {
+        const m = document.getElementById('auth-gate-msg');
+        if (m && document.getElementById('auth-gate')) {
+            m.textContent = 'Koneksi lambat — periksa internet, lalu coba buka ulang aplikasinya.';
+            m.classList.remove('animate-pulse');
+        }
+    }, 10000);
+
     onAuthStateChanged(authInstance, (user) => {
         // Selalu bersihkan listener lama dulu (mencegah listener dobel jika
         // event auth berubah lagi sebelum listener sebelumnya sempat dilepas,
@@ -103,6 +120,7 @@ try {
             if (typeof window.showLoading === 'function') window.showLoading();
             if (typeof window.closeModal === 'function') window.closeModal('modal-login');
             if (typeof window.switchView === 'function') window.switchView('dashboard');
+            hideAuthGate();
             
             const uid = user.uid;
 
@@ -240,6 +258,7 @@ try {
             AuraState.data.oracleChats = [];
             isInitialLoadComplete = false;
             if (typeof window.showModal === 'function') window.showModal('modal-login');
+            hideAuthGate();
         }
     });
 

@@ -431,3 +431,31 @@ html[data-skin="brutal"] textarea.bg-black, html[data-skin="clay"] textarea.bg-b
 html[data-skin="brutal"] button.bg-black, html[data-skin="clay"] button.bg-black {
     background-color: var(--bg-inset) !important;
 }
+
+/* --- Blok catatan transaksi: permukaan cekung + teks utama variabel tema,
+   kontras terbaca di semua kulit (sebelumnya bg-black/25 + teks aksen). --- */
+.trx-note {
+    background: var(--bg-inset);
+    color: var(--text-main);
+    border: 1px solid var(--border-glass);
+}
+
+/* --- Logo AuraFi: gradien terang-gelap untuk kulit gelap; di kulit terang
+   warna teks utama agar tidak pucat menyatu dengan latar. --- */
+.aura-logo {
+    background: linear-gradient(to right, var(--invert-contrast), var(--accent-primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+html[data-skin="brutal"] .aura-logo, html[data-skin="clay"] .aura-logo {
+    background: none;
+    color: var(--text-main);
+}
+
+/* --- Gerbang masuk (anti-kedip sebelum status login diketahui) --- */
+#auth-gate { transition: opacity .35s ease; }
+
+/* --- Sisa tingkat bg-black yang belum terpetakan di kulit terang --- */
+html[data-skin="brutal"] .bg-black\/25, html[data-skin="clay"] .bg-black\/25 { background-color: rgba(22, 19, 14, 0.06) !important; }
+html[data-skin="brutal"] .bg-black\/60, html[data-skin="clay"] .bg-black\/60 { background-color: rgba(22, 19, 14, 0.14) !important; }
