@@ -362,6 +362,21 @@ window.addEventListener('DOMContentLoaded', () => {
     
     const savedTheme = localStorage.getItem('aurafi_active_theme') || 'emerald';
     window.applyAndSaveTheme(savedTheme, true);
+
+    // Pulihkan pilihan rentang terakhir (Siklus / Bulan Ini / Semua) dan
+    // samakan sorotan tombolnya — render data membaca state ini sendiri.
+    try {
+        const savedPeriod = localStorage.getItem('aurafi_period_mode');
+        if (savedPeriod && ['period', 'month', 'all'].indexOf(savedPeriod) >= 0 && savedPeriod !== 'month') {
+            AuraState.filters.periodMode = savedPeriod;
+            ['period', 'month', 'all'].forEach(function(m) {
+                const b = document.getElementById('btn-mode-' + m);
+                if (!b) return;
+                if (m === savedPeriod) b.classList.add('text-accent', 'bg-white/10');
+                else b.classList.remove('text-accent', 'bg-white/10');
+            });
+        }
+    } catch (e) {}
     
     window.fetchLiveExchangeRate();
     

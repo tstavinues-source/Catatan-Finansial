@@ -95,7 +95,7 @@ window.logoutAccount = async function() {
         return;
     }
 
-    window.AuraAlert.confirm("Apakah Anda yakin ingin keluar dari AuraFi OS?", async () => {
+    window.AuraAlert.confirm("Keluar dari akun di perangkat ini? Data keuanganmu tetap aman tersimpan — kamu bisa masuk lagi kapan saja.", async () => {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
         
         try {
@@ -129,5 +129,5 @@ window.logoutAccount = async function() {
         } finally {
             if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
         }
-    });
+    }, { confirmLabel: 'Keluar Akun' });
 };

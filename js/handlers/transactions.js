@@ -689,6 +689,7 @@ window.confirmDelTrx = function(id) {
         el.innerText = `Lemparkan arsip struk "${AuraUtils.escapeHtml(trx.merchantName || trx.storeName || trx.kategori)}" ke dalam Tempat Sampah?`;
     });
     
+    if (typeof window.__styleConfirmModal === 'function') window.__styleConfirmModal(true, 'Hapus Data');
     if (typeof window.showModal === 'function') window.showModal('modal-confirm'); 
 };
 
@@ -726,6 +727,7 @@ window.confirmDelItem = function(trxId, itemId) {
         el.innerText = `Hapus item parsial "${AuraUtils.escapeHtml(item.nama_barang)}" dari keranjang struk ini?`;
     });
     
+    if (typeof window.__styleConfirmModal === 'function') window.__styleConfirmModal(true, 'Hapus Data');
     if (typeof window.showModal === 'function') window.showModal('modal-confirm'); 
 };
 

@@ -11,11 +11,31 @@ import { FirebaseService } from '../services/firebase.js';
 // ============================================================================
 // 1. ENGINE AURA ALERT (Pengganti alert, confirm, prompt)
 // ============================================================================
+// Penata tampilan modal konfirmasi bersama: mode bahaya (merah, label
+// Hapus Data) hanya untuk penghapusan sungguhan; konfirmasi biasa
+// (keluar akun, simpan dari Oracle, dll.) memakai aksen + label sendiri.
+window.__styleConfirmModal = function(danger, label) {
+    const btn = document.getElementById('btn-execute-delete');
+    if (!btn) return;
+    btn.textContent = label;
+    if (danger) {
+        btn.style.background = 'var(--color-expense)';
+        btn.style.color = '#ffffff';
+        btn.style.boxShadow = '0 0 20px rgba(244,63,94,0.4)';
+    } else {
+        btn.style.background = 'var(--accent-primary)';
+        btn.style.color = 'var(--bg-base)';
+        btn.style.boxShadow = '0 0 20px var(--accent-glow)';
+    }
+};
+
 window.AuraAlert = {
-    confirm: function(message, onConfirmCallback) {
+    confirm: function(message, onConfirmCallback, options) {
+        const opts = options || {};
         document.getElementById('confirm-msg').innerText = message;
         AuraState.temp.deleteTarget = null; // Kosongkan target transaksi agar tidak bertabrakan
         AuraState.temp.confirmCallback = onConfirmCallback;
+        window.__styleConfirmModal(!!opts.danger, opts.confirmLabel || 'Ya, Lanjutkan');
         if (typeof window.showModal === 'function') window.showModal('modal-confirm');
     },
     prompt: function(message, placeholder, onConfirmCallback) {

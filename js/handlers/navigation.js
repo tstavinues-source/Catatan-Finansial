@@ -152,6 +152,9 @@ window.toggleTheme = function() {
 
 window.changeViewMode = function(mode) {
     AuraState.filters.periodMode = mode;
+    // Ingat pilihan rentang terakhir agar tidak kembali ke Bulan Ini
+    // setiap aplikasi ditutup/dibuka lagi.
+    try { localStorage.setItem('aurafi_period_mode', mode); } catch (e) {}
     // Bersihkan rentang custom kalau user balik ke mode siklus/bulan/semua
     AuraState.filters.customStart = null;
     AuraState.filters.customEnd = null;
