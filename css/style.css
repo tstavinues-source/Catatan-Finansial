@@ -165,16 +165,58 @@ body {
     box-shadow: var(--shadow-raised), inset 0 0 24px rgba(0,0,0,0.45);
 }
 
-/* === Hachi keliling: stiker ikon asli, bebas di semua tab === */
-#hachi-pet { position: fixed; left: 0; bottom: 94px; width: 86px; z-index: 60; cursor: pointer; transition: opacity .35s ease, bottom .3s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+/* === Hachi karakter kartun: berjalan, duduk, ekspresi berubah === */
+#hachi-pet { position: fixed; left: 0; bottom: 94px; width: 122px; z-index: 60; cursor: pointer; transition: opacity .35s ease, bottom .3s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
 #hachi-pet.hachi-pet-hidden { opacity: 0; pointer-events: none; }
-.hachi-pet-flip { transition: transform .18s ease; }
-.hachi-pet-img { width: 86px; height: 86px; border-radius: 50%; border: 2px solid rgba(224,138,76,.55); box-shadow: 0 10px 24px rgba(0,0,0,.45); display: block; background: #16222e; }
-.hachi-walking { animation: hachiWalkBob .38s ease-in-out infinite; }
-@keyframes hachiWalkBob { 0% { transform: translateY(0) rotate(-2.5deg); } 50% { transform: translateY(-5px) rotate(2.5deg); } 100% { transform: translateY(0) rotate(-2.5deg); } }
-.hachi-pet-img.hachi-jump { animation: hachiPetJump .55s ease; }
-@keyframes hachiPetJump { 0% { transform: translateY(0) scale(1,1); } 30% { transform: translateY(3px) scale(1.06,.9); } 55% { transform: translateY(-16px) scale(.96,1.05); } 80% { transform: translateY(0) scale(1.03,.97); } 100% { transform: translateY(0) scale(1,1); } }
-#hachi-bubble { position: absolute; bottom: 96px; left: 50%; transform: translate(-50%, 6px) scale(.95); width: max-content; max-width: 228px; background: #1d2c3b; color: #e8eef4; border: 1px solid rgba(224,138,76,.35); border-radius: 14px; padding: 8px 11px; font-size: 11.5px; line-height: 1.45; box-shadow: 0 12px 28px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+.hachi-char { transition: transform .18s ease; filter: drop-shadow(0 10px 14px rgba(0,0,0,.4)); }
+.hachi-char.hachi-jump { animation: hachiCharJump .55s ease; }
+@keyframes hachiCharJump { 0% { transform: translateY(0) scale(1,1); } 30% { transform: translateY(3px) scale(1.05,.92); } 55% { transform: translateY(-17px) scale(.97,1.04); } 80% { transform: translateY(0) scale(1.02,.98); } 100% { transform: translateY(0) scale(1,1); } }
+#hachi-pet[data-state="walk"] .hachi-g-sit { display: none; }
+#hachi-pet[data-state="sit"] .hachi-g-walk { display: none; }
+/* --- animasi jalan (profil): langkah kaki bergantian --- */
+#hachi-pet[data-state="walk"] .leg { transform-box: fill-box; transform-origin: 50% 4%; }
+#hachi-pet[data-state="walk"] .leg-a { animation: hachiStep .46s ease-in-out infinite alternate; }
+#hachi-pet[data-state="walk"] .leg-b { animation: hachiStep .46s ease-in-out infinite alternate-reverse; }
+@keyframes hachiStep { from { transform: rotate(-17deg); } to { transform: rotate(17deg); } }
+#hachi-pet[data-state="walk"] .hachi-body-bob { animation: hachiBobW .46s ease-in-out infinite alternate; }
+@keyframes hachiBobW { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+#hachi-pet[data-state="walk"] .hachi-head-w { animation: hachiBobW .46s ease-in-out -.12s infinite alternate; }
+#hachi-pet[data-state="walk"] .hachi-tail-w { transform-box: view-box; transform-origin: 58px 86px; animation: hachiWag .5s ease-in-out infinite alternate; }
+@keyframes hachiWag { from { transform: rotate(-6deg); } to { transform: rotate(7deg); } }
+.hachi-pouch { transform-box: fill-box; transform-origin: 50% 0%; }
+#hachi-pet[data-state="walk"] .hachi-pouch { animation: hachiPouch .46s ease-in-out -.2s infinite alternate; }
+@keyframes hachiPouch { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+/* --- animasi duduk (menghadap depan) --- */
+.hachi-sit-bob { transform-box: fill-box; transform-origin: 50% 100%; animation: hachiBreath 2.8s ease-in-out infinite alternate; }
+@keyframes hachiBreath { from { transform: scale(1,1); } to { transform: scale(1.012,1.022); } }
+.hachi-blink { transform-box: fill-box; transform-origin: 50% 50%; animation: hachiBlink 4.6s infinite; }
+@keyframes hachiBlink { 0%, 91%, 100% { transform: scaleY(1); } 94.5% { transform: scaleY(.08); } }
+#hachi-pet[data-state="sit"] .hachi-tail-s { transform-box: view-box; transform-origin: 160px 138px; animation: hachiWag 1.6s ease-in-out infinite alternate; }
+.hachi-ear-l { transform-box: fill-box; transform-origin: 80% 90%; animation: hachiTwitch 7s infinite; }
+@keyframes hachiTwitch { 0%, 88%, 100% { transform: rotate(0deg); } 91% { transform: rotate(-7deg); } 94% { transform: rotate(3deg); } }
+/* --- ekspresi mengikuti mood pesan --- */
+.eyes-happy, .eyes-sleepy, .mouth-happy, .mouth-worry, .brow-worried, .hachi-zzz { display: none; }
+#hachi-pet[data-mood="senang"] .eyes-normal, #hachi-pet.flash-happy .eyes-normal { display: none; }
+#hachi-pet[data-mood="senang"] .eyes-happy, #hachi-pet.flash-happy .eyes-happy { display: block; }
+#hachi-pet[data-mood="senang"] .mouth-normal, #hachi-pet.flash-happy .mouth-normal { display: none; }
+#hachi-pet[data-mood="senang"] .mouth-happy, #hachi-pet.flash-happy .mouth-happy { display: block; }
+#hachi-pet[data-mood="khawatir"] .brow-worried { display: block; }
+#hachi-pet[data-mood="khawatir"] .mouth-normal { display: none; }
+#hachi-pet[data-mood="khawatir"] .mouth-worry { display: block; }
+#hachi-pet.is-sleepy .eyes-normal { display: none; }
+#hachi-pet.is-sleepy .eyes-sleepy { display: block; }
+#hachi-pet.is-sleepy .hachi-zzz { display: block; }
+.hachi-arm-l, .hachi-arm-r { transition: transform .3s ease; }
+.hachi-arm-l { transform-box: view-box; transform-origin: 64px 102px; }
+.hachi-arm-r { transform-box: view-box; transform-origin: 136px 102px; }
+#hachi-pet[data-mood="senang"] .hachi-arm-l, #hachi-pet.flash-happy .hachi-arm-l { transform: rotate(38deg); }
+#hachi-pet[data-mood="senang"] .hachi-arm-r, #hachi-pet.flash-happy .hachi-arm-r { transform: rotate(-38deg); }
+.hachi-zzz text { font-family: inherit; font-weight: 800; fill: #9FB6C9; }
+.hachi-z1 { font-size: 15px; animation: hachiZ 2.6s ease-in-out infinite; }
+.hachi-z2 { font-size: 11px; animation: hachiZ 2.6s ease-in-out -1.3s infinite; }
+@keyframes hachiZ { 0% { opacity: 0; transform: translateY(3px); } 35% { opacity: 1; } 100% { opacity: 0; transform: translateY(-4px); } }
+/* --- gelembung sapaan --- */
+#hachi-bubble { position: absolute; bottom: 112px; left: 50%; transform: translate(-50%, 6px) scale(.95); width: max-content; max-width: 228px; background: #1d2c3b; color: #e8eef4; border: 1px solid rgba(224,138,76,.35); border-radius: 14px; padding: 8px 11px; font-size: 11.5px; line-height: 1.45; box-shadow: 0 12px 28px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
 #hachi-bubble.hachi-bubble-show { opacity: 1; transform: translate(-50%, 0) scale(1); }
 #hachi-bubble::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 12px; height: 12px; margin-left: -6px; background: #1d2c3b; border-right: 1px solid rgba(224,138,76,.35); border-bottom: 1px solid rgba(224,138,76,.35); transform: rotate(45deg); }
 #hachi-bubble.hachi-bubble-left { left: -4px; transform: translate(0, 6px) scale(.95); }
@@ -183,3 +225,4 @@ body {
 #hachi-bubble.hachi-bubble-right { left: auto; right: -4px; transform: translate(0, 6px) scale(.95); }
 #hachi-bubble.hachi-bubble-right.hachi-bubble-show { transform: translate(0, 0) scale(1); }
 #hachi-bubble.hachi-bubble-right::after { left: auto; right: 34px; margin-left: 0; }
+.hachi-flip { transition: transform .18s ease; }

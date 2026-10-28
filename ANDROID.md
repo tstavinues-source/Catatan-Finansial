@@ -103,3 +103,11 @@ URI WebP 512px) yang berjalan bebas di tepi bawah semua tab lewat
 `js/handlers/hachi.js` — bukan lagi kartu di dasbor. Gelembung sapaannya
 memakai mesin pesan yang sama dari data pengguna; Hachi menyingkir sendiri
 saat modal atau keyboard terbuka.
+
+## Hachi karakter kartun
+
+Hachi kini karakter SVG beranimasi penuh di `js/handlers/hachi.js`:
+berjalan dengan langkah kaki (tampak profil), duduk menghadap pengguna
+saat berhenti, ekspresi mengikuti isi pesannya (senang, khawatir,
+mengantuk), ekor bergoyang, mata berkedip. Stiker ikon bulat sebelumnya
+sudah digantikan.
