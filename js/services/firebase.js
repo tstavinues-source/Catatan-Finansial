@@ -268,12 +268,28 @@ export const FirebaseService = {
         const Cap = window.Capacitor;
         const nativeAuth = Cap && Cap.Plugins && Cap.Plugins.FirebaseAuthentication;
         const isNative = !!(Cap && typeof Cap.isNativePlatform === "function" && Cap.isNativePlatform());
-        if (isNative && nativeAuth && typeof nativeAuth.signInWithGoogle === "function") {
-            const res = await nativeAuth.signInWithGoogle();
-            const idToken = res && res.credential && res.credential.idToken;
-            if (!idToken) throw new Error("Token Google tidak diterima dari perangkat.");
-            const cred = GoogleAuthProvider.credential(idToken);
-            return await signInWithCredential(authInstance, cred);
+        if (isNative) {
+            if (!nativeAuth || typeof nativeAuth.signInWithGoogle !== "function") {
+                throw new Error("Plugin login Google tidak ditemukan pada build aplikasi ini.");
+            }
+            let timer = null;
+            try {
+                const res = await Promise.race([
+                    nativeAuth.signInWithGoogle(),
+                    new Promise(function(_, reject) {
+                        timer = setTimeout(function() { reject(new Error("Pemilih akun Google tidak merespons (waktu habis 30 detik).")); }, 30000);
+                    })
+                ]);
+                const idToken = res && res.credential && res.credential.idToken;
+                if (!idToken) throw new Error("Token Google tidak diterima dari perangkat.");
+                const cred = GoogleAuthProvider.credential(idToken);
+                return await signInWithCredential(authInstance, cred);
+            } catch (e) {
+                const msg = (e && (e.message || e.code)) ? String(e.message || e.code) : String(e);
+                throw new Error("Google native: " + msg);
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
         }
         return await signInWithPopup(authInstance, googleAuthProviderInstance);
     },
