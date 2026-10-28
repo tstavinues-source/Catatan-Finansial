@@ -513,6 +513,8 @@ window.openSubCategoryItems = function(parentName, subName) {
     requestAnimationFrame(() => modal.classList.remove('opacity-0'));
 };
 
+let lastTrackerRange = null;
+
 window.renderDynamicTrackers = function(startDate, endDate) {
     let container = document.getElementById('staples-container');
     if (!container) {
@@ -525,6 +527,8 @@ window.renderDynamicTrackers = function(startDate, endDate) {
     }
     
     if (!container) return; 
+
+    lastTrackerRange = { start: startDate, end: endDate };
 
     const trackers = AuraState.data.settings?.staplesTrackers || {};
     const entries = Object.entries(trackers);
@@ -574,7 +578,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
         else if (nameLower.match(/bensin|bbm|pertamina/)) { icon = 'fa-gas-pump'; color = 'text-rose-400'; }
 
         html += `
-        <div class="bg-black/30 p-3 rounded-xl min-w-[100px] flex-1 flex flex-col items-center justify-center text-center border border-[var(--border-glass)] border-t-2 shadow-lg" style="border-top-color: currentColor; color: inherit;">
+        <div onclick="window.openTrackerDetail('${id}')" title="Ketuk untuk melihat rincian" class="bg-black/30 p-3 rounded-xl min-w-[100px] flex-1 flex flex-col items-center justify-center text-center border border-[var(--border-glass)] border-t-2 shadow-lg cursor-pointer hover:bg-black/40 active:scale-[0.98] transition" style="border-top-color: currentColor; color: inherit;">
             <i class="fa-solid ${icon} ${color} text-xl mb-2"></i>
             <span class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 truncate w-full px-1">${AuraUtils.escapeHtml(tracker.name)}</span>
             <span class="font-mono font-bold text-sm text-white">${window.convertAndFormatCurrency(totals[id])}</span>
@@ -583,6 +587,80 @@ window.renderDynamicTrackers = function(startDate, endDate) {
 
     container.className = "flex gap-3 overflow-x-auto hide-scrollbar snap-x mt-3 pb-2";
     container.innerHTML = html;
+};
+
+// === RINCIAN TRACKER: daftar item yang menyusun angka pada kartu ===
+// Aturan pencocokan disalin persis dari renderDynamicTrackers agar total
+// rincian selalu sama dengan angka pada kartu.
+window.openTrackerDetail = function(trackerId) {
+    const trackers = AuraState.data.settings?.staplesTrackers || {};
+    const tracker = trackers[trackerId];
+    if (!tracker) return;
+
+    let modal = document.getElementById('modal-subcat-items');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-subcat-items';
+        modal.className = 'fixed inset-0 bg-black/90 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm transition-all duration-300 opacity-0 hidden';
+        document.body.appendChild(modal);
+    }
+
+    let startDate, endDate;
+    if (lastTrackerRange) { startDate = lastTrackerRange.start; endDate = lastTrackerRange.end; }
+    else { const r = AuraUtils.getPeriodRange(); startDate = r.start; endDate = r.end; }
+
+    const keywords = (tracker.keywords || []).map(k => String(k).toLowerCase());
+    const tx = AuraState.data.transactions || [];
+    let itemsHtml = '';
+    let totalVal = 0;
+
+    tx.forEach(t => {
+        if (t.is_deleted || t.tipe !== 'pengeluaran') return;
+        const tTime = new Date(t.tanggal || t.createdAt).getTime();
+        if (tTime < startDate || tTime > endDate) return;
+        const safeMerchant = (t.merchantName || t.storeName || 'Unknown').trim();
+        (t.items || []).forEach(it => {
+            const itemName = (it.nama_barang || '').toLowerCase();
+            const itemCat = (it.kategori_barang || '').toLowerCase();
+            if (!keywords.some(kw => itemName.includes(kw) || itemCat.includes(kw))) return;
+            const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+            totalVal += val;
+            const tDate = new Date(t.tanggal || t.createdAt);
+            const dateStr = `${tDate.getDate().toString().padStart(2,'0')}/${(tDate.getMonth()+1).toString().padStart(2,'0')}`;
+            itemsHtml += `
+            <div class="flex justify-between items-center p-3 border-b border-[var(--border-glass)] hover:bg-white/5 transition">
+                <div class="flex-1 min-w-0 pr-3">
+                    <p class="text-xs font-bold text-white truncate">${AuraUtils.escapeHtml(it.nama_barang || 'Item')}</p>
+                    <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-xs font-mono font-bold text-accent">${window.convertAndFormatCurrency(val)}</p>
+                    <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.convertAndFormatCurrency(it.harga || 0)}</p>
+                </div>
+            </div>`;
+        });
+    });
+
+    if (itemsHtml === '') itemsHtml = '<p class="text-xs text-center text-[var(--text-muted)] py-6">Tidak ada item yang cocok pada rentang ini.</p>';
+
+    modal.innerHTML = `
+    <div class="glass-panel w-full sm:w-[400px] h-[85vh] sm:h-auto sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent">
+        <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
+            <div>
+                <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(tracker.name)}</h3>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.convertAndFormatCurrency(totalVal)}</p>
+            </div>
+            <button onclick="document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-0 space-y-0 relative hide-scrollbar bg-black/20">
+            ${itemsHtml}
+        </div>
+    </div>`;
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => modal.classList.remove('opacity-0'));
 };
 
 // === FUNGSI CUSTOM BOTTOM SHEET (PEMILIH INDUK DARI GUDANG) ===

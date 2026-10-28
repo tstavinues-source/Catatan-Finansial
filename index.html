@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r30'; try {
+    (function () { var V = '2026-10-29-r31'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,7 +74,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029b">
+    <link rel="stylesheet" href="./css/style.css?v=20261029c">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -238,7 +238,7 @@
                     </div>
                     <div class="w-1/3">
                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Aliran Dana</label>
-                        <select id="staging-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="staging-trx-type" data-picker-title="Jenis Transaksi" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
                             <option value="tarik_tunai">Tarik Tunai</option>
@@ -249,7 +249,7 @@
 
                 <div>
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet / Akun Sumber</label>
-                    <select id="staging-trx-wallet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
+                    <select id="staging-trx-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
                         <option value="">Memuat dompet...</option>
                     </select>
                 </div>
@@ -293,7 +293,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis</label>
-                        <select id="manual-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="manual-trx-type" data-picker-title="Jenis Transaksi" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
                             <option value="tarik_tunai">Tarik Tunai (ATM)</option>
@@ -302,7 +302,7 @@
                     </div>
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet / Akun Sumber</label>
-                        <select id="manual-trx-wallet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
+                        <select id="manual-trx-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
                             <option value="">Memuat dompet...</option>
                         </select>
                     </div>
@@ -310,7 +310,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
-                        <select id="manual-trx-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="manual-trx-curr" data-picker-title="Mata Uang" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="JPY">JPY</option>
                             <option value="IDR">IDR</option>
                         </select>
@@ -359,7 +359,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Transaksi</label>
-                        <select id="edit-global-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="edit-global-type" data-picker-title="Jenis Transaksi" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
                             <option value="tarik_tunai">Tarik Tunai</option>
@@ -368,7 +368,7 @@
                     </div>
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet / Akun Sumber</label>
-                        <select id="edit-global-wallet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
+                        <select id="edit-global-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
                             <option value="">Memuat dompet...</option>
                         </select>
                     </div>
@@ -380,7 +380,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
-                        <select id="edit-global-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="edit-global-curr" data-picker-title="Mata Uang" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="JPY">JPY</option>
                             <option value="IDR">IDR</option>
                         </select>
@@ -570,7 +570,7 @@
                 </div>
                 <div>
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet Pembayar</label>
-                    <select id="rem-wallet" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black text-white font-bold"></select>
+                    <select id="rem-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black text-white font-bold"></select>
                 </div>
                 <button onclick="window.saveReminder()" class="w-full py-3.5 rounded-xl bg-amber-500 text-black font-bold text-sm transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-floppy-disk"></i> Simpan Pengingat</button>
                 <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Bila Merchant diisi, status dicocokkan dari nama merchant transaksi; bila kosong, dari Kategori. Dompet & nominal menjadi isian awal tombol "Catat Sekarang" di Wawasan.</p>
@@ -588,7 +588,7 @@
             <p id="topup-goal-name" class="text-xs text-[var(--text-muted)] mb-4 font-bold uppercase tracking-widest"></p>
             <div class="text-left mb-3">
                 <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Ambil Uang Dari:</label>
-                <select id="topup-goal-source" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-white">
+                <select id="topup-goal-source" data-picker-title="Sumber Dana" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-white">
                     <option value="cashless">Rekening Bank (Cashless)</option>
                     <option value="tunai">Dompet Tunai</option>
                 </select>
@@ -1028,7 +1028,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis Likuiditas</label>
-                    <select id="wallet-form-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                    <select id="wallet-form-type" data-picker-title="Jenis Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                         <option value="cashless">Cashless (Rekening Bank / Keuangan Digital)</option>
                         <option value="tunai">Tunai (Uang Fisik / Celengan Kas)</option>
                     </select>
@@ -1052,7 +1052,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Sumber Dana (Dari)</label>
-                    <select id="transfer-source" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-rose-400 font-bold">
+                    <select id="transfer-source" data-picker-title="Dari Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-rose-400 font-bold">
                         </select>
                 </div>
                 <div class="flex justify-center -my-2 relative z-10 pointer-events-none">
@@ -1060,7 +1060,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tujuan Dana (Ke)</label>
-                    <select id="transfer-dest" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-emerald-400 font-bold">
+                    <select id="transfer-dest" data-picker-title="Ke Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-emerald-400 font-bold">
                         </select>
                 </div>
                 <div>
@@ -1391,7 +1391,7 @@
                     
                     <div>
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis Kantong</label>
-                        <select id="goal-jenis" onchange="window.onGoalJenisChange()" class="v-input w-full rounded-xl p-3 text-sm outline-none font-bold">
+                        <select id="goal-jenis" data-picker-title="Jenis Brankas" onchange="window.onGoalJenisChange()" class="v-input w-full rounded-xl p-3 text-sm outline-none font-bold">
                             <option value="misi">Misi — target &amp; tenggat (mis. beli laptop)</option>
                             <option value="simpanan">Simpanan — cadangan bebas tanpa target</option>
                         </select>
@@ -1467,7 +1467,7 @@
                                     </div>
                                     <div class="w-1/2">
                                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Metode</label>
-                                        <select id="new-rec-method" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
+                                        <select id="new-rec-method" data-picker-title="Metode Pembayaran" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
                                             <option value="cashless">Cashless</option>
                                             <option value="tunai">Tunai</option>
                                         </select>
@@ -1475,7 +1475,7 @@
                                 </div>
                                 <div>
                                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Dompet Pembayar</label>
-                                    <select id="new-rec-wallet" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
+                                    <select id="new-rec-wallet" data-picker-title="Dompet Tagihan" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
                                         <option value="">— Pilih Dompet —</option>
                                     </select>
                                 </div>
@@ -1584,8 +1584,8 @@
         </nav>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029b"></script>
-    <script type="module" src="./js/main.js?v=20261029b"></script>
+    <script src="./js/hachi-art.js?v=20261029c"></script>
+    <script type="module" src="./js/main.js?v=20261029c"></script>
 
 </body>
 </html>
