@@ -112,6 +112,7 @@ window.confirmDelGoal = function(id) {
     AuraUtils.safeDOM('confirm-msg', el => {
         el.innerText = `Batalkan misi tabungan "${AuraUtils.escapeHtml(goal.name)}" selamanya? Uang yang terkumpul akan tetap ada di saldo Anda.`;
     });
+    if (typeof window.__styleConfirmModal === 'function') window.__styleConfirmModal(true, 'Hapus Data');
     if (typeof window.showModal === 'function') window.showModal('modal-confirm'); 
 };
 

@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r38'; try {
+    (function () { var V = '2026-10-29-r39'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,7 +74,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029j">
+    <link rel="stylesheet" href="./css/style.css?v=20261029k">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -217,7 +217,7 @@
         </div>
     </div>
 
-    <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-confirm" class="fixed inset-0 z-[600] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-[var(--color-expense)] shadow-2xl relative overflow-hidden">
             <div class="w-16 h-16 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--color-expense)]/30">
                 <i class="fa-solid fa-triangle-exclamation text-2xl text-[var(--color-expense)]"></i>
@@ -1694,8 +1694,8 @@
         </div>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029j"></script>
-    <script type="module" src="./js/main.js?v=20261029j"></script>
+    <script src="./js/hachi-art.js?v=20261029k"></script>
+    <script type="module" src="./js/main.js?v=20261029k"></script>
 
 </body>
 </html>
