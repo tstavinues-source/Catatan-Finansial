@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r33'; try {
+    (function () { var V = '2026-10-29-r34'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,14 +74,14 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029e">
+    <link rel="stylesheet" href="./css/style.css?v=20261029f">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
 
     <div id="toast-container" class="fixed top-5 left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 pointer-events-none w-11/12 max-w-sm"></div>
 
-    <div id="modal-aura-prompt" class="fixed inset-0 z-[999] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-aura-prompt" class="fixed inset-0 z-[999] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent transform scale-95 transition-transform duration-300">
             <h3 id="aura-prompt-title" class="text-lg font-bold mb-2 text-accent font-display">Input</h3>
             <p id="aura-prompt-msg" class="text-xs text-[var(--text-muted)] mb-4 leading-relaxed"></p>
@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <div id="modal-aura-confirm" class="fixed inset-0 z-[999] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-aura-confirm" class="fixed inset-0 z-[999] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-rose-500 shadow-2xl transform scale-95 transition-transform duration-300 relative overflow-hidden">
             <div class="w-16 h-16 rounded-full bg-rose-500/10 flex items-center justify-center mx-auto mb-4 border border-rose-500/30">
                 <i class="fa-solid fa-triangle-exclamation text-2xl text-rose-500 animate-pulse"></i>
@@ -107,7 +107,7 @@
         </div>
     </div>
 
-    <div id="modal-category-picker" class="fixed inset-0 z-[500] bg-black/85 backdrop-blur-md flex items-end justify-center hidden opacity-0 transition-all duration-300">
+    <div id="modal-category-picker" class="fixed inset-0 z-[500] bg-black/85 flex items-end justify-center hidden opacity-0 transition-all duration-300">
         <div id="cat-picker-panel" class="w-full max-w-md bg-[var(--bg-base)] border-t border-[var(--border-glass)] rounded-t-3xl p-5 transform translate-y-full transition-transform duration-300 h-[65vh] flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
             <div class="flex justify-between items-center mb-4 shrink-0">
                 <h3 class="font-bold text-accent font-display"><i class="fa-solid fa-layer-group"></i> Pilih Kategori</h3>
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <div id="modal-category-manager" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
+    <div id="modal-category-manager" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border-t-4 border-t-accent">
             <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-folder-tree text-accent"></i> Kategori Sistem</h3>
@@ -136,7 +136,7 @@
         </div>
     </div>
 
-    <div id="modal-category-form" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-category-form" class="fixed inset-0 z-[120] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
                 <h3 id="cat-form-title" class="text-lg font-bold text-accent font-display">Kategori Baru</h3>
@@ -210,7 +210,7 @@
         </div>
     </div>
 
-    <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-confirm" class="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-[var(--color-expense)] shadow-2xl relative overflow-hidden">
             <div class="w-16 h-16 rounded-full bg-[var(--color-expense)]/10 flex items-center justify-center mx-auto mb-4 border border-[var(--color-expense)]/30">
                 <i class="fa-solid fa-triangle-exclamation text-2xl text-[var(--color-expense)]"></i>
@@ -224,7 +224,7 @@
         </div>
     </div>
 
-    <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
+    <div id="modal-ai-staging" class="fixed inset-0 z-[200] bg-black/85 flex items-center justify-center p-3 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-lg h-[90vh] flex flex-col shadow-2xl border-t-4 border-t-accent overflow-hidden">
             <div class="p-4 flex justify-between items-center border-b border-[var(--border-glass)] bg-[var(--bg-glass)]">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-microscope"></i> AI Staging Area</h3>
@@ -283,7 +283,7 @@
         </div>
     </div>
     
-    <div id="modal-manual-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-manual-trx" class="fixed inset-0 z-[90] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-to-square"></i> Input Transaksi</h3>
@@ -349,7 +349,7 @@
         </div>
     </div>
 
-    <div id="modal-edit-trx" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-edit-trx" class="fixed inset-0 z-[90] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-sliders"></i> Edit Induk Transaksi</h3>
@@ -409,7 +409,7 @@
         </div>
     </div>
 
-    <div id="modal-add-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-add-item" class="fixed inset-0 z-[90] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-cart-plus"></i> Tambah Item Baru</h3>
@@ -454,7 +454,7 @@
         </div>
     </div>
 
-    <div id="modal-edit-item" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-edit-item" class="fixed inset-0 z-[90] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-pen-nib"></i> Edit Instrumen</h3>
@@ -503,7 +503,7 @@
         </div>
     </div>
 
-    <div id="modal-time-unit-picker" class="fixed inset-0 z-[500] bg-black/85 backdrop-blur-md flex items-end justify-center hidden opacity-0 transition-all duration-300">
+    <div id="modal-time-unit-picker" class="fixed inset-0 z-[500] bg-black/85 flex items-end justify-center hidden opacity-0 transition-all duration-300">
         <div id="time-picker-panel" class="w-full max-w-md bg-[var(--bg-base)] border-t border-[var(--border-glass)] rounded-t-3xl p-5 transform translate-y-full transition-transform duration-300 h-auto flex flex-col shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
             <div class="flex justify-between items-center mb-4 shrink-0">
                 <h3 class="font-bold text-accent font-display"><i class="fa-solid fa-clock"></i> Pilih Satuan Waktu</h3>
@@ -517,7 +517,7 @@
         </div>
     </div>
 
-    <div id="modal-reconcile" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-reconcile" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm border-t-4 border-t-accent shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
             <button onclick="window.closeModal('modal-reconcile')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
             <div class="w-14 h-14 rounded-full bg-[var(--accent-primary)]/10 flex items-center justify-center mx-auto mb-3 border border-[var(--accent-primary)]/30">
@@ -539,7 +539,7 @@
         </div>
     </div>
 
-    <div id="modal-reminder" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-reminder" class="fixed inset-0 z-[120] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-500 max-h-[90vh] overflow-y-auto no-scrollbar relative">
             <div class="flex justify-between items-center mb-5">
                 <h3 id="reminder-editor-title" class="text-lg font-bold font-display text-amber-400">Tambah Pengingat</h3>
@@ -578,7 +578,7 @@
         </div>
     </div>
 
-    <div id="modal-topup-goal" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-topup-goal" class="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm text-center border-t-4 border-t-emerald-500 shadow-2xl relative overflow-hidden">
             <button onclick="window.closeModal('modal-topup-goal')" class="absolute top-4 right-4 text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-xmark"></i></button>
             <div class="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-3 border border-emerald-500/30">
@@ -598,7 +598,7 @@
         </div>
     </div>
 
-    <div id="modal-edit-goal-full" class="fixed inset-0 z-[90] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-edit-goal-full" class="fixed inset-0 z-[90] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar relative">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 z-10 backdrop-blur-md">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-accent font-display"><i class="fa-solid fa-sliders"></i> Edit Misi Tabungan</h3>
@@ -647,7 +647,7 @@
         </div>
     </div>
 
-    <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md hidden opacity-0 transition-all duration-300">
+    <div id="modal-settings" class="fixed inset-0 z-[100] bg-black/85 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel settings-drawer-card p-5 absolute right-0 top-0 h-full w-[88%] max-w-sm shadow-2xl border-l-4 border-l-accent overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-5 sticky top-0 bg-[var(--bg-glass)] pb-2 z-20 backdrop-blur-md border-b border-[var(--border-glass)]">
                 <h3 class="text-sm font-bold text-accent font-display flex items-center gap-2"><i class="fa-solid fa-microchip"></i> AURA SETTINGS</h3>
@@ -947,7 +947,7 @@
         </div>
     </div>
 
-    <div id="modal-import-data" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-import-data" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-emerald-400">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-emerald-400 font-display"><i class="fa-solid fa-file-import"></i> Impor Transaksi</h3>
@@ -963,7 +963,7 @@
         </div>
     </div>
 
-    <div id="modal-edit-tracker" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-edit-tracker" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-amber-400 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-amber-400 font-display"><i class="fa-solid fa-box-open"></i> Tracker Dinamis</h3>
@@ -982,7 +982,7 @@
         </div>
     </div>
 
-    <div id="modal-edit-budget" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-edit-budget" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
             <div class="flex justify-between items-center mb-6">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-rose-400 font-display"><i class="fa-solid fa-fire-flame-curved"></i> Batas Burn Rate</h3>
@@ -998,7 +998,7 @@
         </div>
     </div>
 
-    <div id="modal-family" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-family" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-400 font-display"><i class="fa-solid fa-users"></i> Anggota Keluarga</h3>
@@ -1012,7 +1012,7 @@
         </div>
     </div>
 
-    <div id="modal-wallet-manager" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
+    <div id="modal-wallet-manager" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border-t-4 border-t-accent">
             <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-white font-display"><i class="fa-solid fa-vault text-accent"></i> Manajemen Brankas & Kas</h3>
@@ -1033,7 +1033,7 @@
         </div>
     </div>
 
-    <div id="modal-wallet-form" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-wallet-form" class="fixed inset-0 z-[120] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-accent max-h-[90vh] overflow-y-auto no-scrollbar relative">
             <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] pb-2 backdrop-blur-md z-10">
                 <h3 id="wallet-form-title" class="text-lg font-bold text-accent font-display">Akun Dompet Baru</h3>
@@ -1064,7 +1064,7 @@
         </div>
     </div>
 
-    <div id="modal-transfer" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
+    <div id="modal-transfer" class="fixed inset-0 z-[120] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 relative">
             <div class="flex justify-between items-center mb-6 border-b border-white/10 pb-3">
                 <h3 class="text-lg font-bold text-indigo-400 font-display"><i class="fa-solid fa-money-bill-transfer"></i> Mutasi Saldo</h3>
@@ -1093,7 +1093,7 @@
         </div>
     </div>
 
-    <div id="modal-arsip" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
+    <div id="modal-arsip" class="fixed inset-0 z-[120] bg-black/85 flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-md shadow-2xl border-t-4 border-t-amber-400 h-[85vh] flex flex-col overflow-hidden">
             <div class="flex justify-between items-center p-5 border-b border-[var(--border-glass)] shrink-0 bg-black/40">
                 <h3 class="text-lg font-bold flex items-center gap-2 text-amber-400 font-display"><i class="fa-solid fa-vault"></i> Brankas Laporan</h3>
@@ -1611,8 +1611,8 @@
         </button>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029e"></script>
-    <script type="module" src="./js/main.js?v=20261029e"></script>
+    <script src="./js/hachi-art.js?v=20261029f"></script>
+    <script type="module" src="./js/main.js?v=20261029f"></script>
 
 </body>
 </html>

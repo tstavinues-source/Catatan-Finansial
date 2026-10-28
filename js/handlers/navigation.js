@@ -11,23 +11,83 @@ import { Logger } from '../core/logger.js';
 // SISTEM NAVIGASI TAB (SINGLE PAGE APPLICATION)
 // ============================================================================
 
+// Perpindahan tab meluncur seperti UI ponsel modern: tampilan baru masuk
+// dari sisi arah tab-nya, tampilan lama bergeser sebagian ke arah berlawanan
+// (paralaks). Setiap tampilan adalah lapisan mandiri di dalam #view-container
+// (lihat style.css) sehingga posisi gulir tiap tab tersimpan. Bila animasi
+// tidak tersedia / gerak dikurangi, perpindahan terjadi seketika.
+const TAB_SLIDE_ORDER = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle'];
+let viewAnim = null;
+
+function finalizeViewAnim() {
+    if (!viewAnim) return;
+    viewAnim.anims.forEach(function(a) { try { a.cancel(); } catch (e) {} });
+    if (viewAnim.prevEl && viewAnim.prevEl !== viewAnim.targetEl) {
+        viewAnim.prevEl.classList.add('hidden');
+        viewAnim.prevEl.classList.remove('block');
+    }
+    [viewAnim.prevEl, viewAnim.targetEl].forEach(function(el) {
+        if (!el) return;
+        el.style.zIndex = '';
+        el.style.transform = '';
+        el.style.background = '';
+        el.style.boxShadow = '';
+    });
+    viewAnim = null;
+}
+
 window.switchView = function(viewId) {
     const views = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash', 'brankas'];
-    
+    finalizeViewAnim();
+
+    const prevId = AuraState.system.activeView;
+    const prevEl = prevId ? document.getElementById(`view-${prevId}`) : null;
+    const targetEl = document.getElementById(`view-${viewId}`);
+
     for (let i = 0; i < views.length; i++) {
+        if (views[i] === viewId || views[i] === prevId) continue;
         AuraUtils.safeDOM(`view-${views[i]}`, function(el) {
             el.classList.add('hidden');
             el.classList.remove('block');
         });
     }
-    
+
     AuraUtils.safeDOM(`view-${viewId}`, function(el) {
         el.classList.remove('hidden');
         el.classList.add('block');
     });
 
+    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prevEl && targetEl && prevEl !== targetEl && typeof targetEl.animate === 'function' && !reduced) {
+        const pi = TAB_SLIDE_ORDER.indexOf(prevId);
+        const ni = TAB_SLIDE_ORDER.indexOf(viewId);
+        let dir = 1;
+        if (pi >= 0 && ni >= 0) dir = ni >= pi ? 1 : -1;
+        else if (pi === -1 && ni >= 0) dir = -1;
+
+        prevEl.style.zIndex = '1';
+        targetEl.style.zIndex = '2';
+        targetEl.style.background = 'var(--bg-base)';
+        targetEl.style.boxShadow = dir > 0 ? '-18px 0 36px rgba(0,0,0,0.45)' : '18px 0 36px rgba(0,0,0,0.45)';
+
+        const easing = 'cubic-bezier(.32,.72,.24,1)';
+        const inAnim = targetEl.animate(
+            [{ transform: `translateX(${dir * 100}%)` }, { transform: 'translateX(0)' }],
+            { duration: 300, easing: easing }
+        );
+        const outAnim = prevEl.animate(
+            [{ transform: 'translateX(0)' }, { transform: `translateX(${-dir * 28}%)` }],
+            { duration: 300, easing: easing }
+        );
+        viewAnim = { anims: [inAnim, outAnim], prevEl: prevEl, targetEl: targetEl };
+        inAnim.onfinish = function() { finalizeViewAnim(); };
+    } else if (prevEl && prevEl !== targetEl) {
+        prevEl.classList.add('hidden');
+        prevEl.classList.remove('block');
+    }
+
     AuraState.system.activeView = viewId;
-    
+
     const navBtns = document.querySelectorAll('.nav-btn');
     for (let i = 0; i < navBtns.length; i++) {
         const btn = navBtns[i];
@@ -51,8 +111,6 @@ window.switchView = function(viewId) {
     } else if (viewId === 'brankas') {
         if (typeof window.renderBrankas === 'function') window.renderBrankas();
     }
-    
-    window.scrollTo(0, 0);
 };
 
 // ============================================================================

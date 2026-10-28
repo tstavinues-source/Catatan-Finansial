@@ -135,7 +135,22 @@ body {
 }
 
 .safe-pb { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
-.view-transition { transition: opacity 0.3s ease, transform 0.3s ease; animation: fadeIn 0.4s ease-out; }
+.view-transition { }
+
+/* --- Lapisan tampilan: tiap tab lapisan mandiri agar bisa meluncur --- */
+#view-container { overflow: hidden; }
+#view-container > [id^="view-"] { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+/* --- Pop-up masuk dengan gerak halus (bukan kedip) ---
+   Panel pada modal meluncur naik tipis + membesar dari 98,5% saat modal
+   tampil. Laci Pengaturan dan pemilih kategori punya animasinya sendiri. */
+[id^="modal-"]:not(.hidden):not(#modal-settings):not(#modal-category-picker):not(#modal-parent-picker) > * {
+    animation: auraPopIn .26s cubic-bezier(.32,.72,.24,1);
+}
+@keyframes auraPopIn {
+    from { opacity: 0; transform: translateY(14px) scale(.985); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 

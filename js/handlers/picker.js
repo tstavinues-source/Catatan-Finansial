@@ -22,7 +22,7 @@
     if (modal) return modal;
     modal = document.createElement("div");
     modal.id = "modal-aura-picker";
-    modal.className = "fixed inset-0 z-[500] bg-black/85 backdrop-blur-md flex items-end justify-center hidden opacity-0 transition-all duration-300";
+    modal.className = "fixed inset-0 z-[500] bg-black/85 flex items-end justify-center hidden opacity-0 transition-all duration-300";
     modal.innerHTML =
       '<div class="glass-panel w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[72vh] flex flex-col shadow-2xl overflow-hidden border-t-2 border-accent">' +
         '<div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40 shrink-0">' +
