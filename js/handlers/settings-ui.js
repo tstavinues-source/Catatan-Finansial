@@ -1012,3 +1012,29 @@ window.toggleHachiPet = async function () {
         if (typeof window.showToast === 'function') window.showToast('Gagal mengubah saklar Hachi.');
     }
 };
+
+
+// --- Hubungkan ke Muse ---
+window.showClaudeConnectCode = function () {
+    try {
+        const code = FirebaseService.getConnectionCode();
+        const area = document.getElementById('claude-connect-area');
+        const field = document.getElementById('claude-connect-code');
+        if (field) field.value = code;
+        if (area) area.classList.remove('hidden');
+    } catch (e) {
+        if (typeof window.showToast === 'function') window.showToast('Kode belum tersedia — pastikan kamu sudah masuk.', true);
+    }
+};
+window.copyClaudeConnectCode = async function () {
+    const field = document.getElementById('claude-connect-code');
+    if (!field || !field.value) return;
+    try {
+        await navigator.clipboard.writeText(field.value);
+        if (typeof window.showToast === 'function') window.showToast('Kode koneksi tersalin.');
+    } catch (e) {
+        field.select();
+        document.execCommand('copy');
+        if (typeof window.showToast === 'function') window.showToast('Kode koneksi tersalin.');
+    }
+};

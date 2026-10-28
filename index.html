@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r30'; try {
+    (function () { var V = '2026-10-29-r33'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,7 +74,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029b">
+    <link rel="stylesheet" href="./css/style.css?v=20261029e">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -238,7 +238,7 @@
                     </div>
                     <div class="w-1/3">
                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Aliran Dana</label>
-                        <select id="staging-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="staging-trx-type" data-picker-title="Jenis Transaksi" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
                             <option value="tarik_tunai">Tarik Tunai</option>
@@ -249,7 +249,7 @@
 
                 <div>
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet / Akun Sumber</label>
-                    <select id="staging-trx-wallet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
+                    <select id="staging-trx-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
                         <option value="">Memuat dompet...</option>
                     </select>
                 </div>
@@ -293,7 +293,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis</label>
-                        <select id="manual-trx-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="manual-trx-type" data-picker-title="Jenis Transaksi" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
                             <option value="tarik_tunai">Tarik Tunai (ATM)</option>
@@ -302,7 +302,7 @@
                     </div>
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet / Akun Sumber</label>
-                        <select id="manual-trx-wallet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
+                        <select id="manual-trx-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
                             <option value="">Memuat dompet...</option>
                         </select>
                     </div>
@@ -310,7 +310,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
-                        <select id="manual-trx-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="manual-trx-curr" data-picker-title="Mata Uang" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="JPY">JPY</option>
                             <option value="IDR">IDR</option>
                         </select>
@@ -359,7 +359,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tipe Transaksi</label>
-                        <select id="edit-global-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="edit-global-type" data-picker-title="Jenis Transaksi" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="pengeluaran">Pengeluaran (-)</option>
                             <option value="pemasukan">Pemasukan (+)</option>
                             <option value="tarik_tunai">Tarik Tunai</option>
@@ -368,7 +368,7 @@
                     </div>
                     <div class="w-1/2">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet / Akun Sumber</label>
-                        <select id="edit-global-wallet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
+                        <select id="edit-global-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-accent">
                             <option value="">Memuat dompet...</option>
                         </select>
                     </div>
@@ -380,7 +380,7 @@
                 <div class="flex gap-3">
                     <div class="w-1/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Mata Uang</label>
-                        <select id="edit-global-curr" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                        <select id="edit-global-curr" data-picker-title="Mata Uang" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                             <option value="JPY">JPY</option>
                             <option value="IDR">IDR</option>
                         </select>
@@ -570,7 +570,7 @@
                 </div>
                 <div>
                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Dompet Pembayar</label>
-                    <select id="rem-wallet" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black text-white font-bold"></select>
+                    <select id="rem-wallet" data-picker-title="Pilih Dompet" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black text-white font-bold"></select>
                 </div>
                 <button onclick="window.saveReminder()" class="w-full py-3.5 rounded-xl bg-amber-500 text-black font-bold text-sm transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-floppy-disk"></i> Simpan Pengingat</button>
                 <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Bila Merchant diisi, status dicocokkan dari nama merchant transaksi; bila kosong, dari Kategori. Dompet & nominal menjadi isian awal tombol "Catat Sekarang" di Wawasan.</p>
@@ -588,7 +588,7 @@
             <p id="topup-goal-name" class="text-xs text-[var(--text-muted)] mb-4 font-bold uppercase tracking-widest"></p>
             <div class="text-left mb-3">
                 <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Ambil Uang Dari:</label>
-                <select id="topup-goal-source" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-white">
+                <select id="topup-goal-source" data-picker-title="Sumber Dana" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black font-bold text-white">
                     <option value="cashless">Rekening Bank (Cashless)</option>
                     <option value="tunai">Dompet Tunai</option>
                 </select>
@@ -898,6 +898,27 @@
                 </div>
 
                 <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-muse')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center"><i class="fa-solid fa-link text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Hubungkan ke Muse</span>
+                        </div>
+                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-muse" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-muse" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Berikan kode ini kepada <b class="text-white">Muse milikmu</b> agar ia bisa membaca dan mencatat keuanganmu di AuraFi. Kode ini adalah kunci pribadimu — <b class="text-white">jangan dibagikan ke siapa pun</b>. Cabut akses kapan pun dengan mengganti kata sandi akunmu.</p>
+                            <button onclick="window.showClaudeConnectCode()" class="w-full py-3 rounded-xl bg-violet-500/20 text-violet-300 border border-violet-500/30 font-bold text-[11px] uppercase tracking-wider transition flex items-center justify-center gap-2 hover:bg-violet-500/30"><i class="fa-solid fa-key"></i> Tampilkan Kode Koneksi</button>
+                            <div id="claude-connect-area" class="hidden space-y-2">
+                                <textarea id="claude-connect-code" readonly rows="4" class="w-full bg-black/50 border border-[var(--border-glass)] rounded-xl p-3 text-[9px] font-mono text-violet-200 break-all"></textarea>
+                                <button onclick="window.copyClaudeConnectCode()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-copy"></i> Salin Kode</button>
+                                <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Di Muse, kode dimasukkan lewat brankas aman (Secure Vault) — tidak lewat obrolan biasa.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-advanced')" class="w-full bg-[#11131a] border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
                             <div class="w-8 h-8 rounded-lg bg-gray-500/20 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-wrench text-sm"></i></div>
@@ -1028,7 +1049,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis Likuiditas</label>
-                    <select id="wallet-form-type" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
+                    <select id="wallet-form-type" data-picker-title="Jenis Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black">
                         <option value="cashless">Cashless (Rekening Bank / Keuangan Digital)</option>
                         <option value="tunai">Tunai (Uang Fisik / Celengan Kas)</option>
                     </select>
@@ -1052,7 +1073,7 @@
             <div class="space-y-4">
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Sumber Dana (Dari)</label>
-                    <select id="transfer-source" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-rose-400 font-bold">
+                    <select id="transfer-source" data-picker-title="Dari Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-rose-400 font-bold">
                         </select>
                 </div>
                 <div class="flex justify-center -my-2 relative z-10 pointer-events-none">
@@ -1060,7 +1081,7 @@
                 </div>
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tujuan Dana (Ke)</label>
-                    <select id="transfer-dest" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-emerald-400 font-bold">
+                    <select id="transfer-dest" data-picker-title="Ke Dompet" class="v-input w-full rounded-xl p-3 text-sm outline-none bg-black text-emerald-400 font-bold">
                         </select>
                 </div>
                 <div>
@@ -1391,7 +1412,7 @@
                     
                     <div>
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jenis Kantong</label>
-                        <select id="goal-jenis" onchange="window.onGoalJenisChange()" class="v-input w-full rounded-xl p-3 text-sm outline-none font-bold">
+                        <select id="goal-jenis" data-picker-title="Jenis Brankas" onchange="window.onGoalJenisChange()" class="v-input w-full rounded-xl p-3 text-sm outline-none font-bold">
                             <option value="misi">Misi — target &amp; tenggat (mis. beli laptop)</option>
                             <option value="simpanan">Simpanan — cadangan bebas tanpa target</option>
                         </select>
@@ -1467,7 +1488,7 @@
                                     </div>
                                     <div class="w-1/2">
                                         <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Metode</label>
-                                        <select id="new-rec-method" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
+                                        <select id="new-rec-method" data-picker-title="Metode Pembayaran" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
                                             <option value="cashless">Cashless</option>
                                             <option value="tunai">Tunai</option>
                                         </select>
@@ -1475,7 +1496,7 @@
                                 </div>
                                 <div>
                                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Dompet Pembayar</label>
-                                    <select id="new-rec-wallet" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
+                                    <select id="new-rec-wallet" data-picker-title="Dompet Tagihan" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
                                         <option value="">— Pilih Dompet —</option>
                                     </select>
                                 </div>
@@ -1543,7 +1564,7 @@
                 <button onclick="window.removeImage()" class="absolute -top-2 -right-2 w-6 h-6 bg-[var(--color-expense)] text-white rounded-full flex items-center justify-center text-[10px] active:scale-75 transition shadow-lg"><i class="fa-solid fa-xmark"></i></button>
             </div>
 
-            <div class="glass-panel p-1.5 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] focus-within:border-[var(--accent-primary)] transition-all rounded-2xl">
+            <div id="chat-bar" class="glass-panel p-1.5 flex items-end gap-1.5 shadow-2xl border border-[var(--border-glass)] focus-within:border-[var(--accent-primary)] transition-all rounded-2xl">
                 <button onclick="document.getElementById('file-upload').click()" class="w-12 h-12 text-[var(--text-muted)] hover:text-accent rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Ambil Gambar Struk">
                     <i class="fa-solid fa-camera text-lg"></i>
                     <input type="file" id="file-upload" accept="image/*" class="hidden" onchange="window.handleImage(event)">
@@ -1552,40 +1573,46 @@
                     <i class="fa-solid fa-microphone text-lg"></i>
                 </button>
                 <textarea id="main-input-field" rows="1" class="flex-1 bg-transparent text-[15px] text-[var(--text-main)] outline-none py-3.5 px-2 max-h-24 min-h-[48px] no-scrollbar placeholder:text-zinc-500 leading-normal" placeholder="Ketik transaksi / chat AI..." onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); window.handleSend(); }"></textarea>
+                <button onclick="window.toggleChatBar(true)" class="w-8 h-12 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Sembunyikan kotak chat">
+                    <i class="fa-solid fa-chevron-down text-xs"></i>
+                </button>
                 <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--bg-base)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label ="Kirim Input">
                     <i class="fa-solid fa-paper-plane text-base" id="icon-send"></i>
                 </button>
             </div>
         </div>
 
-        <nav class="w-full h-[70px] glass-nav flex justify-around md:justify-center md:gap-16 items-center px-2 z-50 shrink-0 safe-pb transition-all">
-            <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--accent-primary)] active:scale-90 transition group" data-target="dashboard">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-meteor text-[18px]"></i></div>
-                <span class="text-[8px] font-black tracking-widest uppercase">Core</span>
+        <nav class="w-full h-[84px] glass-nav flex justify-around md:justify-center md:gap-16 items-center px-2 z-50 shrink-0 safe-pb transition-all">
+            <button onclick="window.switchView('dashboard')" class="nav-btn flex flex-col items-center justify-center gap-1 w-16 h-full text-[var(--accent-primary)] active:scale-90 transition group" data-target="dashboard">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-meteor text-[22px]"></i></div>
+                <span class="text-[10px] font-black tracking-widest uppercase">Core</span>
             </button>
-            <button onclick="window.switchView('transactions')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="transactions">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-list-ul text-[18px]"></i></div>
-                <span class="text-[8px] font-black tracking-widest uppercase">Log</span>
+            <button onclick="window.switchView('transactions')" class="nav-btn flex flex-col items-center justify-center gap-1 w-16 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="transactions">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-list-ul text-[22px]"></i></div>
+                <span class="text-[10px] font-black tracking-widest uppercase">Log</span>
             </button>
-            <button onclick="window.switchView('analytics')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="analytics">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-chart-pie text-[18px]"></i></div>
-                <span class="text-[8px] font-black tracking-widest uppercase">Stats</span>
+            <button onclick="window.switchView('analytics')" class="nav-btn flex flex-col items-center justify-center gap-1 w-16 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="analytics">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-chart-pie text-[22px]"></i></div>
+                <span class="text-[10px] font-black tracking-widest uppercase">Stats</span>
             </button>
-            <button onclick="window.switchView('budgets')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="budgets">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-wallet text-[18px]"></i></div>
-                <span class="text-[8px] font-black tracking-widest uppercase">Budget</span>
+            <button onclick="window.switchView('budgets')" class="nav-btn flex flex-col items-center justify-center gap-1 w-16 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group" data-target="budgets">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-white/5 transition"><i class="fa-solid fa-wallet text-[22px]"></i></div>
+                <span class="text-[10px] font-black tracking-widest uppercase">Budget</span>
             </button>
-            <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center justify-center gap-1 w-14 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group relative" data-target="oracle">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-white/5 transition relative">
-                    <i class="fa-solid fa-lightbulb text-[18px]"></i>
+            <button onclick="window.switchView('oracle')" class="nav-btn flex flex-col items-center justify-center gap-1 w-16 h-full text-[var(--text-muted)] hover:text-white active:scale-90 transition group relative" data-target="oracle">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-white/5 transition relative">
+                    <i class="fa-solid fa-lightbulb text-[22px]"></i>
                 </div>
-                <span class="text-[8px] font-black tracking-widest uppercase">Wawasan</span>
+                <span class="text-[10px] font-black tracking-widest uppercase">Wawasan</span>
             </button>
         </nav>
+        <button id="chat-show-btn" onclick="window.toggleChatBar(false)" class="hidden fixed right-4 bottom-[100px] z-40 w-12 h-12 rounded-full bg-accent text-[var(--bg-base)] shadow-2xl items-center justify-center active:scale-90 transition" aria-label="Tampilkan kotak chat">
+            <i class="fa-solid fa-message text-base"></i>
+        </button>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029b"></script>
-    <script type="module" src="./js/main.js?v=20261029b"></script>
+    <script src="./js/hachi-art.js?v=20261029e"></script>
+    <script type="module" src="./js/main.js?v=20261029e"></script>
 
 </body>
 </html>

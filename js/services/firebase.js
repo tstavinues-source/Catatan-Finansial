@@ -283,6 +283,24 @@ export const FirebaseService = {
         if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) throw new Error("Sesi pengguna tidak valid.");
     },
 
+    // Kode Koneksi Muse: kredensial milik pengguna yang sedang masuk —
+    // token penyegar Firebase Auth-nya sendiri, dibungkus bersama konfigurasi
+    // publik aplikasi. Muse milik pengguna menukar token penyegar ini
+    // menjadi token akses jangka pendek dan hanya menyentuh subpohon
+    // aurafi_ledger/<uid pengguna itu>. Bukan kunci basis data proyek.
+    getConnectionCode: function() {
+        if (!authInstance || !authInstance.currentUser) throw new Error("Sesi pengguna tidak valid.");
+        const u = authInstance.currentUser;
+        const payload = {
+            app: "AuraFi", version: 1,
+            apiKey: FIREBASE_CONFIG.apiKey,
+            databaseURL: FIREBASE_CONFIG.databaseURL,
+            uid: u.uid,
+            refreshToken: u.refreshToken,
+        };
+        return "AURAFI1:" + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    },
+
     // ========================================================================
     // 🛡️ GUDANG OTOMATIS & AURA DYNAMIC LEARNING MAPPER
     // ========================================================================
