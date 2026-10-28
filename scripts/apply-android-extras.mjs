@@ -6,6 +6,11 @@
 //    bisa jalan. Tanpa file itu build tetap aman (push nonaktif).
 // 3) Widget saldo — menyalin sumber native dari android-widget/ ke proyek
 //    dan mendaftarkan receiver-nya di AndroidManifest.xml (idempoten).
+// 4) Kunci tanda tangan build yang TETAP — mendekode resources/debug.keystore.b64
+//    ke android/app/ dan menambal build.gradle supaya setiap build CI memakai
+//    kunci yang sama. Tanpa ini tiap mesin build memakai kunci acak sendiri
+//    dan Android menolak memasang APK baru sebagai pembaruan ("Aplikasi tidak
+//    diinstal"). Kunci debug memang untuk dibagikan, ini bukan rahasia.
 // Folder android/ tidak disimpan di repo, jadi langkah ini wajib diulang
 // setiap platform dibuat — termasuk di GitHub Actions.
 import { existsSync, copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -38,6 +43,36 @@ if (existsSync(gsSrc)) {
 } else {
   console.log("apply-android-extras: android-config/google-services.json belum ada, FCM nonaktif.");
 }
+
+// --- Kunci build tetap (tanda tangan debug yang sama di semua build) ---
+try {
+  const ksB64 = join(root, "resources", "debug.keystore.b64");
+  const gradlePath = join(root, "android", "app", "build.gradle");
+  if (existsSync(ksB64) && existsSync(gradlePath)) {
+    const ksDst = join(root, "android", "app", "debug.keystore");
+    writeFileSync(ksDst, Buffer.from(readFileSync(ksB64, "utf8").trim(), "base64"));
+    let g = readFileSync(gradlePath, "utf8");
+    if (!g.includes("debug.keystore")) {
+      const cfg = [
+        '    signingConfigs {',
+        '        debug {',
+        "            storeFile file('debug.keystore')",
+        "            storePassword 'android'",
+        "            keyAlias 'androiddebugkey'",
+        "            keyPassword 'android'",
+        "            storeType 'PKCS12'",
+        '        }',
+        '    }',
+      ].join('\n');
+      g = g.replace(/(android\s*\{)/, '$1\n' + cfg);
+      writeFileSync(gradlePath, g);
+    }
+    console.log("apply-android-extras: kunci build tetap terpasang.");
+  }
+} catch (e) {
+  console.warn("apply-android-extras: kunci build tetap gagal dipasang, build memakai kunci bawaan mesin.");
+}
+
 
 // --- Widget saldo (native, ditulis dalam Java supaya cocok dengan
 // templat Capacitor yang berbasis Java — tanpa tambalan Gradle) ---
