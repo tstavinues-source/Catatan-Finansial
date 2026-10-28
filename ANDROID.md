@@ -111,3 +111,19 @@ berjalan dengan langkah kaki (tampak profil), duduk menghadap pengguna
 saat berhenti, ekspresi mengikuti isi pesannya (senang, khawatir,
 mengantuk), ekor bergoyang, mata berkedip. Stiker ikon bulat sebelumnya
 sudah digantikan.
+
+## Login Google di aplikasi Android
+
+Login Google memakai plugin native `@capacitor-firebase/authentication`
+(pemilih akun bawaan Android), bukan popup web yang selalu gagal di
+WebView. Token dari perangkat ditukar ke sesi web di
+`FirebaseService.loginWithGoogle`.
+
+Syarat satu kali di Firebase Console (project agrivision-574be →
+Project settings → Your apps → aplikasi Android id.my.aurafinance →
+Add fingerprint): daftarkan sidik jari kunci build tetap AuraFi —
+
+- SHA-1: 60:AC:8F:D6:EB:7B:ED:BB:E4:34:C5:7B:20:FA:2D:B4:08:01:80:BA
+- SHA-256: D9:ED:CA:1E:CF:CA:86:F1:40:E2:8B:94:FD:C6:F9:AD:7F:84:47:9E:3D:5F:E9:59:50:26:69:50:6F:21:EE:FF
+
+Tanpa sidik jari itu, Google menolak menerbitkan token untuk aplikasi.
