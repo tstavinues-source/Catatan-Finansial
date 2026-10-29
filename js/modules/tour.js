@@ -22,8 +22,11 @@ function pastikanSeksi(id, buka) {
     if (typeof window.toggleSettingsSection === 'function') window.toggleSettingsSection(id);
 }
 
+const SEKSI_TUR = ['sec-siklus', 'sec-reminders', 'sec-muse', 'sec-kurs', 'sec-backup', 'sec-advanced', 'sec-tampilan'];
+
 function bukaPengaturanSeksi(id) {
     if (typeof window.showModal === 'function') window.showModal('modal-settings');
+    SEKSI_TUR.forEach(s => { if (s !== id) pastikanSeksi(s, false); });
     if (id === 'sec-siklus' && typeof window.renderSiklusPengaturan === 'function') window.renderSiklusPengaturan();
     pastikanSeksi(id, true);
 }
@@ -38,7 +41,7 @@ function tutupPengaturan() {
 const LANGKAH = [
     {
         judul: 'Selamat Datang di AuraFi',
-        isi: 'Tur singkat ini mengelilingi fitur-fitur utama aplikasi, langsung di tempatnya masing-masing. Pakai tombol <b>Lanjut</b> dan <b>Kembali</b> untuk berpindah, dan <b>Lewati</b> bila ingin berhenti di tengah jalan.',
+        isi: 'Tur ini mengelilingi <b>seluruh</b> fitur utama aplikasi, langsung di tempatnya masing-masing — termasuk tabungan, anggaran rutin, dan konektor Muse. Pakai tombol <b>Lanjut</b> dan <b>Kembali</b> untuk berpindah, dan <b>Lewati</b> bila ingin berhenti di tengah jalan.',
         el: null
     },
     {
@@ -57,8 +60,13 @@ const LANGKAH = [
         el: () => document.querySelector('button[onclick*="startNewCycle"]')
     },
     {
+        judul: 'Mata Uang: Yen / Rupiah',
+        isi: 'Seluruh angka bisa ditampilkan dalam <b>JPY</b> atau dikonversi ke <b>IDR</b> dengan kurs berjalan — ketuk tombol ini untuk berganti. Berguna untuk melihat gambaran keuangan dalam rupiah tanpa menghitung manual.',
+        el: () => { const b = elId('btn-curr-idr'); return b ? b.parentElement : null; }
+    },
+    {
         judul: 'Catat Lewat Kotak Ini',
-        isi: 'Tidak perlu formulir panjang. Ketik kalimat biasa — misalnya <i>"kopi 15 ribu tunai"</i> — atau kirim <b>foto struk</b> dan <b>suara</b>. AI akan memecahnya menjadi item-item dan menawarkannya untuk diperiksa sebelum tersimpan.',
+        isi: 'Tidak perlu formulir panjang. Ketik kalimat biasa — misalnya <i>"kopi 15 ribu tunai"</i> — atau kirim <b>foto struk</b> dan <b>suara</b>. Hasil bacaan AI masuk <b>Area Transit</b> dulu untuk kamu periksa dan betulkan sebelum tersimpan; pajak struk bisa disebar ke item atau dipisah. Ada juga jalan input manual bila lebih suka mengetik sendiri.',
         el: () => elId('chat-bar')
     },
     {
@@ -68,8 +76,25 @@ const LANGKAH = [
     },
     {
         judul: 'Brankas: Simpanan & Misi',
-        isi: 'Di sini tempat kantung tabungan biasa dan <b>Misi</b> (target belanja bertenggat, misalnya laptop). Uang yang masuk Brankas langsung mengurangi saldo yang bisa dibelanjakan, dan tidak ikut Net Worth. Ketuk panel ini untuk membukanya.',
+        isi: 'Panel ini ringkasan Brankasmu di Beranda. Uang yang masuk Brankas langsung mengurangi saldo yang bisa dibelanjakan dan tidak ikut Net Worth. Ketuk panel ini untuk membukanya — langkah berikutnya menunjukkan isinya.',
         el: () => { const s = elId('dash-savings'); return s ? s.closest('[onclick]') : null; }
+    },
+    {
+        judul: 'Isi Brankas: Dua Jenis Kantung',
+        isi: 'Ada dua jenis kantung. <b>Simpanan</b>: cadangan biasa tanpa target. <b>Misi</b>: target belanja bertenggat (misalnya laptop ¥100.000) — rencana setoran per bulannya dihitung otomatis dari target dan tenggat, lalu dibandingkan dengan setoran nyatamu. Buat lewat tombol <b>Kantong Baru</b> / <b>Misi Baru</b>.',
+        aksi: () => { if (typeof window.switchView === 'function') window.switchView('brankas'); },
+        el: () => elId('brankas-total')
+    },
+    {
+        judul: 'Manajer Anggaran',
+        isi: 'Tab <b>Anggaran</b> adalah pusat pengaturan misi tabungan dan tagihan rutin. Dari sini kamu membuat misi baru, memantau misi yang aktif, dan mengatur pengeluaran yang berulang setiap bulan.',
+        aksi: () => { if (typeof window.switchView === 'function') window.switchView('budgets'); },
+        el: () => { const h = document.querySelector('#view-budgets h2'); return h ? h.parentElement : null; }
+    },
+    {
+        judul: 'Tagihan Otomatis (Anggaran Rutin)',
+        isi: 'Pengeluaran rutin — internet, listrik, langganan — didaftarkan sekali di blok ini beserta tanggal dan dompetnya, lalu <b>tercatat otomatis</b> setiap tanggalnya. Tidak perlu lagi mencatat tagihan yang sama berulang-ulang. Daftar yang sama juga muncul di Pengaturan → Tagihan Otomatis.',
+        el: () => { const c = elId('budget-bills-container'); return c ? c.parentElement : null; }
     },
     {
         judul: 'Riwayat Transaksi',
@@ -96,14 +121,44 @@ const LANGKAH = [
         el: () => elId('sec-siklus')
     },
     {
+        judul: 'Pengingat Kewajiban',
+        isi: 'Kewajiban yang kamu kelola sendiri — misalnya <b>Transfer ke Istri</b> dan <b>Kas Apato</b> — didaftarkan di sini. Mereka tampil sebagai daftar periksa di tab Wawasan dan mengingatkanmu saat waktunya tiba, supaya tidak ada kewajiban yang terlewat.',
+        aksi: () => { bukaPengaturanSeksi('sec-reminders'); },
+        el: () => elId('sec-reminders')
+    },
+    {
+        judul: 'Hubungkan ke Muse',
+        isi: 'AuraFi bisa dihubungkan ke <b>Muse</b>, asisten AI pribadimu. Tampilkan kode koneksi di bagian ini, lalu berikan kode itu ke Muse — setelah terhubung, Muse bisa membaca catatanmu dan membantumu mencatat langsung ke AuraFi.',
+        aksi: () => { bukaPengaturanSeksi('sec-muse'); },
+        el: () => elId('sec-muse')
+    },
+    {
+        judul: 'Kurs Mata Uang',
+        isi: 'Di sini terlihat kurs <b>JPY → IDR</b> yang sedang dipakai tampilan Rupiah, lengkap dengan waktu pembaruannya. Kurs diperbarui otomatis, tidak perlu diatur manual.',
+        aksi: () => { bukaPengaturanSeksi('sec-kurs'); },
+        el: () => elId('sec-kurs')
+    },
+    {
+        judul: 'Cadangan & Ekspor Data',
+        isi: 'Unduh <b>cadangan penuh</b> datamu atau ekspor sebagai <b>CSV</b> dari bagian ini. Cadangan bisa diimpor kembali untuk memulihkan data — simpan berkasnya di tempat aman.',
+        aksi: () => { bukaPengaturanSeksi('sec-backup'); },
+        el: () => elId('sec-backup')
+    },
+    {
+        judul: 'Konfigurasi Lanjutan',
+        isi: 'Berisi alat-alat tambahan: <b>Kelola Kategori</b> untuk merapikan kategori catatanmu, dan <b>Trackers</b> — pelacak kebiasaan seperti jajan, kopi, atau rokok yang totalnya dikumpulkan otomatis dari kata kunci. Buka sesekali untuk merapikan, selebihnya biarkan berjalan sendiri.',
+        aksi: () => { bukaPengaturanSeksi('sec-advanced'); },
+        el: () => elId('sec-advanced')
+    },
+    {
         judul: 'Kulit Tampilan',
-        isi: 'AuraFi punya lima kulit penuh — bukan sekadar ganti warna: tata letak rasa, huruf, sudut, dan bayangannya ikut berubah. Coba satu per satu dan pakai yang paling nyaman di mata.',
-        aksi: () => { pastikanSeksi('sec-siklus', false); bukaPengaturanSeksi('sec-tampilan'); },
+        isi: 'AuraFi punya lima kulit penuh — bukan sekadar ganti warna: huruf, sudut, dan bayangannya ikut berubah. Coba satu per satu dan pakai yang paling nyaman di mata.',
+        aksi: () => { bukaPengaturanSeksi('sec-tampilan'); },
         el: () => { const b = document.querySelector('[data-skin-btn]'); return b ? b.parentElement : null; }
     },
     {
         judul: 'Selesai — Selamat Memakai',
-        isi: 'Tur berakhir di sini. Bila suatu saat ingin mengulanginya, buka <b>Pengaturan → Panduan</b>. Selamat mencatat — semoga setiap yen-nya terlihat jelas.',
+        isi: 'Tur berakhir di sini, dan kali ini sudah mencakup semuanya: mencatat, dompet, tabungan, anggaran rutin, pengingat, sampai konektor Muse. Bila suatu saat ingin mengulanginya, buka <b>Pengaturan → Panduan</b>. Selamat mencatat — semoga setiap yen-nya terlihat jelas.',
         aksi: () => { tutupPengaturan(); if (typeof window.switchView === 'function') window.switchView('dashboard'); },
         el: null
     }
