@@ -182,13 +182,6 @@ try {
                     if (typeof window.renderGeminiKeysUI === 'function') window.renderGeminiKeysUI();
                 }
 
-                if (data.aiPreferences) {
-                    AuraUtils.safeDOM('setting-ai-chat', el => el.value = data.aiPreferences.modelChat || 'Auto');
-                    AuraUtils.safeDOM('setting-ai-vision', el => el.value = data.aiPreferences.modelVision || 'Auto');
-                    AuraUtils.safeDOM('setting-ai-persona', el => el.value = data.aiPreferences.persona || 'Kombinasi Humble + Jenius + Profesional');
-                    AuraUtils.safeDOM('setting-ai-style', el => el.value = data.aiPreferences.style || 'Normal');
-                }
-
                 if (data.profile) {
                     AuraUtils.safeDOM('user-fullname', el => el.value = data.profile.fullName || '');
                     AuraUtils.safeDOM('user-nickname', el => el.value = data.profile.nickname || '');

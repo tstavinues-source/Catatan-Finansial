@@ -4,13 +4,10 @@
  */
 
 import { APP_CONFIG } from '../../config/constants.js';
-import { EncryptionService } from '../encryption.js';
-import { get, ref } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { AuraState } from '../../core/state.js';
 
 export class GeminiFailoverEngine {
-    constructor(pinCode) { 
-        this.pin = pinCode;
+    constructor() {
         this.keysPool = []; 
         this.currentIndex = 0; 
         
@@ -23,14 +20,13 @@ export class GeminiFailoverEngine {
         ];
     }
     
-    // === MESIN GEMBOK NEXUS ===
+    // === PEMUATAN KUNCI (manual saja) ===
     async init() {
         this.keysPool = [];
         if (!AuraState.instances.db) return 0;
         
         // === KUNCI MANUAL DARI PENGATURAN (pola sama seperti Groq) ===
-        // Kunci yang dipasang sendiri oleh pengguna dipakai LEBIH DULU;
-        // Vault Nexus di bawah hanya menjadi cadangan.
+        // Hanya kunci yang dipasang sendiri oleh pengguna yang dipakai.
         try {
             let rawManual = AuraState.data?.settings?.geminiKeysEncrypted || [];
             let encManual = Array.isArray(rawManual) ? rawManual : Object.values(rawManual);
@@ -49,42 +45,6 @@ export class GeminiFailoverEngine {
             }
         } catch (e) { /* kunci manual tidak tersedia */ }
         
-        // === MESIN GEMBOK NEXUS (cadangan, hanya bila ada PIN) ===
-        if (this.pin) {
-        const snapshot = await get(ref(AuraState.instances.db, 'nexus_api_vault'));
-        if (snapshot.exists()) {
-            const vaultData = snapshot.val();
-            for (const id in vaultData) {
-                if (!Object.prototype.hasOwnProperty.call(vaultData, id)) continue;
-                
-                const item = vaultData[id];
-                let decrypted = null;
-                
-                if(EncryptionService && EncryptionService.decryptApiKey) {
-                    decrypted = EncryptionService.decryptApiKey(item.value, this.pin);
-                }
-                
-                // Fallback Dekripsi Klasik
-                if (!decrypted) { 
-                    try { 
-                        let text = atob(item.value);
-                        let result = ''; 
-                        for (let i = 0; i < text.length; i++) { 
-                            result += String.fromCharCode(text.charCodeAt(i) ^ this.pin.charCodeAt(i % this.pin.length));
-                        } 
-                        decrypted = result;
-                    } catch (e) { /* fallback */ } 
-                }
-                
-                if (decrypted && (decrypted.startsWith('AIza') || decrypted.startsWith('AQ.'))) { 
-                    this.keysPool.push({ 
-                        id: item.name || id, 
-                        value: decrypted.trim() 
-                    });
-                }
-            }
-        }
-        }
         return this.keysPool.length;
     }
     
@@ -92,7 +52,7 @@ export class GeminiFailoverEngine {
     // Menambahkan parameter 'targetModel' untuk kebebasan memilih versi AI
     async fetch(payload, base64Image, targetModel = "gemini-3.6-flash") {
         if (this.keysPool.length === 0) {
-            throw new Error("Sistem Gemini terkunci: Kunci API kosong atau PIN Anda tidak akurat.");
+            throw new Error("Sistem Gemini belum aktif: belum ada kunci API Gemini manual.");
         }
         
         // Proteksi jika targetModel kosong atau tidak valid, kembalikan ke model unggulan
