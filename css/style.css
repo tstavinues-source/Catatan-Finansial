@@ -576,3 +576,7 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
 .fab-manual-wrap { position: relative; height: 0; z-index: 45; }
 #btn-manual-fab { position: absolute; right: 16px; bottom: 12px; width: 54px; height: 54px; border-radius: 9999px; background: var(--accent-primary, #e08a4c); color: var(--bg-base, #10131a); font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 26px rgba(0,0,0,.45); transition: transform .15s ease; cursor: pointer; }
 #btn-manual-fab:active { transform: scale(.92); }
+/* Saat kotak chat disembunyikan, gelembung manual naik ke atas gelembung chat
+   (tombol tampilkan chat: fixed, kanan 16px, bawah 100px, tinggi 48px)
+   agar keduanya tidak bertumpuk. */
+.fab-manual-wrap.chat-tersembunyi #btn-manual-fab { position: fixed; bottom: 160px; }

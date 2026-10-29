@@ -15,6 +15,8 @@
       hidden = localStorage.getItem(KEY) === "1";
     } catch (e) {}
     if (bar) bar.classList.toggle("hidden", hidden);
+    const fabWrap = document.querySelector(".fab-manual-wrap");
+    if (fabWrap) fabWrap.classList.toggle("chat-tersembunyi", hidden);
     if (showBtn) {
       showBtn.classList.toggle("hidden", !hidden);
       showBtn.classList.toggle("flex", hidden);
