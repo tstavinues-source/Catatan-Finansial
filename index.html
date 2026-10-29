@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r49'; try {
+    (function () { var V = '2026-10-30-r50'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -1341,7 +1341,6 @@
                 <div class="flex justify-between items-center mb-1">
                     <h2 class="text-xl font-display font-black tracking-tight">Log Transaksi</h2>
                     <div class="flex gap-2">
-                        <button onclick="window.openManualTrxModal()" class="glass-panel px-3 py-2 rounded-xl text-[10px] font-black text-accent hover:bg-white/10 active:scale-95 transition flex items-center gap-1.5"><i class="fa-solid fa-plus"></i> Manual</button>
                         <button onclick="window.switchView('trash')" class="glass-panel w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-black text-[var(--text-muted)] hover:text-[var(--color-expense)] active:scale-95 transition" title="Tempat Sampah"><i class="fa-solid fa-dumpster"></i></button>
                     </div>
                 </div>
@@ -1605,6 +1604,10 @@
                 <div id="trash-list-container" class="space-y-3"></div>
             </div>
         </main>
+
+        <div class="fab-manual-wrap">
+            <button id="btn-manual-fab" onclick="window.openManualTrxModal()" aria-label="Tambah transaksi manual" title="Transaksi Manual"><i class="fa-solid fa-plus"></i></button>
+        </div>
 
         <div id="omnipresent-input" class="w-full px-4 pt-2 pb-3 bg-[var(--bg-surface)] backdrop-blur-2xl z-40 shrink-0 border-t border-[var(--border-glass)]">
             <div id="image-preview-box" class="glass-panel p-2 mb-2 inline-flex items-center gap-2 relative hidden">

@@ -571,3 +571,8 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
 .aura-sambut-simpan:disabled { opacity: .55; }
 .aura-sambut-lewati { width: 100%; margin-top: 6px; padding: 10px; font-size: 11px; font-weight: 700; color: var(--text-muted, #9aa3ad); }
 .aura-sambut-simpan:active, .aura-sambut-lewati:active { transform: scale(.97); }
+
+/* === Tombol + melayang untuk Transaksi Manual (r50) === */
+.fab-manual-wrap { position: relative; height: 0; z-index: 45; }
+#btn-manual-fab { position: absolute; right: 16px; bottom: 12px; width: 54px; height: 54px; border-radius: 9999px; background: var(--accent-primary, #e08a4c); color: var(--bg-base, #10131a); font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 26px rgba(0,0,0,.45); transition: transform .15s ease; cursor: pointer; }
+#btn-manual-fab:active { transform: scale(.92); }
