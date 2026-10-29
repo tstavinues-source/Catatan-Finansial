@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r44'; try {
+    (function () { var V = '2026-10-29-r45'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,7 +74,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029p">
+    <link rel="stylesheet" href="./css/style.css?v=20261029q">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -1184,13 +1184,7 @@
                     </div>
                 </div>
 
-                <div id="hachi-card" class="glass-panel p-3 mb-2 flex items-center gap-3 cursor-pointer" onclick="window.hachiCardTap && window.hachiCardTap()" title="Ketuk untuk sapaan lain">
-                    <img id="hachi-card-img" alt="Hachi" class="w-14 h-14 object-contain shrink-0" />
-                    <div class="flex-1 min-w-0">
-                        <p class="aura-section-title mb-0.5">Hachi</p>
-                        <p id="hachi-card-text" class="text-[11px] leading-snug"></p>
-                    </div>
-                </div>
+                
 
                 <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8">
                     
@@ -1697,8 +1691,7 @@
         </div>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029p"></script>
-    <script type="module" src="./js/main.js?v=20261029p"></script>
+        <script type="module" src="./js/main.js?v=20261029q"></script>
 
 </body>
 </html>

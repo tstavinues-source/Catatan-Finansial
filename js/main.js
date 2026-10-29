@@ -88,7 +88,6 @@ import './handlers/settings-ui.js';
 import './handlers/reconcile.js'; 
 import './handlers/push.js';
 import './handlers/widget-sync.js';
-import './handlers/hachi.js';
 import './handlers/picker.js';
 import './handlers/nav-gestures.js';
 import './handlers/chatbar.js';
