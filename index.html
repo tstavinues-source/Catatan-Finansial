@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r46'; try {
+    (function () { var V = '2026-10-30-r47'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -663,7 +663,7 @@
             <div class="mb-4">
                 <p class="text-[9px] font-black tracking-[0.2em] text-[var(--text-muted)] mb-2">JALAN PINTAS</p>
                 <div class="grid grid-cols-3 gap-2">
-                    <button onclick="window.AuraOnboarding.show()" class="aura-head-bg border border-[var(--border-glass)] rounded-xl py-2.5 text-[10px] font-bold flex flex-col items-center gap-1 hover:bg-white/5 transition"><i class="fa-solid fa-circle-question text-emerald-400"></i>Panduan</button>
+                    <button onclick="if (window.AuraTour) window.AuraTour.mulai();" class="aura-head-bg border border-[var(--border-glass)] rounded-xl py-2.5 text-[10px] font-bold flex flex-col items-center gap-1 hover:bg-white/5 transition"><i class="fa-solid fa-circle-question text-emerald-400"></i>Panduan</button>
                     <button onclick="window.toggleTheme()" class="aura-head-bg border border-[var(--border-glass)] rounded-xl py-2.5 text-[10px] font-bold flex flex-col items-center gap-1 hover:bg-white/5 transition"><i class="fa-solid fa-cloud-sun text-accent"></i>Tema</button>
                     <button onclick="window.loadRealtimeDatabaseData()" class="aura-head-bg border border-[var(--border-glass)] rounded-xl py-2.5 text-[10px] font-bold flex flex-col items-center gap-1 hover:bg-white/5 transition"><i class="fa-solid fa-arrows-rotate text-accent"></i>Segarkan</button>
                 </div>

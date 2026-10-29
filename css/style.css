@@ -542,3 +542,17 @@ html[data-skin="cyber"] { --bg-inset: #070c17; --shadow-inset: inset 0 1px 3px r
 html[data-skin="luxury"] { --bg-inset: #17120e; --shadow-inset: inset 0 1px 3px rgba(0,0,0,.55), inset 0 0 0 1px rgba(201,168,106,.05); }
 html[data-skin="brutal"] { --bg-inset: #eee1c2; --shadow-inset: inset 0 0 0 1px rgba(22,19,14,.14); }
 html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px rgba(94,72,180,.13), inset -3px -3px 8px rgba(255,255,255,.5); }
+
+/* === Tur Panduan AuraFi (r47) === */
+#auraTour { position: fixed; inset: 0; z-index: 300; }
+#auraTourSorot { position: fixed; border: 3px solid var(--accent-primary, #e08a4c); border-radius: 16px; box-shadow: 0 0 0 9999px rgba(3, 7, 12, 0.78); transition: top .35s ease, left .35s ease, width .35s ease, height .35s ease, opacity .25s ease; pointer-events: none; opacity: 0; }
+#auraTourKartu { position: fixed; background: var(--bg-glass, #2b3038); border: 1px solid var(--border-glass, rgba(255,255,255,.12)); border-radius: 18px; padding: 16px; box-shadow: 0 18px 50px rgba(0,0,0,.5); transition: top .35s ease, left .35s ease; color: var(--text-main, #f4f1ea); backdrop-filter: blur(14px); z-index: 301; }
+#auraTourHitung { font-size: 9px; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: var(--text-muted, #9aa3ad); margin-bottom: 6px; }
+#auraTourJudul { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+#auraTourIsi { font-size: 12px; line-height: 1.65; color: var(--text-muted, #c6ccd4); }
+#auraTourTombol { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+#auraTourTombol .aura-tour-spasi { flex: 1; }
+#auraTourLewati { font-size: 11px; font-weight: 700; color: var(--text-muted, #9aa3ad); padding: 9px 10px; }
+#auraTourKembali { font-size: 11px; font-weight: 700; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border-glass, rgba(255,255,255,.12)); color: var(--text-main, #f4f1ea); }
+#auraTourLanjut { font-size: 11px; font-weight: 800; padding: 9px 18px; border-radius: 12px; background: var(--accent-primary, #e08a4c); color: var(--bg-base, #10131a); }
+#auraTourTombol button:active { transform: scale(.95); }
