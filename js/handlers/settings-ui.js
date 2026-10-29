@@ -704,82 +704,8 @@ window.removeTracker = async function(id) {
 };
 
 // ============================================================================
-// 5. MANAJEMEN ANGGOTA KELUARGA & AUDIT LOG
+// 5. AUDIT LOG
 // ============================================================================
-
-window.openFamilyManager = function() {
-    const listContainer = document.getElementById('family-list-container');
-    if (!listContainer) return;
-    
-    const members = AuraState.data.settings?.familyMembers || [];
-    let html = '';
-    
-    members.forEach((m, i) => {
-        html += `
-        <div class="glass-panel p-3 border-l-2 border-l-indigo-400 flex justify-between items-center mb-2">
-            <p class="text-xs font-bold text-indigo-400">
-                <i class="fa-solid fa-user mr-2"></i>${AuraUtils.escapeHtml(m)}
-            </p>
-            <button onclick="window.removeFamilyMember('${i}')" class="text-rose-500 hover:text-rose-400 p-2">
-                <i class="fa-solid fa-trash"></i>
-            </button>
-        </div>`;
-    });
-    
-    if (members.length === 0) {
-        html = '<p class="text-[10px] text-[var(--text-muted)] text-center">Belum ada tanggungan keluarga.</p>';
-    }
-    
-    listContainer.innerHTML = html;
-    
-    if (typeof window.showModal === 'function') {
-        window.showModal('modal-family');
-    }
-};
-
-window.addFamilyMember = async function() {
-    const input = document.getElementById('new-family-name');
-    if (!input) return;
-    
-    const name = input.value.trim();
-    if (!name) return;
-    
-    const members = AuraState.data.settings?.familyMembers || [];
-    
-    if (members.includes(name)) {
-        if (window.showToast) {
-            window.showToast("Anggota ini sudah terdaftar.", true);
-        }
-        return;
-    }
-    
-    try {
-        await FirebaseService.updateSettings({ familyMembers: [...members, name] });
-        
-        input.value = '';
-        window.openFamilyManager();
-    } catch (e) {
-        if (window.showToast) {
-            window.showToast("Gagal menambah anggota.", true);
-        }
-    }
-};
-
-window.removeFamilyMember = async function(index) {
-    const members = AuraState.data.settings?.familyMembers || [];
-    const isConfirmed = await window.AuraConfirm(`Lepaskan akses untuk anggota <b>${members[index]}</b>?`);
-    if (!isConfirmed) return;
-
-    members.splice(index, 1);
-    try {
-        await FirebaseService.updateSettings({ familyMembers: members });
-        window.openFamilyManager();
-    } catch(e) {
-        if (window.showToast) {
-            window.showToast("Gagal mencabut akses.", true);
-        }
-    }
-};
 
 window.openAuditLogs = async function() {
     const container = document.getElementById('audit-log-content');

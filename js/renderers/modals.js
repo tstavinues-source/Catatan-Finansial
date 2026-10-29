@@ -47,44 +47,7 @@ export const injectMissingModals = function() {
         body.insertAdjacentHTML('beforeend', trackerModalHTML);
     }
     
-    if (!document.getElementById('modal-edit-budget')) {
-        const budgetModalHTML = `
-        <div id="modal-edit-budget" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
-            <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-lg font-bold flex items-center gap-2 text-rose-400 font-display"><i class="fa-solid fa-fire-flame-curved"></i> Batas Burn Rate</h3>
-                    <button onclick="window.closeModal('modal-edit-budget')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Batas Pengeluaran Bulanan (Limit)</label>
-                        <input type="number" id="budget-limit-input" class="v-input w-full rounded-xl p-3 text-sm font-mono font-bold text-rose-400 outline-none" placeholder="Masukkan Nominal JPY/IDR">
-                    </div>
-                    <button onclick="window.executeSaveBudget()" class="w-full py-4 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/50 font-bold text-sm hover:bg-rose-500/40 transition">Simpan Ketetapan</button>
-                </div>
-            </div>
-        </div>`;
-        body.insertAdjacentHTML('beforeend', budgetModalHTML);
-    }
-
-    if (!document.getElementById('modal-family')) {
-        const familyModalHTML = `
-        <div id="modal-family" class="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
-            <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
-                <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
-                    <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-400 font-display"><i class="fa-solid fa-users"></i> Anggota Keluarga</h3>
-                    <button onclick="window.closeModal('modal-family')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-                <div id="family-list-container" class="space-y-3 mb-5"></div>
-                <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
-                    <input type="text" id="new-family-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Nama Anggota (Cth: Istri)">
-                    <button onclick="window.addFamilyMember()" class="w-full py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-xs uppercase tracking-wider hover:bg-indigo-500/40 transition">Tambah Anggota</button>
-                </div>
-            </div>
-        </div>`;
-        body.insertAdjacentHTML('beforeend', familyModalHTML);
-    }
-    
+            
     if (!document.getElementById('modal-audit-log')) {
         const auditHTML = `
         <div id="modal-audit-log" class="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">

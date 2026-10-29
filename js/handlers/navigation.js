@@ -104,8 +104,6 @@ window.switchView = function(viewId) {
 
     if (viewId === 'dashboard' || viewId === 'analytics') {
         if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-    } else if (viewId === 'transactions') {
-        if (typeof window.populateUserFilterDropdown === 'function') window.populateUserFilterDropdown();
     } else if (viewId === 'budgets') {
         if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
     } else if (viewId === 'oracle') {
@@ -265,30 +263,8 @@ window.updateCycleButtonLabel = function() {
 window.applyFilters = function() {
     AuraUtils.safeDOM('filter-search', el => AuraState.filters.search = el.value || '');
     AuraUtils.safeDOM('filter-category', el => AuraState.filters.category = el.value || 'ALL');
-    AuraUtils.safeDOM('filter-user', el => AuraState.filters.user = el.value || 'ALL');
     
     if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-};
-
-window.populateUserFilterDropdown = function() {
-    AuraUtils.safeDOM('filter-user', function(el) {
-        const transactions = AuraState.data.transactions || [];
-        const membersSettings = AuraState.data.settings?.familyMembers || [];
-        const uniqueUsers = new Set();
-        
-        transactions.forEach(t => t.user_id && uniqueUsers.add(t.user_id));
-        membersSettings.forEach(m => uniqueUsers.add(m));
-
-        let htmlOpts = `<option value="ALL">SEMUA PENGGUNA</option>`;
-        Array.from(uniqueUsers).forEach(user => {
-            const userNm = AuraUtils.escapeHtml(user);
-            htmlOpts += `<option value="${userNm}">${userNm}</option>`;
-        });
-        
-        const currentVal = el.value;
-        el.innerHTML = htmlOpts;
-        if (currentVal && uniqueUsers.has(currentVal)) el.value = currentVal;
-    });
 };
 
 // ============================================================================

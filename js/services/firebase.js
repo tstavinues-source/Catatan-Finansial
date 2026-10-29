@@ -159,7 +159,6 @@ try {
                 AuraState.data.trash = trashArr; 
                 initialDataArrived.transactions = true; 
                 
-                if (typeof window.populateUserFilterDropdown === 'function') window.populateUserFilterDropdown();
                 smartRender();
             });
             AuraState.listeners.push(txUnsub);
