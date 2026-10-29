@@ -270,6 +270,118 @@ const Tur = {
 
 window.AuraTour = Tur;
 
+
+// ===== Formulir Sambutan: pengisian profil saat pertama kali masuk =====
+// Ditampilkan SEBELUM tur bila settings.profile.fullName masih kosong
+// (akun baru). Isinya persis kolom Profil Pengguna di Pengaturan dan
+// disimpan ke tempat yang sama (settings.profile lewat FirebaseService).
+
+function profilSudahDiisi() {
+    try {
+        const s = window.AuraState && window.AuraState.data && window.AuraState.data.settings;
+        const p = s && s.profile;
+        return !!(p && typeof p.fullName === 'string' && p.fullName.trim());
+    } catch (e) { return true; } // bila ragu, jangan ganggu pengguna lama
+}
+
+function turSudahPernah() {
+    try { return !!localStorage.getItem(KUNCI_TUR); } catch (e) { return true; }
+}
+
+function lanjutKeTur() {
+    if (!turSudahPernah() && !Tur.aktif) Tur.mulai();
+}
+
+const FormulirSambutan = {
+    tampil: false,
+
+    buka() {
+        if (this.tampil || elId('auraSambut')) return;
+        this.tampil = true;
+        let p = {};
+        try { p = (window.AuraState.data.settings && window.AuraState.data.settings.profile) || {}; } catch (e) { p = {}; }
+        const akar = document.createElement('div');
+        akar.id = 'auraSambut';
+        akar.innerHTML =
+            '<div class="aura-sambut-kartu">' +
+                '<h3 class="aura-sambut-judul">Halo, Kenalan Dulu Yuk</h3>' +
+                '<p class="aura-sambut-isi">Sebelum mulai, isi profil singkat ini. Namamu dipakai untuk sapaan dan laporan; negara & mata uang menentukan format angka serta aturan pajak bawaan. Semua bisa diubah lagi kapan saja di Pengaturan → Profil Pengguna.</p>' +
+                '<label class="aura-sambut-label">Nama Lengkap *</label>' +
+                '<input id="frNama" class="aura-sambut-input" type="text" autocomplete="name" placeholder="Cth: Muhammad Aura">' +
+                '<label class="aura-sambut-label">Panggilan *</label>' +
+                '<input id="frPanggil" class="aura-sambut-input" type="text" placeholder="Cth: Aura">' +
+                '<div class="aura-sambut-duo">' +
+                    '<div><label class="aura-sambut-label">Negara (Pajak)</label>' +
+                    '<select id="frNegara" class="aura-sambut-input"><option value="Jepang">Jepang</option><option value="Indonesia">Indonesia</option></select></div>' +
+                    '<div><label class="aura-sambut-label">Mata Uang Awal</label>' +
+                    '<select id="frMatauang" class="aura-sambut-input"><option value="JPY">JPY (Yen)</option><option value="IDR">IDR (Rupiah)</option></select></div>' +
+                '</div>' +
+                '<p id="frGalat" class="aura-sambut-galat"></p>' +
+                '<button id="frSimpan" class="aura-sambut-simpan" type="button">Simpan & Mulai Tur</button>' +
+                '<button id="frLewati" class="aura-sambut-lewati" type="button">Isi nanti saja</button>' +
+            '</div>';
+        document.body.appendChild(akar);
+        if (p.fullName) elId('frNama').value = p.fullName;
+        if (p.nickname) elId('frPanggil').value = p.nickname;
+        if (p.country) elId('frNegara').value = p.country;
+        if (p.defaultCurrency) elId('frMatauang').value = p.defaultCurrency;
+        elId('frSimpan').addEventListener('click', () => this.simpan());
+        elId('frLewati').addEventListener('click', () => { this.tutup(); lanjutKeTur(); });
+    },
+
+    tutup() {
+        const el = elId('auraSambut');
+        if (el) el.remove();
+        this.tampil = false;
+    },
+
+    async simpan() {
+        const nama = elId('frNama').value.trim();
+        const panggil = elId('frPanggil').value.trim();
+        const negara = elId('frNegara').value;
+        const matauang = elId('frMatauang').value;
+        const galat = elId('frGalat');
+        if (!nama || !panggil) {
+            galat.textContent = 'Nama lengkap dan panggilan wajib diisi.';
+            return;
+        }
+        const tombol = elId('frSimpan');
+        tombol.disabled = true;
+        tombol.textContent = 'Menyimpan…';
+        try {
+            if (!window.FirebaseService || typeof window.FirebaseService.updateSettings !== 'function') {
+                throw new Error('layanan belum siap');
+            }
+            await window.FirebaseService.updateSettings({
+                profile: { fullName: nama, nickname: panggil, country: negara, defaultCurrency: matauang }
+            });
+            // Samakan kolom di Pengaturan agar tampil konsisten.
+            const pasang = (id, v) => { const e = elId(id); if (e) e.value = v; };
+            pasang('user-fullname', nama);
+            pasang('user-nickname', panggil);
+            pasang('user-country', negara);
+            pasang('user-currency', matauang);
+            try {
+                const s = window.AuraState && window.AuraState.data && window.AuraState.data.settings;
+                if (s) s.profile = { fullName: nama, nickname: panggil, country: negara, defaultCurrency: matauang };
+            } catch (e) { /* langganan Firebase akan menyegarkan */ }
+            if (typeof window.setCurrency === 'function' &&
+                (!window.AuraState || !window.AuraState.system || window.AuraState.system.displayCurrency !== matauang)) {
+                window.setCurrency(matauang);
+            }
+            if (window.showToast) window.showToast('Profil tersimpan. Selamat datang, ' + panggil + '!');
+            this.tutup();
+            lanjutKeTur();
+        } catch (e) {
+            galat.textContent = 'Gagal menyimpan profil. Periksa koneksi, lalu coba lagi — atau pilih "Isi nanti saja".';
+            tombol.disabled = false;
+            tombol.textContent = 'Simpan & Mulai Tur';
+        }
+    }
+};
+
+window.AuraSambut = FormulirSambutan;
+
 // Muncul satu kali otomatis setelah masuk & data tampil.
 (function jadwalMulaiOtomatis() {
     let percobaan = 0;
@@ -287,7 +399,11 @@ window.AuraTour = Tur;
         const dataSiap = dompet && dompet.children.length > 0;
         if (!gerbangTampil && berandaTampil && dataSiap) {
             clearInterval(periksa);
-            setTimeout(() => { if (!Tur.aktif) Tur.mulai(); }, 600);
+            setTimeout(() => {
+                if (Tur.aktif || FormulirSambutan.tampil) return;
+                if (!profilSudahDiisi()) FormulirSambutan.buka();
+                else lanjutKeTur();
+            }, 600);
         }
     }, 1000);
 })();
