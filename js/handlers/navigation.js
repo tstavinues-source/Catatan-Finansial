@@ -253,6 +253,8 @@ window.updateCycleButtonLabel = function() {
     AuraUtils.safeDOM('btn-mode-period', el => {
         if (anchor && !isNaN(anchor.getTime())) {
             el.innerHTML = `Siklus ${anchor.getDate()}/${anchor.getMonth() + 1}`;
+        } else if (Number(AuraState.data.settings?.cycleRoutineDay) >= 1) {
+            el.innerHTML = `Siklus ~${Number(AuraState.data.settings.cycleRoutineDay)}`;
         } else {
             const day = AuraState.data.settings?.cycleStartDay || 16;
             el.innerHTML = `Siklus ${day}-${day - 1}`;
