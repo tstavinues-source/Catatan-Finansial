@@ -1,10 +1,11 @@
 // ============================================================================
 // Hachi — maskot hidup AuraFi.
-// Mengisi gelembung sapaan di dasbor (#hachi-text) dari data pengguna sendiri:
+// Mengisi kartu sapaan diam di dasbor (#hachi-card) dari data pengguna sendiri:
 // prioritasnya (1) kewajiban siklus yang belum tercatat, (2) hari gajian,
 // (3) laju pengeluaran melewati siklus lalu, (4) kemajuan misi tabungan,
 // (5) sapaan hangat sesuai jam + info kas. Ketuk Hachi untuk lompatan kecil
 // dan kalimat penyemangat berganti. Murni tampilan: tidak menulis data apa pun.
+// Maskot keliling dihapus atas keputusan user (2026-10-29): menghalangi layar.
 // ============================================================================
 (function () {
   const MOTIVASI = [
@@ -155,156 +156,42 @@
     return { mood: "ramah", text: sapa + "! " + MOTIVASI[motivasiIdx] + kasInfo };
   }
 
-  // --- Hachi keliling: stiker ikon asli berjalan bebas di semua tab ---
-  // Bukan lagi kartu di dasbor: Hachi adalah sosok fixed yang berjalan di
-  // tepi bawah layar, berhenti, berbalik arah, dan menyapa lewat gelembung
-  // di sampingnya. Ia minggir sendiri saat modal/keyboard terbuka.
-  const PET_W = 124;
-  const reducedMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  let pet = null, flipEl = null, imgEl = null, bubbleEl = null;
-  let posX = 24, dir = 1, targetX = 140, mode = "pause", pauseUntil = 0, lastTs = 0;
-  let bubbleTimer = null, kbOpen = false, started = false;
-
-  // Gambar asli karya Gmr (js/hachi-art.js): bingkai siklus berjalan.
-  // Saat berhenti, Hachi bertumpu pada bingkai 3 (kedua kaki menapak).
+  // --- Kartu sapaan diam di dasbor (pengganti maskot keliling) ---
+  // Hachi kini duduk manis di satu kartu ringkas di dasbor: gambar diam
+  // karya Gmr (bingkai bertumpu), teks dari mesin sapaan yang sama, dan
+  // ketukan pada kartu mengganti kalimat penyemangat. Tidak ada lagi
+  // sosok bergerak yang menutupi layar.
   const WALK_FRAMES = (window.HACHI_ART && Array.isArray(window.HACHI_ART.walk)) ? window.HACHI_ART.walk : [];
   const IDLE_FRAME = 2;
-  let frameIdx = IDLE_FRAME;
-  function setFrame(i) {
-    if (!imgEl || !WALK_FRAMES.length) return;
-    frameIdx = ((i % WALK_FRAMES.length) + WALK_FRAMES.length) % WALK_FRAMES.length;
-    imgEl.src = WALK_FRAMES[frameIdx];
+  let cardStarted = false;
+
+  function renderHachiCard() {
+    const img = document.getElementById("hachi-card-img");
+    const txt = document.getElementById("hachi-card-text");
+    if (!txt) return;
+    if (img && WALK_FRAMES.length && !img.getAttribute("src")) {
+      img.src = WALK_FRAMES[Math.min(IDLE_FRAME, WALK_FRAMES.length - 1)];
+    }
+    let m = null;
+    try { m = computeMessage(); } catch (e) { /* abaikan */ }
+    if (m && m.text && txt.textContent !== m.text) txt.textContent = m.text;
   }
 
-  function maxX() { return Math.max(12, window.innerWidth - PET_W - 12); }
-  function pickTarget() {
-    targetX = 12 + Math.random() * Math.max(10, maxX() - 12);
-    dir = targetX >= posX ? 1 : -1;
-  }
-  function laneBottom() {
-    const inp = document.getElementById("main-input-field");
-    return (inp && inp.offsetParent !== null) ? 150 : 94;
-  }
-  function petWanted() {
-    // Maskot disembunyikan secara bawaan (keputusan Gmr 2026-10-29: Hachi
-    // menghalangi konten). Ia hanya tampil bila saklar "Maskot Hachi" di
-    // Pengaturan dihidupkan (settings.hachiVisible === true).
-    const S = (window.AuraState && AuraState.data && AuraState.data.settings) || {};
-    return S.hachiVisible === true;
-  }
-  function modalOpen() {
-    const ms = document.querySelectorAll('[id^="modal-"]');
-    for (let i = 0; i < ms.length; i++) {
-      if (!ms[i].classList.contains("hidden")) return true;
-    }
-    return false;
-  }
-  function showBubble(text, holdMs) {
-    if (!bubbleEl) return;
-    if (text) { bubbleEl.textContent = text; lastText = text; }
-    const vw = window.innerWidth;
-    bubbleEl.classList.toggle("hachi-bubble-left", posX < 100);
-    bubbleEl.classList.toggle("hachi-bubble-right", posX > vw - 210);
-    bubbleEl.classList.add("hachi-bubble-show");
-    if (bubbleTimer) clearTimeout(bubbleTimer);
-    bubbleTimer = setTimeout(() => { bubbleEl.classList.remove("hachi-bubble-show"); }, holdMs || 6000);
-  }
-  function render() {
-    const msg = computeMessage();
-    if (msg && msg.text && msg.text !== lastText) showBubble(msg.text, 6500);
-  }
-  function onTap() {
-    if (!imgEl) return;
-    imgEl.classList.remove("hachi-jump");
-    void imgEl.offsetWidth;
-    imgEl.classList.add("hachi-jump");
+  window.hachiCardTap = function () {
     motivasiIdx = (motivasiIdx === null ? 0 : motivasiIdx + 1) % MOTIVASI.length;
-    const msg = computeMessage();
-    showBubble(msg && msg.text ? msg.text : MOTIVASI[motivasiIdx], 6000);
-  }
-  function tick(ts) {
-    setInterval(() => {
-      if (mode === "walk" && pet && !pet.classList.contains("hachi-pet-hidden") && !reducedMotion) {
-        setFrame(frameIdx + 1);
-      }
-    }, 150);
-    requestAnimationFrame(tick);
-    if (!pet) return;
-    const dt = Math.min(0.05, lastTs ? (ts - lastTs) / 1000 : 0.016);
-    lastTs = ts;
-    if (reducedMotion || pet.classList.contains("hachi-pet-hidden")) return;
-    const now = performance.now();
-    if (mode === "walk") {
-      posX += dir * 30 * dt;
-      if ((dir > 0 && posX >= targetX) || (dir < 0 && posX <= targetX)) {
-        mode = "pause";
-        pauseUntil = now + 2600 + Math.random() * 3400;
-        imgEl.classList.remove("hachi-walking");
-        setFrame(IDLE_FRAME);
-      }
-    } else if (now >= pauseUntil) {
-      pickTarget();
-      mode = "walk";
-      imgEl.classList.add("hachi-walking");
-    }
-    posX = Math.max(6, Math.min(posX, maxX()));
-    pet.style.transform = "translate3d(" + posX.toFixed(1) + "px,0,0)";
-    flipEl.style.transform = "scaleX(" + dir + ")";
-  }
-  function buildPet() {
-    pet = document.createElement("div");
-    pet.id = "hachi-pet";
-    pet.title = "Hachi";
-    flipEl = document.createElement("div");
-    flipEl.className = "hachi-pet-flip";
-    imgEl = document.createElement("img");
-    imgEl.className = "hachi-pet-img";
-    imgEl.alt = "Hachi, maskot AuraFi";
-    imgEl.draggable = false;
-    setFrame(IDLE_FRAME);
-    flipEl.appendChild(imgEl);
-    bubbleEl = document.createElement("div");
-    bubbleEl.id = "hachi-bubble";
-    pet.appendChild(bubbleEl);
-    pet.appendChild(flipEl);
-    document.body.appendChild(pet);
-    pet.addEventListener("click", onTap);
-    pet.style.bottom = laneBottom() + "px";
-    if (reducedMotion) {
-      posX = maxX() - 6;
-      pet.style.transform = "translate3d(" + posX + "px,0,0)";
-    }
-  }
-  function init() {
-    buildPet();
-    render();
-    setInterval(render, 45000);
-    setInterval(() => {
-      if (!pet) return;
-      pet.classList.toggle("hachi-pet-hidden", modalOpen() || kbOpen || !petWanted());
-      pet.style.bottom = laneBottom() + "px";
-    }, 800);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener("resize", () => {
-        kbOpen = (window.innerHeight - window.visualViewport.height) > 120;
-      });
-    }
-    setInterval(() => {
-      if (mode === "walk" && pet && !pet.classList.contains("hachi-pet-hidden") && !reducedMotion) {
-        setFrame(frameIdx + 1);
-      }
-    }, 150);
-    requestAnimationFrame(tick);
+    renderHachiCard();
+  };
+
+  function initHachiCard() {
+    if (cardStarted) return;
+    cardStarted = true;
+    const iv = setInterval(function () {
+      if (window.AuraState && AuraState.data && Array.isArray(AuraState.data.transactions)) renderHachiCard();
+    }, 1500);
+    setTimeout(function () { clearInterval(iv); }, 120000);
+    setInterval(renderHachiCard, 60000);
   }
 
-  const timer = setInterval(() => {
-    const ready = window.AuraState && window.AuraState.user && window.AuraState.user.uid &&
-      window.AuraState.data && Array.isArray(window.AuraState.data.transactions);
-    if (ready && !started) {
-      started = true;
-      clearInterval(timer);
-      init();
-    }
-  }, 1000);
-  setTimeout(() => clearInterval(timer), 90000);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initHachiCard);
+  else initHachiCard();
 })();

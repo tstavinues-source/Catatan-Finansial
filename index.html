@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r43'; try {
+    (function () { var V = '2026-10-29-r44'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -74,7 +74,7 @@
             }
         } } catch (e) {} })();
     </script>
-    <link rel="stylesheet" href="./css/style.css?v=20261029o">
+    <link rel="stylesheet" href="./css/style.css?v=20261029p">
 </head>
 
 <body class="font-sans antialiased flex justify-center h-[100dvh] w-full overflow-hidden bg-black text-[var(--text-main)]">
@@ -667,25 +667,16 @@
                     <button onclick="window.toggleTheme()" class="aura-head-bg border border-[var(--border-glass)] rounded-xl py-2.5 text-[10px] font-bold flex flex-col items-center gap-1 hover:bg-white/5 transition"><i class="fa-solid fa-cloud-sun text-accent"></i>Tema</button>
                     <button onclick="window.loadRealtimeDatabaseData()" class="aura-head-bg border border-[var(--border-glass)] rounded-xl py-2.5 text-[10px] font-bold flex flex-col items-center gap-1 hover:bg-white/5 transition"><i class="fa-solid fa-arrows-rotate text-accent"></i>Segarkan</button>
                 </div>
-                <div class="mt-2 aura-head-bg border border-[var(--border-glass)] rounded-xl px-4 py-3 flex justify-between items-center">
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center"><i class="fa-solid fa-dog text-sm"></i></div>
-                        <div>
-                            <p class="text-xs font-bold leading-tight">Maskot Hachi</p>
-                            <p class="text-[10px] text-[var(--text-muted)] leading-tight">Teman keliling di layar</p>
-                        </div>
-                    </div>
-                    <button id="hachi-toggle-btn" onclick="window.toggleHachiPet()" class="px-3 py-1.5 rounded-lg text-[10px] font-black tracking-wider bg-white/10 text-[var(--text-muted)] transition">SEMBUNYI</button>
-                </div>
+                
             </div>
             <div class="space-y-3 pb-4">
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-profil')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-yellow-500/20 text-yellow-400 flex items-center justify-center"><i class="fa-solid fa-user-gear text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-user-gear text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Profil Pengguna</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-profil" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-profil" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-profil" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -723,12 +714,12 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-ai')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center"><i class="fa-solid fa-robot text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-robot text-sm"></i></div>
                             <div class="text-left">
                                 <span class="block text-xs font-bold text-white tracking-widest uppercase">AI & Input Cepat</span>
                             </div>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-ai" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-ai" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-ai" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -814,10 +805,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-bills')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-sky-500/20 text-sky-400 flex items-center justify-center"><i class="fa-solid fa-calendar-check text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-calendar-check text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Tagihan Rutin</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-bills" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-bills" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-bills" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -830,10 +821,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-tampilan')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center"><i class="fa-solid fa-palette text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-palette text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Tampilan & Tema</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-tampilan" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-tampilan" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-tampilan" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -865,10 +856,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-kurs')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center"><i class="fa-solid fa-coins text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-coins text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Kurs & Mata Uang</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-kurs" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-kurs" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-kurs" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -884,10 +875,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-reminders')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center"><i class="fa-solid fa-bell text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-bell text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Pengingat Kewajiban</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-reminders" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-reminders" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-reminders" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -901,10 +892,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-backup')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center"><i class="fa-solid fa-box-archive text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-box-archive text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Cadangan & Ekspor</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-backup" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-backup" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-backup" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -918,10 +909,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-muse')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-violet-500/20 text-violet-400 flex items-center justify-center"><i class="fa-solid fa-link text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-link text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Hubungkan ke Muse</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-muse" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-muse" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-muse" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -939,10 +930,10 @@
                 <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-advanced')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
-                            <div class="w-8 h-8 rounded-lg bg-gray-500/20 text-gray-300 flex items-center justify-center"><i class="fa-solid fa-wrench text-sm"></i></div>
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-wrench text-sm"></i></div>
                             <span class="text-xs font-bold text-white tracking-widest uppercase">Konfigurasi Lanjutan</span>
                         </div>
-                        <div class="w-8 h-8 rounded-full bg-blue-600/20 text-blue-400 flex items-center justify-center transition-colors duration-300"><i id="icon-sec-advanced" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                        <div class="aura-icon-btn"><i id="icon-sec-advanced" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-advanced" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
@@ -1190,6 +1181,14 @@
                         <button id="btn-mode-period" onclick="window.changeViewMode('period')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Siklus</button>
                         <button id="btn-mode-month" onclick="window.changeViewMode('month')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all text-accent bg-white/10">Bulan Ini</button>
                         <button id="btn-mode-all" onclick="window.changeViewMode('all')" class="flex-1 glass-panel py-2 text-[9px] font-bold tracking-widest uppercase transition-all">Semua</button>
+                    </div>
+                </div>
+
+                <div id="hachi-card" class="glass-panel p-3 mb-2 flex items-center gap-3 cursor-pointer" onclick="window.hachiCardTap && window.hachiCardTap()" title="Ketuk untuk sapaan lain">
+                    <img id="hachi-card-img" alt="Hachi" class="w-14 h-14 object-contain shrink-0" />
+                    <div class="flex-1 min-w-0">
+                        <p class="aura-section-title mb-0.5">Hachi</p>
+                        <p id="hachi-card-text" class="text-[11px] leading-snug"></p>
                     </div>
                 </div>
 
@@ -1698,8 +1697,8 @@
         </div>
     </div>
 
-    <script src="./js/hachi-art.js?v=20261029o"></script>
-    <script type="module" src="./js/main.js?v=20261029o"></script>
+    <script src="./js/hachi-art.js?v=20261029p"></script>
+    <script type="module" src="./js/main.js?v=20261029p"></script>
 
 </body>
 </html>
