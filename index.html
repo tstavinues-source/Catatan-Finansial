@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r51'; try {
+    (function () { var V = '2026-10-30-r52'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -716,58 +716,18 @@
                         <div class="flex items-center gap-4">
                             <div class="icon-chip w-8 h-8"><i class="fa-solid fa-robot text-sm"></i></div>
                             <div class="text-left">
-                                <span class="block text-xs font-bold text-white tracking-widest uppercase">AI & Input Cepat</span>
+                                <span class="block text-xs font-bold text-white tracking-widest uppercase">Kunci API (AI)</span>
                             </div>
                         </div>
                         <div class="aura-icon-btn"><i id="icon-sec-ai" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-ai" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
-                            <div class="flex gap-2">
-                                <div class="w-1/2">
-                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Chat</label>
-                                    <select id="setting-ai-chat" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
-                                        <option value="Auto">Auto (Groq->Gemini)</option>
-                                        <option value="Groq">Groq</option>
-                                        <option value="Gemini">Gemini</option>
-                                    </select>
-                                </div>
-                                <div class="w-1/2">
-                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Model Vision</label>
-                                    <select id="setting-ai-vision" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
-                                        <option value="Auto">Auto / Gemini</option>
-                                        <option value="Gemini">Gemini</option>
-                                        <option value="Groq Vision">Groq Vision</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kepribadian Oracle</label>
-                                <select id="setting-ai-persona" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
-                                    <option value="Humble Profesional">1. Humble Profesional</option>
-                                    <option value="Santai dan Asyik">2. Santai dan Asyik</option>
-                                    <option value="Sarkas Cerdas">3. Sarkas Cerdas</option>
-                                    <option value="Mentor Keuangan">4. Mentor Keuangan</option>
-                                    <option value="Formal">5. Formal</option>
-                                    <option value="Lucu">6. Lucu</option>
-                                    <option value="Kombinasi Humble + Jenius + Profesional" selected>7. Kombinasi Humble + Jenius</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Gaya Jawaban AI</label>
-                                <select id="setting-ai-style" class="v-input w-full rounded-xl p-2 text-xs outline-none bg-black">
-                                    <option value="Normal">Normal (Sedang)</option>
-                                    <option value="Singkat">Singkat (Max 2 Paragraf)</option>
-                                    <option value="Detail">Detail (Panjang & Lengkap)</option>
-                                </select>
-                            </div>
-                            <button onclick="window.saveAIPreferences()" class="aura-action-btn mt-2">
-                                <i class="fa-solid fa-floppy-disk"></i> Simpan Setelan AI
-                            </button>
+                            
                             <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
                                 <div class="flex justify-between items-center mb-2">
                                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] block font-bold">Gemini (Vision — Baca Struk)</label>
-                                    <span id="gemini-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">LOCKED</span>
+                                    <span id="gemini-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">MENUNGGU</span>
                                 </div>
                             <div id="gemini-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
                             <div class="flex gap-2 mb-2">
@@ -776,14 +736,8 @@
                                     <i class="fa-solid fa-plus"></i>
                                 </button>
                             </div>
-                            <p class="text-[9px] text-[var(--text-muted)] italic mb-3">Kunci manual dipakai lebih dulu. PIN di bawah hanya cadangan untuk Vault Nexus.</p>
-                            <div>
-                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Master PIN Gemini (Cadangan — Vault Nexus)</label>
-                                <input type="password" id="gemini-pin-input" class="v-input w-full rounded-xl p-3 text-xs font-mono outline-none" placeholder="Masukkan PIN Gemini Anda...">
-                            </div>
-                            <button onclick="window.syncGeminiEngine(false)" class="aura-action-btn mt-2">
-                                <i class="fa-solid fa-unlock-keyhole"></i> Unlock & Sync Gemini
-                            </button>
+                            <p class="text-[9px] text-[var(--text-muted)] italic mb-3">Kunci tersimpan terenkripsi di akunmu dan langsung dipakai — tanpa PIN, tanpa vault.</p>
+                            
                             </div>
                             <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
                                 <div class="flex justify-between items-center mb-2">

@@ -59,37 +59,6 @@ window.saveUserProfile = async function() {
     }
 };
 
-window.saveAIPreferences = async function() {
-    const chatEl = document.getElementById('setting-ai-chat');
-    const visionEl = document.getElementById('setting-ai-vision');
-    const personaEl = document.getElementById('setting-ai-persona');
-    const styleEl = document.getElementById('setting-ai-style');
-    
-    const ocrEl = document.getElementById('setting-ai-ocr');
-    const brainEl = document.getElementById('setting-ai-brain');
-
-    try {
-        await FirebaseService.updateSettings({ 
-            aiPreferences: { 
-                modelChat: chatEl ? chatEl.value : 'Auto',
-                modelVision: visionEl ? visionEl.value : 'Auto',
-                persona: personaEl ? personaEl.value : 'Kombinasi Humble + Jenius + Profesional',
-                style: styleEl ? styleEl.value : 'Normal',
-                modelOcr: ocrEl ? ocrEl.value : 'gemini-2.5-flash',
-                modelBrain: brainEl ? brainEl.value : 'gemini-3.5-flash'
-            } 
-        });
-
-        if (window.showToast) {
-            window.showToast("Preferensi AI & Rute Varian Model berhasil diamankan!");
-        }
-    } catch (e) {
-        if (window.showToast) {
-            window.showToast("Gagal menyimpan preferensi AI.", true);
-        }
-    }
-};
-
 // ============================================================================
 // 2. MANAJEMEN KUNCI API (GROQ POOL CLOUD & GEMINI VISION)
 // ============================================================================
@@ -307,7 +276,7 @@ window.renderGeminiKeysUI = function() {
         let keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
         
         if (keys.length === 0) {
-            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Gemini manual. Mesin memakai Vault Nexus (PIN) bila ter-unlock.</p>';
+            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Gemini manual. Tambahkan kunci lewat kolom di bawah agar Baca Struk aktif.</p>';
             return;
         }
 
@@ -351,58 +320,42 @@ window.renderGeminiKeysUI = function() {
 };
 
 window.syncGeminiEngine = async function(silent = false) {
-    const pinEl = document.getElementById('gemini-pin-input');
-    const pinInput = pinEl ? pinEl.value.trim() : '';
-    const pin = silent ? localStorage.getItem('aurafi_gemini_pin') : pinInput;
-    
-    const manualRaw = AuraState.data.settings?.geminiKeysEncrypted || [];
-    const manualCount = (Array.isArray(manualRaw) ? manualRaw : Object.values(manualRaw)).length;
-    if ((!pin || pin.length < 3) && manualCount === 0) {
-        if (!silent && window.showToast) {
-            window.showToast("HARAP MASUKKAN PIN GEMINI ATAU PASANG KUNCI MANUAL!", true);
-        }
-        return;
-    }
-    const effectivePin = pin || '';
-    
+    // Vault Nexus sudah dilepas (kunci di sana tidak bisa dipakai lagi):
+    // mesin Gemini kini HANYA memakai kunci manual milik pengguna
+    // (settings.geminiKeysEncrypted). Tidak ada PIN, tidak ada vault.
+    try { localStorage.removeItem('aurafi_gemini_pin'); } catch (e) { /* abaikan */ }
     const gBadge = document.getElementById('gemini-status-badge');
-    
-    if (gBadge) {
-        gBadge.className = "text-[9px] bg-indigo-950/40 text-indigo-400 border border-indigo-900/50 px-2 py-0.5 rounded font-mono animate-pulse";
-        gBadge.innerText = "DECRYPTING...";
-    }
-    
     try {
-        if(typeof window.GeminiFailoverEngine !== 'function') {
+        if (typeof window.GeminiFailoverEngine !== 'function') {
             throw new Error("Modul AI belum siap.");
         }
-        
-        const geminiEngine = new window.GeminiFailoverEngine(effectivePin);
+        const geminiEngine = new window.GeminiFailoverEngine();
         const gCount = await geminiEngine.init();
-        
+        AuraState.instances.geminiEngine = geminiEngine;
         if (gCount > 0) {
-            AuraState.instances.geminiEngine = geminiEngine;
-            if (pin) localStorage.setItem('aurafi_gemini_pin', pin);
-            
             if (gBadge) {
                 gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono";
                 gBadge.innerText = `ACTIVE (${gCount})`;
             }
-            
             if (!silent && window.showToast) {
-                window.showToast("Gemini Vision Di-Unlock.");
+                window.showToast("Gemini Vision aktif dari kunci manual.");
             }
         } else {
-            throw new Error("0 Keys");
+            if (gBadge) {
+                gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
+                gBadge.innerText = "BELUM ADA KUNCI";
+            }
+            if (!silent && window.showToast) {
+                window.showToast("Belum ada kunci Gemini — tambahkan kunci manual dulu.", true);
+            }
         }
-    } catch(e) {
+    } catch (e) {
         if (gBadge) {
             gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
-            gBadge.innerText = "LOCKED";
+            gBadge.innerText = "GALAT";
         }
-        
         if (!silent && window.showToast) {
-            window.showToast("Dekripsi Gagal: PIN Salah.", true);
+            window.showToast("Gagal memuat mesin Gemini.", true);
         }
     }
 };
