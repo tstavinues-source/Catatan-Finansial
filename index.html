@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-29-r45'; try {
+    (function () { var V = '2026-10-30-r46'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -868,6 +868,39 @@
                                 <span id="settings-fx-rate" class="text-[11px] font-mono font-bold text-[var(--text-main)]">Memuat…</span>
                             </div>
                             <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Kurs JPY → IDR diambil langsung dari exchangerate-api dan disimpan lokal; seluruh konversi aplikasi memakai satu kurs kanonis ini. Mata uang tampilan (JPY/IDR) diganti lewat tombol di header.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-siklus'); if (window.renderSiklusPengaturan) window.renderSiklusPengaturan();" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-calendar-days text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Siklus &amp; Gajian</span>
+                        </div>
+                        <div class="aura-icon-btn"><i id="icon-sec-siklus" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-siklus" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <p class="text-[9px] text-[var(--text-muted)] leading-relaxed">Siklus mengikuti <b class="text-white">tanggal gajian nyata</b> yang ditandai di sini. Bulan yang belum ditandai diisi perkiraan hari rutin; tanggal nyata selalu menang.</p>
+                            <div>
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Tanggal Gajian yang Ditandai</label>
+                                <div id="siklus-daftar-jangkar" class="space-y-1.5"></div>
+                            </div>
+                            <div>
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Tandai Tanggal Gajian</label>
+                                <div class="flex gap-2">
+                                    <input type="date" id="siklus-input-tanggal" class="v-input flex-1 rounded-xl p-2.5 text-xs outline-none">
+                                    <button onclick="window.tambahJangkarSiklus()" class="aura-pill-btn shrink-0"><i class="fa-solid fa-plus"></i> Tandai</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Perkiraan Hari Gajian Rutin (Cadangan)</label>
+                                <select id="siklus-hari-rutin" onchange="window.ubahHariRutinSiklus(this.value)" class="v-input w-full rounded-xl p-2.5 text-xs outline-none bg-black">
+                                    <option value="0">Tidak diatur</option>
+                                </select>
+                                <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed mt-1">Hanya dipakai untuk bulan yang belum punya tanggal nyata. Bila keduanya kosong, dipakai tanggal tetap lama.</p>
+                            </div>
                         </div>
                     </div>
                 </div>

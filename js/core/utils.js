@@ -142,14 +142,36 @@ export const AuraUtils = {
                 .map(function(a) { const d = new Date(a + 'T00:00:00'); return isNaN(d.getTime()) ? null : d; })
                 .filter(Boolean)
                 .sort(function(a, b) { return a - b; });
+            // HIBRIDA (r46): bila pengguna mengatur hari gajian rutin
+            // (settings.cycleRoutineDay), bulan yang BELUM punya tanggal
+            // nyata diisi jangkar maya pada hari rutin itu. Tanggal nyata
+            // selalu menang; jangkar maya hanya mengisi celah, jadi siklus
+            // tetap berjalan walau gajian bulan ini belum ditandai.
+            const routineDay = Number(AuraState.data.settings?.cycleRoutineDay) || 0;
+            let effectiveAnchors = anchorDates;
+            if (routineDay >= 1 && routineDay <= 28) {
+                const realKeys = new Set(anchorDates.map(function(d) { return d.getFullYear() * 100 + d.getMonth(); }));
+                const virtualAnchors = [];
+                const cursor = new Date(now.getFullYear(), now.getMonth() - 14, 1);
+                const lastMonth = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+                while (cursor <= lastMonth) {
+                    const key = cursor.getFullYear() * 100 + cursor.getMonth();
+                    if (!realKeys.has(key)) {
+                        const daysInMonth = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0).getDate();
+                        virtualAnchors.push(new Date(cursor.getFullYear(), cursor.getMonth(), Math.min(routineDay, daysInMonth), 0, 0, 0));
+                    }
+                    cursor.setMonth(cursor.getMonth() + 1);
+                }
+                effectiveAnchors = anchorDates.concat(virtualAnchors).sort(function(a, b) { return a - b; });
+            }
             const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-            const elapsed = anchorDates.filter(function(d) { return d <= todayStart; });
-            
+            const elapsed = effectiveAnchors.filter(function(d) { return d <= todayStart; });
+
             if (elapsed.length > 0) {
                 start = elapsed[elapsed.length - 1];
-                const idx = anchorDates.indexOf(start);
-                if (idx >= 0 && idx + 1 < anchorDates.length) {
-                    const nd = anchorDates[idx + 1];
+                const idx = effectiveAnchors.indexOf(start);
+                if (idx >= 0 && idx + 1 < effectiveAnchors.length) {
+                    const nd = effectiveAnchors[idx + 1];
                     end = new Date(nd.getFullYear(), nd.getMonth(), nd.getDate() - 1, 23, 59, 59);
                 } else {
                     end = new Date(start.getFullYear(), start.getMonth() + 1, start.getDate() - 1, 23, 59, 59);
