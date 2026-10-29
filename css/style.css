@@ -532,3 +532,13 @@ html[data-skin="clay"] .aura-action-btn { box-shadow: 3px 3px 8px rgba(94, 72, 1
     transition: all .2s ease;
 }
 .aura-dashed-btn:hover { background: color-mix(in srgb, var(--accent-primary) 12%, transparent); }
+
+/* --- Penyetelan blok inset per kulit (2026-10-29) ---
+   Blok-blok cekung (kartu mini Analisa, kotak wawasan, dsb.) memakai
+   --bg-inset + --shadow-inset. Kulit-kulit baru mewarisi nilai slate yang
+   gelap mengkilap sehingga blok terbaca hitam glossy dan lepas dari tema.
+   Kini tiap kulit punya resep inset sendiri. */
+html[data-skin="cyber"] { --bg-inset: #070c17; --shadow-inset: inset 0 1px 3px rgba(0,0,0,.6), inset 0 0 0 1px rgba(34,211,238,.06); }
+html[data-skin="luxury"] { --bg-inset: #17120e; --shadow-inset: inset 0 1px 3px rgba(0,0,0,.55), inset 0 0 0 1px rgba(201,168,106,.05); }
+html[data-skin="brutal"] { --bg-inset: #eee1c2; --shadow-inset: inset 0 0 0 1px rgba(22,19,14,.14); }
+html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px rgba(94,72,180,.13), inset -3px -3px 8px rgba(255,255,255,.5); }
