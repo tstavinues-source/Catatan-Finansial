@@ -42,44 +42,6 @@ window.BasmiHantuMutasi = function() {
     }
 };
 
-window.renderRecurringUIForBudget = function() {
-    AuraUtils.safeDOM('budget-bills-container', function(el) {
-        const rPayments = AuraState.data.settings?.recurringPayments || {};
-        const entries = Object.entries(rPayments);
-        
-        if (entries.length === 0) {
-            el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-3 bg-black/20 rounded-xl">Konfigurasi Tagihan Kosong.</p>';
-            return;
-        }
-        
-        let compiledBudgets = '';
-        entries.forEach(([id, rp]) => {
-            const convertedAmt = AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY');
-            const formattedMoney = window.formatAuraCurrency(convertedAmt);
-            
-            compiledBudgets += `
-            <div class="glass-panel p-3 flex justify-between items-center border-l-2 border-l-sky-400 group">
-                <div>
-                    <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
-                        ${AuraUtils.escapeHtml(rp.name)} 
-                        <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100">
-                            <i class="fa-solid fa-trash text-[10px]"></i>
-                        </button>
-                    </h4>
-                    <p class="text-[9px] text-[var(--text-muted)] font-mono uppercase mt-0.5">
-                        Tgl Eksekusi: ${rp.date} / Bulan
-                    </p>
-                </div>
-                <p class="font-bold text-sm font-mono text-[var(--text-main)]">
-                    ${formattedMoney}
-                </p>
-            </div>`;
-        });
-        
-        el.innerHTML = compiledBudgets;
-    });
-};
-
 window.reCalculateAll = function() {
     const allTx = AuraState.data.transactions || [];
     const wallets = AuraState.data.wallets || {};

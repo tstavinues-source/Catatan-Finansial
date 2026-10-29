@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r50'; try {
+    (function () { var V = '2026-10-30-r51'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -974,7 +974,6 @@
                                 <button onclick="window.openWalletManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-wallet text-sky-400 text-lg"></i> Dompet & Bank</button>
                                 <button onclick="window.openCategoryManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-folder-tree text-emerald-400 text-lg"></i> Kategori</button>
                                 <button onclick="window.openTrackerManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-box-open text-amber-400 text-lg"></i> Trackers</button>
-                                <button onclick="window.openFamilyManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-users text-indigo-400 text-lg"></i> Keluarga</button>
                                 <button onclick="window.showModal('modal-import-data')" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-file-import text-emerald-400 text-lg"></i> Impor Data</button>
                             </div>
                         </div>
@@ -1024,35 +1023,9 @@
         </div>
     </div>
 
-    <div id="modal-edit-budget" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
-        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-rose-400">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-lg font-bold flex items-center gap-2 text-rose-400 font-display"><i class="fa-solid fa-fire-flame-curved"></i> Batas Burn Rate</h3>
-                <button onclick="window.closeModal('modal-edit-budget')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="space-y-4">
-                <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Batas Pengeluaran Bulanan (Limit)</label>
-                    <input type="number" id="budget-limit-input" class="v-input w-full rounded-xl p-3 text-sm font-mono font-bold text-rose-400 outline-none" placeholder="Masukkan Nominal JPY/IDR">
-                </div>
-                <button onclick="window.executeSaveBudget()" class="aura-action-btn lg">Simpan Ketetapan</button>
-            </div>
-        </div>
-    </div>
+    
 
-    <div id="modal-family" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-5 hidden opacity-0 transition-all duration-300">
-        <div class="glass-panel p-6 w-full max-w-sm shadow-2xl border-t-4 border-t-indigo-400 max-h-[90vh] overflow-y-auto no-scrollbar">
-            <div class="flex justify-between items-center mb-6 sticky top-0 bg-[var(--bg-glass)] z-10 pb-2">
-                <h3 class="text-lg font-bold flex items-center gap-2 text-indigo-400 font-display"><i class="fa-solid fa-users"></i> Anggota Keluarga</h3>
-                <button onclick="window.closeModal('modal-family')" class="aura-icon-btn"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div id="family-list-container" class="space-y-3 mb-5"></div>
-            <div class="pt-4 border-t border-[var(--border-glass)] space-y-3">
-                <input type="text" id="new-family-name" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Nama Anggota (Cth: Istri)">
-                <button onclick="window.addFamilyMember()" class="w-full py-3 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-bold text-xs uppercase tracking-wider hover:bg-indigo-500/40 transition">Tambah Anggota</button>
-            </div>
-        </div>
-    </div>
+    
 
     <div id="modal-wallet-manager" class="fixed inset-0 z-[110] bg-black/85 flex items-center justify-center p-4 hidden opacity-0 transition-all duration-300">
         <div class="glass-panel w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] overflow-hidden border-t-4 border-t-accent">
@@ -1191,7 +1164,7 @@
                     <button id="btn-curr-idr" onclick="window.setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
                 </div>
 
-                <button onclick="window.showModal('modal-settings'); if (window.syncHachiToggle) window.syncHachiToggle();" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition shrink-0" aria-label="Pengaturan AI">
+                <button onclick="window.showModal('modal-settings');" class="w-9 h-9 rounded-xl glass-panel flex items-center justify-center text-[var(--text-muted)] hover:text-accent transition shrink-0" aria-label="Pengaturan AI">
                     <i class="fa-solid fa-gear text-sm"></i>
                 </button>
             </div>
@@ -1349,9 +1322,6 @@
                     <input type="text" id="filter-search" oninput="window.applyFilters()" placeholder="Cari nama/toko..." class="v-input flex-1 min-w-[120px] rounded-lg p-2 text-[10px] outline-none">
                     <select id="filter-category" onchange="window.applyFilters()" class="v-input flex-1 min-w-[100px] rounded-lg p-2 text-[10px] outline-none bg-black category-dropdown">
                         <option value="ALL">SEMUA KATEGORI</option>
-                    </select>
-                    <select id="filter-user" onchange="window.applyFilters()" class="v-input flex-1 min-w-[100px] rounded-lg p-2 text-[10px] outline-none bg-black">
-                        <option value="ALL">SEMUA USER</option>
                     </select>
                 </div>
 
