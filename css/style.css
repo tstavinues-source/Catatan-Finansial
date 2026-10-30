@@ -580,3 +580,25 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
    (tombol tampilkan chat: fixed, kanan 16px, bawah 100px, tinggi 48px)
    agar keduanya tidak bertumpuk. */
 .fab-manual-wrap.chat-tersembunyi #btn-manual-fab { position: fixed; bottom: 160px; }
+
+/* ===== Hachi di atas kartu Net Worth =====
+   Panggung setinggi 0 tepat di tepi atas kartu; gambar menjulang ke atas
+   dari garis itu (ruang kepala disediakan margin mt-14 pada pembungkusnya). */
+#hachi-stage {
+  position: absolute;
+  top: 0.5rem;
+  left: 0;
+  right: 0;
+  height: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+#hachi-img {
+  position: absolute;
+  bottom: 0;
+  height: 56px;
+  width: auto;
+  display: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
