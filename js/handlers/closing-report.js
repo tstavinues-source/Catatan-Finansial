@@ -359,6 +359,18 @@ ATURAN: 3 paragraf narasi yang elegan, analitis, blak-blakan; bahas rasio pengel
     if (typeof window.showModal === "function") window.showModal("modal-pdf-opsi");
   };
 
+  // Pintu langsung Ekspor PDF dari pandangan Analisa: bila laporan siklus
+  // belum disusun, susun dulu lewat alur Tutup Buku (modal laporan ikut
+  // terbuka sebagai pratinjau), lalu tampilkan pilihan isi PDF di atasnya.
+  window.openPdfExport = function () {
+    if (!current) {
+      window.openClosingReport();
+      setTimeout(() => window.openPdfOptions(), 150);
+    } else {
+      window.openPdfOptions();
+    }
+  };
+
   function loadJsPDF() {
     if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
     return new Promise((resolve, reject) => {

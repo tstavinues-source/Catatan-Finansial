@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r58'; try {
+    (function () { var V = '2026-10-30-r59'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -1296,6 +1296,7 @@
                         <button onclick="window.openCategoryManager()" class="glass-panel w-9 h-9 rounded-xl text-[12px] font-black text-emerald-400 hover:bg-white/10 active:scale-95 transition flex items-center justify-center" title="Manajer Kategori"><i class="fa-solid fa-folder-tree"></i></button>
                         <button onclick="window.openArchiveModal()" class="glass-panel w-9 h-9 rounded-xl text-[12px] font-black text-amber-400 hover:bg-white/10 active:scale-95 transition flex items-center justify-center" title="Brankas Arsip Laporan"><i class="fa-solid fa-vault"></i></button>
                         <button onclick="window.downloadCSV()" class="glass-panel w-9 h-9 rounded-xl text-[12px] font-black text-accent hover:bg-white/10 active:scale-95 transition flex items-center justify-center" title="Export CSV"><i class="fa-solid fa-download"></i></button>
+                        <button onclick="window.openPdfExport()" class="glass-panel w-9 h-9 rounded-xl text-[12px] font-black text-rose-400 hover:bg-white/10 active:scale-95 transition flex items-center justify-center" title="Ekspor PDF"><i class="fa-solid fa-file-pdf"></i></button>
                     </div>
                 </div>
 
