@@ -214,14 +214,6 @@ window.renderAnalytics = function() {
         catContainer.innerHTML = `
         <div class="flex justify-between items-center mb-4">
             <span class="text-xs font-bold text-[var(--text-muted)]"><i class="fa-solid fa-layer-group mr-1"></i> Hierarki Data</span>
-            <div class="flex gap-2">
-                <button onclick="window.autoSyncIcons()" class="bg-emerald-500/20 border border-emerald-500/50 hover:bg-emerald-500 hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider text-emerald-400 transition flex items-center gap-1.5 active:scale-95" title="Sinkron Massal">
-                    <i class="fa-solid fa-rotate"></i> SYNC ALL
-                </button>
-                <button onclick="window.openCategoryMapper()" class="bg-accent/20 border border-accent/50 hover:bg-accent hover:text-black px-3 py-1.5 rounded-lg text-[9px] font-black tracking-wider text-accent transition flex items-center gap-1.5 active:scale-95">
-                    <i class="fa-solid fa-sliders"></i> ATUR INDUK
-                </button>
-            </div>
         </div>`;
         
         if (sortedParents.length === 0) {
@@ -381,60 +373,6 @@ window.addSingleCategoryToVault = async function(subName) {
         if(window.showToast) window.showToast("Gagal mendaftarkan kategori ke Cloud.", true);
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
-    }
-};
-
-// === FUNGSI AUTO-SYNC IKON MASSAL ===
-window.autoSyncIcons = async function() {
-    const tx = AuraState.data.transactions || [];
-    const rawCats = AuraState.data.settings?.customCategories || {};
-    let isUpdated = false;
-
-    const uniqueSubs = new Set();
-    tx.forEach(t => {
-        if(t.is_deleted || t.tipe !== 'pengeluaran') return;
-        (t.items || []).forEach(it => {
-            let cleanCat = (it.kategori_barang || 'Lainnya').trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
-            uniqueSubs.add(cleanCat);
-        });
-    });
-
-    const catArray = Object.entries(rawCats).map(([id, data]) => ({ id, ...data }));
-    
-    uniqueSubs.forEach(subName => {
-        const exists = catArray.some(c => c.name.toLowerCase() === subName.toLowerCase());
-        if (!exists && subName !== 'Lainnya') {
-            const parentName = getParentCategory(subName);
-            
-            let pId = Object.keys(rawCats).find(id => rawCats[id].name === parentName && !rawCats[id].parentId);
-            if (!pId) {
-                pId = `cat_p_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-                const pStyle = CategoryManager.resolveStyle(parentName);
-                rawCats[pId] = { name: parentName, type: 'expense', icon: pStyle.icon, color: pStyle.hex, parentId: null };
-            }
-
-            const cId = `cat_c_${Date.now()}_${Math.floor(Math.random()*1000)}`;
-            const fallbackStyle = CategoryManager.resolveStyle(subName);
-            rawCats[cId] = { name: subName, type: 'expense', icon: fallbackStyle.icon, color: fallbackStyle.hex, parentId: pId };
-            
-            isUpdated = true;
-        }
-    });
-
-    if (isUpdated) {
-        try {
-            if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
-            await update(ref(AuraState.instances.db), { [`${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/settings/customCategories`]: rawCats });
-            if(AuraState.data.settings) AuraState.data.settings.customCategories = rawCats;
-            window.renderAnalytics();
-            if(window.showToast) window.showToast("✅ Ikon massal diselaraskan! Silakan klik 'ATUR INDUK' untuk mengubah ikon.");
-        } catch (e) {
-            if(window.showToast) window.showToast("❌ Gagal menyelaraskan ikon ke Cloud.", true);
-        } finally {
-            if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
-        }
-    } else {
-        if(window.showToast) window.showToast("Semua kategori sudah terdaftar di Gudang. Aman!");
     }
 };
 
