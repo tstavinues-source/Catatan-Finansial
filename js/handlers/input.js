@@ -60,6 +60,3 @@ window.handleSend = async function() {
     }
 };
 
-window.startVoice = function() {
-    if (window.showToast) window.showToast("Fitur Voice Recognition sedang dalam pengembangan.");
-};
