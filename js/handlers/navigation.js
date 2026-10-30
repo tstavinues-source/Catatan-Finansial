@@ -319,7 +319,7 @@ window.toggleGoalForm = function() {
 
 window.promptBudget = function() {
     // Menggunakan AURA ALERT PROMPT untuk UI yang lebih premium
-    window.AuraAlert.prompt("Ubah Batas Anggaran (Nominal Angka):", "Masukkan nominal...", (amt) => {
+    window.AuraAlert.prompt("Batas Pengeluaran Pribadi (Nominal Angka):", "Masukkan nominal...", (amt) => {
         if (amt !== null) {
             const parsedAmt = parseFloat(amt);
             if (!isNaN(parsedAmt) && parsedAmt >= 0) {
@@ -328,7 +328,7 @@ window.promptBudget = function() {
                     window.FirebaseService.updateSettings({ monthlyBudget: { limit: parsedAmt } });
                 }
                 if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
-                if (window.showToast) window.showToast(`Anggaran diperbarui!`);
+                if (window.showToast) window.showToast(`Limit pribadi diperbarui!`);
             } else {
                 if (window.showToast) window.showToast("Input tidak valid!", true);
             }

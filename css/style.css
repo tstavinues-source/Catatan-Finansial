@@ -602,3 +602,27 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
   user-select: none;
   -webkit-user-drag: none;
 }
+
+/* ============================================================
+   SPESIFIKASI TAMPILAN 2026-10-30 — angka ramping & tabular,
+   label tombol Cek Saldo yang muncul saat diketuk
+   ============================================================ */
+.num-tab { font-variant-numeric: tabular-nums lining-nums; }
+.nw-angka {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums lining-nums;
+}
+.cek-saldo-label {
+    display: inline-block;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-width 0.35s ease, opacity 0.25s ease, margin-left 0.35s ease;
+}
+.cek-saldo-btn.terbuka .cek-saldo-label { max-width: 130px; opacity: 1; margin-left: 5px; }
+@media (prefers-reduced-motion: reduce) {
+    .cek-saldo-label { transition: none; }
+}
