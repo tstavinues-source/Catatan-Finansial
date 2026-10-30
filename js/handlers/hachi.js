@@ -11,10 +11,13 @@
 // (diukur dari video sumbernya; mis. membungkuk = merayap maju).
 //
 // MENAMBAH GERAKAN BARU — cukup 3 langkah:
-//   1. Taruh WebP animasi (latar transparan, bingkai 240ms, tinggi ±96–160px)
-//      di assets/hachi/<nama>.webp. Gerakan panjang boleh dipecah menjadi
-//      beberapa berkas dan ditulis sebagai array — mesin memainkannya
-//      berurutan seolah satu gerakan (lihat 'kupu').
+//   1. Siapkan WebP animasi (latar transparan, bingkai 240ms, tinggi ±96–160px).
+//      Karena jalur unggah repo ini hanya menerima berkas teks, WebP disimpan
+//      sebagai teks base64: assets/hachi/<nama>.webp.b64 — mesin di bawah
+//      mendekodenya kembali menjadi gambar saat aplikasi dibuka.
+//      Gerakan panjang boleh dipecah menjadi beberapa berkas dan ditulis
+//      sebagai array — mesin memainkannya berurutan seolah satu gerakan
+//      (lihat 'kupu').
 //   2. Tambah satu entri di GERAKAN di bawah.
 //   3. Sisipkan namanya di KOREOGRAFI bila ingin ikut tampil.
 // Mesinnya yang mengurus posisi, arah hadap, dan sambungan antar gerakan.
@@ -52,15 +55,28 @@ const POSISI_AWAL = 0.36;    // titik tengah awal, sama dengan titik pulang kore
 
   const tunggu = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  function mulai() {
+  async function mulai() {
     const stage = document.getElementById('hachi-stage');
     const img = document.getElementById('hachi-img');
     if (!stage || !img) return;
 
-    // Panaskan semua berkas gerakan supaya pergantian tidak berkedip.
-    Object.values(GERAKAN).forEach((g) => {
-      (Array.isArray(g.berkas) ? g.berkas : [g.berkas]).forEach((b) => { const i = new Image(); i.src = b; });
-    });
+    // Dekode semua berkas gerakan (base64 -> WebP) sebelum tampil,
+    // supaya pergantian antar gerakan tidak berkedip.
+    const urlAset = {};
+    async function siapkanAset() {
+      const namaUnik = new Set();
+      Object.values(GERAKAN).forEach((g) => {
+        (Array.isArray(g.berkas) ? g.berkas : [g.berkas]).forEach((b) => namaUnik.add(b));
+      });
+      await Promise.all([...namaUnik].map(async (b) => {
+        const teks = await (await fetch(b + '.b64')).text();
+        const bin = atob(teks.replace(/\s/g, ''));
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        urlAset[b] = URL.createObjectURL(new Blob([u8], { type: 'image/webp' }));
+      }));
+    }
+    try { await siapkanAset(); } catch (e) { return; } // aset gagal dimuat — Hachi tidak tampil, aplikasi tetap jalan
 
     const state = { tengah: POSISI_AWAL, hadap: 1, berkasAktif: '' };
 
@@ -74,7 +90,7 @@ const POSISI_AWAL = 0.36;    // titik tengah awal, sama dengan titik pulang kore
     };
 
     function setBerkas(b) {
-      if (state.berkasAktif !== b) { img.src = b; state.berkasAktif = b; }
+      if (state.berkasAktif !== b) { img.src = urlAset[b]; state.berkasAktif = b; }
       img.style.transform = 'scaleX(' + state.hadap + ')';
     }
 
