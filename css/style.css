@@ -626,3 +626,19 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
 @media (prefers-reduced-motion: reduce) {
     .cek-saldo-label { transition: none; }
 }
+
+/* ===== Ikon garis terbaru & tombol melayang (samakan mockup) =====
+   Ikon navigasi/panel kini SVG garis (stroke currentColor) menggantikan
+   glyph Font Awesome pada titik-titik utama; tombol melayang + manual dan
+   tampilkan-chat mendapat garis tepi tegas agar terbaca di kulit terang. */
+.nav-btn svg { display: block; }
+#btn-manual-fab { border: 2px solid rgba(0, 0, 0, 0.35); }
+#chat-show-btn { border: 2px solid rgba(0, 0, 0, 0.35); }
+html[data-skin="brutal"] #btn-manual-fab,
+html[data-skin="brutal"] #chat-show-btn {
+    border: 2.5px solid #16130e;
+    box-shadow: 4px 4px 0 #16130e;
+    color: #16130e;
+}
+html[data-skin="brutal"] #btn-manual-fab:active,
+html[data-skin="brutal"] #chat-show-btn:active { box-shadow: 2px 2px 0 #16130e; }
