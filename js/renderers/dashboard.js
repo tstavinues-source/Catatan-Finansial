@@ -127,14 +127,14 @@ window.reCalculateAll = function() {
 
         // Kartu dompet terpisah ala mockup untuk seksi "Dompet Saya"
         const cardHtml = `
-        <div class="glass-panel p-3.5 ${isHidden ? 'opacity-50' : ''}">
+        <div class="glass-panel p-3 ${isHidden ? 'opacity-50' : ''}">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 icon-chip shrink-0"><i class="fa-solid ${w.type === 'cashless' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-accent text-xs"></i></div>
+                <div class="w-7 h-7 icon-chip shrink-0"><i class="fa-solid ${w.type === 'cashless' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-accent text-[10px]"></i></div>
                 <span class="text-xs font-bold truncate">${AuraUtils.escapeHtml(w.name)}${iconEye}</span>
             </div>
-            <p class="font-display font-extrabold text-[15px] mt-2.5 ${hiddenStyle}">${window.formatAuraCurrencyCompact(bal)}</p>
+            <p class="font-bold text-[15px] num-tab mt-2 ${hiddenStyle}">${window.formatAuraCurrencyCompact(bal)}</p>
             <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-0.5 font-semibold">${w.type === 'cashless' ? 'Rekening Digital' : 'Tunai Fisik'}</p>
-            <button onclick="window.openReconcileModal('${wId}')" class="mt-2.5 w-full py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-white transition active:scale-95"><i class="fa-solid fa-scale-balanced mr-1"></i> Cek Saldo Nyata</button>
+            <button onclick="window.cekSaldoTap(this,'${wId}')" class="cek-saldo-btn mt-2.5 inline-flex items-center py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-white transition active:scale-95" aria-label="Cek Saldo Nyata" title="Cek Saldo Nyata"><i class="fa-solid fa-scale-balanced"></i><span class="cek-saldo-label">Cek Saldo Nyata</span></button>
         </div>`;
         walletCardsHtml += cardHtml;
 
@@ -317,7 +317,7 @@ window.reCalculateAll = function() {
         };
     });
 
-    AuraUtils.safeDOM('dash-wallets', el => { el.innerHTML = walletCardsHtml || '<p class="text-[10px] text-[var(--text-muted)] col-span-2">Belum ada dompet.</p>'; });
+    AuraUtils.safeDOM('dash-wallets', el => { el.innerHTML = walletCardsHtml || '<p class="text-[10px] text-[var(--text-muted)] col-span-2">Belum ada dompet.</p>'; if (typeof window.applyDompetHidden === 'function') window.applyDompetHidden(); });
 
     const splitTotal = totalCashBal + totalCashlessBal;
     const cashSplitPct = splitTotal > 0 ? Math.round((totalCashBal / splitTotal) * 100) : 0;
@@ -327,20 +327,22 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('dash-split-bank-pct', el => el.innerText = `${100 - cashSplitPct}%`);
 
     const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
-    const burnPct = limitVal > 0 ? (periodSpent / limitVal) * 100 : 0;
-    const remainingBudget = limitVal - periodSpent;
+    // Limit berlaku untuk PENGELUARAN PRIBADI (keputusan pemilik 2026-10-30):
+    // kewajiban tidak bisa dikontrol, pribadi bisa.
+    const burnPct = limitVal > 0 ? (periodPersonal / limitVal) * 100 : 0;
+    const remainingBudget = limitVal - periodPersonal;
     
     AuraUtils.safeDOM('living-core', el => el.className = `w-full h-44 living-core ${burnPct > 90 ? 'danger' : ''} flex flex-col items-center justify-center relative overflow-hidden cursor-pointer rounded-[1.5rem]`);
     AuraUtils.safeDOM('burn-progress', el => { 
         el.style.width = `${Math.min(burnPct, 100)}%`; 
         el.style.backgroundColor = burnPct > 90 ? 'var(--color-expense)' : 'var(--color-income)'; 
     });
-    AuraUtils.safeDOM('burn-spent', el => el.innerText = `Terpakai: ${window.formatAuraCurrencyCompact(periodSpent)}`);
+    AuraUtils.safeDOM('burn-spent', el => el.innerText = `Terpakai (Pribadi): ${window.formatAuraCurrencyCompact(periodPersonal)}`);
     AuraUtils.safeDOM('burn-limit', el => el.innerText = `Limit: ${window.formatAuraCurrencyCompact(limitVal)}`);
     
     if (burnPct > 90 && !AuraState.system.hasShownBudgetAlert) {
         AuraState.system.hasShownBudgetAlert = true;
-        if (typeof window.showToast === 'function') window.showToast("PERINGATAN: Limit Anggaran Anda telah mencapai lebih dari 90%!", true);
+        if (typeof window.showToast === 'function') window.showToast("PERINGATAN: Limit pengeluaran pribadi Anda telah mencapai lebih dari 90%!", true);
     }
 
     const msInDay = 1000 * 60 * 60 * 24;
@@ -350,11 +352,11 @@ window.reCalculateAll = function() {
     const periodPct = Math.min((daysPassed / daysInPeriod) * 100, 100);
     
     AuraUtils.safeDOM('burn-insight-box', el => {
-        if (periodSpent > limitVal && limitVal > 0) { 
-            el.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> KEDARURATAN KAS:</span> Limit telah terlampaui. Pengereman ekstrim disarankan!`; 
+        if (periodPersonal > limitVal && limitVal > 0) { 
+            el.innerHTML = `<span class="text-[var(--color-expense)] font-bold"><i class="fa-solid fa-triangle-exclamation"></i> KEDARURATAN KAS:</span> Limit pribadi telah terlampaui. Pengereman ekstrim disarankan!`; 
             el.style.borderColor = 'var(--color-expense)'; 
         } else { 
-            el.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN TERKENDALI:</span> Pola stabil.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa aman siklus ini: ${window.formatAuraCurrency(remainingBudget)}</span>`; 
+            el.innerHTML = `<span class="text-[var(--color-income)] font-bold"><i class="fa-solid fa-circle-check"></i> AMAN TERKENDALI:</span> Pola stabil.<br><span class="text-[9px] mt-1 text-[var(--text-muted)]">Sisa limit pribadi siklus ini: ${window.formatAuraCurrency(remainingBudget)}</span>`; 
             el.style.borderColor = 'var(--border-glass)'; 
         }
     });
@@ -843,4 +845,31 @@ window.renderBrankas = function() {
                 + '<button onclick="window.openEditGoalFull(\'' + gid + '\')" class="glass-panel px-4 rounded-xl text-[11px] font-bold text-[var(--text-muted)] active:scale-95 transition"><i class="fa-solid fa-pen"></i></button></div></div>';
         }).join('');
     });
+};
+
+// ============================================================================
+// CEK SALDO ikon-saja + sembunyi blok Dompet Saya (spesifikasi tampilan 2026-10-30)
+// Ketukan pertama pada tombol timbangan hanya memunculkan labelnya; ketukan
+// kedua menjalankan Cek Saldo Nyata. Blok dompet bisa disembunyikan per
+// perangkat (localStorage, pola yang sama dengan sembunyi kotak chat).
+// ============================================================================
+window.cekSaldoTap = function(btn, wId) {
+    if (!btn.classList.contains('terbuka')) { btn.classList.add('terbuka'); return; }
+    if (typeof window.openReconcileModal === 'function') window.openReconcileModal(wId);
+};
+
+window.toggleDompetSaya = function() {
+    const hidden = localStorage.getItem('aurafi_dompet_hidden') === '1';
+    localStorage.setItem('aurafi_dompet_hidden', hidden ? '0' : '1');
+    window.applyDompetHidden();
+};
+
+window.applyDompetHidden = function() {
+    const hidden = localStorage.getItem('aurafi_dompet_hidden') === '1';
+    const grid = document.getElementById('dash-wallets');
+    if (grid) grid.style.display = hidden ? 'none' : '';
+    const note = document.getElementById('dompet-hidden-note');
+    if (note) note.style.display = hidden ? '' : 'none';
+    const ic = document.getElementById('dompet-eye-icon');
+    if (ic) ic.className = 'fa-solid ' + (hidden ? 'fa-eye-slash' : 'fa-eye');
 };

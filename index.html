@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r55'; try {
+    (function () { var V = '2026-10-30-r56'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -1159,8 +1159,8 @@
                                 <img src="assets/hero-landscape.svg" alt="" class="hero-art">
                                 <div class="hero-shade"></div>
                                 <p class="text-[9px] uppercase tracking-[0.25em] text-white/85 z-10 mb-1 font-bold" style="text-shadow: 0 1px 8px rgba(0,0,0,0.65)">Net Worth</p>
-                                <h2 class="text-3xl font-display font-black z-10 tracking-tight text-white" style="text-shadow: 0 2px 12px rgba(0,0,0,0.65)" id="dash-total-balance">0</h2>
-                                <p id="dash-total-balance-alt" class="z-10 text-[11px] font-mono font-bold text-white/75 mt-1" style="text-shadow: 0 1px 8px rgba(0,0,0,0.65)"></p>
+                                <h2 class="text-4xl nw-angka z-10 text-white" style="text-shadow: 0 2px 12px rgba(0,0,0,0.65)" id="dash-total-balance">0</h2>
+                                <p id="dash-total-balance-alt" class="z-10 text-[11px] font-semibold num-tab text-white/75 mt-1" style="text-shadow: 0 1px 8px rgba(0,0,0,0.65)"></p>
                             </div>
                         </div>
 
@@ -1202,9 +1202,13 @@
                         <div class="mt-5">
                             <div class="flex justify-between items-center mb-3 px-0.5">
                                 <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-wallet text-accent"></i> Dompet Saya</h3>
-                                <button onclick="window.openWalletManager()" class="text-[10px] text-[var(--text-muted)] hover:text-white transition font-bold uppercase tracking-widest">Kelola</button>
+                                <div class="flex items-center gap-2">
+                                    <button onclick="window.toggleDompetSaya()" class="text-[11px] text-[var(--text-muted)] hover:text-white transition px-1" title="Sembunyikan / tampilkan blok dompet"><i id="dompet-eye-icon" class="fa-solid fa-eye"></i></button>
+                                    <button onclick="window.openWalletManager()" class="text-[10px] text-[var(--text-muted)] hover:text-white transition font-bold uppercase tracking-widest">Kelola</button>
+                                </div>
                             </div>
-                            <div id="dash-wallets" class="grid grid-cols-2 gap-3"></div>
+                            <div id="dash-wallets" class="grid grid-cols-2 gap-2.5"></div>
+                            <button id="dompet-hidden-note" style="display:none" onclick="window.toggleDompetSaya()" class="w-full py-2.5 rounded-xl border border-dashed border-[var(--border-glass)] text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] hover:text-white transition"><i class="fa-solid fa-eye-slash mr-1.5"></i> Dompet disembunyikan — ketuk untuk menampilkan</button>
                         </div>
                     </div>
 
@@ -1212,24 +1216,24 @@
                         <div class="glass-panel p-5 relative overflow-hidden">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Analisa Kas Siklus</h3>
-                                <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] bg-white/5 px-2 py-1 rounded hover:text-white transition"><i class="fa-solid fa-pen"></i> Set Limit</button>
+                                <button onclick="window.promptBudget()" class="text-[10px] text-[var(--text-muted)] bg-white/5 px-2 py-1 rounded hover:text-white transition"><i class="fa-solid fa-pen"></i> Set Limit Pribadi</button>
                             </div>
                             <div class="grid grid-cols-2 gap-3 mb-3">
                                 <div class="p-3 rounded-xl" style="background: var(--bg-inset); box-shadow: var(--shadow-inset); border-left: 3px solid var(--color-income)">
                                     <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pemasukan Siklus</p>
-                                    <p class="font-mono font-bold text-xs text-[var(--color-income)]" id="dash-income-mth">+0</p>
+                                    <p class="font-bold text-[11px] num-tab text-[var(--color-income)]" id="dash-income-mth">+0</p>
                                 </div>
                                 <div class="p-3 rounded-xl" style="background: var(--bg-inset); box-shadow: var(--shadow-inset); border-left: 3px solid var(--color-expense)">
                                     <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Siklus</p>
-                                    <p class="font-mono font-bold text-xs text-[var(--color-expense)]" id="dash-expense-mth">-0</p>
+                                    <p class="font-bold text-[11px] num-tab text-[var(--color-expense)]" id="dash-expense-mth">-0</p>
                                 </div>
                             </div>
                             <div class="p-3 rounded-xl mb-4" style="background: var(--bg-inset); box-shadow: var(--shadow-inset); border-left: 3px solid #38bdf8">
                                 <div class="flex justify-between items-center">
                                     <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Pengeluaran Pribadi Siklus</p>
-                                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Kewajiban: <span class="font-mono font-bold text-[var(--text-main)]" id="dash-obligation-mth">0</span></p>
+                                    <p class="text-[8px] uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Kewajiban: <span class="font-bold num-tab text-[var(--text-main)]" id="dash-obligation-mth">0</span></p>
                                 </div>
-                                <p class="font-mono font-bold text-xs text-sky-400" id="dash-personal-mth">-0</p>
+                                <p class="font-bold text-[11px] num-tab text-sky-400" id="dash-personal-mth">-0</p>
                             </div>
                             <div class="pt-4 border-t border-[var(--border-glass)]">
                                 <div class="flex justify-between items-center mb-3">
@@ -1245,7 +1249,7 @@
                                     </div>
                                 </div>
                                 <div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-4">
-                                    <span id="burn-spent" class="font-bold text-white">Terpakai: 0</span>
+                                    <span id="burn-spent" class="font-bold text-white">Terpakai (Pribadi): 0</span>
                                     <span id="burn-limit" class="font-bold">Limit: 0</span>
                                 </div>
                                 <div class="w-full h-1.5 bg-black/50 rounded-full overflow-hidden mb-4">
@@ -1254,11 +1258,13 @@
                                 <div id="burn-insight-box" class="p-3.5 rounded-xl bg-black/40 border border-[var(--border-glass)] text-[11px] leading-relaxed text-[var(--text-muted)]">
                                     Menganalisis sistem keuangan...
                                 </div>
-                                <div class="flex items-center gap-2 mt-4 pt-3 border-t border-[var(--border-glass)]">
-                                    <i class="fa-solid fa-file-invoice text-accent text-xs"></i>
-                                    <span class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold shrink-0">Tagihan Berikutnya</span>
-                                    <span id="dash-next-bill" class="text-[10px] font-bold text-[var(--text-main)] truncate">—</span>
-                                </div>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-4 flex items-center gap-3">
+                            <div class="w-9 h-9 icon-chip shrink-0"><i class="fa-solid fa-file-invoice text-accent text-sm"></i></div>
+                            <div class="min-w-0">
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Tagihan Berikutnya</p>
+                                <span id="dash-next-bill" class="text-xs font-bold num-tab text-[var(--text-main)] truncate block mt-0.5">—</span>
                             </div>
                         </div>
                     </div>
