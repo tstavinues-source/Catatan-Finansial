@@ -822,30 +822,6 @@ function drawCanvasChartManual(dataArray) {
     });
 }
 
-window.downloadCSV = function() {
-    const transactions = AuraState.data.transactions || [];
-    if (transactions.length === 0) { if (window.showToast) window.showToast("Tidak ada data untuk diunduh.", true); return; }
-    let csvContent = "TANGGAL,WAKTU,TIPE,METODE,MATA_UANG,MERCHANT,ITEM,KATEGORI,HARGA_SATUAN,QTY,TOTAL_BARANG\n";
-    transactions.forEach(trx => {
-        if (trx.is_deleted) return;
-        const dateObj = new Date(trx.tanggal || trx.createdAt);
-        const timeObj = new Date(trx.createdAt || trx.tanggal);
-        const dateStr = dateObj.toLocaleDateString('id-ID'); const timeStr = timeObj.toLocaleTimeString('id-ID');
-        const safeMerchant = `"${(trx.merchantName || trx.storeName || 'Unknown').replace(/"/g, '""')}"`;
-        (trx.items || []).forEach(it => {
-            const safeItemName = `"${(it.nama_barang || 'Item').replace(/"/g, '""')}"`;
-            const safeCat = `"${(it.kategori_barang || 'Lainnya').replace(/"/g, '""')}"`;
-            const harga = Number(it.harga) || 0; const qty = Number(it.qty) || 1; const subtotal = harga * qty;
-            csvContent += `${dateStr},${timeStr},${trx.tipe.toUpperCase()},${trx.metode_pembayaran},${trx.mata_uang},${safeMerchant},${safeItemName},${safeCat},${harga},${qty},${subtotal}\n`;
-        });
-    });
-    const encodedUri = "data:text/csv;charset=utf-8," + encodeURIComponent(csvContent);
-    const link = document.createElement("a"); link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `AuraFi_Export_${new Date().getTime()}.csv`);
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
-    if (window.showToast) window.showToast("Data CSV berhasil diunduh!");
-};
-
 // ============================================================================
 // FITUR TUTUP BUKU & EVALUASI AKUNTAN AI (BRANKAS ARSIP)
 // ============================================================================
