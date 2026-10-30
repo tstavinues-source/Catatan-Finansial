@@ -27,10 +27,16 @@ const GERAKAN = {
   // durasi: ms satu putaran gerakan. geser: kurva perpindahan badan selama
   // gerakan, dalam % lebar panggung, positif = maju searah hadap.
   // Kosongkan geser bila gerakannya diam di tempat.
-  lambai:  { berkas: 'assets/hachi/lambai.webp',  durasi: 5760, geser: [] },
-  jalan:   { berkas: 'assets/hachi/jalan.webp',   durasi: 0,    geser: [] }, // durasi dihitung dari jarak tempuh
-  bungkuk: { berkas: 'assets/hachi/bungkuk.webp', durasi: 6000, geser: [0, 0.4, 1.0, 1.8, 2.6] },
-  kupu:    { berkas: ['assets/hachi/kupu-a.webp', 'assets/hachi/kupu-b.webp'], durasi: 9600, geser: [0, 0.7, 1.6, 1.9, 0.5, -0.2, 0.1, 1.1, 2.9, 2.2] },
+  // berkas boleh berupa string atau { b, t }: t = tinggi tampil (px) yang
+  // menyeimbangkan ukuran BADAN antar gerakan — kanvas tiap gerakan terisi
+  // badan dalam kadar berbeda (lambai 96%, kupu hanya ±74%), jadi tinggi
+  // gambar disetel per berkas: t = 56 x 0,96 / kadar-isi-badan gerakan itu
+  // (diukur dari bingkai asetnya). Tanpa t, badan Hachi tampak mengecil
+  // pada gerakan yang kanvasnya longgar.
+  lambai:  { berkas: { b: 'assets/hachi/lambai.webp',  t: 56 }, durasi: 5760, geser: [] },
+  jalan:   { berkas: { b: 'assets/hachi/jalan.webp',   t: 55 }, durasi: 0,    geser: [] }, // durasi dihitung dari jarak tempuh
+  bungkuk: { berkas: { b: 'assets/hachi/bungkuk.webp', t: 64 }, durasi: 6000, geser: [0, 0.4, 1.0, 1.8, 2.6] },
+  kupu:    { berkas: [{ b: 'assets/hachi/kupu-a.webp', t: 74 }, { b: 'assets/hachi/kupu-b.webp', t: 71 }], durasi: 9600, geser: [0, 0.7, 1.6, 1.9, 0.5, -0.2, 0.1, 1.1, 2.9, 2.2] },
 };
 
 // Urutan tampil, berputar terus. 'ke' hanya untuk gerakan jalan:
@@ -63,10 +69,11 @@ const POSISI_AWAL = 0.36;    // titik tengah awal, sama dengan titik pulang kore
     // Dekode semua berkas gerakan (base64 -> WebP) sebelum tampil,
     // supaya pergantian antar gerakan tidak berkedip.
     const urlAset = {};
+    const pathBerkas = (e) => (typeof e === 'string' ? e : e.b);
     async function siapkanAset() {
       const namaUnik = new Set();
       Object.values(GERAKAN).forEach((g) => {
-        (Array.isArray(g.berkas) ? g.berkas : [g.berkas]).forEach((b) => namaUnik.add(b));
+        (Array.isArray(g.berkas) ? g.berkas : [g.berkas]).forEach((e) => namaUnik.add(pathBerkas(e)));
       });
       await Promise.all([...namaUnik].map(async (b) => {
         const teks = await (await fetch(b + '.b64')).text();
@@ -89,8 +96,10 @@ const POSISI_AWAL = 0.36;    // titik tengah awal, sama dengan titik pulang kore
       return Math.min(Math.max(tengah, setengah), 1 - setengah);
     };
 
-    function setBerkas(b) {
+    function setBerkas(e) {
+      const b = pathBerkas(e);
       if (state.berkasAktif !== b) { img.src = urlAset[b]; state.berkasAktif = b; }
+      if (typeof e === 'object' && e.t) img.style.height = e.t + 'px';
       img.style.transform = 'scaleX(' + state.hadap + ')';
     }
 
@@ -133,7 +142,7 @@ const POSISI_AWAL = 0.36;    // titik tengah awal, sama dengan titik pulang kore
       const jarak = Math.abs(tujuan - state.tengah);
       if (jarak < 0.005) return;
       state.hadap = tujuan > state.tengah ? 1 : -1;
-      const durasi = (jarak / KECEPATAN_JALAN) * 1000;
+      const durasi = ((jarak * 100) / KECEPATAN_JALAN) * 1000; // jarak fraksi -> % dulu, baru dibagi kecepatan (%/detik)
       setBerkas(GERAKAN.jalan.berkas);
       pasangPosisi(0);                       // jangkar di titik berangkat
       void img.offsetWidth;                  // paksa reflow agar transisi berjalan
