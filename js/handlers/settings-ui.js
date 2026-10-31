@@ -888,3 +888,31 @@ window.copyClaudeConnectCode = async function () {
         if (typeof window.showToast === 'function') window.showToast('Kode koneksi tersalin.');
     }
 };
+
+// Alur hapus akun & semua data (Pengaturan → Akun & Data → Hapus Akun & Semua Data).
+// Dua konfirmasi tegas, lalu FirebaseService.deleteAccountAndData: menyegarkan
+// sesi (akun Google), menghapus seluruh data pengguna, lalu menghapus akunnya.
+window.deleteAccountFlow = async function () {
+    if (!window.FirebaseService || typeof window.FirebaseService.deleteAccountAndData !== 'function') {
+        if (typeof window.showToast === 'function') window.showToast('Layanan belum siap. Coba lagi sebentar lagi.', true);
+        return;
+    }
+    const yakin1 = await window.AuraConfirm('Kamu akan <b>menghapus akun dan SELURUH datamu</b> — transaksi, dompet, target, profil, dan pengaturan — secara <b>permanen</b>.<br><br>Unduh dulu datamu dari menu Analisa (CSV / PDF) bila masih diperlukan. Lanjutkan?');
+    if (!yakin1) return;
+    const yakin2 = await window.AuraConfirm('Sekali lagi: penghapusan ini <b>tidak dapat dibatalkan</b> dan kamu akan langsung keluar. Hapus akun sekarang?');
+    if (!yakin2) return;
+    try {
+        await window.FirebaseService.deleteAccountAndData();
+        try { localStorage.clear(); } catch (e) { /* abaikan */ }
+        if (typeof window.showToast === 'function') window.showToast('Akun dan datamu sudah dihapus. Sampai jumpa!');
+        setTimeout(() => { try { window.location.reload(); } catch (e) { /* abaikan */ } }, 1200);
+    } catch (e) {
+        if (e && e.message === 'PERLU_MASUK_ULANG') {
+            if (typeof window.showToast === 'function') window.showToast('Datamu sudah terhapus. Untuk menghapus akun sepenuhnya: keluar, masuk lagi, lalu ulangi langkah ini.', true);
+        } else if (e && (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request')) {
+            if (typeof window.showToast === 'function') window.showToast('Verifikasi masuk dibatalkan — akunmu belum dihapus.', true);
+        } else {
+            if (typeof window.showToast === 'function') window.showToast('Gagal menghapus akun. Periksa koneksi lalu coba lagi.', true);
+        }
+    }
+};

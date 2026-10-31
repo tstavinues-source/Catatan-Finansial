@@ -8,7 +8,7 @@ import {
     getDatabase, ref, push, update, remove, onValue, get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
-    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged
+    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, deleteUser, reauthenticateWithPopup
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { FIREBASE_CONFIG, APP_CONFIG } from '../config/constants.js';
@@ -305,6 +305,36 @@ export const FirebaseService = {
         return await signInWithPopup(authInstance, googleAuthProviderInstance);
     },
     logout: async function() { return await signOut(authInstance); },
+
+    // Metode masuk utama pengguna saat ini ('google.com', 'password', ...)
+    getCurrentProvider: function() {
+        if (!authInstance || !authInstance.currentUser) return '';
+        const p = authInstance.currentUser.providerData || [];
+        return (p[0] && p[0].providerId) || '';
+    },
+
+    // Hapus akun & seluruh data pengguna (Kebijakan Privasi + syarat Google Play):
+    // sesi disegarkan dulu untuk akun Google, lalu subpohon data milik pengguna
+    // dihapus dari basis data, terakhir akun Firebase Auth-nya sendiri.
+    // Bila penghapusan akun tertahan syarat masuk-baru saja (sesi lama, akun
+    // email), data sudah terhapus dan galat 'PERLU_MASUK_ULANG' dilempar agar
+    // antarmuka dapat meminta pengguna masuk lagi lalu mengulangi langkah ini.
+    deleteAccountAndData: async function() {
+        this._checkAuth();
+        const user = authInstance.currentUser;
+        const uid = AuraState.user.uid;
+        const providerId = this.getCurrentProvider();
+        if (providerId === 'google.com') {
+            await reauthenticateWithPopup(user, googleAuthProviderInstance);
+        }
+        await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}`));
+        try {
+            await deleteUser(user);
+        } catch (e) {
+            if (e && e.code === 'auth/requires-recent-login') throw new Error('PERLU_MASUK_ULANG');
+            throw e;
+        }
+    },
 
     _checkAuth: function() {
         if (!authInstance || !authInstance.currentUser || !AuraState.user.uid) throw new Error("Sesi pengguna tidak valid.");

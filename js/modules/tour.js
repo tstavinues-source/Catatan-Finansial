@@ -371,6 +371,10 @@ const FormulirSambutan = {
                     '<div><label class="aura-sambut-label">Mata Uang Awal</label>' +
                     '<select id="frMatauang" class="aura-sambut-input"><option value="JPY">JPY (Yen)</option><option value="IDR">IDR (Rupiah)</option></select></div>' +
                 '</div>' +
+                '<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;margin:10px 0 2px;cursor:pointer;text-align:left;">' +
+                    '<input id="frSetuju" type="checkbox" style="margin-top:3px;flex:none;width:16px;height:16px;">' +
+                    '<span>Saya menyetujui <a href="privasi.html" target="_blank" rel="noopener" style="color:#7cc0ff;">Kebijakan Privasi</a> dan <a href="syarat.html" target="_blank" rel="noopener" style="color:#7cc0ff;">Syarat &amp; Ketentuan</a> AuraFi.</span>' +
+                '</label>' +
                 '<p id="frGalat" class="aura-sambut-galat"></p>' +
                 '<button id="frSimpan" class="aura-sambut-simpan" type="button">Simpan & Mulai Tur</button>' +
                 '<button id="frLewati" class="aura-sambut-lewati" type="button">Isi nanti saja</button>' +
@@ -400,6 +404,11 @@ const FormulirSambutan = {
             galat.textContent = 'Nama lengkap dan panggilan wajib diisi.';
             return;
         }
+        const setujuEl = elId('frSetuju');
+        if (setujuEl && !setujuEl.checked) {
+            galat.textContent = 'Centang dulu persetujuan Kebijakan Privasi & Syarat & Ketentuan ya.';
+            return;
+        }
         const tombol = elId('frSimpan');
         tombol.disabled = true;
         tombol.textContent = 'Menyimpan…';
@@ -407,8 +416,10 @@ const FormulirSambutan = {
             if (!window.FirebaseService || typeof window.FirebaseService.updateSettings !== 'function') {
                 throw new Error('layanan belum siap');
             }
+            const persetujuan = { privacyVersion: '2026-10-31', termsVersion: '2026-10-31', agreedAt: new Date().toISOString() };
             await window.FirebaseService.updateSettings({
-                profile: { fullName: nama, nickname: panggil, country: negara, defaultCurrency: matauang }
+                profile: { fullName: nama, nickname: panggil, country: negara, defaultCurrency: matauang },
+                legalConsent: persetujuan
             });
             // Samakan kolom di Pengaturan agar tampil konsisten.
             const pasang = (id, v) => { const e = elId(id); if (e) e.value = v; };
@@ -418,7 +429,7 @@ const FormulirSambutan = {
             pasang('user-currency', matauang);
             try {
                 const s = window.AuraState && window.AuraState.data && window.AuraState.data.settings;
-                if (s) s.profile = { fullName: nama, nickname: panggil, country: negara, defaultCurrency: matauang };
+                if (s) { s.profile = { fullName: nama, nickname: panggil, country: negara, defaultCurrency: matauang }; s.legalConsent = persetujuan; }
             } catch (e) { /* langganan Firebase akan menyegarkan */ }
             if (typeof window.setCurrency === 'function' &&
                 (!window.AuraState || !window.AuraState.system || window.AuraState.system.displayCurrency !== matauang)) {
