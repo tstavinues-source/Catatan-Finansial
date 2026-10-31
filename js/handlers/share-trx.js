@@ -440,20 +440,24 @@ window.enterShareSelectMode = function () {
     document.querySelectorAll('[data-trx-card].share-selected').forEach(function (c) { c.classList.remove('share-selected'); });
     if (typeof window.closeModal === 'function') window.closeModal('modal-share-trx');
     document.body.classList.add('share-selecting');
+    // Tombol Kembali perangkat harus membatalkan mode pilih, bukan keluar
+    // ke dashboard: tanam satu penanda riwayat selama mode aktif.
+    try { history.pushState({ auraShareSelect: true }, ''); AuraState.temp.shareSelectPushed = true; } catch (e) {}
     if (!document.getElementById('share-select-bar')) {
         const bar = document.createElement('div');
         bar.id = 'share-select-bar';
         bar.innerHTML = '<span class="ssb-count">0 transaksi dipilih</span>' +
-            '<button class="ssb-cancel" onclick="window.exitShareSelectMode()">BATAL</button>' +
+            '<button class="ssb-cancel" onclick="window.cancelShareSelect()">BATAL</button>' +
             '<button class="ssb-go" onclick="window.openShareSelected()">BAGIKAN <i class="fa-solid fa-share-nodes"></i></button>';
         document.body.appendChild(bar);
     }
     updateShareBar();
-    if (window.showToast) window.showToast('Mode pilih: ketuk lingkaran di pojok kartu yang ingin dibagikan.');
+    if (window.showToast) window.showToast('Mode pilih: ketuk kartunya untuk memilih — tidak harus tepat di lingkarannya.');
 };
 
 window.exitShareSelectMode = function () {
     AuraState.temp.shareSelection = {};
+    AuraState.temp.shareSelectPushed = false;
     document.body.classList.remove('share-selecting');
     document.querySelectorAll('.share-select-check.sel').forEach(function (b) { b.classList.remove('sel'); });
     document.querySelectorAll('[data-trx-card].share-selected').forEach(function (c) { c.classList.remove('share-selected'); });
@@ -613,3 +617,26 @@ async function shareMultiAsPdf(entries) {
         catch (e2) { if (window.showToast) window.showToast('Gagal membuat PDF di perangkat ini.', true); }
     }
 }
+
+// Batal mode pilih lewat jalur riwayat bila penanda Kembali ditanam, agar
+// tumpukan riwayat tetap bersih; popstate di bawah yang benar-benar keluar.
+window.cancelShareSelect = function () {
+    if (AuraState.temp.shareSelectPushed) { try { history.back(); return; } catch (e) {} }
+    window.exitShareSelectMode();
+};
+window.addEventListener('popstate', function () {
+    if (document.body.classList.contains('share-selecting')) window.exitShareSelectMode();
+});
+
+// Dalam mode pilih, ketuk DI MANA PUN pada kartu (bukan hanya lingkaran
+// centangnya) mengaktifkan pilihan kartu itu. Elemen interaktif di dalam
+// kartu (tombol ⋮, ubah item, taut "+ ITEM BARU", dll.) tetap berfungsi
+// seperti biasa dan tidak ikut memilih.
+document.addEventListener('click', function (e) {
+    if (!document.body.classList.contains('share-selecting')) return;
+    if (e.target.closest('button, a, input, select, textarea')) return;
+    const card = e.target.closest('[data-trx-card]');
+    if (!card) return;
+    const chk = card.querySelector('.share-select-check');
+    if (chk) chk.click();
+});
