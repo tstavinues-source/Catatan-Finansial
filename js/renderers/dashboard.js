@@ -537,15 +537,17 @@ window.reCalculateAll = function() {
                 if (isMergedMutasi) innerReceiptHtml = '';
                 
                 const cardButtonsHtml = isMergedMutasi
-                    ? `<button onclick="window.confirmDelMutasiPair('${t.id}', '${pairId}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`
-                    : `<button onclick="window.openEditTrxModal('${t.id}')" class="aura-icon-btn absolute top-3 right-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-pen-to-square"></i></button>
+                    ? `<button onclick="window.openShareTrx('${t.id}', '${pairId}')" class="aura-icon-btn absolute top-3 right-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10" title="Bagikan transaksi"><i class="fa-solid fa-share-nodes"></i></button>
+                    <button onclick="window.confirmDelMutasiPair('${t.id}', '${pairId}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`
+                    : `<button onclick="window.openShareTrx('${t.id}')" class="aura-icon-btn absolute top-3 right-[84px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10" title="Bagikan transaksi"><i class="fa-solid fa-share-nodes"></i></button>
+                    <button onclick="window.openEditTrxModal('${t.id}')" class="aura-icon-btn absolute top-3 right-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-pen-to-square"></i></button>
                     <button onclick="window.confirmDelTrx('${t.id}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`;
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
                     ${cardButtonsHtml}
-                    <div class="flex justify-between items-start mb-2 pr-20">
+                    <div class="flex justify-between items-start mb-2 ${isMergedMutasi ? 'pr-20' : 'pr-[7.5rem]'}">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 icon-chip shrink-0" style="background-color: ${catStyle.hex}15;">
                                 ${iconHtml}
