@@ -693,6 +693,36 @@ window.confirmDelTrx = function(id) {
     if (typeof window.showModal === 'function') window.showModal('modal-confirm'); 
 };
 
+// Hapus mutasi berpasangan (dipakai kartu gabungan mutasi di daftar transaksi):
+// kedua kaki — keluar & masuk — dibuang bersama agar saldo dompet asal dan
+// tujuan tetap seimbang. Menghapus satu kaki saja akan mengacaukan saldo.
+window.confirmDelMutasiPair = async function(idKeluar, idMasuk) {
+    const transactions = AuraState.data.transactions || [];
+    let keluar = null, masuk = null;
+    for (let i = 0; i < transactions.length; i++) {
+        if (transactions[i].id === idKeluar) keluar = transactions[i];
+        if (transactions[i].id === idMasuk) masuk = transactions[i];
+    }
+    if (!keluar || !masuk) {
+        if (window.showToast) window.showToast("Pasangan mutasi tidak ditemukan.", true);
+        return;
+    }
+    const amount = window.formatAuraCurrency
+        ? window.formatAuraCurrency(AuraUtils.convertCurrency(keluar.nominal || 0, keluar.mata_uang || 'JPY'))
+        : (keluar.nominal || 0);
+    const msg = "Lemparkan mutasi <b>" + AuraUtils.escapeHtml(keluar.merchantName || 'Mutasi') + "</b> sebesar <b class='font-mono'>" + amount + "</b> ke Tempat Sampah?<br><br>Kedua sisi mutasi (keluar & masuk) dipindahkan bersama agar saldo kedua dompet tetap seimbang.";
+    const ok = await window.AuraConfirm(msg);
+    if (!ok) return;
+    try {
+        await FirebaseService.moveToTrash(idKeluar);
+        await FirebaseService.moveToTrash(idMasuk);
+        if (window.showToast) window.showToast("Mutasi dipindahkan ke Tempat Sampah.");
+    } catch (e) {
+        console.error(e);
+        if (window.showToast) window.showToast("Gagal memindahkan mutasi ke Tempat Sampah.", true);
+    }
+};
+
 window.confirmDelItem = function(trxId, itemId) { 
     const transactions = AuraState.data.transactions || [];
     let trx = null;
