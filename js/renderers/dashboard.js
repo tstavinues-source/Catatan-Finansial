@@ -481,7 +481,7 @@ window.reCalculateAll = function() {
                     const partner = mutasiById[pairId];
                     const fromName = walletName;
                     const toName = (partner && wallets[partner.wallet_id] && wallets[partner.wallet_id].name) || '';
-                    walletDisp = toName ? (fromName + ' → ' + toName) : fromName;
+                    walletDisp = toName ? (fromName + ' <span class="mutasi-flow-inline" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span> ' + toName) : fromName;
                     metIconDisp = '<i class="fa-solid fa-arrow-right-arrow-left"></i>';
                 }
                 
@@ -544,7 +544,6 @@ window.reCalculateAll = function() {
                     <button onclick="window.confirmDelTrx('${t.id}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`;
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
-                const mutasiFlowHtml = `<div class="mutasi-flow" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>`;
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group" data-trx-card="${t.id}">
                     ${cardButtonsHtml}
@@ -560,7 +559,6 @@ window.reCalculateAll = function() {
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
                     </div>
-                    ${isMergedMutasi ? mutasiFlowHtml : ''}
                     ${descDisp ? `<div class="trx-note p-2.5 rounded-xl text-xs italic mb-2">"${descDisp}"</div>` : ''}
                     ${innerReceiptHtml}
                 </div>`;
