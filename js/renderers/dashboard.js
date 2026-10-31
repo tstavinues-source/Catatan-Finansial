@@ -600,6 +600,18 @@ window.reCalculateAll = function() {
             </div>`;
         }
         el.innerHTML = compiledTrxHtml;
+        // Mode pilih-banyak: terapkan ulang tanda visual dari state setiap
+        // selesai render — daftar bisa ter-render ulang oleh watcher saldo,
+        // dan tanda centang tidak boleh hilang sementara pilihan tersimpan.
+        if (document.body.classList.contains('share-selecting') && AuraState.temp.shareSelection) {
+            Object.keys(AuraState.temp.shareSelection).forEach(function (sid) {
+                const selCard = el.querySelector('[data-trx-card="' + sid + '"]');
+                if (!selCard) return;
+                selCard.classList.add('share-selected');
+                const selChk = selCard.querySelector('.share-select-check');
+                if (selChk) selChk.classList.add('sel');
+            });
+        }
     });
 
     if (typeof window.renderAnalytics === 'function') window.renderAnalytics();
