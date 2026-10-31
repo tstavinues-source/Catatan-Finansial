@@ -127,12 +127,12 @@ window.reCalculateAll = function() {
 
         // Kartu dompet terpisah ala mockup untuk seksi "Dompet Saya"
         const cardHtml = `
-        <div class="glass-panel p-3 ${isHidden ? 'opacity-50' : ''}">
+        <div class="glass-panel p-3 wallet-card ${isHidden ? 'opacity-50' : ''}" data-wallet-card="${wId}">
             <div class="flex items-center gap-2">
                 <div class="w-7 h-7 icon-chip shrink-0"><i class="fa-solid ${w.type === 'cashless' ? 'fa-credit-card' : 'fa-money-bill-wave'} text-accent text-[10px]"></i></div>
                 <span class="text-xs font-bold truncate">${AuraUtils.escapeHtml(w.name)}${iconEye}</span>
             </div>
-            <p class="font-bold text-[15px] num-tab mt-2 ${hiddenStyle}">${window.formatAuraCurrencyCompact(bal)}</p>
+            <p class="font-bold text-[15px] num-tab mt-2 ${hiddenStyle}" data-wallet-bal="${wId}">${window.formatAuraCurrencyCompact(bal)}</p>
             <p class="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mt-0.5 font-semibold">${w.type === 'cashless' ? 'Rekening Digital' : 'Tunai Fisik'}</p>
             <button onclick="window.cekSaldoTap(this,'${wId}')" class="cek-saldo-btn mt-2.5 inline-flex items-center py-1.5 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-white transition active:scale-95" aria-label="Cek Saldo Nyata" title="Cek Saldo Nyata"><i class="fa-solid fa-scale-balanced"></i><span class="cek-saldo-label">Cek Saldo Nyata</span></button>
         </div>`;
@@ -544,8 +544,9 @@ window.reCalculateAll = function() {
                     <button onclick="window.confirmDelTrx('${t.id}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`;
                 
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
+                const mutasiFlowHtml = `<div class="mutasi-flow" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>`;
                 itemHtmlBuilder += `
-                <div class="glass-panel p-4 relative group">
+                <div class="glass-panel p-4 relative group" data-trx-card="${t.id}">
                     ${cardButtonsHtml}
                     <div class="flex justify-between items-start mb-2 ${isMergedMutasi ? 'pr-20' : 'pr-[7.5rem]'}">
                         <div class="flex items-center gap-3">
@@ -559,6 +560,7 @@ window.reCalculateAll = function() {
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
                     </div>
+                    ${isMergedMutasi ? mutasiFlowHtml : ''}
                     ${descDisp ? `<div class="trx-note p-2.5 rounded-xl text-xs italic mb-2">"${descDisp}"</div>` : ''}
                     ${innerReceiptHtml}
                 </div>`;

@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-31-r62'; try {
+    (function () { var V = '2026-10-31-r63'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -802,6 +802,14 @@
                                     <option value="sage">Sage (Hijau Lembut)</option>
                                     <option value="frost">Frost (Biru Dingin)</option>
                                 </select>
+                            </div>
+                            <div class="mt-3 pt-3 border-t border-white/10">
+                                <label class="text-[9px] uppercase tracking-widest text-accent mb-1 block font-bold"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Gerakan &amp; Animasi</label>
+                                <label class="flex items-center gap-3 bg-black/30 border border-[var(--border-glass)] rounded-xl px-3 py-2.5 cursor-pointer">
+                                    <input type="checkbox" id="set-reduce-motion" class="w-4 h-4" style="accent-color: var(--accent-primary)" onchange="window.AuraMotionSetReduce(this.checked)">
+                                    <span class="text-xs font-bold">Kurangi Gerakan</span>
+                                </label>
+                                <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Matikan animasi angka saldo, aliran mutasi, dan kemunculan kartu. Angka tetap tampil seketika dan utuh. Menghormati juga pengaturan gerak dari sistem HP.</p>
                             </div>
                         </div>
                     </div>
