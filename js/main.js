@@ -95,6 +95,7 @@ import './handlers/nav-gestures.js';
 import './handlers/chatbar.js';
 import './handlers/skins.js';
 import './handlers/closing-report.js';
+import './handlers/share-trx.js';
 import './handlers/import-export.js';
 import './modules/staging.js';
 import './modules/tour.js';
