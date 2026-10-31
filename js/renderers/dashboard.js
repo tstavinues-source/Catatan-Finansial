@@ -365,6 +365,44 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('period-progress-text', el => el.innerText = `PROGRES SIKLUS: ${periodPct.toFixed(0)}%`);
     AuraUtils.safeDOM('period-days-left', el => el.innerText = `${daysLeft} HARI TERSISA`);
 
+    // Pasangan mutasi (permintaan pemilik 2026-10-31): kaki keluar & masuk dari
+    // satu transfer ditampilkan sebagai SATU kartu di daftar. Data tetap dua
+    // record (saldo dihitung per dompet); yang digabung hanya tampilannya.
+    // Pasangan dikenali dari tanggal+nominal+mata uang yang sama, nama merchant
+    // silang ("Mutasi ke X" <-> "Mutasi dari Y"), dan createdAt berdekatan.
+    const mutasiPairOf = {};
+    const mutasiById = {};
+    for (let i = 0; i < filteredTx.length; i++) mutasiById[filteredTx[i].id] = filteredTx[i];
+    {
+        const masukPool = [];
+        for (let i = 0; i < filteredTx.length; i++) {
+            if (filteredTx[i].tipe === 'mutasi_masuk' && !filteredTx[i].is_deleted) masukPool.push(filteredTx[i]);
+        }
+        const usedMasuk = {};
+        for (let i = 0; i < filteredTx.length; i++) {
+            const k = filteredTx[i];
+            if (k.tipe !== 'mutasi_keluar' || k.is_deleted) continue;
+            const fromName = (wallets[k.wallet_id] && wallets[k.wallet_id].name) || '';
+            for (let j = 0; j < masukPool.length; j++) {
+                const m = masukPool[j];
+                if (usedMasuk[m.id]) continue;
+                if (m.tanggal !== k.tanggal) continue;
+                if (Number(m.nominal) !== Number(k.nominal)) continue;
+                if ((m.mata_uang || 'JPY') !== (k.mata_uang || 'JPY')) continue;
+                if (m.wallet_id === k.wallet_id) continue;
+                const toName = (wallets[m.wallet_id] && wallets[m.wallet_id].name) || '';
+                if (k.merchantName !== 'Mutasi ke ' + toName) continue;
+                if (m.merchantName !== 'Mutasi dari ' + fromName) continue;
+                const dt = Math.abs(new Date(m.createdAt).getTime() - new Date(k.createdAt).getTime());
+                if (!isNaN(dt) && dt > 60000) continue;
+                usedMasuk[m.id] = true;
+                mutasiPairOf[k.id] = m.id;
+                mutasiPairOf[m.id] = k.id;
+                break;
+            }
+        }
+    }
+
     AuraUtils.safeDOM('trx-list-container', el => {
         const groupedKeys = Object.keys(groupedTrx).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
         
@@ -387,6 +425,11 @@ window.reCalculateAll = function() {
             let itemHtmlBuilder = '';
             for (let j = 0; j < g.items.length; j++) {
                 const t = g.items[j];
+                // Kaki masuk dari mutasi berpasangan tidak dirender sendiri;
+                // ia tampil menyatu di kartu kaki keluarnya (satu blok).
+                const pairId = mutasiPairOf[t.id] || null;
+                if (t.tipe === 'mutasi_masuk' && pairId) continue;
+                const isMergedMutasi = t.tipe === 'mutasi_keluar' && !!pairId;
                 let expandedReceiptsState = AuraState.temp.expandedReceipts || {};
                 const isExp = expandedReceiptsState[t.id]; 
                 
@@ -419,12 +462,28 @@ window.reCalculateAll = function() {
                     signChar = '🔒'; 
                 }
                 
+                if (isMergedMutasi) {
+                    iconHtml = '<i class="fa-solid fa-arrow-right-arrow-left text-indigo-400"></i>';
+                    colorClass = 'text-indigo-400';
+                    signChar = '⇄';
+                }
+                
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
                 const descDisp = AuraUtils.escapeHtml(t.description || t.catatan_ai || "");
                 
                 const walletName = t.wallet_id && wallets[t.wallet_id] ? wallets[t.wallet_id].name : t.metode_pembayaran;
                 const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ?
                 '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
+                
+                let walletDisp = walletName;
+                let metIconDisp = metIcon;
+                if (isMergedMutasi) {
+                    const partner = mutasiById[pairId];
+                    const fromName = walletName;
+                    const toName = (partner && wallets[partner.wallet_id] && wallets[partner.wallet_id].name) || '';
+                    walletDisp = toName ? (fromName + ' → ' + toName) : fromName;
+                    metIconDisp = '<i class="fa-solid fa-arrow-right-arrow-left"></i>';
+                }
                 
                 let innerReceiptHtml = '';
                 if (hasItems) {
@@ -473,11 +532,19 @@ window.reCalculateAll = function() {
                     </div>`;
                 }
                 
+                // Kartu mutasi gabungan tidak menampilkan blok item: itemnya hanya
+                // penanda "Transfer Keluar" dan tombol item justru menyesatkan.
+                if (isMergedMutasi) innerReceiptHtml = '';
+                
+                const cardButtonsHtml = isMergedMutasi
+                    ? `<button onclick="window.confirmDelMutasiPair('${t.id}', '${pairId}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`
+                    : `<button onclick="window.openEditTrxModal('${t.id}')" class="aura-icon-btn absolute top-3 right-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-pen-to-square"></i></button>
+                    <button onclick="window.confirmDelTrx('${t.id}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>`;
+                
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group">
-                    <button onclick="window.openEditTrxModal('${t.id}')" class="aura-icon-btn absolute top-3 right-12 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button onclick="window.confirmDelTrx('${t.id}')" class="aura-icon-btn danger absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 active:scale-90 z-10"><i class="fa-solid fa-trash"></i></button>
+                    ${cardButtonsHtml}
                     <div class="flex justify-between items-start mb-2 pr-20">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 icon-chip shrink-0" style="background-color: ${catStyle.hex}15;">
@@ -485,7 +552,7 @@ window.reCalculateAll = function() {
                             </div>
                             <div class="overflow-hidden">
                                 <h4 class="font-bold text-sm text-[var(--text-main)] truncate">${titleDisp}</h4>
-                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIcon} ${walletName} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIconDisp} ${walletDisp} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
                             </div>
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
