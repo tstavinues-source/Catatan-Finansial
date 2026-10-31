@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kebijakan Privasi — AuraFi</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #0b1220; color: #e6edf7; line-height: 1.65; }
+  main { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 28px 0 8px; color: #f3f6fb; }
+  p, li { font-size: 15px; color: #c9d4e4; }
+  ul { padding-left: 20px; margin: 6px 0; }
+  .meta { color: #8fa1ba; font-size: 13px; margin-bottom: 20px; }
+  .brand { color: #e08a4c; font-weight: 700; letter-spacing: .04em; font-size: 13px; text-transform: uppercase; }
+  a { color: #7cc0ff; }
+  .note { background: #111c30; border: 1px solid #22345a; border-radius: 12px; padding: 12px 16px; }
+  footer { margin-top: 40px; color: #8fa1ba; font-size: 13px; border-top: 1px solid #22345a; padding-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">AuraFi</div>
+  <h1>Kebijakan Privasi</h1>
+  <p class="meta">Berlaku sejak 31 Oktober 2026 · Versi 1</p>
+
+  <p>AuraFi adalah aplikasi pencatat keuangan pribadi: kamu memasukkan sendiri pemasukan, pengeluaran, dompet, dan targetmu. Kebijakan ini menjelaskan data apa yang kami kumpulkan, untuk apa, di mana disimpan, dan hakmu atas data itu. Dengan membuat akun dan memakai AuraFi, kamu menyetujui kebijakan ini.</p>
+
+  <h2>1. Data yang kami kumpulkan</h2>
+  <ul>
+    <li><b>Data akun.</b> Nama, alamat email, dan foto profil (bila kamu masuk dengan Google), atau alamat email dan kata sandi bila kamu mendaftar dengan email. Kata sandi dikelola oleh Firebase Authentication dan tidak pernah kami simpan dalam bentuk teks biasa.</li>
+    <li><b>Data keuangan yang kamu masukkan.</b> Transaksi (tanggal, jumlah, kategori, catatan, rincian item), dompet dan saldonya, target/tabungan, pengingat kewajiban, profil, dan pengaturan aplikasi. Data ini kamu buat sendiri di dalam aplikasi.</li>
+    <li><b>Token notifikasi.</b> Bila kamu mengizinkan notifikasi, kami menyimpan token push perangkatmu agar pengingat dapat dikirim.</li>
+    <li><b>Kunci API AI milikmu sendiri.</b> Bila kamu memakai fitur AI dan memasukkan kunci API (misalnya Gemini atau Groq), kunci itu tersimpan di data akunmu dan hanya dipakai untuk memanggil layanan AI pilihanmu atas permintaanmu.</li>
+    <li><b>Data teknis dasar.</b> Catatan kesalahan dan kejadian teknis yang dicatat layanan Firebase untuk menjaga aplikasi tetap berjalan.</li>
+  </ul>
+
+  <h2>2. Untuk apa data dipakai</h2>
+  <ul>
+    <li>Menjalankan fungsi aplikasi: menampilkan catatanmu, menghitung saldo dan laporan, dan menyinkronkan data antar perangkatmu.</li>
+    <li>Mengirim notifikasi yang kamu aktifkan (misalnya pengingat kewajiban).</li>
+    <li>Menjalankan fitur AI hanya saat kamu memintanya, dengan kunci API milikmu sendiri.</li>
+  </ul>
+  <p>Kami <b>tidak</b> memakai datamu untuk iklan, <b>tidak</b> menjual atau menyewakan data pribadi kepada siapa pun, dan <b>tidak</b> membagikan data keuanganmu kepada pihak ketiga di luar penyedia layanan yang disebutkan di kebijakan ini.</p>
+
+  <h2>3. Di mana data disimpan dan siapa yang memprosesnya</h2>
+  <p>Data disimpan di <b>Firebase</b> (layanan Google): Firebase Authentication untuk akun dan Firebase Realtime Database untuk catatan keuangan. Aturan akses basis data membatasi setiap pengguna hanya dapat membaca dan mengubah data miliknya sendiri. Data dikirim melalui koneksi terenkripsi (HTTPS/TLS).</p>
+  <p>Penyedia lain yang mungkin memproses sebagian kecil data, hanya dalam keadaan berikut:</p>
+  <ul>
+    <li><b>Layanan AI (Google Gemini / Groq)</b> — hanya teks yang diperlukan untuk fitur yang kamu jalankan (misalnya teks transaksi yang kamu minta dikategorikan), dan hanya bila kamu memakai fitur AI dengan kunci API milikmu.</li>
+    <li><b>Penyedia kurs mata uang publik</b> — untuk menampilkan nilai tukar; tidak ada data pribadi yang dikirim.</li>
+    <li><b>Firebase Cloud Messaging</b> — untuk mengirim notifikasi push ke perangkatmu.</li>
+  </ul>
+
+  <h2>4. Yang tidak kami lakukan</h2>
+  <ul>
+    <li>AuraFi <b>tidak terhubung ke rekening bank</b> mana pun dan tidak dapat memindahkan uang. Semua catatan berasal dari masukanmu sendiri.</li>
+    <li>AuraFi <b>bukan</b> penasihat keuangan dan tidak memberikan nasihat investasi.</li>
+    <li>Kami tidak mengumpulkan data lokasi, kontak, foto, atau berkas dari perangkatmu.</li>
+  </ul>
+
+  <h2>5. Hakmu atas datamu</h2>
+  <ul>
+    <li><b>Melihat dan mengubah</b> — semua datamu dapat dilihat dan diubah langsung di dalam aplikasi.</li>
+    <li><b>Mengekspor</b> — kamu dapat mengunduh datamu dari aplikasi dalam format CSV dan PDF (menu Analisa).</li>
+    <li><b>Menghapus</b> — kamu dapat menghapus akun dan seluruh datamu secara permanen melalui Pengaturan → Akun &amp; Data → Hapus Akun &amp; Semua Data, atau melalui halaman <a href="hapus-akun.html">Penghapusan Akun</a>. Penghapusan tidak dapat dibatalkan; ekspor datamu dulu bila masih diperlukan.</li>
+  </ul>
+
+  <h2>6. Retensi data</h2>
+  <p>Data disimpan selama akunmu aktif. Bila kamu menghapus akun, akun dan seluruh data terkait dihapus secara permanen dari basis data kami. Salinan cadangan pada infrastruktur Firebase dapat bertahan untuk jangka waktu terbatas sesuai kebijakan retensi Google, lalu terhapus.</p>
+
+  <h2>7. Keamanan</h2>
+  <p>Kami memakai koneksi terenkripsi untuk semua pengiriman data, autentikasi Firebase untuk akses akun, dan aturan basis data yang memisahkan data setiap pengguna. Tidak ada sistem yang sepenuhnya bebas risiko; jagalah kerahasiaan akses akunmu.</p>
+
+  <h2>8. Pengguna dewasa</h2>
+  <p>AuraFi ditujukan untuk pengguna dewasa yang mengelola keuangan pribadinya sendiri, dan tidak ditujukan untuk anak-anak.</p>
+
+  <h2>9. Perubahan kebijakan</h2>
+  <p>Bila kebijakan ini berubah secara berarti, versi baru akan diterbitkan di halaman ini beserta tanggal berlakunya, dan bila diperlukan kami akan meminta persetujuanmu kembali di dalam aplikasi.</p>
+
+  <h2>10. Kontak</h2>
+  <p class="note">Pertanyaan soal privasi atau permintaan terkait datamu dapat disampaikan ke email pengembang sebagaimana tercantum pada laman Google Play aplikasi AuraFi, atau melalui halaman <a href="hapus-akun.html">Penghapusan Akun</a> untuk permintaan penghapusan.</p>
+
+  <footer>AuraFi · Kebijakan Privasi v1 · 31 Oktober 2026 · Lihat juga <a href="syarat.html">Syarat &amp; Ketentuan</a></footer>
+</main>
+</body>
+</html>

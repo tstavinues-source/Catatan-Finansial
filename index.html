@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-30-r59'; try {
+    (function () { var V = '2026-10-31-r60'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -929,6 +929,30 @@
                                 <button onclick="window.openCategoryManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-folder-tree text-emerald-400 text-lg"></i> Kategori</button>
                                 <button onclick="window.openTrackerManager()" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-box-open text-amber-400 text-lg"></i> Trackers</button>
                                 <button onclick="window.showModal('modal-import-data')" class="py-3 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold transition border border-[var(--border-glass)] flex flex-col items-center gap-1.5"><i class="fa-solid fa-file-import text-emerald-400 text-lg"></i> Impor Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-akun')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-user-shield text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Akun & Data</span>
+                        </div>
+                        <div class="aura-icon-btn"><i id="icon-sec-akun" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-akun" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Dokumen legal AuraFi dan pengelolaan akunmu. Datamu hanya dapat diakses olehmu; kami tidak menjual data dan aplikasi ini tidak terhubung ke bank mana pun.</p>
+                            <div class="grid grid-cols-1 gap-2">
+                                <a href="privasi.html" target="_blank" rel="noopener" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-file-shield"></i> Kebijakan Privasi</a>
+                                <a href="syarat.html" target="_blank" rel="noopener" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-file-contract"></i> Syarat & Ketentuan</a>
+                                <a href="hapus-akun.html" target="_blank" rel="noopener" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-circle-info"></i> Cara Menghapus Akun</a>
+                            </div>
+                            <div class="pt-2 border-t border-[var(--border-glass)]">
+                                <p class="text-[10px] text-[var(--text-muted)] leading-relaxed mb-2">Menghapus akun akan menghapus <b class="text-white">seluruh datamu secara permanen</b> — transaksi, dompet, target, profil, dan pengaturan — dan tidak dapat dibatalkan. Unduh dulu datamu dari menu Analisa (CSV / PDF) bila masih diperlukan.</p>
+                                <button onclick="window.deleteAccountFlow()" class="w-full py-3 rounded-xl border border-[var(--color-expense)] text-[var(--color-expense)] font-bold text-[10px] uppercase tracking-wider hover:bg-[var(--color-expense)] hover:text-white transition-all flex items-center justify-center gap-2"><i class="fa-solid fa-user-xmark"></i> Hapus Akun & Semua Data</button>
                             </div>
                         </div>
                     </div>
