@@ -467,8 +467,14 @@ window.exitShareSelectMode = function () {
 
 window.toggleShareSelect = function (id, pairId, btn) {
     const sel = selectionMap();
-    if (sel[id]) delete sel[id]; else sel[id] = pairId || null;
-    const on = !!sel[id];
+    // Status terpilih ditentukan oleh KEBERADAAN kunci, bukan nilainya:
+    // kartu biasa menyimpan pairId null (falsy) sehingga pemeriksaan nilai
+    // membuat kartu biasa tampak tidak pernah terpilih — dan tidak bisa
+    // dibatalkan pilihannya (bug r66–r68; kartu mutasi lolos karena
+    // pairId-nya berisi).
+    const has = Object.prototype.hasOwnProperty.call(sel, id);
+    if (has) delete sel[id]; else sel[id] = pairId || null;
+    const on = !has;
     if (btn) {
         btn.classList.toggle('sel', on);
         const card = btn.closest('[data-trx-card]');
