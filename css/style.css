@@ -666,16 +666,16 @@ html[data-skin="brutal"] #chat-show-btn:active { box-shadow: 2px 2px 0 #16130e; 
     background: linear-gradient(90deg, transparent, var(--accent-glow), transparent); animation: auraShim 1.15s ease-in-out infinite; }
 @keyframes auraShim { 100% { transform: translateX(100%); } }
 
-/* Aliran mutasi pada kartu gabungan: barisan chevron menyala berurutan,
-   TANPA garis (keputusan pemilik 2026-10-31), dua putaran lalu diam. */
-.mutasi-flow { display: flex; gap: 5px; align-items: center; margin: 1px 0 9px; padding-left: 2px; }
-.mutasi-flow span { width: 7px; height: 7px; border-top: 2px solid #818cf8; border-right: 2px solid #818cf8; transform: rotate(45deg); opacity: .3; animation: mutasiSeq 1.1s ease-in-out 2; }
-.mutasi-flow span:nth-child(2) { animation-delay: .09s; }
-.mutasi-flow span:nth-child(3) { animation-delay: .18s; }
-.mutasi-flow span:nth-child(4) { animation-delay: .27s; }
-.mutasi-flow span:nth-child(5) { animation-delay: .36s; }
-.mutasi-flow span:nth-child(6) { animation-delay: .45s; }
-.mutasi-flow span:nth-child(7) { animation-delay: .54s; }
+/* Aliran mutasi pada kartu gabungan: chevron kecil MENYATU di baris
+   "Asal → Tujuan", menggantikan panah polos — menyala berurutan di
+   antara dua nama dompet, TANPA baris sendiri (perbaikan r64 atas
+   umpan balik pemilik: versi baris terpisah terbaca sebagai hiasan). */
+.mutasi-flow-inline { display: inline-flex; gap: 2.5px; align-items: center; margin: 0 3px; vertical-align: middle; }
+.mutasi-flow-inline span { width: 5px; height: 5px; border-top: 1.8px solid #818cf8; border-right: 1.8px solid #818cf8; transform: rotate(45deg); opacity: .3; animation: mutasiSeq 1.1s ease-in-out 2; }
+.mutasi-flow-inline span:nth-child(2) { animation-delay: .09s; }
+.mutasi-flow-inline span:nth-child(3) { animation-delay: .18s; }
+.mutasi-flow-inline span:nth-child(4) { animation-delay: .27s; }
+.mutasi-flow-inline span:nth-child(5) { animation-delay: .36s; }
 @keyframes mutasiSeq { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
 
 /* Microinteraction tekan per kulit (tombol ikon & pill) */
@@ -688,9 +688,9 @@ html[data-skin="cyber"] .aura-icon-btn:active, html[data-skin="cyber"] .aura-pil
 html[data-skin="luxury"] .aura-icon-btn:active, html[data-skin="luxury"] .aura-pill-btn:active { transform: scale(.94); }
 
 html.aura-reduce-motion .aura-enter, html.aura-reduce-motion .aura-chip, html.aura-reduce-motion .aura-pulse,
-html.aura-reduce-motion .mutasi-flow span, html.aura-reduce-motion .aura-skel::after { animation: none !important; }
+html.aura-reduce-motion .mutasi-flow-inline span, html.aura-reduce-motion .aura-skel::after { animation: none !important; }
 html.aura-reduce-motion .aura-chip { display: none; }
 @media (prefers-reduced-motion: reduce) {
-    .aura-enter, .aura-chip, .aura-pulse, .mutasi-flow span, .aura-skel::after { animation: none !important; }
+    .aura-enter, .aura-chip, .aura-pulse, .mutasi-flow-inline span, .aura-skel::after { animation: none !important; }
     .aura-chip { display: none; }
 }
