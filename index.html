@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-11-01-r66'; try {
+    (function () { var V = '2026-11-01-r67'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -1318,7 +1318,7 @@
                     </select>
                 </div>
 
-                <div id="trx-list-container" class="space-y-6 mt-2"></div>
+                <div id="trx-list-container" class="space-y-6 mt-2 pb-48"></div>
             </div>
 
             <div id="view-analytics" class="hidden p-4 space-y-5 pb-12 view-transition">
