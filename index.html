@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-10-31-r65'; try {
+    (function () { var V = '2026-11-01-r66'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -1712,6 +1712,9 @@
                 <button onclick="window.shareTrxAsText()" class="py-2.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-[10px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-message mr-1"></i> Teks</button>
                 <button onclick="window.shareTrxAsPdf()" class="py-2.5 rounded-xl bg-white/5 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition hover:bg-white/10 active:scale-95"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</button>
                 <button onclick="window.copyShareTrxText()" class="py-2.5 rounded-xl bg-white/5 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition hover:bg-white/10 active:scale-95"><i class="fa-solid fa-copy mr-1"></i> Salin</button>
+            </div>
+            <div class="px-3 pb-3 bg-black/40">
+                <button id="share-multi-btn" onclick="window.enterShareSelectMode()" class="w-full py-2 rounded-xl border border-dashed border-[var(--border-glass)] text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] hover:text-white transition active:scale-95"><i class="fa-solid fa-list-check mr-1"></i> Pilih Beberapa Transaksi</button>
             </div>
         </div>
     </div>

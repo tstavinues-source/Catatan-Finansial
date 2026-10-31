@@ -546,13 +546,14 @@ window.reCalculateAll = function() {
                 const valTrx = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || 'JPY');
                 itemHtmlBuilder += `
                 <div class="glass-panel p-4 relative group" data-trx-card="${t.id}">
+                    <button class="share-select-check" onclick="window.toggleShareSelect('${t.id}', '${pairId || ''}', this)" aria-label="Pilih transaksi untuk dibagikan"><i class="fa-solid fa-check"></i></button>
                     ${cardButtonsHtml}
-                    <div class="flex justify-between items-start mb-2 ${isMergedMutasi ? 'pr-20' : 'pr-[7.5rem]'}">
-                        <div class="flex items-center gap-3">
+                    <div class="flex justify-between items-start mb-2 ${isMergedMutasi ? 'pr-24' : 'pr-[8.25rem]'}">
+                        <div class="flex items-center gap-3 flex-1 min-w-0">
                             <div class="w-10 h-10 icon-chip shrink-0" style="background-color: ${catStyle.hex}15;">
                                 ${iconHtml}
                             </div>
-                            <div class="overflow-hidden">
+                            <div class="overflow-hidden min-w-0">
                                 <h4 class="font-bold text-sm text-[var(--text-main)] truncate">${titleDisp}</h4>
                                 <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1 ${isMergedMutasi ? 'whitespace-nowrap' : ''}">${metIconDisp} ${walletDisp} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
                             </div>
