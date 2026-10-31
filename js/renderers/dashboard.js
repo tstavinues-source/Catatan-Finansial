@@ -481,8 +481,8 @@ window.reCalculateAll = function() {
                     const partner = mutasiById[pairId];
                     const fromName = walletName;
                     const toName = (partner && wallets[partner.wallet_id] && wallets[partner.wallet_id].name) || '';
-                    walletDisp = toName ? (fromName + ' <span class="mutasi-flow-inline" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></span> ' + toName) : fromName;
-                    metIconDisp = '<i class="fa-solid fa-arrow-right-arrow-left"></i>';
+                    walletDisp = toName ? (fromName + ' <span class="mutasi-flow-inline" aria-hidden="true"><span></span><span></span><span></span></span> ' + toName) : fromName;
+                    metIconDisp = '';
                 }
                 
                 let innerReceiptHtml = '';
@@ -554,7 +554,7 @@ window.reCalculateAll = function() {
                             </div>
                             <div class="overflow-hidden">
                                 <h4 class="font-bold text-sm text-[var(--text-main)] truncate">${titleDisp}</h4>
-                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1">${metIconDisp} ${walletDisp} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
+                                <p class="text-[8px] text-[var(--text-muted)] uppercase font-extrabold tracking-wide flex items-center gap-1 ${isMergedMutasi ? 'whitespace-nowrap' : ''}">${metIconDisp} ${walletDisp} • ${t.displayTime.split(' ')[1] || '--:--'}</p>
                             </div>
                         </div>
                         <p class="font-bold text-sm font-mono shrink-0 ml-2 ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
