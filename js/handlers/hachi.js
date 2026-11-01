@@ -23,6 +23,18 @@
 // Mesinnya yang mengurus posisi, arah hadap, dan sambungan antar gerakan.
 // ============================================================
 
+// ============================================================
+// SAKELAR UTAMA HACHI — DIMATIKAN SEMENTARA atas keputusan pemilik
+// (1 Nov 2026): ide keadaan hidupnya bagus, tetapi eksekusi gambarnya
+// belum konsisten — ukuran badan antar gerakan masih terasa berbeda dan
+// pergantian gerakannya belum halus. Selama sakelar ini false, Hachi
+// tidak tampil sama sekali (termasuk koreografi lama di kartu Net Worth).
+// Syarat menghidupkan lagi: semua sprite dinormalkan ke kanvas, skala
+// badan, dan garis tapak kaki yang SAMA, dan pergantian antar gerakan
+// diberi pudar-silang. Aset, GERAKAN, dan KOREOGRAFI dibiarkan utuh.
+// ============================================================
+const HACHI_AKTIF = false;
+
 const GERAKAN = {
   // durasi: ms satu putaran gerakan. geser: kurva perpindahan badan selama
   // gerakan, dalam % lebar panggung, positif = maju searah hadap.
@@ -64,6 +76,7 @@ const POSISI_AWAL = 0.36;    // titik tengah awal, sama dengan titik pulang kore
   async function mulai() {
     const stage = document.getElementById('hachi-stage');
     const img = document.getElementById('hachi-img');
+    if (!HACHI_AKTIF) { if (stage) stage.style.display = 'none'; return; }
     if (!stage || !img) return;
 
     // Dekode semua berkas gerakan (base64 -> WebP) sebelum tampil,
