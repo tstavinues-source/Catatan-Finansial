@@ -734,3 +734,13 @@ nav.glass-nav .nav-btn { position: relative; z-index: 1; }
                 width .38s cubic-bezier(.22,.9,.26,1), height .38s cubic-bezier(.22,.9,.26,1), opacity .25s ease; }
 .aura-morph-clone { position: fixed; z-index: 95; pointer-events: none; transform-origin: 0 0; will-change: transform, opacity;
     background: var(--bg-glass); border: 1.5px solid var(--accent-primary); box-shadow: var(--shadow-raised); }
+
+/* Latar Net Worth per tema (Tahap 5): dua lapisan gambar + peredup */
+.aura-nw-bg { position: absolute; inset: 0; z-index: 0; background-size: cover; background-position: center;
+    opacity: 0; transition: opacity .6s ease; pointer-events: none; }
+.aura-nw-bg.show { opacity: 1; }
+.aura-nw-scrim { position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(120deg, rgba(0,0,0,.45), rgba(0,0,0,.12) 55%, rgba(0,0,0,.30)); }
+html[data-skin="brutal"] .aura-nw-scrim, html[data-skin="clay"] .aura-nw-scrim {
+    background: linear-gradient(120deg, rgba(255,255,255,.38), rgba(255,255,255,.08) 55%, rgba(255,255,255,.22)); }
+html.aura-reduce-motion .aura-nw-bg { transition: none; }

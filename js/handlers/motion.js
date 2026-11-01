@@ -9,6 +9,12 @@
 // AuraMotionReduced); tahap ini menambah pil penanda yang meluncur &
 // meregang di menu bawah mengikuti tab aktif, dan morph kartu transaksi
 // yang melebar menjadi panel Ubah Transaksi saat dibuka dari kartunya.
+// + Tahap 5: LATAR PER TEMA + VISUALISASI DATA. Kartu Net Worth memakai
+// gambar latar sesuai tampilan aktif (assets/latar/*.webp.b64, pola yang
+// sama dengan aset Hachi) dan berganti dengan pudar-silang; grafik Analisa
+// (Chart.js) dipastikan menggambar dirinya SAAT layar Analisa benar-benar
+// terlihat — sebelumnya grafik sering selesai digambar selagi layarnya
+// masih tersembunyi, jadi gerakannya tidak pernah terlihat.
 // "Satu logika, ekspresi per kulit." Gerakan selalu mengikuti DATA: angka
 // menghitung ke nilai sebenarnya, saldo yang berubah ditween dari nilai lama
 // ke nilai baru (dihitung ulang dari AuraState dengan rumus yang sama persis
@@ -430,4 +436,85 @@
     if (window.__auraMorphNav && window.__auraMorphEdit) clearInterval(wrapTimer);
   }, 800);
   setTimeout(function () { clearInterval(wrapTimer); }, 90000);
+
+  // ---------------- Tahap 5A: latar Net Worth per tampilan ----------------
+  const NW_BG_BY_SKIN = { luxury: "luxury", cyber: "malam", brutal: "brutal", clay: "clay" };
+  const NW_BG_BY_THEME = { midnight: "copper", sakura: "sakura", serenity: "frost" };
+  const nwUrls = {};
+  let nwLayers = null, nwActive = 0, nwKey = null;
+  function nwLookKey() {
+    const skin = document.documentElement.getAttribute("data-skin");
+    if (skin && NW_BG_BY_SKIN[skin]) return NW_BG_BY_SKIN[skin];
+    const th = document.documentElement.getAttribute("data-theme") || "midnight";
+    return NW_BG_BY_THEME[th] || "copper";
+  }
+  function nwSetup() {
+    const lc = document.getElementById("living-core");
+    if (!lc || nwLayers) return;
+    const mk = function (cls) { const d = document.createElement("div"); d.className = cls; lc.appendChild(d); return d; };
+    nwLayers = [mk("aura-nw-bg"), mk("aura-nw-bg")];
+    mk("aura-nw-scrim");
+  }
+  function nwRefresh() {
+    if (!nwLayers) return;
+    const key = nwLookKey();
+    if (key === nwKey || !nwUrls[key]) return;
+    const next = nwLayers[1 - nwActive], cur = nwLayers[nwActive];
+    next.style.backgroundImage = "url(" + nwUrls[key] + ")";
+    next.classList.add("show");
+    cur.classList.remove("show");
+    nwActive = 1 - nwActive;
+    nwKey = key;
+  }
+  (async function nwLoad() {
+    nwSetup();
+    const keys = ["luxury", "malam", "brutal", "clay", "copper", "sakura", "frost"];
+    await Promise.all(keys.map(async function (k) {
+      try {
+        const teks = await (await fetch("assets/latar/" + k + ".webp.b64")).text();
+        const bin = atob(teks.replace(/\s/g, ""));
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        nwUrls[k] = URL.createObjectURL(new Blob([u8], { type: "image/webp" }));
+      } catch (e) { /* aset latar gagal — kartu tampil normal tanpa latar */ }
+    }));
+    nwRefresh();
+    new MutationObserver(function () { nwRefresh(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-skin", "data-theme"] });
+  })();
+
+  // ---------------- Tahap 5B: grafik Analisa menggambar saat terlihat -----
+  let analyticsDirty = false, chartAnimApplied = null;
+  function syncChartDefaults() {
+    if (typeof window.Chart === "undefined" || !window.Chart.defaults) return;
+    const want = !reduced();
+    if (chartAnimApplied !== want) { window.Chart.defaults.animation = want; chartAnimApplied = want; }
+  }
+  setInterval(syncChartDefaults, 1500);
+  const wrapTimer2 = setInterval(function () {
+    syncChartDefaults();
+    if (typeof window.renderAnalytics === "function" && !window.__auraChartWatch) {
+      const origRender = window.renderAnalytics;
+      window.renderAnalytics = function () {
+        const r = origRender.apply(this, arguments);
+        const view = document.getElementById("view-analytics");
+        analyticsDirty = !!(view && view.classList.contains("hidden"));
+        return r;
+      };
+      window.__auraChartWatch = true;
+    }
+    if (typeof window.switchView === "function" && !window.__auraChartNav) {
+      const origSwitch2 = window.switchView;
+      window.switchView = function (v) {
+        const r = origSwitch2.apply(this, arguments);
+        if (v === "analytics" && analyticsDirty && !reduced()) {
+          analyticsDirty = false;
+          setTimeout(function () { if (typeof window.renderAnalytics === "function") window.renderAnalytics(); }, 340);
+        }
+        return r;
+      };
+      window.__auraChartNav = true;
+    }
+    if (window.__auraChartWatch && window.__auraChartNav) clearInterval(wrapTimer2);
+  }, 800);
+  setTimeout(function () { clearInterval(wrapTimer2); }, 90000);
 })();
