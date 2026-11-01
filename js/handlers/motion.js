@@ -358,21 +358,33 @@
     clone.style.width = cr.width + "px"; clone.style.height = cr.height + "px";
     clone.style.borderRadius = "16px";
     document.body.appendChild(clone);
-    const anim = clone.animate([
-      { left: cr.left + "px", top: cr.top + "px", width: cr.width + "px", height: cr.height + "px", borderRadius: "16px", opacity: "1" },
-      { left: pr.left + "px", top: pr.top + "px", width: pr.width + "px", height: pr.height + "px", borderRadius: "24px", opacity: "0.35" }
-    ], { duration: 380, easing: "cubic-bezier(.22,.9,.26,1)", fill: "both" });
-    const done = function () {
-      clone.remove();
-      panelEl.style.opacity = "";
-      panelEl.animate([
-        { transform: "scale(.985)", opacity: "0.6" },
-        { transform: "scale(1)", opacity: "1" }
-      ], { duration: 160, easing: "ease-out" });
-    };
-    if (anim && anim.finished) anim.finished.then(done).catch(done);
-    else setTimeout(done, 400);
-    setTimeout(function () { if (panelEl.style.opacity === "0") panelEl.style.opacity = ""; }, 700);
+    // FLIP berbasis transform saja (translate+scale): digerakkan kompositor
+    // GPU sehingga halus; animasi left/top/width/height versi awal memicu
+    // layout ulang tiap frame dan tersendat di atas kaca buram.
+    const dx = pr.left - cr.left, dy = pr.top - cr.top;
+    const sx = pr.width / cr.width, sy = pr.height / cr.height;
+    const target = "translate(" + dx + "px," + dy + "px) scale(" + sx + "," + sy + ")";
+    requestAnimationFrame(function () {
+      const fly = clone.animate([
+        { transform: "translate(0px,0px) scale(1,1)", borderRadius: "16px", opacity: "1", offset: 0 },
+        { transform: target, borderRadius: "24px", opacity: "1", offset: 0.62 },
+        { transform: target, borderRadius: "24px", opacity: "0", offset: 1 }
+      ], { duration: 400, easing: "cubic-bezier(.22,.9,.26,1)", fill: "both" });
+      if (fly && fly.finished) fly.finished.then(function () { clone.remove(); }).catch(function () { clone.remove(); });
+      // Panel asli memudar MASUK beririsan dengan memudarnya klon (crossfade)
+      // — tanpa lompat tampil dan tanpa animasi penyelesaian yang menukik,
+      // dua sumber kedip pada versi awal.
+      setTimeout(function () {
+        panelEl.getAnimations().forEach(function (a) { try { a.cancel(); } catch (e) {} });
+        const fade = panelEl.animate([
+          { opacity: "0" }, { opacity: "1" }
+        ], { duration: 180, easing: "ease-out", fill: "both" });
+        const settle = function () { panelEl.style.opacity = ""; try { fade.cancel(); } catch (e) {} };
+        if (fade && fade.finished) fade.finished.then(settle).catch(settle);
+        else setTimeout(settle, 200);
+      }, 250);
+      setTimeout(function () { clone.remove(); if (panelEl.style.opacity === "0") panelEl.style.opacity = ""; }, 750);
+    });
   }
 
   // Bungkus switchView & openEditTrxModal begitu keduanya tersedia (urutan
