@@ -347,10 +347,17 @@
     window.addEventListener("resize", function () { placePill(morphView, false); });
   }
 
-  function morphCardToPanel(cardEl, panelEl) {
+  function morphCardToPanel(cardEl, modalEl, panelEl) {
     const cr = cardEl.getBoundingClientRect();
     const pr = panelEl.getBoundingClientRect();
     if (cr.width === 0 || pr.width === 0) return;
+    // Ambil alih penuh tampilan modal selama morph (pelajaran r71/r72):
+    // fade bawaan wadah modal (300ms) dimatikan dan latar langsung pekat,
+    // panel ditahan tak terlihat, dan HANYA ada satu fade terkendali di
+    // akhir. Fade ganda (CSS wadah x WAAPI panel) terbukti membuat formulir
+    // tampil tembus pandang di atas daftar — kedip yang dilaporkan pemilik.
+    modalEl.style.transition = "none";
+    modalEl.style.opacity = "1";
     panelEl.style.opacity = "0";
     const clone = document.createElement("div");
     clone.className = "aura-morph-clone";
@@ -359,31 +366,36 @@
     clone.style.borderRadius = "16px";
     document.body.appendChild(clone);
     // FLIP berbasis transform saja (translate+scale): digerakkan kompositor
-    // GPU sehingga halus; animasi left/top/width/height versi awal memicu
-    // layout ulang tiap frame dan tersendat di atas kaca buram.
+    // GPU sehingga halus; animasi left/top/width/height memicu layout ulang
+    // tiap frame dan tersendat di atas kaca buram.
     const dx = pr.left - cr.left, dy = pr.top - cr.top;
     const sx = pr.width / cr.width, sy = pr.height / cr.height;
     const target = "translate(" + dx + "px," + dy + "px) scale(" + sx + "," + sy + ")";
+    let cleaned = false;
+    const cleanup = function () {
+      if (cleaned) return; cleaned = true;
+      clone.remove();
+      panelEl.getAnimations().forEach(function (a) { try { a.cancel(); } catch (e) {} });
+      panelEl.style.opacity = "";
+      modalEl.style.transition = "";
+      modalEl.style.opacity = "";
+    };
     requestAnimationFrame(function () {
       const fly = clone.animate([
-        { transform: "translate(0px,0px) scale(1,1)", borderRadius: "16px", opacity: "1", offset: 0 },
-        { transform: target, borderRadius: "24px", opacity: "1", offset: 0.62 },
-        { transform: target, borderRadius: "24px", opacity: "0", offset: 1 }
-      ], { duration: 400, easing: "cubic-bezier(.22,.9,.26,1)", fill: "both" });
-      if (fly && fly.finished) fly.finished.then(function () { clone.remove(); }).catch(function () { clone.remove(); });
-      // Panel asli memudar MASUK beririsan dengan memudarnya klon (crossfade)
-      // — tanpa lompat tampil dan tanpa animasi penyelesaian yang menukik,
-      // dua sumber kedip pada versi awal.
-      setTimeout(function () {
-        panelEl.getAnimations().forEach(function (a) { try { a.cancel(); } catch (e) {} });
+        { transform: "translate(0px,0px) scale(1,1)", borderRadius: "16px" },
+        { transform: target, borderRadius: "24px" }
+      ], { duration: 300, easing: "cubic-bezier(.22,.9,.26,1)", fill: "both" });
+      const crossfade = function () {
+        clone.animate([{ opacity: "1" }, { opacity: "0" }], { duration: 160, easing: "ease-out", fill: "both" });
         const fade = panelEl.animate([
           { opacity: "0" }, { opacity: "1" }
-        ], { duration: 180, easing: "ease-out", fill: "both" });
-        const settle = function () { panelEl.style.opacity = ""; try { fade.cancel(); } catch (e) {} };
-        if (fade && fade.finished) fade.finished.then(settle).catch(settle);
-        else setTimeout(settle, 200);
-      }, 250);
-      setTimeout(function () { clone.remove(); if (panelEl.style.opacity === "0") panelEl.style.opacity = ""; }, 750);
+        ], { duration: 160, easing: "ease-out", fill: "both" });
+        if (fade && fade.finished) fade.finished.then(function () { setTimeout(cleanup, 30); }).catch(cleanup);
+        else setTimeout(cleanup, 200);
+      };
+      if (fly && fly.finished) fly.finished.then(crossfade).catch(crossfade);
+      else setTimeout(crossfade, 320);
+      setTimeout(cleanup, 900);
     });
   }
 
@@ -409,7 +421,7 @@
         if (!reduced() && card) {
           const modal = document.getElementById("modal-edit-trx");
           const panel = modal && modal.firstElementChild;
-          if (panel) morphCardToPanel(card, panel);
+          if (modal && panel) morphCardToPanel(card, modal, panel);
         }
         return r;
       };
