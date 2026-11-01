@@ -4,6 +4,11 @@
 // nominal TERBANG mengikuti kejadiannya: dari kartu dompet asal ke kartu
 // tujuan pada mutasi, masuk dari atas pada pemasukan, keluar ke bawah pada
 // pengeluaran — dan angka saldo baru bergerak tepat saat chip mendarat.
+// + Tahap 3: MORPHING TRANSITION. Luncuran arah antarlayar sudah hidup di
+// navigation.js (kini menghormati Kurangi Gerakan aplikasi lewat
+// AuraMotionReduced); tahap ini menambah pil penanda yang meluncur &
+// meregang di menu bawah mengikuti tab aktif, dan morph kartu transaksi
+// yang melebar menjadi panel Ubah Transaksi saat dibuka dari kartunya.
 // "Satu logika, ekspresi per kulit." Gerakan selalu mengikuti DATA: angka
 // menghitung ke nilai sebenarnya, saldo yang berubah ditween dari nilai lama
 // ke nilai baru (dihitung ulang dari AuraState dengan rumus yang sama persis
@@ -308,4 +313,97 @@
   }
   setTimeout(check, 1200);
   setInterval(check, 3000);
+
+  // ---------------- Morphing: pil navigasi + morph kartu ke panel ---------
+  let pillEl = null, pillNav = null, morphView = null;
+  function placePill(viewId, animate) {
+    if (!pillEl || !pillNav) return;
+    const btn = viewId ? pillNav.querySelector('.nav-btn[data-target="' + viewId + '"]') : null;
+    if (!btn) { pillEl.style.opacity = "0"; return; }
+    const circle = btn.querySelector("div") || btn;
+    const nr = pillNav.getBoundingClientRect();
+    const cr = circle.getBoundingClientRect();
+    if (cr.width === 0) return;
+    if (!animate || reduced()) {
+      pillEl.style.transition = "none";
+      requestAnimationFrame(function () { requestAnimationFrame(function () { pillEl.style.transition = ""; }); });
+    }
+    pillEl.style.left = (cr.left - nr.left) + "px";
+    pillEl.style.top = (cr.top - nr.top) + "px";
+    pillEl.style.width = cr.width + "px";
+    pillEl.style.height = cr.height + "px";
+    pillEl.style.opacity = "0.18";
+  }
+  function setupPill() {
+    if (pillEl) return;
+    const btn = document.querySelector(".nav-btn");
+    if (!btn || !btn.parentElement) return;
+    pillNav = btn.parentElement;
+    pillEl = document.createElement("span");
+    pillEl.id = "aura-nav-pill";
+    pillNav.appendChild(pillEl);
+    morphView = (window.AuraState && AuraState.system && AuraState.system.activeView) || "dashboard";
+    setTimeout(function () { placePill(morphView, false); }, 350);
+    window.addEventListener("resize", function () { placePill(morphView, false); });
+  }
+
+  function morphCardToPanel(cardEl, panelEl) {
+    const cr = cardEl.getBoundingClientRect();
+    const pr = panelEl.getBoundingClientRect();
+    if (cr.width === 0 || pr.width === 0) return;
+    panelEl.style.opacity = "0";
+    const clone = document.createElement("div");
+    clone.className = "aura-morph-clone";
+    clone.style.left = cr.left + "px"; clone.style.top = cr.top + "px";
+    clone.style.width = cr.width + "px"; clone.style.height = cr.height + "px";
+    clone.style.borderRadius = "16px";
+    document.body.appendChild(clone);
+    const anim = clone.animate([
+      { left: cr.left + "px", top: cr.top + "px", width: cr.width + "px", height: cr.height + "px", borderRadius: "16px", opacity: "1" },
+      { left: pr.left + "px", top: pr.top + "px", width: pr.width + "px", height: pr.height + "px", borderRadius: "24px", opacity: "0.35" }
+    ], { duration: 380, easing: "cubic-bezier(.22,.9,.26,1)", fill: "both" });
+    const done = function () {
+      clone.remove();
+      panelEl.style.opacity = "";
+      panelEl.animate([
+        { transform: "scale(.985)", opacity: "0.6" },
+        { transform: "scale(1)", opacity: "1" }
+      ], { duration: 160, easing: "ease-out" });
+    };
+    if (anim && anim.finished) anim.finished.then(done).catch(done);
+    else setTimeout(done, 400);
+    setTimeout(function () { if (panelEl.style.opacity === "0") panelEl.style.opacity = ""; }, 700);
+  }
+
+  // Bungkus switchView & openEditTrxModal begitu keduanya tersedia (urutan
+  // muat modul tidak dijamin, jadi dipolling singkat, bukan diasumsikan).
+  const wrapTimer = setInterval(function () {
+    setupPill();
+    if (typeof window.switchView === "function" && !window.__auraMorphNav) {
+      const origSwitch = window.switchView;
+      window.switchView = function (v) {
+        const r = origSwitch.apply(this, arguments);
+        morphView = v;
+        placePill(v, true);
+        return r;
+      };
+      window.__auraMorphNav = true;
+    }
+    if (typeof window.openEditTrxModal === "function" && !window.__auraMorphEdit) {
+      const origEdit = window.openEditTrxModal;
+      window.openEditTrxModal = function (id) {
+        const card = document.querySelector('[data-trx-card="' + id + '"]');
+        const r = origEdit.apply(this, arguments);
+        if (!reduced() && card) {
+          const modal = document.getElementById("modal-edit-trx");
+          const panel = modal && modal.firstElementChild;
+          if (panel) morphCardToPanel(card, panel);
+        }
+        return r;
+      };
+      window.__auraMorphEdit = true;
+    }
+    if (window.__auraMorphNav && window.__auraMorphEdit) clearInterval(wrapTimer);
+  }, 800);
+  setTimeout(function () { clearInterval(wrapTimer); }, 90000);
 })();

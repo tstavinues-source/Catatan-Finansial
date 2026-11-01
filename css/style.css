@@ -724,3 +724,13 @@ body.share-selecting .share-select-check { display: inline-flex; }
     border: 1.5px solid var(--accent-primary); box-shadow: var(--shadow-raised); }
 .aura-fly-chip.out { border-color: var(--color-expense); }
 .aura-fly-chip.in { border-color: var(--color-income); }
+
+/* Morphing Transition (Tahap 3): pil penanda menu bawah + klon morph kartu */
+nav.glass-nav { position: relative; }
+nav.glass-nav .nav-btn { position: relative; z-index: 1; }
+#aura-nav-pill { position: absolute; z-index: 0; border-radius: 999px; background: var(--accent-primary);
+    opacity: 0; pointer-events: none;
+    transition: left .38s cubic-bezier(.22,.9,.26,1), top .38s cubic-bezier(.22,.9,.26,1),
+                width .38s cubic-bezier(.22,.9,.26,1), height .38s cubic-bezier(.22,.9,.26,1), opacity .25s ease; }
+.aura-morph-clone { position: fixed; z-index: 95; pointer-events: none;
+    background: var(--bg-glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow-raised); }

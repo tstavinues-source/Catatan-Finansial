@@ -58,7 +58,9 @@ window.switchView = function(viewId) {
         el.classList.add('block');
     });
 
-    const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Hormati juga pengaturan Kurangi Gerakan milik aplikasi (Aura Motion
+    // Engine), bukan hanya preferensi sistem operasi.
+    const reduced = window.AuraMotionReduced ? window.AuraMotionReduced() : (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     if (prevEl && targetEl && prevEl !== targetEl && typeof targetEl.animate === 'function' && !reduced) {
         const pi = TAB_SLIDE_ORDER.indexOf(prevId);
         const ni = TAB_SLIDE_ORDER.indexOf(viewId);
