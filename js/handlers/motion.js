@@ -1,5 +1,9 @@
 // ============================================================================
 // AURA MOTION ENGINE — Tahap 1 (Entrance + Interaction + Financial dasar)
+// + Tahap 2: MONEY FLOW PENUH. Saat saldo dompet berubah, sebuah chip
+// nominal TERBANG mengikuti kejadiannya: dari kartu dompet asal ke kartu
+// tujuan pada mutasi, masuk dari atas pada pemasukan, keluar ke bawah pada
+// pengeluaran — dan angka saldo baru bergerak tepat saat chip mendarat.
 // "Satu logika, ekspresi per kulit." Gerakan selalu mengikuti DATA: angka
 // menghitung ke nilai sebenarnya, saldo yang berubah ditween dari nilai lama
 // ke nilai baru (dihitung ulang dari AuraState dengan rumus yang sama persis
@@ -172,6 +176,57 @@
     trxPrimed = true;
   }
 
+  // ---------------- Money Flow: chip terbang mengikuti perubahan saldo -----
+  let flowBusy = false;
+  function cardCenter(wId) {
+    const el = document.querySelector('[data-wallet-card="' + wId + '"]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.bottom < 0 || r.top > window.innerHeight) return null;
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+  function planFlow(changes) {
+    if (flowBusy || !changes.length || changes.length > 2) return null;
+    if (changes.length === 2) {
+      const neg = changes[0].delta < 0 ? changes[0] : changes[1];
+      const pos = changes[0].delta > 0 ? changes[0] : changes[1];
+      if (!neg || !pos || neg.delta >= 0 || pos.delta <= 0) return null;
+      const a = cardCenter(neg.wId), b = cardCenter(pos.wId);
+      if (!a || !b) return null;
+      const amt = Math.min(Math.abs(neg.delta), Math.abs(pos.delta));
+      return { kind: "transfer", from: a, to: b, label: fmt(amt), dur: 750, cls: "" };
+    }
+    const c = changes[0];
+    const ctr = cardCenter(c.wId);
+    if (!ctr) return null;
+    if (c.delta < 0) return { kind: "out", from: ctr, to: { x: ctr.x, y: ctr.y + 160 }, label: "−" + fmt(Math.abs(c.delta)), dur: 620, cls: "out" };
+    return { kind: "in", from: { x: ctr.x, y: ctr.y - 170 }, to: ctr, label: "+" + fmt(c.delta), dur: 800, cls: "in" };
+  }
+  function flyFlow(plan) {
+    flowBusy = true;
+    const el = document.createElement("div");
+    el.className = "aura-fly-chip" + (plan.cls ? " " + plan.cls : "");
+    el.textContent = plan.label;
+    el.style.left = plan.from.x + "px";
+    el.style.top = plan.from.y + "px";
+    document.body.appendChild(el);
+    const mx = (plan.from.x + plan.to.x) / 2;
+    const my = plan.kind === "out" ? (plan.from.y + plan.to.y) / 2 : Math.min(plan.from.y, plan.to.y) - 64;
+    const t0 = performance.now();
+    const step = function (t) {
+      const p = Math.min(1, (t - t0) / plan.dur);
+      const e = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      const x = (1 - e) * (1 - e) * plan.from.x + 2 * (1 - e) * e * mx + e * e * plan.to.x;
+      const y = (1 - e) * (1 - e) * plan.from.y + 2 * (1 - e) * e * my + e * e * plan.to.y;
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+      el.style.opacity = p > .9 ? String(1 - (p - .9) / .1) : "1";
+      if (p < 1) requestAnimationFrame(step);
+      else { el.remove(); flowBusy = false; }
+    };
+    requestAnimationFrame(step);
+  }
+
   function check() {
     const b = computeBalances();
     if (!b) return;
@@ -186,21 +241,43 @@
       markNewTrxCards();
       return;
     }
-    if (b.total !== last.total) {
-      tweenNum(document.getElementById("dash-total-balance"), last.total, b.total, 700);
-    }
+    const prev = last;
+    const changes = [];
     Object.keys(b.per).forEach(function (wId) {
-      if (b.per[wId] !== last.per[wId]) {
-        tweenNum(document.querySelector('[data-wallet-bal="' + wId + '"]'), last.per[wId], b.per[wId], 650);
-        const card = document.querySelector('[data-wallet-card="' + wId + '"]');
-        chip(card, b.per[wId] - last.per[wId]);
+      if (b.per[wId] !== prev.per[wId]) changes.push({ wId: wId, delta: b.per[wId] - prev.per[wId] });
+    });
+    const plan = reduced() ? null : planFlow(changes);
+    let delay = 0;
+    if (plan) {
+      // Selama chip terbang, tampilan angka dikembalikan ke nilai lama —
+      // saldo bergerak tepat saat chip mendarat, bukan sebelumnya.
+      changes.forEach(function (c) {
+        const el = document.querySelector('[data-wallet-bal="' + c.wId + '"]');
+        if (el) { if (el._auraTween) cancelAnimationFrame(el._auraTween); el.textContent = fmt(prev.per[c.wId]); }
+      });
+      if (b.total !== prev.total) {
+        const tEl = document.getElementById("dash-total-balance");
+        if (tEl) { if (tEl._auraTween) cancelAnimationFrame(tEl._auraTween); tEl.textContent = fmt(prev.total); }
+      }
+      flyFlow(plan);
+      delay = plan.dur;
+    }
+    const applyAll = function () {
+      if (b.total !== prev.total) {
+        tweenNum(document.getElementById("dash-total-balance"), prev.total, b.total, 700);
+      }
+      changes.forEach(function (c) {
+        tweenNum(document.querySelector('[data-wallet-bal="' + c.wId + '"]'), prev.per[c.wId], b.per[c.wId], 650);
+        const card = document.querySelector('[data-wallet-card="' + c.wId + '"]');
+        chip(card, c.delta);
         if (card && !reduced()) {
           card.classList.remove("aura-pulse");
           void card.offsetWidth;
           card.classList.add("aura-pulse");
         }
-      }
-    });
+      });
+    };
+    if (delay > 0) setTimeout(applyAll, delay); else applyAll();
     last = b;
     markNewTrxCards();
   }

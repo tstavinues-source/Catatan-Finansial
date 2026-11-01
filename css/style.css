@@ -716,3 +716,11 @@ body.share-selecting .share-select-check { display: inline-flex; }
 .trx-menu button i { width: 15px; text-align: center; color: var(--text-muted); }
 .trx-menu button.danger { color: #ef4444; }
 .trx-menu button.danger i { color: #ef4444; }
+
+/* Money Flow (Tahap 2): chip nominal yang terbang antar kartu dompet */
+.aura-fly-chip { position: fixed; z-index: 200; pointer-events: none; transform: translate(-50%, -50%);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 800; font-size: 12px; white-space: nowrap;
+    padding: 6px 11px; border-radius: 999px; background: var(--bg-glass); color: var(--text-main);
+    border: 1.5px solid var(--accent-primary); box-shadow: var(--shadow-raised); }
+.aura-fly-chip.out { border-color: var(--color-expense); }
+.aura-fly-chip.in { border-color: var(--color-income); }
