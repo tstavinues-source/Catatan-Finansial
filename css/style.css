@@ -746,8 +746,8 @@ html[data-skin="brutal"] .aura-nw-scrim, html[data-skin="clay"] .aura-nw-scrim {
 html.aura-reduce-motion .aura-nw-bg { transition: none; }
 
 /* Ikon kategori per tema (VIS): gambar memenuhi chip, mengikuti radius kulit aktif. */
-.icon-chip:has(> img.ikon-tema-img) { overflow: hidden; padding: 0; }
-.icon-chip > img.ikon-tema-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.icon-chip:has(> img.ikon-tema-img), [data-ikon]:has(> img.ikon-tema-img) { overflow: hidden; padding: 0; }
+.icon-chip > img.ikon-tema-img, [data-ikon] > img.ikon-tema-img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* ===== VIS Tahap 2: bentuk navigasi bawah per tampilan =====
    Hanya geometri wadah nav, pil penanda aktif, dan FAB yang dibedakan per

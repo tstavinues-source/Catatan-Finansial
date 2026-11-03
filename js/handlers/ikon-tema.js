@@ -31,6 +31,11 @@
     return IKON_BY_THEME[th] || "tembaga";
   }
 
+  // Dipakai tampilan Analisa: slug ikon untuk nama kategori, atau null.
+  window.AuraIkonSlugKategori = function (kategori) {
+    return SLUG[kategori || "Lainnya"] || null;
+  };
+
   // Dipakai renderer kartu: slug ikon untuk sebuah transaksi, atau null bila
   // jenisnya memakai ikon gerakan (mutasi / tarik-setor / brankas).
   window.AuraIkonSlug = function (t) {
