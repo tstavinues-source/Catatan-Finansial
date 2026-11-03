@@ -822,3 +822,7 @@ html[data-skin="clay"] #btn-manual-fab {
 html[data-skin="brutal"] .aura-nw-scrim {
     background: linear-gradient(120deg, rgba(244, 234, 216, 0.84), rgba(244, 234, 216, 0.68) 55%, rgba(244, 234, 216, 0.76));
 }
+
+/* Ikon sub-kategori tanpa latar: gambar kecil di baris rincian Analisa. */
+.ikon-sub-slot { display: inline-flex; align-items: center; }
+.ikon-sub-img { width: 15px; height: 15px; object-fit: contain; display: block; }

@@ -21,7 +21,15 @@
     "Lainnya": "lainnya"
   };
   const SLUGS = Object.keys(SLUG).map(function (k) { return SLUG[k]; });
+  // Sub-kategori (grup Makanan): ikon TANPA latar (alfa), latar diatur chip.
+  const SUB_SLUG = {
+    "Makanan": "makanan", "Buah": "buah", "Sayuran": "sayuran",
+    "Daging": "daging", "Bumbu/Bahan Masakan": "bumbu",
+    "Bahan Pokok": "bahanpokok", "Camilan": "camilan"
+  };
+  const SUB_SLUGS = Object.keys(SUB_SLUG).map(function (k) { return SUB_SLUG[k]; });
   const urlCache = {};  // tema -> { slug: blobUrl }
+  const subUrlCache = {};  // tema -> { slugSub: blobUrl }
   const loading = {};   // tema -> true selama memuat
 
   function temaKey() {
@@ -44,6 +52,11 @@
     return SLUG[t.kategori || "Lainnya"] || null;
   };
 
+  // Dipakai tampilan Analisa: slug ikon sub untuk nama sub-kategori, atau null.
+  window.AuraIkonSlugSub = function (namaSub) {
+    return SUB_SLUG[namaSub || ""] || null;
+  };
+
   async function loadTema(tema) {
     if (urlCache[tema] || loading[tema]) return;
     loading[tema] = true;
@@ -58,6 +71,17 @@
       } catch (e) { /* aset ikon gagal — chip memakai ikon bawaan */ }
     }));
     urlCache[tema] = map;
+    const subMap = {};
+    await Promise.all(SUB_SLUGS.map(async function (slug) {
+      try {
+        const teks = await (await fetch("assets/ikon-sub/" + tema + "/sub-" + slug + ".webp.b64")).text();
+        const bin = atob(teks.replace(/\s/g, ""));
+        const u8 = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+        subMap[slug] = URL.createObjectURL(new Blob([u8], { type: "image/webp" }));
+      } catch (e) { /* aset sub gagal — baris memakai ikon bawaan */ }
+    }));
+    subUrlCache[tema] = subMap;
     applyAll();
   }
 
@@ -72,6 +96,16 @@
       slot.setAttribute("data-ikon-url", url);
       slot.innerHTML = '<img class="ikon-tema-img" src="' + url + '" alt="">';
     });
+    const subMapNow = subUrlCache[tema];
+    if (subMapNow) {
+      document.querySelectorAll("[data-ikon-sub]").forEach(function (slot) {
+        const url = subMapNow[slot.getAttribute("data-ikon-sub")];
+        if (!url) return;
+        if (slot.getAttribute("data-ikon-url") === url) return;
+        slot.setAttribute("data-ikon-url", url);
+        slot.innerHTML = '<img class="ikon-sub-img" src="' + url + '" alt="">';
+      });
+    }
   }
   window.AuraIkonRefresh = applyAll;
 
