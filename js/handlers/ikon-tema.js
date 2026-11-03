@@ -52,9 +52,15 @@
     return SLUG[t.kategori || "Lainnya"] || null;
   };
 
+  // Peta pencarian sub tidak peka huruf: aplikasi menulis ulang nama sub
+  // per kata ("Bumbu/Bahan Masakan" tampil sebagai "Bumbu/bahan Masakan"),
+  // jadi pencocokan dilakukan dalam huruf kecil.
+  const SUB_SLUG_CI = {};
+  Object.keys(SUB_SLUG).forEach(function (k) { SUB_SLUG_CI[k.toLowerCase()] = SUB_SLUG[k]; });
+
   // Dipakai tampilan Analisa: slug ikon sub untuk nama sub-kategori, atau null.
   window.AuraIkonSlugSub = function (namaSub) {
-    return SUB_SLUG[namaSub || ""] || null;
+    return SUB_SLUG_CI[String(namaSub || "").trim().toLowerCase()] || null;
   };
 
   async function loadTema(tema) {
