@@ -257,7 +257,7 @@ window.renderAnalytics = function() {
                 <div class="mb-2 bg-black/20 border border-[var(--border-glass)] rounded-xl overflow-hidden group">
                     <div class="flex items-center justify-between p-3 cursor-pointer hover:bg-white/5 transition active:scale-[0.99]" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.fa-chevron-down').classList.toggle('rotate-180');">
                         <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style="background-color: ${p.style.hex}20;">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0"${(typeof window.AuraIkonSlugKategori === 'function' && window.AuraIkonSlugKategori(p.name)) ? ` data-ikon="${window.AuraIkonSlugKategori(p.name)}"` : ''} style="background-color: ${p.style.hex}20;">
                                 <i class="fa-solid ${p.style.icon}" style="color: ${p.style.hex};"></i>
                             </div>
                             <div>
