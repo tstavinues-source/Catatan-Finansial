@@ -237,7 +237,7 @@ window.renderAnalytics = function() {
                         subsHtml += `
                         <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/10 transition cursor-pointer active:scale-[0.99] group" onclick="window.openSubCategoryItems('${safeParent}', '${safeSub}')">
                             <span class="text-[10px] text-slate-300 flex items-center gap-2 group-hover:text-white transition">
-                                <i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i> 
+                                ${(typeof window.AuraIkonSlugSub === 'function' && window.AuraIkonSlugSub(sub.name)) ? `<span class="ikon-sub-slot" data-ikon-sub="${window.AuraIkonSlugSub(sub.name)}"><i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i></span>` : `<i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i>`} 
                                 ${displayName}
                             </span>
                             <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
