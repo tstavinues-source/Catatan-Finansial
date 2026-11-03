@@ -744,3 +744,7 @@ nav.glass-nav .nav-btn { position: relative; z-index: 1; }
 html[data-skin="brutal"] .aura-nw-scrim, html[data-skin="clay"] .aura-nw-scrim {
     background: linear-gradient(120deg, rgba(255,255,255,.38), rgba(255,255,255,.08) 55%, rgba(255,255,255,.22)); }
 html.aura-reduce-motion .aura-nw-bg { transition: none; }
+
+/* Ikon kategori per tema (VIS): gambar memenuhi chip, mengikuti radius kulit aktif. */
+.icon-chip:has(> img.ikon-tema-img) { overflow: hidden; padding: 0; }
+.icon-chip > img.ikon-tema-img { width: 100%; height: 100%; object-fit: cover; display: block; }

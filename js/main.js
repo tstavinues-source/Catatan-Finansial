@@ -97,6 +97,7 @@ import './handlers/skins.js';
 import './handlers/closing-report.js';
 import './handlers/share-trx.js';
 import './handlers/motion.js';
+import './handlers/ikon-tema.js';
 import './handlers/import-export.js';
 import './modules/staging.js';
 import './modules/tour.js';

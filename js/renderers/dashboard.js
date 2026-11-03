@@ -486,6 +486,8 @@ window.reCalculateAll = function() {
                     signChar = '⇄';
                 }
                 
+                const ikonSlug = (typeof window.AuraIkonSlug === "function") ? window.AuraIkonSlug(t) : null;
+                
                 const titleDisp = AuraUtils.escapeHtml(t.merchantName || t.storeName || t.kategori);
                 const descDisp = AuraUtils.escapeHtml(t.description || t.catatan_ai || "");
                 
@@ -568,7 +570,7 @@ window.reCalculateAll = function() {
                 <div class="glass-panel p-4 relative group" data-trx-card="${t.id}">
                     <button class="share-select-check" onclick="window.toggleShareSelect('${t.id}', '${pairId || ''}', this)" aria-label="Pilih transaksi untuk dibagikan"><i class="fa-solid fa-check"></i></button>
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 icon-chip shrink-0" style="background-color: ${catStyle.hex}15;">
+                        <div class="w-10 h-10 icon-chip shrink-0"${ikonSlug ? ` data-ikon="${ikonSlug}"` : ''} style="background-color: ${catStyle.hex}15;">
                             ${iconHtml}
                         </div>
                         <p class="font-bold text-[17px] font-mono ml-auto ${colorClass}">${signChar}${window.formatAuraCurrency(valTrx)}</p>
