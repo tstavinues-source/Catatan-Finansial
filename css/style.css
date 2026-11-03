@@ -826,3 +826,16 @@ html[data-skin="brutal"] .aura-nw-scrim {
 /* Ikon sub-kategori tanpa latar: gambar kecil di baris rincian Analisa. */
 .ikon-sub-slot { display: inline-flex; align-items: center; }
 .ikon-sub-img { width: 15px; height: 15px; object-fit: contain; display: block; }
+
+/* === VIS Perbaikan 2: ikon transparan (Luxury & Neo-Brutal, Spec Ikon Master) ===
+   Set transparan seninya memenuhi kanvas; object-fit: cover lama membuatnya
+   terpotong sudut chip. Dua kulit ini memakai contain + ruang napas.
+   Tema lain yang ikonnya berlatar penuh tetap cover seperti semula. */
+html[data-skin="luxury"] .icon-chip > img.ikon-tema-img,
+html[data-skin="luxury"] [data-ikon] > img.ikon-tema-img,
+html[data-skin="brutal"] .icon-chip > img.ikon-tema-img,
+html[data-skin="brutal"] [data-ikon] > img.ikon-tema-img {
+    object-fit: contain;
+    padding: 10%;
+    box-sizing: border-box;
+}
