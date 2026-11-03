@@ -799,13 +799,10 @@ html[data-skin="cyber"] #btn-manual-fab {
     border-radius: 16px; border: 1px solid rgba(34, 211, 238, 0.65);
     box-shadow: 0 0 20px rgba(34, 211, 238, 0.4), 0 10px 24px rgba(0, 0, 0, 0.5);
 }
-/* --- Neo-Brutal: blok tersegmentasi, garis pemisah antar tombol --- */
+/* --- Neo-Brutal: bilah tegas, pil aktif kotak --- */
 html[data-skin="brutal"] nav.glass-nav {
     border-top: 3px solid #16130e;
     box-shadow: none;
-}
-html[data-skin="brutal"] nav.glass-nav .nav-btn + .nav-btn {
-    border-left: 2px solid rgba(22, 19, 14, 0.8);
 }
 html[data-skin="brutal"] #aura-nav-pill { border-radius: 4px; }
 /* --- Clay 3D: bantal melayang, bayangan neumorfik ganda --- */
@@ -816,4 +813,12 @@ html[data-skin="clay"] nav.glass-nav {
 }
 html[data-skin="clay"] #btn-manual-fab {
     box-shadow: 7px 7px 16px rgba(88, 68, 160, 0.32), -5px -5px 12px rgba(255, 255, 255, 0.5);
+}
+
+/* ===== VIS Perbaikan 1 (laporan pemilik 3 Nov) =====
+   Latar Net Worth Brutal sangat gelap (termasuk garis kuning menyilang di
+   tengah kartu) sedangkan teksnya tinta gelap — scrim krem diperkuat agar
+   foto menjadi latar redup dan angka terbaca jelas. */
+html[data-skin="brutal"] .aura-nw-scrim {
+    background: linear-gradient(120deg, rgba(244, 234, 216, 0.84), rgba(244, 234, 216, 0.68) 55%, rgba(244, 234, 216, 0.76));
 }
