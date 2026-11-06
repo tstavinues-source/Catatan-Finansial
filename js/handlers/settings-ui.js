@@ -889,6 +889,55 @@ window.copyClaudeConnectCode = async function () {
     }
 };
 
+// --- Hubungkan ke AI (konektor Claude) ---
+const AI_CONNECTOR_URL = 'https://aurafi-mcp.tstavinues.workers.dev/mcp';
+async function copyTextWithToast(text, okMsg) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch (e) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+    }
+    if (typeof window.showToast === 'function') window.showToast(okMsg);
+}
+window.copyAiServerAddress = async function () {
+    await copyTextWithToast(AI_CONNECTOR_URL, 'Alamat server tersalin.');
+};
+window.copyAiAuthHeader = async function () {
+    try {
+        const code = FirebaseService.getConnectionCode();
+        const field = document.getElementById('claude-connect-code');
+        const area = document.getElementById('claude-connect-area');
+        if (field) field.value = code;
+        if (area) area.classList.remove('hidden');
+        await copyTextWithToast('Bearer ' + code, 'Header Authorization tersalin.');
+    } catch (e) {
+        if (typeof window.showToast === 'function') window.showToast('Kode belum tersedia — pastikan kamu sudah masuk.', true);
+    }
+};
+window.revokeAiAccessFlow = async function () {
+    if (!window.FirebaseService || typeof window.FirebaseService.revokeAiAccess !== 'function') {
+        if (typeof window.showToast === 'function') window.showToast('Layanan belum siap. Coba lagi sebentar lagi.', true);
+        return;
+    }
+    const yakin = await window.AuraConfirm('Cabut akses AI sekarang?<br><br>Semua kode koneksi yang sudah kamu buat <b>berhenti berlaku</b> — Claude tidak bisa lagi membaca atau mencatat bukumu sampai kamu membuat kode baru dari panel ini.');
+    if (!yakin) return;
+    try {
+        await FirebaseService.revokeAiAccess();
+        const field = document.getElementById('claude-connect-code');
+        const area = document.getElementById('claude-connect-area');
+        if (field) field.value = '';
+        if (area) area.classList.add('hidden');
+        if (typeof window.showToast === 'function') window.showToast('Akses AI dicabut. Kode lama tidak berlaku lagi.');
+    } catch (e) {
+        if (typeof window.showToast === 'function') window.showToast('Gagal mencabut akses. Periksa koneksi lalu coba lagi.', true);
+    }
+};
+
 // Alur hapus akun & semua data (Pengaturan → Akun & Data → Hapus Akun & Semua Data).
 // Dua konfirmasi tegas, lalu FirebaseService.deleteAccountAndData: menyegarkan
 // sesi (akun Google), menghapus seluruh data pengguna, lalu menghapus akunnya.

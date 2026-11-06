@@ -345,6 +345,15 @@ export const FirebaseService = {
     // publik aplikasi. Muse milik pengguna menukar token penyegar ini
     // menjadi token akses jangka pendek dan hanya menyentuh subpohon
     // aurafi_ledger/<uid pengguna itu>. Bukan kunci basis data proyek.
+    // Versi koneksi AI akun ini (kontrak cabut akses): tersimpan di
+    // settings/aiConnection.version, bawaan 0. Kode koneksi menyematkan versi
+    // saat dibuat sebagai aiVersion; server MCP menolak kode yang versinya
+    // lebih rendah dari versi tersimpan.
+    getAiConnectionVersion: function() {
+        const v = parseInt(AuraState?.data?.settings?.aiConnection?.version, 10);
+        return Number.isFinite(v) && v > 0 ? v : 0;
+    },
+
     getConnectionCode: function() {
         if (!authInstance || !authInstance.currentUser) throw new Error("Sesi pengguna tidak valid.");
         const u = authInstance.currentUser;
@@ -354,8 +363,28 @@ export const FirebaseService = {
             databaseURL: FIREBASE_CONFIG.databaseURL,
             uid: u.uid,
             refreshToken: u.refreshToken,
+            aiVersion: this.getAiConnectionVersion(),
         };
         return "AURAFI1:" + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    },
+
+    // Cabut Akses AI: naikkan versi koneksi + catat waktu cabut di
+    // settings/aiConnection. Semua kode berversi lebih rendah yang sudah
+    // beredar langsung ditolak server. Kode baru yang dibuat setelah ini
+    // memakai versi baru, jadi pengguna bisa tersambung lagi kapan pun.
+    revokeAiAccess: async function() {
+        this._checkAuth();
+        const uid = AuraState.user.uid;
+        const now = new Date().toISOString();
+        const next = {
+            version: this.getAiConnectionVersion() + 1,
+            updatedAt: now,
+            revokedAt: now,
+        };
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/settings/aiConnection`), next);
+        if (!AuraState.data.settings) AuraState.data.settings = {};
+        AuraState.data.settings.aiConnection = next;
+        return next.version;
     },
 
     // ========================================================================
