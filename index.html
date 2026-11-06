@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-11-03-r83'; try {
+    (function () { var V = '2026-11-07-r84'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -905,19 +905,31 @@
                     <button onclick="window.toggleSettingsSection('sec-muse')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
                             <div class="icon-chip w-8 h-8"><i class="fa-solid fa-link text-sm"></i></div>
-                            <span class="text-xs font-bold text-white tracking-widest uppercase">Hubungkan ke Muse</span>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Hubungkan ke AI</span>
                         </div>
                         <div class="aura-icon-btn"><i id="icon-sec-muse" class="fa-solid fa-plus transition-transform duration-300"></i></div>
                     </button>
                     <div id="sec-muse" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
                         <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
-                            <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Berikan kode ini kepada <b class="text-white">Muse milikmu</b> agar ia bisa membaca dan mencatat keuanganmu di AuraFi. Kode ini adalah kunci pribadimu — <b class="text-white">jangan dibagikan ke siapa pun</b>. Cabut akses kapan pun dengan mengganti kata sandi akunmu.</p>
-                            <button onclick="window.showClaudeConnectCode()" class="aura-action-btn"><i class="fa-solid fa-key"></i> Tampilkan Kode Koneksi</button>
+                            <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Catat dan tanya bukumu lewat obrolan dengan <b class="text-white">Claude</b> — kirim foto struk, tanya saldo, minta rekap. Yang menyambungkannya adalah <b class="text-white">kode koneksi pribadi</b> di bawah ini; server AuraFi hanya menerima kode milik akunmu sendiri.</p>
+                            <button onclick="window.showClaudeConnectCode()" class="aura-action-btn"><i class="fa-solid fa-key"></i> Buat Kode Koneksi</button>
                             <div id="claude-connect-area" class="hidden space-y-2">
                                 <textarea id="claude-connect-code" readonly rows="4" class="w-full bg-black/50 border border-[var(--border-glass)] rounded-xl p-3 text-[9px] font-mono text-violet-200 break-all"></textarea>
                                 <button onclick="window.copyClaudeConnectCode()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-copy"></i> Salin Kode</button>
-                                <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed">Di Muse, kode dimasukkan lewat brankas aman (Secure Vault) — tidak lewat obrolan biasa.</p>
                             </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="window.copyAiServerAddress()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-server"></i> Salin Alamat Server</button>
+                                <button onclick="window.copyAiAuthHeader()" class="py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-heading"></i> Salin Header</button>
+                            </div>
+                            <div class="text-[10px] text-[var(--text-muted)] leading-relaxed space-y-1">
+                                <p class="text-white font-bold text-[10px] uppercase tracking-wider">Cara menyambung ke Claude</p>
+                                <p>1. Buka Claude → Pengaturan / Customize → <b class="text-white">Connectors</b> → <b class="text-white">Add custom connector</b>, beri nama <b class="text-white">AuraFi</b>.</p>
+                                <p>2. Tempel <b class="text-white">alamat server</b> (tombol Salin Alamat Server), lalu pilih autentikasi <b class="text-white">&ldquo;Tanpa masuk&rdquo;</b>.</p>
+                                <p>3. Tambah header: nama <b class="text-white">Authorization</b>, nilai dari tombol <b class="text-white">Salin Header</b> di atas.</p>
+                                <p>4. Simpan &amp; hubungkan, lalu coba tanya &ldquo;Saldo saya berapa?&rdquo;. Pada transaksi pertama, Claude akan menanyakan mode konfirmasi pencatatanmu.</p>
+                            </div>
+                            <p class="text-[9px] text-rose-200/80 bg-rose-500/10 border border-rose-400/20 rounded-xl p-3 leading-relaxed">Kode ini <b>setara kunci akunmu</b> — jangan dibagikan dan jangan ditangkap layar. Saat terhubung, <b>Claude (Anthropic)</b> membaca &amp; memproses data buku yang kamu minta lewat obrolan. Kamu bisa mencabut akses kapan pun dari panel ini; kode lama langsung berhenti berlaku.</p>
+                            <button onclick="window.revokeAiAccessFlow()" class="w-full py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 text-rose-200 font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> Cabut Akses AI</button>
                         </div>
                     </div>
                 </div>
