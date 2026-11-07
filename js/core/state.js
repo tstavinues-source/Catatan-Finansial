@@ -21,11 +21,12 @@ export const AuraState = {
         search: '', category: 'ALL', user: 'ALL', periodMode: 'month' 
     },
     data: {
-        transactions: [], trash: [], goals: [], groqKeys: [],
+        transactions: [], trash: [], goals: [], debts: [], groqKeys: [],
         oracleChats: [], settings: {}, monthlyBudget: 100000, familyMembers: []
     },
     temp: {
         deleteTarget: null, editItemTarget: null, editTrxTarget: null,
+        debtTab: 'utang', debtDir: 'utang', debtDetailId: null, debtPaySisa: 0, debtPayCurr: null,
         addItemTargetTrxId: null, editRecurringTarget: null, expandedReceipts: {}, 
         budgetUpdateTimer: null, aiStaging: null, isProcessingRecurring: false 
     },

@@ -148,8 +148,8 @@ window.executeTransfer = async function() {
                     if (trx.merchantName && trx.merchantName.indexOf('Mutasi dari ') === 0) tTipe = 'mutasi_masuk';
                 }
 
-                if (tTipe === 'pemasukan' || tTipe === 'mutasi_masuk') currentBalance += val;
-                else if (tTipe === 'pengeluaran' || tTipe === 'mutasi_keluar') currentBalance -= val;
+                if (tTipe === 'pemasukan' || tTipe === 'mutasi_masuk' || tTipe === 'utangpiutang_masuk') currentBalance += val;
+                else if (tTipe === 'pengeluaran' || tTipe === 'mutasi_keluar' || tTipe === 'utangpiutang_keluar') currentBalance -= val;
                 else if (tTipe === 'tarik_tunai' || tTipe === 'setor_tunai') currentBalance -= (val + feeVal);
             }
         }

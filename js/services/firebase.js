@@ -27,7 +27,7 @@ let isInitialLoadComplete = false;
 let initialDataArrived = { transactions: false, settings: false, goals: false };
 
 const forceUIRender = () => {
-    const renderers = ['renderDashboard', 'renderTransactions', 'renderAnalytics', 'renderBudgets', 'renderTrash'];
+    const renderers = ['renderDashboard', 'renderTransactions', 'renderAnalytics', 'renderBudgets', 'renderTrash', 'renderDebts', 'renderDebtDetail'];
     renderers.forEach(fn => {
         try {
             if (typeof window[fn] === 'function') window[fn]();
@@ -239,12 +239,33 @@ try {
                 if (typeof window.renderOracleChats === 'function') window.renderOracleChats();
             });
             AuraState.listeners.push(chatUnsub);
-            
+
+            // ====================================================================
+            // 6. UTANG & PIUTANG (node 'debts'; catatan terhapus lunak disaring
+            //    keluar dari daftar aktif — sisa & status diturunkan di handler)
+            // ====================================================================
+            const debtsRef = ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${uid}/debts`);
+            const debtsUnsub = onValue(debtsRef, (snapshot) => {
+                const data = snapshot.val();
+                const arr = [];
+                if (data) {
+                    for (const key in data) {
+                        const item = { id: key, ...data[key] };
+                        if (!item.is_deleted) arr.push(item);
+                    }
+                }
+                arr.sort((a, b) => new Date(b.createdAt || b.tanggal_mulai || 0) - new Date(a.createdAt || a.tanggal_mulai || 0));
+                AuraState.data.debts = arr;
+                smartRender();
+            });
+            AuraState.listeners.push(debtsUnsub);
+
         } else {
             AuraState.user.uid = null;
             AuraState.data.transactions = [];
             AuraState.data.settings = {};
             AuraState.data.goals = [];
+            AuraState.data.debts = [];
             AuraState.data.trash = [];
             AuraState.data.wallets = {};
             AuraState.data.oracleChats = [];
@@ -635,6 +656,92 @@ export const FirebaseService = {
 
         await remove(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}/goals/${id}`));
         await this.saveAuditLog("GOAL.DELETE", `Hapus tujuan finansial ID: ${id}`);
+    },
+
+    // ========================================================================
+    // UTANG & PIUTANG — semua penulisan yang menyentuh catatan + transaksi
+    // dompet pendamping dilakukan dalam SATU update() multi-path atomik
+    // (pola executeAtomicTransfer): catatan dan arus dompetnya tidak pernah
+    // tersimpan setengah-setengah. Id catatan & transaksi dibuat pemanggil
+    // (AuraUtils.generateId) agar keduanya bisa saling menautkan.
+    // ========================================================================
+
+    saveDebt: async function(debtData, trxData) {
+        this._checkAuth();
+        if (!debtData || !debtData.id) throw new Error("Catatan utang/piutang wajib punya id.");
+
+        const updates = {};
+        updates[`debts/${debtData.id}`] = debtData;
+        if (trxData) {
+            if (!trxData.id) throw new Error("Transaksi pendamping wajib punya id.");
+            trxData.user_id = AuraState.data.settings?.profile?.nickname || "User";
+            trxData.nominal = Math.max(0, Number(trxData.nominal) || 0);
+            if (!trxData.createdAt) trxData.createdAt = new Date().toISOString();
+            updates[`transactions/${trxData.id}`] = trxData;
+        }
+
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}`), updates);
+        await this.saveAuditLog("DEBT.ADD", `Catatan utang/piutang: ${debtData.pihak || '-'} (${AuraUtils.formatCurrency(debtData.jumlah || 0)})`);
+        forceUIRender();
+    },
+
+    addDebtPayment: async function(debtId, payments, trxData) {
+        this._checkAuth();
+        if (!debtId) throw new Error("ID catatan utang/piutang tidak terdefinisi.");
+
+        const nowIso = new Date().toISOString();
+        const updates = {};
+        updates[`debts/${debtId}/pembayaran`] = payments;
+        updates[`debts/${debtId}/updatedAt`] = nowIso;
+        if (trxData) {
+            if (!trxData.id) throw new Error("Transaksi pendamping wajib punya id.");
+            trxData.user_id = AuraState.data.settings?.profile?.nickname || "User";
+            trxData.nominal = Math.max(0, Number(trxData.nominal) || 0);
+            if (!trxData.createdAt) trxData.createdAt = nowIso;
+            updates[`transactions/${trxData.id}`] = trxData;
+        }
+
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}`), updates);
+        await this.saveAuditLog("DEBT.PAY", `Pembayaran utang/piutang pada catatan ID: ${debtId}`);
+        forceUIRender();
+    },
+
+    removeDebtPayment: async function(debtId, payments, trxId) {
+        this._checkAuth();
+        if (!debtId) throw new Error("ID catatan utang/piutang tidak terdefinisi.");
+
+        const nowIso = new Date().toISOString();
+        const updates = {};
+        updates[`debts/${debtId}/pembayaran`] = payments;
+        updates[`debts/${debtId}/updatedAt`] = nowIso;
+        if (trxId) {
+            updates[`transactions/${trxId}/is_deleted`] = true;
+            updates[`transactions/${trxId}/deletedAt`] = nowIso;
+        }
+
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}`), updates);
+        await this.saveAuditLog("DEBT.PAYDEL", `Pembayaran dihapus pada catatan ID: ${debtId}`);
+        forceUIRender();
+    },
+
+    trashDebt: async function(debtId, trxIds) {
+        this._checkAuth();
+        if (!debtId) throw new Error("ID catatan utang/piutang tidak terdefinisi.");
+
+        const nowIso = new Date().toISOString();
+        const updates = {};
+        updates[`debts/${debtId}/is_deleted`] = true;
+        updates[`debts/${debtId}/deletedAt`] = nowIso;
+        updates[`debts/${debtId}/updatedAt`] = nowIso;
+        (trxIds || []).forEach(function(tid) {
+            if (!tid) return;
+            updates[`transactions/${tid}/is_deleted`] = true;
+            updates[`transactions/${tid}/deletedAt`] = nowIso;
+        });
+
+        await update(ref(dbInstance, `${APP_CONFIG.LEDGER_NODE}/${AuraState.user.uid}`), updates);
+        await this.saveAuditLog("DEBT.DELETE", `Catatan utang/piutang diarsipkan ID: ${debtId}`);
+        forceUIRender();
     },
 
     updateSettings: async function(data) { 

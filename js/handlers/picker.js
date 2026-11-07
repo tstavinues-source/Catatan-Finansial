@@ -14,6 +14,7 @@
     "topup-goal-source", "staging-trx-type", "manual-trx-type",
     "edit-global-type", "new-rec-method", "manual-trx-curr",
     "edit-global-curr", "goal-jenis", "wallet-form-type",
+    "debt-wallet", "debt-pay-wallet",
   ];
   let currentSelect = null;
 

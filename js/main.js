@@ -78,7 +78,8 @@ import './handlers/auth.js';
 import './handlers/navigation.js'; 
 import './handlers/transactions.js';
 import './handlers/confirm.js'; 
-import './handlers/goals.js';   
+import './handlers/goals.js';
+import './handlers/debts.js';
 import './handlers/settings-ui.js';
 import './handlers/cycle-settings.js';
 import './handlers/reconcile.js';
@@ -501,6 +502,9 @@ window.syncCategoriesData = async function() {
     const transactions = AuraState.data.transactions || [];
     
     transactions.forEach(trx => {
+        // Transaksi Utang & Piutang bukan kategori belanja: jangan daftarkan
+        // "Utang Piutang" ke gudang kategori manual (tipe khususnya sendiri).
+        if (trx.tipe === 'utangpiutang_masuk' || trx.tipe === 'utangpiutang_keluar') return;
         let pName = trx.kategori; 
         if (!pName || pName.trim() === '' || pName.toLowerCase() === 'uncategorized') pName = 'Lainnya';
         const pNameLower = pName.toLowerCase();
