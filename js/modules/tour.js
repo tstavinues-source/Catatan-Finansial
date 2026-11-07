@@ -22,7 +22,7 @@ function pastikanSeksi(id, buka) {
     if (typeof window.toggleSettingsSection === 'function') window.toggleSettingsSection(id);
 }
 
-const SEKSI_TUR = ['sec-siklus', 'sec-reminders', 'sec-muse', 'sec-kurs', 'sec-backup', 'sec-advanced', 'sec-tampilan'];
+const SEKSI_TUR = ['sec-siklus', 'sec-reminders', 'sec-hubungkan-muse', 'sec-kurs', 'sec-backup', 'sec-advanced', 'sec-tampilan'];
 
 function bukaPengaturanSeksi(id) {
     if (typeof window.showModal === 'function') window.showModal('modal-settings');
@@ -128,9 +128,9 @@ const LANGKAH = [
     },
     {
         judul: 'Hubungkan ke Muse',
-        isi: 'AuraFi bisa dihubungkan ke <b>Muse</b>, asisten AI pribadimu. Tampilkan kode koneksi di bagian ini, lalu berikan kode itu ke Muse — setelah terhubung, Muse bisa membaca catatanmu dan membantumu mencatat langsung ke AuraFi.',
-        aksi: () => { bukaPengaturanSeksi('sec-muse'); },
-        el: () => elId('sec-muse')
+        isi: 'AuraFi bisa dihubungkan ke <b>Muse</b>, asisten AI pribadimu. Buat kode koneksi di bagian ini, lalu buka Muse dan tempel <b>alamat server</b> beserta kode itu — minta Muse menghubungkannya. Setelah terhubung, coba tanya <b>"Saldo saya berapa?"</b> — Muse bisa membaca catatanmu dan membantumu mencatat langsung ke AuraFi.',
+        aksi: () => { bukaPengaturanSeksi('sec-hubungkan-muse'); },
+        el: () => elId('sec-hubungkan-muse')
     },
     {
         judul: 'Kurs Mata Uang',

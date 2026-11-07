@@ -7,7 +7,7 @@ aliases: ["AuraFi", "aurafi", "catatan keuangan"]
 auth:
   kind: "api_key"
   label: "Kode Koneksi AuraFi"
-  help: "In the AuraFi app, open Pengaturan -> Hubungkan ke Muse -> Tampilkan Kode Koneksi, then paste the code here. It stays in the secure vault and is handed to the helper as a file at call time."
+  help: "In the AuraFi app, open Pengaturan -> Hubungkan ke Muse -> Buat Kode Koneksi, then paste the code here. It stays in the secure vault and is handed to the helper as a file at call time."
   fields:
     - key: "code"
       label: "Kode Koneksi (diawali AURAFI1:)"
