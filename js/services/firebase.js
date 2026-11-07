@@ -8,7 +8,7 @@ import {
     getDatabase, ref, push, update, remove, onValue, get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
-    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, deleteUser, reauthenticateWithPopup
+    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, deleteUser, reauthenticateWithPopup, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { FIREBASE_CONFIG, APP_CONFIG } from '../config/constants.js';
@@ -292,6 +292,7 @@ window.loadRealtimeDatabaseData = function(silent = false) {
 
 export const FirebaseService = {
     loginWithEmail: async function(email, password) { return await signInWithEmailAndPassword(authInstance, email, password); },
+    resetPassword: async function(email) { return await sendPasswordResetEmail(authInstance, email); },
     loginWithGoogle: async function() {
         // Di aplikasi Android, popup web selalu gagal ("missing initial state /
         // storage-partitioned") karena WebView tidak bisa menuntaskan alur

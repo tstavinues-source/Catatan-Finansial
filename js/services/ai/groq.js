@@ -4,6 +4,7 @@
  */
 
 import { AuraState } from '../../core/state.js';
+import { decryptStoredApiKey } from './key-crypto.js';
 
 export const GroqAPI = {
     currentIndex: 0,
@@ -13,18 +14,15 @@ export const GroqAPI = {
     refreshKeys: function() {
         let rawKeys = AuraState.data?.settings?.groqKeysEncrypted || [];
         let encKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-        const secret = AuraState.user?.uid || "aura_secret_fallback";
-        
+        const uid = AuraState.user?.uid || null;
+
         this.keysPool = []; // Bersihkan memori sebelum diisi ulang
-        
+
+        // Dekripsi lewat key-crypto: format baru AES; format lama XOR tetap
+        // terbaca selama masa migrasi. Tanpa UID, tidak ada kunci yang lolos.
         for (let k of encKeys) {
-            try {
-                let text = atob(k); let result = '';
-                for (let i = 0; i < text.length; i++) {
-                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-                }
-                if (result.startsWith('gsk_')) this.keysPool.push(result);
-            } catch(e) {}
+            const dec = decryptStoredApiKey(k, uid, (p) => p.startsWith('gsk_'));
+            if (dec) this.keysPool.push(dec.plain);
         }
     },
 

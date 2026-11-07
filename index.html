@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-11-07-r89'; try {
+    (function () { var V = '2026-11-07-r90'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -194,6 +194,9 @@
                 <div class="space-y-3 w-full mb-6">
                     <input type="email" id="login-email" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Email Terdaftar">
                     <input type="password" id="login-pass" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Kata Sandi">
+                    <div class="flex justify-end">
+                        <button type="button" onclick="window.forgotPassword()" class="text-[11px] font-semibold text-accent hover:underline active:scale-95 transition">Lupa kata sandi?</button>
+                    </div>
                     <button onclick="window.loginWithEmail()" class="w-full py-4 rounded-2xl bg-accent text-[var(--invert-contrast)] font-bold text-sm shadow-[0_0_20px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-envelope"></i> Masuk via Email
                     </button>
