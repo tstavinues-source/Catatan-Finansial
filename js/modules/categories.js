@@ -7,6 +7,7 @@
 import { DEFAULT_SYSTEM_CATEGORIES } from '../config/categories.js';
 import { AuraState } from '../core/state.js';
 import { AuraUtils } from '../core/utils.js';
+import { Logger } from '../core/logger.js';
 
 /**
  * Kelompok pengeluaran per item — selaras dengan pemisahan di Buku Kas:
@@ -210,7 +211,7 @@ export const CategoryManager = {
                     
                     // Perbarui tampilan Dropdown di seluruh layar
                     this.renderDropdowns();
-                    console.log("[AuraFi Auto-Learn] Kategori baru berhasil dipelajari dan diamankan ke Firebase.");
+                    Logger.success('AutoLearn', 'Kategori baru berhasil dipelajari dan diamankan ke Firebase.');
                 }
             } catch(e) {
                 console.error("[AuraFi Auto-Learn] Gagal sinkronisasi kategori baru:", e);
