@@ -62,7 +62,7 @@ export const FinancialSummaryService = {
             if (isNaN(val)) continue;
             
             const isCash = (t.metode_pembayaran === 'tunai');
-            if (t.tipe === 'pemasukan' || t.tipe === 'mutasi_masuk') { 
+            if (t.tipe === 'pemasukan' || t.tipe === 'mutasi_masuk' || t.tipe === 'utangpiutang_masuk') { 
                 // PERBAIKAN: sebelumnya 'mutasi_masuk' (dana transfer MASUK) tidak
                 // punya cabang sendiri dan jatuh ke 'else' di bawah — yang malah
                 // MENGURANGI saldo. Padahal ini dana masuk, arahnya harus ditambah.
@@ -79,7 +79,7 @@ export const FinancialSummaryService = {
                 cashBal -= val;
                 cashlessBal += val; 
                 cashlessBal -= adminFee; 
-            } else if (t.tipe === 'nabung' || t.tipe === 'mutasi_keluar') {
+            } else if (t.tipe === 'nabung' || t.tipe === 'mutasi_keluar' || t.tipe === 'utangpiutang_keluar') {
                 // PERBAIKAN: 'nabung' (setor ke misi tabungan) dan 'mutasi_keluar'
                 // (transfer keluar) memang harus memotong saldo sumber, TAPI
                 // keduanya BUKAN belanja — sebelumnya keduanya ikut jatuh ke

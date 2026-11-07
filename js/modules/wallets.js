@@ -214,8 +214,8 @@ export const WalletManager = {
             if (!trx || trx.is_deleted || !trx.wallet_id || balances[trx.wallet_id] === undefined) return;
             const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang);
             const fee = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
-            if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') balances[trx.wallet_id] += val;
-            else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') balances[trx.wallet_id] -= val;
+            if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk' || trx.tipe === 'utangpiutang_masuk') balances[trx.wallet_id] += val;
+            else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar' || trx.tipe === 'utangpiutang_keluar') balances[trx.wallet_id] -= val;
             else if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') balances[trx.wallet_id] -= (val + fee);
             else if (trx.tipe === 'nabung') balances[trx.wallet_id] -= val;
         });

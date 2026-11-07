@@ -112,10 +112,10 @@
       const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
       const wId = trx.wallet_id;
       const isLegacyCash = trx.metode_pembayaran === "tunai";
-      if (trx.tipe === "pemasukan" || trx.tipe === "mutasi_masuk") {
+      if (trx.tipe === "pemasukan" || trx.tipe === "mutasi_masuk" || trx.tipe === "utangpiutang_masuk") {
         if (wId && bal[wId] !== undefined) bal[wId] += val;
         else { if (isLegacyCash) legacyCash += val; else legacyCashless += val; }
-      } else if (trx.tipe === "pengeluaran" || trx.tipe === "mutasi_keluar") {
+      } else if (trx.tipe === "pengeluaran" || trx.tipe === "mutasi_keluar" || trx.tipe === "utangpiutang_keluar") {
         if (wId && bal[wId] !== undefined) bal[wId] -= val;
         else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
       } else if (trx.tipe === "tarik_tunai") {

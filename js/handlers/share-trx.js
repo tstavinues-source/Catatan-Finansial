@@ -359,7 +359,7 @@ function fmtConv(v) {
 }
 function signOf(trx, partner) {
     if (partner || trx.tipe === 'mutasi_keluar' || trx.tipe === 'mutasi_masuk') return '⇄';
-    if (trx.tipe === 'pemasukan') return '+';
+    if (trx.tipe === 'pemasukan' || trx.tipe === 'utangpiutang_masuk') return '+';
     return '−';
 }
 function totalsOf(entries) {

@@ -13,8 +13,8 @@
   const Prefs = Cap.Plugins && Cap.Plugins.Preferences;
   if (!Prefs) return;
 
-  const POS = { pemasukan: 1, mutasi_masuk: 1, setor_tunai: 1 };
-  const NEG = { pengeluaran: 1, mutasi_keluar: 1, tarik_tunai: 1, nabung: 1 };
+  const POS = { pemasukan: 1, mutasi_masuk: 1, setor_tunai: 1, utangpiutang_masuk: 1 };
+  const NEG = { pengeluaran: 1, mutasi_keluar: 1, tarik_tunai: 1, nabung: 1, utangpiutang_keluar: 1 };
   const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
   let lastFingerprint = "";
 

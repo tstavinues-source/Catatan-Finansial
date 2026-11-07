@@ -53,8 +53,8 @@ function walletBalanceJPY(walletId) {
         if (!trx || trx.is_deleted || trx.wallet_id !== walletId) return;
         const val = toJPY(trx);
         const fee = feeJPY(trx);
-        if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') bal += val;
-        else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') bal -= val;
+        if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk' || trx.tipe === 'utangpiutang_masuk') bal += val;
+        else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar' || trx.tipe === 'utangpiutang_keluar') bal -= val;
         else if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') bal -= (val + fee);
         else if (trx.tipe === 'nabung') bal -= val;
     });

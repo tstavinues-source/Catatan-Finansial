@@ -38,7 +38,7 @@ function finalizeViewAnim() {
 }
 
 window.switchView = function(viewId) {
-    const views = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash', 'brankas'];
+    const views = ['dashboard', 'transactions', 'analytics', 'budgets', 'oracle', 'trash', 'brankas', 'utang-piutang', 'utang-piutang-detail'];
     finalizeViewAnim();
 
     const prevId = AuraState.system.activeView;
@@ -112,6 +112,10 @@ window.switchView = function(viewId) {
         if (typeof window.renderWawasan === 'function') window.renderWawasan();
     } else if (viewId === 'brankas') {
         if (typeof window.renderBrankas === 'function') window.renderBrankas();
+    } else if (viewId === 'utang-piutang') {
+        if (typeof window.renderDebts === 'function') window.renderDebts();
+    } else if (viewId === 'utang-piutang-detail') {
+        if (typeof window.renderDebtDetail === 'function') window.renderDebtDetail();
     }
 };
 

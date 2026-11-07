@@ -896,3 +896,73 @@ html[data-skin="brutal"] [data-ikon] > img.ikon-tema-img {
     padding: 10%;
     box-sizing: border-box;
 }
+
+/* ==========================================================================
+   UTANG & PIUTANG — kartu dashboard yang dapat dilipat, lencana status,
+   kartu pinjaman, formulir arah, dan riwayat. Warna semantik mengikuti
+   variabel tema: utang = --color-expense, piutang = --color-income.
+   ========================================================================== */
+.up-card-body {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows .38s cubic-bezier(.32,.72,.24,1);
+}
+.up-card-body > .up-card-inner { overflow: hidden; min-height: 0; }
+#up-card.open .up-card-body { grid-template-rows: 1fr; }
+#up-card .up-chev { transition: transform .38s cubic-bezier(.32,.72,.24,1); }
+#up-card.open .up-chev { transform: rotate(180deg); }
+
+.up-inset {
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--border-glass);
+    border-radius: 14px;
+    padding: 10px 12px;
+}
+.up-inset-utang { border-left: 3px solid var(--color-expense); }
+.up-inset-piutang { border-left: 3px solid var(--color-income); }
+
+.up-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 8px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: 0.12em; padding: 4px 8px; border-radius: 999px;
+    white-space: nowrap; flex-shrink: 0;
+}
+.up-chip-aktif { color: var(--accent-primary); border: 1px solid var(--border-glass); background: rgba(255,255,255,0.04); }
+.up-chip-sebagian { color: #38bdf8; border: 1px solid rgba(56,189,248,0.35); background: rgba(56,189,248,0.08); }
+.up-chip-lunas { color: var(--color-income); border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); }
+.up-chip-lewat { color: #fff; background: var(--color-expense); }
+
+.up-loan-card { padding: 16px; }
+.up-loan-card.lewat { border-left: 3px solid var(--color-expense); }
+.up-loan-card.lunas-card { opacity: 0.55; }
+
+.up-seg {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+    background: rgba(0,0,0,0.35); border: 1px solid var(--border-glass);
+    border-radius: 14px; padding: 4px;
+}
+.up-seg-btn {
+    padding: 9px 0; border-radius: 10px; font-size: 11px; font-weight: 800;
+    color: var(--text-muted); transition: all .2s;
+}
+.up-seg-btn.on-utang { background: var(--color-expense); color: #fff; }
+.up-seg-btn.on-piutang { background: var(--color-income); color: #06281a; }
+
+.up-dir-btn {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 12px 8px; border-radius: 12px; font-size: 11px; font-weight: 800;
+    background: rgba(0,0,0,0.35); border: 1px solid var(--border-glass);
+    color: var(--text-muted); transition: all .2s;
+}
+.up-dir-btn.sel-utang { border-color: var(--color-expense); color: var(--color-expense); background: rgba(255,255,255,0.03); }
+.up-dir-btn.sel-piutang { border-color: var(--color-income); color: var(--color-income); background: rgba(255,255,255,0.03); }
+
+.up-hist-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.up-hist-row:last-child { border-bottom: none; }
+.up-dot {
+    width: 30px; height: 30px; border-radius: 999px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 11px;
+}

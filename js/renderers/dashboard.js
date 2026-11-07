@@ -80,10 +80,10 @@ window.reCalculateAll = function() {
         const wId = trx.wallet_id;
         const isLegacyCash = (trx.metode_pembayaran === 'tunai');
 
-        if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') {
+        if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk' || trx.tipe === 'utangpiutang_masuk') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] += val;
             else { if (isLegacyCash) legacyCash += val; else legacyCashless += val; }
-        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') {
+        } else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar' || trx.tipe === 'utangpiutang_keluar') {
             if (wId && walletBalances[wId] !== undefined) walletBalances[wId] -= val;
             else { if (isLegacyCash) legacyCash -= val; else legacyCashless -= val; }
         } else if (trx.tipe === 'tarik_tunai') {
@@ -271,9 +271,9 @@ window.reCalculateAll = function() {
                 }
             }
             groupedTrx[dStr].total -= actualSpend; 
-        } else if (trx.tipe === 'mutasi_masuk') {
+        } else if (trx.tipe === 'mutasi_masuk' || trx.tipe === 'utangpiutang_masuk') {
             groupedTrx[dStr].total += val;
-        } else if (trx.tipe === 'mutasi_keluar') {
+        } else if (trx.tipe === 'mutasi_keluar' || trx.tipe === 'utangpiutang_keluar') {
             groupedTrx[dStr].total -= val;
         }
         
@@ -477,6 +477,14 @@ window.reCalculateAll = function() {
                     iconHtml = '<i class="fa-solid fa-piggy-bank text-emerald-400"></i>';
                     colorClass = 'text-emerald-400'; 
                     signChar = '🔒'; 
+                } else if (t.tipe === 'utangpiutang_masuk') {
+                    iconHtml = '<i class="fa-solid fa-handshake text-[var(--color-income)]"></i>';
+                    colorClass = 'text-[var(--color-income)]';
+                    signChar = '+';
+                } else if (t.tipe === 'utangpiutang_keluar') {
+                    iconHtml = '<i class="fa-solid fa-handshake text-[var(--color-expense)]"></i>';
+                    colorClass = 'text-[var(--color-expense)]';
+                    signChar = '-';
                 }
                 
                 if (isMergedMutasi) {
