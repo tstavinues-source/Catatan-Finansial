@@ -864,20 +864,23 @@ window.toggleSettingsSection = function(sectionId) {
 };
 
 
-// --- Hubungkan ke Muse ---
-window.showClaudeConnectCode = function () {
+// --- Panel konektor AI (Claude & Muse): kode koneksi bersama ---
+// Satu kode AURAFI1 yang sama untuk kedua panel; penangan di bawah dipakai
+// bersama — panel Claude memakai id elemen bawaannya, panel Muse meneruskan
+// id elemennya sendiri sebagai argumen.
+window.showClaudeConnectCode = function (areaId, fieldId) {
     try {
         const code = FirebaseService.getConnectionCode();
-        const area = document.getElementById('claude-connect-area');
-        const field = document.getElementById('claude-connect-code');
+        const area = document.getElementById(areaId || 'claude-connect-area');
+        const field = document.getElementById(fieldId || 'claude-connect-code');
         if (field) field.value = code;
         if (area) area.classList.remove('hidden');
     } catch (e) {
         if (typeof window.showToast === 'function') window.showToast('Kode belum tersedia — pastikan kamu sudah masuk.', true);
     }
 };
-window.copyClaudeConnectCode = async function () {
-    const field = document.getElementById('claude-connect-code');
+window.copyClaudeConnectCode = async function (fieldId) {
+    const field = document.getElementById(fieldId || 'claude-connect-code');
     if (!field || !field.value) return;
     try {
         await navigator.clipboard.writeText(field.value);
@@ -889,7 +892,7 @@ window.copyClaudeConnectCode = async function () {
     }
 };
 
-// --- Hubungkan ke AI (konektor Claude) ---
+// --- Panel konektor AI (Claude & Muse): alamat server, header, cabut akses ---
 const AI_CONNECTOR_URL = 'https://aurafi-mcp.tstavinues.workers.dev/mcp';
 async function copyTextWithToast(text, okMsg) {
     try {
@@ -907,11 +910,11 @@ async function copyTextWithToast(text, okMsg) {
 window.copyAiServerAddress = async function () {
     await copyTextWithToast(AI_CONNECTOR_URL, 'Alamat server tersalin.');
 };
-window.copyAiAuthHeader = async function () {
+window.copyAiAuthHeader = async function (areaId, fieldId) {
     try {
         const code = FirebaseService.getConnectionCode();
-        const field = document.getElementById('claude-connect-code');
-        const area = document.getElementById('claude-connect-area');
+        const field = document.getElementById(fieldId || 'claude-connect-code');
+        const area = document.getElementById(areaId || 'claude-connect-area');
         if (field) field.value = code;
         if (area) area.classList.remove('hidden');
         await copyTextWithToast('Bearer ' + code, 'Header Authorization tersalin.');
@@ -924,14 +927,18 @@ window.revokeAiAccessFlow = async function () {
         if (typeof window.showToast === 'function') window.showToast('Layanan belum siap. Coba lagi sebentar lagi.', true);
         return;
     }
-    const yakin = await window.AuraConfirm('Cabut akses AI sekarang?<br><br>Semua kode koneksi yang sudah kamu buat <b>berhenti berlaku</b> — Claude tidak bisa lagi membaca atau mencatat bukumu sampai kamu membuat kode baru dari panel ini.');
+    const yakin = await window.AuraConfirm('Cabut akses AI sekarang?<br><br>Semua kode koneksi yang sudah kamu buat <b>berhenti berlaku</b> — Claude dan Muse tidak bisa lagi membaca atau mencatat bukumu sampai kamu membuat kode baru dari panel ini.');
     if (!yakin) return;
     try {
         await FirebaseService.revokeAiAccess();
-        const field = document.getElementById('claude-connect-code');
-        const area = document.getElementById('claude-connect-area');
-        if (field) field.value = '';
-        if (area) area.classList.add('hidden');
+        ['claude-connect-code', 'muse-connect-code'].forEach(function (id) {
+            const f = document.getElementById(id);
+            if (f) f.value = '';
+        });
+        ['claude-connect-area', 'muse-connect-area'].forEach(function (id) {
+            const a = document.getElementById(id);
+            if (a) a.classList.add('hidden');
+        });
         if (typeof window.showToast === 'function') window.showToast('Akses AI dicabut. Kode lama tidak berlaku lagi.');
     } catch (e) {
         if (typeof window.showToast === 'function') window.showToast('Gagal mencabut akses. Periksa koneksi lalu coba lagi.', true);
