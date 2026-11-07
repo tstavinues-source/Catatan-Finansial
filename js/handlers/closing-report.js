@@ -20,8 +20,8 @@
       ? AuraUtils.escapeHtml(String(s == null ? "" : s))
       : String(s == null ? "" : s);
   const fmt = (v) =>
-    typeof window.convertAndFormatCurrency === "function"
-      ? window.convertAndFormatCurrency(v)
+    typeof window.formatAuraCurrency === "function"
+      ? window.formatAuraCurrency(v)
       : "¥" + Math.round(v).toLocaleString("ja-JP");
   const fmtPlain = (v) => "¥" + Math.round(v).toLocaleString("ja-JP");
   const PALETTE = ["#e08a4c", "#a3b86b", "#7fb2d9", "#e26d6d", "#c792ea", "#f2c14e", "#4ecdc4", "#ff9f68", "#95e1d3", "#f38181"];
@@ -53,7 +53,7 @@
       if (!trx || trx.is_deleted) return;
       const tTime = new Date(trx.tanggal || trx.createdAt).getTime();
       if (isNaN(tTime) || tTime < start || tTime > end) return;
-      const cur = trx.mata_uang || "JPY";
+      const cur = trx.mata_uang;
       const val = AuraUtils.convertCurrency(trx.nominal || 0, cur);
       const key = dayKey(tTime);
       if (trx.tipe === "pemasukan") { // mutasi antar dompet BUKAN pemasukan — jangan menggelembungkan laporan
@@ -511,7 +511,7 @@ ATURAN: 3 paragraf narasi yang elegan, analitis, blak-blakan; bahas rasio pengel
       const w4 = [70, 200, 110, 100];
       row(["Tanggal", "Sumber", "Kategori", "Jumlah"], w4, true);
       rep.incomeTx.slice().sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).forEach((t) => {
-        row([t.tanggal || "", t.merchantName || t.storeName || "", t.kategori || "", fmt(AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || "JPY"))], w4);
+        row([t.tanggal || "", t.merchantName || t.storeName || "", t.kategori || "", fmt(AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang))], w4);
       });
       y += 4;
     }
@@ -521,7 +521,7 @@ ATURAN: 3 paragraf narasi yang elegan, analitis, blak-blakan; bahas rasio pengel
       const w4 = [70, 200, 110, 100];
       row(["Tanggal", "Merchant", "Kategori", "Jumlah"], w4, true);
       rep.expenseTx.slice().sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).forEach((t) => {
-        row([t.tanggal || "", t.merchantName || t.storeName || "", t.kategori || "", fmt(AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || "JPY"))], w4);
+        row([t.tanggal || "", t.merchantName || t.storeName || "", t.kategori || "", fmt(AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang))], w4);
       });
       y += 4;
     }
@@ -529,10 +529,10 @@ ATURAN: 3 paragraf narasi yang elegan, analitis, blak-blakan; bahas rasio pengel
     if (sec.pengeluaranItem && rep.expenseTx.length) {
       title("Pengeluaran Lengkap Beserta Item", 14);
       rep.expenseTx.slice().sort((a, b) => String(a.tanggal).localeCompare(String(b.tanggal))).forEach((t) => {
-        const val = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang || "JPY");
+        const val = AuraUtils.convertCurrency(t.nominal || 0, t.mata_uang);
         line(`${t.tanggal || ""} • ${t.merchantName || t.storeName || ""} • ${t.kategori || ""} • ${fmt(val)}`, 10, { bold: true });
         (t.items || []).forEach((it) => {
-          const iv = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), t.mata_uang || "JPY");
+          const iv = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), t.mata_uang);
           line(`    - ${it.nama_barang || "Item"} (${it.qty || 1} x) — ${fmt(iv)}`, 9);
         });
       });

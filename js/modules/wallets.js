@@ -212,8 +212,8 @@ export const WalletManager = {
         walletKeys.forEach(k => balances[k] = 0);
         (AuraState.data.transactions || []).forEach(trx => {
             if (!trx || trx.is_deleted || !trx.wallet_id || balances[trx.wallet_id] === undefined) return;
-            const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
-            const fee = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+            const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang);
+            const fee = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
             if (trx.tipe === 'pemasukan' || trx.tipe === 'mutasi_masuk') balances[trx.wallet_id] += val;
             else if (trx.tipe === 'pengeluaran' || trx.tipe === 'mutasi_keluar') balances[trx.wallet_id] -= val;
             else if (trx.tipe === 'tarik_tunai' || trx.tipe === 'setor_tunai') balances[trx.wallet_id] -= (val + fee);

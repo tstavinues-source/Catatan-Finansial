@@ -108,8 +108,8 @@
     let legacyCash = 0, legacyCashless = 0;
     for (let i = 0; i < allTx.length; i++) {
       const trx = allTx[i];
-      const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || "JPY");
-      const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || "JPY");
+      const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang);
+      const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
       const wId = trx.wallet_id;
       const isLegacyCash = trx.metode_pembayaran === "tunai";
       if (trx.tipe === "pemasukan" || trx.tipe === "mutasi_masuk") {

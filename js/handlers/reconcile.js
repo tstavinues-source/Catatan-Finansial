@@ -35,21 +35,13 @@ function todayLocalStr() {
 }
 
 function toJPY(trx) {
-    const n = Number(trx.nominal) || 0;
-    if ((trx.mata_uang || 'JPY') === 'IDR') {
-        const rate = AuraState.system?.exchangeRateIDR || 110.27;
-        return n / rate;
-    }
-    return n;
+    // Basis JPY tanpa bergantung mode tampilan: target eksplisit pada
+    // konverter kanonis (satu sistem kurs).
+    return AuraUtils.convertCurrency(Number(trx.nominal) || 0, trx.mata_uang, 'JPY');
 }
 
 function feeJPY(trx) {
-    const n = Number(trx.admin_fee) || 0;
-    if ((trx.mata_uang || 'JPY') === 'IDR') {
-        const rate = AuraState.system?.exchangeRateIDR || 110.27;
-        return n / rate;
-    }
-    return n;
+    return AuraUtils.convertCurrency(Number(trx.admin_fee) || 0, trx.mata_uang, 'JPY');
 }
 
 // Saldo dompet dalam JPY murni — aturan sama persis dengan modules/wallets.js,
@@ -74,7 +66,7 @@ function findRecehGoal() {
     return goals.find(function(g) { return g && g.jenis === 'simpanan' && String(g.name || '').trim().toLowerCase() === 'kantung receh'; }) || null;
 }
 
-function fmtJPY(v) { return window.convertAndFormatCurrency(Math.round(Number(v) || 0)); }
+function fmtJPY(v) { return window.convertAndFormatCurrency(Math.round(Number(v) || 0), 'JPY'); }
 
 // ---------------------------------------------------------------------------
 // REKONSILIASI DOMPET
