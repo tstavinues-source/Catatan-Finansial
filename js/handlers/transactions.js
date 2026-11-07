@@ -139,8 +139,8 @@ window.executeTransfer = async function() {
         for (let i = 0; i < allTx.length; i++) {
             const trx = allTx[i];
             if (trx.wallet_id === realSourceWalletId) {
-                const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
-                const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang || 'JPY');
+                const val = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang);
+                const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
                 
                 let tTipe = trx.tipe;
                 if (tTipe !== 'mutasi_keluar' && tTipe !== 'mutasi_masuk') {
@@ -388,7 +388,7 @@ window.openEditTrxModal = function(id) {
     window.populateWalletDropdowns('edit-global-wallet', trx.wallet_id);
 
     AuraUtils.safeDOM('edit-global-store', el => el.value = AuraUtils.escapeHtml(trx.merchantName || trx.storeName || trx.kategori || ''));
-    AuraUtils.safeDOM('edit-global-curr', el => el.value = trx.mata_uang || 'JPY');
+    AuraUtils.safeDOM('edit-global-curr', el => el.value = trx.mata_uang);
     AuraUtils.safeDOM('edit-global-nominal', el => el.value = trx.nominal || 0);
     AuraUtils.safeDOM('edit-global-type', el => el.value = trx.tipe || 'pengeluaran');
     AuraUtils.safeDOM('edit-global-desc', el => el.value = AuraUtils.escapeHtml(trx.description || trx.catatan_ai || ''));
@@ -708,7 +708,7 @@ window.confirmDelMutasiPair = async function(idKeluar, idMasuk) {
         return;
     }
     const amount = window.formatAuraCurrency
-        ? window.formatAuraCurrency(AuraUtils.convertCurrency(keluar.nominal || 0, keluar.mata_uang || 'JPY'))
+        ? window.formatAuraCurrency(AuraUtils.convertCurrency(keluar.nominal || 0, keluar.mata_uang))
         : (keluar.nominal || 0);
     const msg = "Lemparkan mutasi <b>" + AuraUtils.escapeHtml(keluar.merchantName || 'Mutasi') + "</b> sebesar <b class='font-mono'>" + amount + "</b> ke Tempat Sampah?<br><br>Kedua sisi mutasi (keluar & masuk) dipindahkan bersama agar saldo kedua dompet tetap seimbang.";
     const ok = await window.AuraConfirm(msg);

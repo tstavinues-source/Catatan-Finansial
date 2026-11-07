@@ -128,7 +128,6 @@ window.renderAnalytics = function() {
     let merchantMap = {};
     let totalExpense = 0;
     const kelFilter = (AuraState.temp && AuraState.temp.analyticsKelompok) || 'ALL';
-    const rateNow = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRateIDR || 110.27) : 1;
     const trend7Days = [0, 0, 0, 0, 0, 0, 0];
 
     // 2. PROSES DATA TRANSAKSI
@@ -138,7 +137,7 @@ window.renderAnalytics = function() {
         const trxTime = new Date(trx.tanggal || trx.createdAt).getTime();
         const daysDiff = Math.floor((now.getTime() - trxTime) / (1000 * 3600 * 24));
         
-        if (daysDiff >= 0 && daysDiff < 7) trend7Days[6 - daysDiff] += (trx.nominal || 0);
+        if (daysDiff >= 0 && daysDiff < 7) trend7Days[6 - daysDiff] += AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang);
 
         if (trxTime >= startDate && trxTime <= endDate) {
             const safeMerchant = (trx.merchantName || trx.storeName || 'Tidak Diketahui').trim().toUpperCase();
@@ -149,7 +148,8 @@ window.renderAnalytics = function() {
                 const itemKelompok = it.kelompok || (typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(rawCat, 'pengeluaran') : 'Pribadi');
                 if (kelFilter !== 'ALL' && itemKelompok !== kelFilter) return;
                 let cleanCat = rawCat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
-                let val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+                // Konversi per cap transaksi SEBELUM dijumlah — satu sistem kurs.
+                let val = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), trx.mata_uang);
                 
                 const parentName = getParentCategory(cleanCat);
                 
@@ -165,7 +165,7 @@ window.renderAnalytics = function() {
             });
 
             // FIX DARI CLAUDE: Pajak dimasukkan agar Sinkron dengan Dashboard
-            const feeVal = Number(trx.admin_fee || 0);
+            const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
             if (feeVal > 0 && kelFilter !== 'Kewajiban Terpisah') {
                 const feeCatName = 'Pajak & Biaya Admin';
                 if (!catMap[feeCatName]) {
@@ -183,7 +183,7 @@ window.renderAnalytics = function() {
 
     // 3. RENDER UI DISTRIBUSI KATEGORI
     const catContainer = document.getElementById('top-categories-list');
-    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.convertAndFormatCurrency(totalExpense, true));
+    AuraUtils.safeDOM('pie-total-label', el => el.innerText = window.formatAuraCurrencyCompact(totalExpense));
     AuraUtils.safeDOM('stats-kelompok-filter', el => el.value = kelFilter);
     
     const sortedParents = Object.keys(catMap).map(k => ({
@@ -193,8 +193,8 @@ window.renderAnalytics = function() {
     const donutRawTotal = sortedParents.reduce((a, p) => a + p.total, 0);
     const donutCreated = donutRawTotal > 0 && auraMakeChart('category-donut-chart', {
         type: 'doughnut',
-        data: { labels: sortedParents.map(p => p.name), datasets: [{ data: sortedParents.map(p => Math.round(p.total * rateNow)), backgroundColor: sortedParents.map(p => p.style.hex), borderColor: 'rgba(10,14,20,0.85)', borderWidth: 2, hoverOffset: 10 }] },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: Object.assign({}, AURA_TOOLTIP, { callbacks: { label: function(c) { const p = sortedParents[c.dataIndex]; const pct = donutRawTotal > 0 ? Math.round(p.total / donutRawTotal * 100) : 0; return ' ' + p.name + ': ' + window.convertAndFormatCurrency(p.total) + ' (' + pct + '%)'; } } }) } }
+        data: { labels: sortedParents.map(p => p.name), datasets: [{ data: sortedParents.map(p => Math.round(p.total)), backgroundColor: sortedParents.map(p => p.style.hex), borderColor: 'rgba(10,14,20,0.85)', borderWidth: 2, hoverOffset: 10 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false }, tooltip: Object.assign({}, AURA_TOOLTIP, { callbacks: { label: function(c) { const p = sortedParents[c.dataIndex]; const pct = donutRawTotal > 0 ? Math.round(p.total / donutRawTotal * 100) : 0; return ' ' + p.name + ': ' + window.formatAuraCurrency(p.total) + ' (' + pct + '%)'; } } }) } }
     });
     AuraUtils.safeDOM('category-pie-chart', el => {
         if (donutCreated) { el.style.background = 'transparent'; return; }
@@ -241,7 +241,7 @@ window.renderAnalytics = function() {
                                 ${displayName}
                             </span>
                             <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
-                                ${window.convertAndFormatCurrency(sub.total)}
+                                ${window.formatAuraCurrency(sub.total)}
                                 <i class="fa-solid fa-chevron-right text-[8px] text-[var(--text-muted)] opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
                             </span>
                         </div>`;
@@ -266,7 +266,7 @@ window.renderAnalytics = function() {
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                            <p class="text-xs font-bold font-mono text-white">${window.convertAndFormatCurrency(p.total)}</p>
+                            <p class="text-xs font-bold font-mono text-white">${window.formatAuraCurrency(p.total)}</p>
                             <div class="w-5 h-5 flex items-center justify-center bg-black/30 rounded-full shrink-0">
                                 <i class="fa-solid fa-chevron-down text-[9px] text-[var(--text-muted)] transition-transform duration-300"></i>
                             </div>
@@ -298,7 +298,7 @@ window.renderAnalytics = function() {
                             <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
                             <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
                         </div>
-                        <span class="text-[10px] font-mono text-accent font-bold">${window.convertAndFormatCurrency(m.total)}</span>
+                        <span class="text-[10px] font-mono text-accent font-bold">${window.formatAuraCurrency(m.total)}</span>
                     </div>
                     <div class="flex h-1 rounded-full overflow-hidden bg-black/60 mt-2"><div style="width: ${Math.max(4, Math.round((m.total / maxMerchant) * 100))}%; background: var(--accent-primary)"></div></div>
                 </div>`;
@@ -311,8 +311,8 @@ window.renderAnalytics = function() {
     const dailyAvg = totalExpense / daysElapsed;
     const projected = dailyAvg * totalDays;
 
-    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.convertAndFormatCurrency(dailyAvg));
-    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.convertAndFormatCurrency(projected));
+    AuraUtils.safeDOM('stats-daily-avg', el => el.innerText = window.formatAuraCurrency(dailyAvg));
+    AuraUtils.safeDOM('stats-proj-mth', el => el.innerText = window.formatAuraCurrency(projected));
     drawCanvasChart(trend7Days);
 
     // TREN 6 BULAN: pemasukan vs pengeluaran per bulan kalender (seluruh data)
@@ -327,7 +327,7 @@ window.renderAnalytics = function() {
             if (trx.is_deleted) return;
             const tt = new Date(trx.tanggal || trx.createdAt).getTime();
             if (tt >= mStart.getTime() && tt < mEnd.getTime()) {
-                const v = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang || 'JPY');
+                const v = AuraUtils.convertCurrency(trx.nominal || 0, trx.mata_uang);
                 if (trx.tipe === 'pemasukan') inc += v; else if (trx.tipe === 'pengeluaran') out += v;
             }
         });
@@ -406,7 +406,7 @@ window.openSubCategoryItems = function(parentName, subName) {
                 const currentParent = getParentCategory(cleanCat);
                 
                 if (currentParent === parentName && cleanCat === subName) {
-                    const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+                    const val = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), t.mata_uang);
                     totalVal += val;
                     
                     const tDate = new Date(t.tanggal || t.createdAt);
@@ -419,8 +419,8 @@ window.openSubCategoryItems = function(parentName, subName) {
                             <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-xs font-mono font-bold text-accent">${window.convertAndFormatCurrency(val)}</p>
-                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.convertAndFormatCurrency(it.harga || 0)}</p>
+                            <p class="text-xs font-mono font-bold text-accent">${window.formatAuraCurrency(val)}</p>
+                            <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.formatAuraCurrency(AuraUtils.convertCurrency(it.harga || 0, t.mata_uang))}</p>
                         </div>
                     </div>`;
                 }
@@ -436,7 +436,7 @@ window.openSubCategoryItems = function(parentName, subName) {
         <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
             <div>
                 <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(displayName)}</h3>
-                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.convertAndFormatCurrency(totalVal)}</p>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.formatAuraCurrency(totalVal)}</p>
             </div>
             <button onclick=\"document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);\" class=\"w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]\">
                 <i class=\"fa-solid fa-xmark text-sm\"></i>
@@ -488,7 +488,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
             (t.items || []).forEach(it => {
                 const itemName = (it.nama_barang || '').toLowerCase();
                 const itemCat = (it.kategori_barang || '').toLowerCase();
-                const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+                const val = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), t.mata_uang);
                 
                 entries.forEach(([id, tracker]) => {
                     const match = tracker.keywords.some(kw => itemName.includes(kw) || itemCat.includes(kw));
@@ -519,7 +519,7 @@ window.renderDynamicTrackers = function(startDate, endDate) {
         <div onclick="window.openTrackerDetail('${id}')" title="Ketuk untuk melihat rincian" class="bg-black/30 p-3 rounded-xl min-w-[100px] flex-1 flex flex-col items-center justify-center text-center border border-[var(--border-glass)] border-t-2 shadow-lg cursor-pointer hover:bg-black/40 active:scale-[0.98] transition" style="border-top-color: currentColor; color: inherit;">
             <i class="fa-solid ${icon} ${color} text-xl mb-2"></i>
             <span class="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-wider mb-1 truncate w-full px-1">${AuraUtils.escapeHtml(tracker.name)}</span>
-            <span class="font-mono font-bold text-sm text-white">${window.convertAndFormatCurrency(totals[id])}</span>
+            <span class="font-mono font-bold text-sm text-white">${window.formatAuraCurrency(totals[id])}</span>
         </div>`;
     });
 
@@ -561,7 +561,7 @@ window.openTrackerDetail = function(trackerId) {
             const itemName = (it.nama_barang || '').toLowerCase();
             const itemCat = (it.kategori_barang || '').toLowerCase();
             if (!keywords.some(kw => itemName.includes(kw) || itemCat.includes(kw))) return;
-            const val = (Number(it.harga) || 0) * (Number(it.qty) || 1);
+            const val = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), t.mata_uang);
             totalVal += val;
             const tDate = new Date(t.tanggal || t.createdAt);
             const dateStr = `${tDate.getDate().toString().padStart(2,'0')}/${(tDate.getMonth()+1).toString().padStart(2,'0')}`;
@@ -572,8 +572,8 @@ window.openTrackerDetail = function(trackerId) {
                     <p class="text-[9px] text-[var(--text-muted)] mt-0.5 truncate"><i class="fa-solid fa-store mr-1"></i>${AuraUtils.escapeHtml(safeMerchant)} • ${dateStr}</p>
                 </div>
                 <div class="text-right shrink-0">
-                    <p class="text-xs font-mono font-bold text-accent">${window.convertAndFormatCurrency(val)}</p>
-                    <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.convertAndFormatCurrency(it.harga || 0)}</p>
+                    <p class="text-xs font-mono font-bold text-accent">${window.formatAuraCurrency(val)}</p>
+                    <p class="text-[8px] text-[var(--text-muted)] font-mono mt-0.5">${it.qty}x @ ${window.formatAuraCurrency(AuraUtils.convertCurrency(it.harga || 0, t.mata_uang))}</p>
                 </div>
             </div>`;
         });
@@ -586,7 +586,7 @@ window.openTrackerDetail = function(trackerId) {
         <div class="flex justify-between items-center p-4 border-b border-[var(--border-glass)] bg-black/40">
             <div>
                 <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-receipt mr-1"></i> Rincian: ${AuraUtils.escapeHtml(tracker.name)}</h3>
-                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.convertAndFormatCurrency(totalVal)}</p>
+                <p class="text-[9px] text-[var(--text-muted)] mt-0.5 font-mono">Total Akumulasi: ${window.formatAuraCurrency(totalVal)}</p>
             </div>
             <button onclick="document.getElementById('modal-subcat-items').classList.add('opacity-0'); setTimeout(() => document.getElementById('modal-subcat-items').classList.add('hidden'), 300);" class="w-8 h-8 flex items-center justify-center bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 rounded-full transition active:scale-90 text-[var(--text-muted)]">
                 <i class="fa-solid fa-xmark text-sm"></i>
@@ -780,8 +780,8 @@ window.updateCategoryMapping = async function(subCat, newParent) {
 
 // === FUNGSI CHART & EXPORT ===
 function drawCanvasChart(dataArray) {
-    const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRateIDR || 110.27) : 1;
-    const data = (dataArray || []).map(v => Math.round((Number(v) || 0) * rate));
+    // dataArray sudah dalam mata uang tampilan (dikonversi per cap saat akumulasi).
+    const data = (dataArray || []).map(v => Math.round(Number(v) || 0));
     const labels = [];
     const today = new Date();
     for (let i = 6; i >= 0; i--) { const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i); labels.push(d.toLocaleDateString('id-ID', { weekday: 'short' })); }
@@ -814,8 +814,7 @@ function drawCanvasChartManual(dataArray) {
         else { ctx.fillRect(x, y, barWidth, barHeight); }
         if (val > 0) {
             ctx.globalAlpha = 1.0; ctx.fillStyle = '#9ca3af'; ctx.font = "bold 9px 'Space Grotesk', monospace"; ctx.textAlign = "center";
-            const rate = AuraState.system.displayCurrency === 'IDR' ? (AuraState.system.exchangeRateIDR || 110.27) : 1;
-            const convertedVal = val * rate;
+            const convertedVal = val; // sudah mata uang tampilan (per cap saat akumulasi)
             const displayStr = AuraState.system.displayCurrency === 'IDR' ? (convertedVal / 1000).toFixed(0) + 'k' : (convertedVal / 1000).toFixed(1) + 'k';
             ctx.fillText(displayStr, x + barWidth / 2, y - 5);
         }

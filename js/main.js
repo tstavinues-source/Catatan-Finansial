@@ -33,22 +33,17 @@ if (window.AuraUtils) {
     window.AuraUtils.formatCurrency = window.formatAuraCurrency;
 }
 
-// 2. KONVERTER + FORMATTER (Khusus untuk Statistik & Modul yang butuh dikalikan)
-window.convertAndFormatCurrency = function(amount, compact = false) {
-    const num = Number(amount) || 0;
-    const curr = AuraState.system?.displayCurrency || 'JPY';
-    const rate = (curr === 'IDR') ? (AuraState.system?.exchangeRateIDR || 110.27) : 1;
+// 2. KONVERTER + FORMATTER — mendelegasikan ke SATU sistem kurs
+// (AuraUtils.convertCurrency). Mata uang asal WAJIB diberikan pemanggil:
+// tanpa cap yang jelas tidak ada tebakan dan tidak ada pengali selimut,
+// supaya angka bercap IDR tidak lagi menggelembung pada tampilan IDR.
+window.convertAndFormatCurrency = function(amount, fromCurrency, compact = false) {
+    const converted = (window.AuraUtils && typeof window.AuraUtils.convertCurrency === 'function')
+        ? window.AuraUtils.convertCurrency(amount, fromCurrency)
+        : (Number(amount) || 0);
     
-    const finalAmount = Math.round(num * rate); // Kalikan kurs & bulatkan
-    
-    if (curr === 'IDR') {
-        if (compact && Math.abs(finalAmount) >= 1000000) {
-            return 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact', maximumFractionDigits: 2 }).format(finalAmount);
-        }
-        return 'Rp ' + finalAmount.toLocaleString('id-ID');
-    } else {
-        return '¥' + finalAmount.toLocaleString('en-US');
-    }
+    if (compact) return window.formatAuraCurrencyCompact(converted);
+    return window.formatAuraCurrency(converted);
 };
 
 // FORMAT RINGKAS untuk blok ringkasan (dashboard): nominal IDR besar disingkat

@@ -60,18 +60,26 @@ export const AuraUtils = {
         }
     },
 
-    convertCurrency: function(amount, fromCurrency) {
+    // SATU SISTEM KURS aplikasi: satu-satunya tempat exchangeRateIDR dipakai
+    // sebagai pengali/pembagi. Konversi selalu digerakkan cap mata uang asal
+    // (fromCurrency). Target bawaan = mata uang tampilan; target eksplisit
+    // (parameter ketiga, mis. 'JPY' dari rekonsiliasi) membuat konversi tidak
+    // bergantung mode tampilan. Cap kosong/bukan string = tanpa konversi —
+    // konvensi yang sama wajib dipakai semua pemanggil (jangan menebak 'JPY').
+    convertCurrency: function(amount, fromCurrency, toCurrency) {
         const numAmount = Number(amount);
         if (isNaN(numAmount)) return 0;
         
-        const currentDisplay = AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY;
-        if (!fromCurrency || typeof fromCurrency !== 'string' || fromCurrency === currentDisplay) {
+        const target = (typeof toCurrency === 'string' && toCurrency)
+            ? toCurrency
+            : (AuraState.system.displayCurrency || APP_CONFIG.DEFAULT_CURRENCY);
+        if (!fromCurrency || typeof fromCurrency !== 'string' || fromCurrency === target) {
             return numAmount;
         }
         
         const rate = AuraState.system.exchangeRateIDR || 110.27; // Beri fallback rate agar aman
-        if (fromCurrency === 'JPY' && currentDisplay === 'IDR') return numAmount * rate;
-        if (fromCurrency === 'IDR' && currentDisplay === 'JPY') return numAmount / rate;
+        if (fromCurrency === 'JPY' && target === 'IDR') return numAmount * rate;
+        if (fromCurrency === 'IDR' && target === 'JPY') return numAmount / rate;
         return numAmount; 
     },
 

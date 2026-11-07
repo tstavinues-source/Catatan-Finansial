@@ -23,7 +23,7 @@ function walletNameOf(id) {
 }
 
 function fmtVal(trx, v) {
-    const conv = AuraUtils.convertCurrency(Number(v) || 0, trx.mata_uang || 'JPY');
+    const conv = AuraUtils.convertCurrency(Number(v) || 0, trx.mata_uang);
     return window.formatAuraCurrency ? window.formatAuraCurrency(conv) : String(conv);
 }
 
@@ -352,7 +352,7 @@ window.shareTrxAsPdf = async function() {
 // keluar).
 // ============================================================================
 function convOf(trx, v) {
-    return AuraUtils.convertCurrency(Number(v) || 0, trx.mata_uang || 'JPY');
+    return AuraUtils.convertCurrency(Number(v) || 0, trx.mata_uang);
 }
 function fmtConv(v) {
     return window.formatAuraCurrency ? window.formatAuraCurrency(v) : String(Math.round(v));

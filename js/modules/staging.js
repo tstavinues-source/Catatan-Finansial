@@ -149,7 +149,7 @@ window.renderStagingUI = function() {
     
     if (data.admin_fee > 0) {
         if (taxSection) taxSection.classList.remove('hidden');
-        if (taxAmountEl) taxAmountEl.innerText = window.convertAndFormatCurrency ? window.convertAndFormatCurrency(data.admin_fee) : data.admin_fee;
+        if (taxAmountEl) taxAmountEl.innerText = window.convertAndFormatCurrency ? window.convertAndFormatCurrency(data.admin_fee, data.mata_uang) : data.admin_fee;
     } else {
         if (taxSection) taxSection.classList.add('hidden');
     }
@@ -229,7 +229,7 @@ window.renderStagingUI = function() {
     }
     
     totalNominal += Number(data.admin_fee || 0);
-    AuraUtils.safeDOM('staging-total-display', el => el.innerText = window.convertAndFormatCurrency ? window.convertAndFormatCurrency(totalNominal) : totalNominal);
+    AuraUtils.safeDOM('staging-total-display', el => el.innerText = window.convertAndFormatCurrency ? window.convertAndFormatCurrency(totalNominal, data.mata_uang) : totalNominal);
 };
 
 window.applyTaxStrategy = function(strategy) {
