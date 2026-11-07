@@ -3,3 +3,11 @@ www/
 android/
 *.apk
 resources/icon.png
+
+# Rahasia & kredensial — jangan pernah terkomit (r91)
+.env
+.env.*
+*.pem
+*.key
+*service-account*.json
+credentials*.json
