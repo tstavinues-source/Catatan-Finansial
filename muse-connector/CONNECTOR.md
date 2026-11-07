@@ -8,7 +8,7 @@ and send a short greeting through the Hachi mascot.
 
 AuraFi has no shared "admin" credential for users. In the app, each user
 generates a personal **connection code** (Pengaturan → Hubungkan ke Muse →
-Tampilkan Kode Koneksi). The code carries that user's own Firebase Auth
+Buat Kode Koneksi). The code carries that user's own Firebase Auth
 refresh token plus the app's public config. Whoever holds the code acts as
 that user — treat it like a house key:
 
