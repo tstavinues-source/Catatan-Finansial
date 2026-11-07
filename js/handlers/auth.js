@@ -28,6 +28,37 @@ window.clearLoginError = function() {
     el.classList.add('hidden');
 };
 
+// Peta kode galat Firebase Auth -> pesan ramah berbahasa Indonesia.
+// Pesan mentah Firebase (teknis, berbahasa Inggris) TIDAK pernah
+// ditampilkan ke pengguna; kode mentahnya cukup dicatat di Logger.
+function friendlyAuthError(error) {
+    const code = (error && error.code) || '';
+    switch (code) {
+        case 'auth/invalid-credential':
+        case 'auth/wrong-password':
+        case 'auth/user-not-found':
+            // Satu pesan untuk ketiganya: tidak membocorkan apakah
+            // emailnya yang tidak terdaftar atau sandinya yang salah.
+            return 'Email atau kata sandi tidak cocok. Periksa kembali, atau gunakan "Lupa kata sandi?" untuk mengatur ulang.';
+        case 'auth/invalid-email':
+            return 'Format alamat email tidak valid. Periksa kembali penulisannya.';
+        case 'auth/user-disabled':
+            return 'Akun ini sedang dinonaktifkan. Silakan hubungi dukungan untuk bantuan.';
+        case 'auth/too-many-requests':
+            return 'Terlalu banyak percobaan dalam waktu singkat. Tunggu beberapa menit, lalu coba lagi.';
+        case 'auth/network-request-failed':
+            return 'Koneksi internet bermasalah. Periksa jaringanmu, lalu coba lagi.';
+        case 'auth/popup-closed-by-user':
+        case 'auth/cancelled-popup-request':
+        case 'auth/popup-blocked':
+            return 'Jendela masuk Google ditutup atau terblokir sebelum selesai. Silakan coba lagi.';
+        case 'auth/operation-not-allowed':
+            return 'Metode masuk ini belum diaktifkan. Silakan coba metode lain.';
+        default:
+            return 'Terjadi kesalahan tak terduga. Silakan coba lagi sebentar lagi.';
+    }
+}
+
 window.loginWithEmail = async function() {
     const emailInput = document.getElementById('login-email');
     const passInput = document.getElementById('login-pass');
@@ -57,9 +88,10 @@ window.loginWithEmail = async function() {
         
     } catch (error) {
         Logger.error('Auth', 'Gagal login email:', error);
-        window.showLoginError("Login gagal: periksa kembali email dan sandi Anda." + (error && error.message ? " (" + error.message + ")" : ""));
+        const friendly = friendlyAuthError(error);
+        window.showLoginError("Login gagal. " + friendly);
         if (typeof window.showToast === 'function') {
-            window.showToast("Login Gagal: Periksa kembali email dan sandi Anda.", true);
+            window.showToast("Login gagal. " + friendly, true);
         }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
@@ -76,10 +108,51 @@ window.loginWithGoogle = async function() {
         // Modal login biasanya otomatis ditutup oleh observer di firebase.js saat login sukses
     } catch (error) {
         Logger.error('Auth', 'Gagal login Google:', error);
-        const detail = error && error.message ? error.message : "Akses Google ditolak atau dibatalkan.";
-        window.showLoginError("Login Google gagal: " + detail);
+        const friendly = friendlyAuthError(error);
+        window.showLoginError("Login Google gagal. " + friendly);
         if (typeof window.showToast === 'function') {
-            window.showToast("Login Google gagal: " + detail, true);
+            window.showToast("Login Google gagal. " + friendly, true);
+        }
+    } finally {
+        if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);
+    }
+};
+
+// Alur "Lupa kata sandi?": memakai email yang sedang terisi di formulir
+// login, lalu meminta Firebase mengirim tautan atur ulang sandi.
+window.forgotPassword = async function() {
+    const emailInput = document.getElementById('login-email');
+    const email = emailInput ? emailInput.value.trim() : '';
+
+    if (!email) {
+        if (typeof window.showToast === 'function') {
+            window.showToast('Isi alamat email dulu, lalu ketuk "Lupa kata sandi?" lagi.', true);
+        }
+        if (emailInput) emailInput.focus();
+        return;
+    }
+
+    if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(true);
+    window.clearLoginError();
+    try {
+        await FirebaseService.resetPassword(email);
+        if (typeof window.showToast === 'function') {
+            window.showToast('Tautan atur ulang sandi sudah dikirim ke ' + email + '. Periksa kotak masuk atau folder spam, ya.');
+        }
+    } catch (error) {
+        Logger.error('Auth', 'Gagal mengirim atur ulang sandi:', error);
+        if (error && error.code === 'auth/user-not-found') {
+            // Netral demi keamanan: jangan membocorkan apakah sebuah
+            // alamat email benar-benar terdaftar atau tidak.
+            if (typeof window.showToast === 'function') {
+                window.showToast('Jika email itu terdaftar, tautan atur ulang sandi sudah dikirim. Periksa kotak masuk atau folder spam, ya.');
+            }
+        } else {
+            const friendly = friendlyAuthError(error);
+            window.showLoginError('Atur ulang sandi gagal. ' + friendly);
+            if (typeof window.showToast === 'function') {
+                window.showToast('Atur ulang sandi gagal. ' + friendly, true);
+            }
         }
     } finally {
         if (typeof window.setProcessingStatus === 'function') window.setProcessingStatus(false);

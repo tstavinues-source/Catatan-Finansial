@@ -9,6 +9,7 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { DEFAULT_STAPLES_TRACKERS } from '../config/categories.js';
 import { FirebaseService } from '../services/firebase.js';
+import { encryptApiKeyForStorage, decryptStoredApiKey, migrateStoredKeys, looksLikeAesEntry } from '../services/ai/key-crypto.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 // ============================================================================
@@ -63,6 +64,14 @@ window.saveUserProfile = async function() {
 // 2. MANAJEMEN KUNCI API (GROQ POOL CLOUD & GEMINI VISION)
 // ============================================================================
 
+// Penapis bentuk kunci polos per penyedia (dipakai dekripsi & migrasi).
+const isGroqKeyPlain = (p) => typeof p === 'string' && p.startsWith('gsk_');
+const isGeminiKeyPlain = (p) => {
+    if (typeof p !== 'string') return false;
+    const t = p.trim();
+    return t.startsWith('AIza') || t.startsWith('AQ.');
+};
+
 window.addGroqKey = async function() {
     const input = document.getElementById('new-groq-key');
     if (!input) return;
@@ -76,17 +85,23 @@ window.addGroqKey = async function() {
         return;
     }
     
-    const secret = AuraState.user?.uid || "aura_secret_fallback";
-    let result = '';
-    for (let i = 0; i < key.length; i++) {
-        result += String.fromCharCode(key.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+    // Enkripsi AES lewat key-crypto (frasa sandi = UID). Bila tidak bisa
+    // diamankan, batalkan — jangan pernah menyimpan kunci dalam bentuk lemah.
+    const uid = AuraState.user?.uid || null;
+    const encryptedBase64 = encryptApiKeyForStorage(key, uid);
+    if (!encryptedBase64) {
+        if (window.showToast) {
+            window.showToast("Gagal mengamankan kunci. Coba masuk ulang, lalu pasang kembali.", true);
+        }
+        return;
     }
-    const encryptedBase64 = btoa(result);
-    
+
     try {
         let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-        
+        // Penyimpanan selalu menulis ulang seluruh daftar dalam format baru:
+        // entri warisan XOR ikut termigrasi di sini.
+        let currentKeys = migrateStoredKeys(rawKeys, uid, isGroqKeyPlain).list;
+
         currentKeys.push(encryptedBase64);
         
         await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
@@ -115,10 +130,13 @@ window.removeGroqKey = async function(index) {
 
     try {
         let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-        
-        currentKeys.splice(index, 1);
-        
+        let listedKeys = Array.isArray(rawKeys) ? rawKeys.slice() : Object.values(rawKeys);
+
+        listedKeys.splice(index, 1);
+
+        // Tulis ulang sisa daftar dalam format baru (migrasi entri warisan).
+        let currentKeys = migrateStoredKeys(listedKeys, AuraState.user?.uid || null, isGroqKeyPlain).list;
+
         await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
         
         if(AuraState.data.settings) {
@@ -158,22 +176,14 @@ window.renderGroqKeysUI = function() {
         }
 
         let html = '';
-        const secret = AuraState.user?.uid || "aura_secret_fallback";
-        
-        keys.forEach((encKey, index) => {
-            let dec = null;
-            try {
-                let text = atob(encKey);
-                let result = '';
-                for (let i = 0; i < text.length; i++) {
-                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-                }
-                dec = result;
-            } catch(e) {
-            }
+        const uid = AuraState.user?.uid || null;
 
-            const isValid = dec && dec.startsWith('gsk_');
-            const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
+        keys.forEach((encKey, index) => {
+            const dec = decryptStoredApiKey(encKey, uid, isGroqKeyPlain);
+            const plain = dec ? dec.plain : null;
+
+            const isValid = !!plain;
+            const display = isValid ? `${plain.substring(0,8)}...${plain.substring(plain.length-4)}` : `(Data Cloud Korup)`;
             const statusColor = isValid ? 'aura-ink-ok' : 'aura-ink-danger';
 
             html += `
@@ -208,17 +218,23 @@ window.addGeminiKey = async function() {
         return;
     }
     
-    const secret = AuraState.user?.uid || "aura_secret_fallback";
-    let result = '';
-    for (let i = 0; i < key.length; i++) {
-        result += String.fromCharCode(key.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
+    // Enkripsi AES lewat key-crypto (frasa sandi = UID). Bila tidak bisa
+    // diamankan, batalkan — jangan pernah menyimpan kunci dalam bentuk lemah.
+    const uid = AuraState.user?.uid || null;
+    const encryptedBase64 = encryptApiKeyForStorage(key, uid);
+    if (!encryptedBase64) {
+        if (window.showToast) {
+            window.showToast("Gagal mengamankan kunci. Coba masuk ulang, lalu pasang kembali.", true);
+        }
+        return;
     }
-    const encryptedBase64 = btoa(result);
-    
+
     try {
         let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
-        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-        
+        // Penyimpanan selalu menulis ulang seluruh daftar dalam format baru:
+        // entri warisan XOR ikut termigrasi di sini.
+        let currentKeys = migrateStoredKeys(rawKeys, uid, isGeminiKeyPlain).list;
+
         currentKeys.push(encryptedBase64);
         
         await FirebaseService.updateSettings({ geminiKeysEncrypted: currentKeys });
@@ -248,10 +264,13 @@ window.removeGeminiKey = async function(index) {
 
     try {
         let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
-        let currentKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
-        
-        currentKeys.splice(index, 1);
-        
+        let listedKeys = Array.isArray(rawKeys) ? rawKeys.slice() : Object.values(rawKeys);
+
+        listedKeys.splice(index, 1);
+
+        // Tulis ulang sisa daftar dalam format baru (migrasi entri warisan).
+        let currentKeys = migrateStoredKeys(listedKeys, AuraState.user?.uid || null, isGeminiKeyPlain).list;
+
         await FirebaseService.updateSettings({ geminiKeysEncrypted: currentKeys });
         
         if(AuraState.data.settings) {
@@ -281,22 +300,14 @@ window.renderGeminiKeysUI = function() {
         }
 
         let html = '';
-        const secret = AuraState.user?.uid || "aura_secret_fallback";
-        
-        keys.forEach((encKey, index) => {
-            let dec = null;
-            try {
-                let text = atob(encKey);
-                let result = '';
-                for (let i = 0; i < text.length; i++) {
-                    result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-                }
-                dec = result;
-            } catch(e) {
-            }
+        const uid = AuraState.user?.uid || null;
 
-            const isValid = dec && (dec.startsWith('AIza') || dec.startsWith('AQ.'));
-            const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
+        keys.forEach((encKey, index) => {
+            const dec = decryptStoredApiKey(encKey, uid, isGeminiKeyPlain);
+            const plain = dec ? dec.plain.trim() : null;
+
+            const isValid = !!plain;
+            const display = isValid ? `${plain.substring(0,8)}...${plain.substring(plain.length-4)}` : `(Data Cloud Korup)`;
             const statusColor = isValid ? 'aura-ink-ok' : 'aura-ink-danger';
 
             html += `
@@ -807,9 +818,54 @@ window.processRecurringBills = async function() {
     isProcessingBills = false;
 };
 
+// Migrasi diam-diam kunci AI format lama (XOR) ke format baru (AES).
+// Berjalan oportunistik dari pengawas berkala: begitu ada entri warisan
+// yang terbaca, seluruh daftar ditulis ulang ke Cloud dalam format baru —
+// pengguna tidak perlu memasukkan ulang kuncinya. Entri yang tidak terbaca
+// tidak pernah diubah. Saringan awalan AES membuat pemeriksaan ini murah
+// saat semua entri sudah format baru.
+let aiKeyMigrationBusy = false;
+async function migrateLegacyAiKeysIfNeeded() {
+    if (aiKeyMigrationBusy) return;
+    const uid = AuraState.user?.uid;
+    if (!uid || !AuraState.data?.settings) return;
+
+    const settings = AuraState.data.settings;
+    const asList = (raw) => Array.isArray(raw) ? raw : Object.values(raw || {});
+    const groqRaw = asList(settings.groqKeysEncrypted || []);
+    const geminiRaw = asList(settings.geminiKeysEncrypted || []);
+    const adaWarisan = groqRaw.some((k) => !looksLikeAesEntry(k)) || geminiRaw.some((k) => !looksLikeAesEntry(k));
+    if (!adaWarisan) return;
+
+    aiKeyMigrationBusy = true;
+    try {
+        const updates = {};
+        const groq = migrateStoredKeys(groqRaw, uid, isGroqKeyPlain);
+        if (groq.changed) {
+            updates.groqKeysEncrypted = groq.list;
+            settings.groqKeysEncrypted = groq.list;
+        }
+        const gemini = migrateStoredKeys(geminiRaw, uid, isGeminiKeyPlain);
+        if (gemini.changed) {
+            updates.geminiKeysEncrypted = gemini.list;
+            settings.geminiKeysEncrypted = gemini.list;
+        }
+        if (Object.keys(updates).length > 0) {
+            await FirebaseService.updateSettings(updates);
+        }
+    } catch (e) {
+        // Gagal migrasi tidak mengganggu aplikasi; dicoba lagi pada
+        // putaran pengawas berikutnya selama masih ada entri warisan.
+    }
+    aiKeyMigrationBusy = false;
+}
+
 // CCTV berjalan setiap 1,5 detik
 setInterval(() => {
     if (!AuraState.data || !AuraState.data.settings) return;
+
+    // 0. Migrasi format kunci AI (XOR -> AES) bila masih ada entri warisan
+    migrateLegacyAiKeysIfNeeded();
     
     // 1. Pantau Perubahan Kunci Groq
     const currentGroqKeys = JSON.stringify(AuraState.data.settings.groqKeysEncrypted || []);

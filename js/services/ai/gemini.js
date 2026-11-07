@@ -5,6 +5,7 @@
 
 import { APP_CONFIG } from '../../config/constants.js';
 import { AuraState } from '../../core/state.js';
+import { decryptStoredApiKey } from './key-crypto.js';
 
 export class GeminiFailoverEngine {
     constructor() {
@@ -30,18 +31,17 @@ export class GeminiFailoverEngine {
         try {
             let rawManual = AuraState.data?.settings?.geminiKeysEncrypted || [];
             let encManual = Array.isArray(rawManual) ? rawManual : Object.values(rawManual);
-            const secret = AuraState.user?.uid || "aura_secret_fallback";
+            const uid = AuraState.user?.uid || null;
             for (const enc of encManual) {
-                try {
-                    let text = atob(enc); let result = '';
-                    for (let i = 0; i < text.length; i++) {
-                        result += String.fromCharCode(text.charCodeAt(i) ^ secret.charCodeAt(i % secret.length));
-                    }
-                    const key = result.trim();
-                    if (key.startsWith('AIza') || key.startsWith('AQ.')) {
-                        this.keysPool.push({ id: 'Manual', value: key });
-                    }
-                } catch (e) { /* abaikan entri rusak */ }
+                // Dekripsi lewat key-crypto: format baru AES; format lama XOR
+                // tetap terbaca selama masa migrasi. Entri rusak dilewati.
+                const dec = decryptStoredApiKey(enc, uid, (p) => {
+                    const t = p.trim();
+                    return t.startsWith('AIza') || t.startsWith('AQ.');
+                });
+                if (dec) {
+                    this.keysPool.push({ id: 'Manual', value: dec.plain.trim() });
+                }
             }
         } catch (e) { /* kunci manual tidak tersedia */ }
         
