@@ -315,7 +315,7 @@ window.renderObligationChecklist = function() {
             const right = hit
                 ? '<span class="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full border text-emerald-400 border-emerald-400/30 bg-emerald-400/10 shrink-0"><i class="fa-solid fa-check"></i> Tercatat</span>'
                 : '<span class="flex items-center gap-2 shrink-0"><span class="text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full border text-amber-400 border-amber-400/30 bg-amber-400/10">Belum tercatat</span>' +
-                  '<button onclick="window.bookReminderNow(\'' + esc(rem.id) + '\')" class="text-[9px] font-bold px-2.5 py-1.5 rounded-lg bg-accent text-[var(--bg-base)] active:scale-95 transition">Catat Sekarang</button></span>';
+                  '<button onclick="window.bookReminderNow(\'' + esc(rem.id) + '\')" class="text-[9px] font-bold px-2.5 py-1.5 rounded-lg bg-accent text-[var(--invert-contrast)] active:scale-95 transition">Catat Sekarang</button></span>';
             return '<div class="flex justify-between items-center gap-2 py-2 border-b border-[var(--border-glass)] last:border-0">' + left + right + '</div>';
         }).join('');
         const pct = Math.round(done / reminders.length * 100);

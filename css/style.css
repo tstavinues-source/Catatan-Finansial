@@ -13,6 +13,12 @@
     --shadow-raised: 5px 5px 12px rgba(0, 0, 0, 0.42), -2px -2px 7px rgba(255, 255, 255, 0.045);
     --shadow-inset: inset 3px 3px 7px rgba(0, 0, 0, 0.48), inset -2px -2px 5px rgba(255, 255, 255, 0.05);
     --shadow-nav: 0 -5px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    /* Tinta semantik untuk teks status di atas rona tipis warna itu sendiri
+       (lencana, kotak peringatan, tombol bahaya, baris kunci). Tema gelap
+       memakai pastel terang; kulit terang menimpanya dengan rona pekat dari
+       keluarga warna yang sama — audit kontras r86: semua pasangan >= 4.5:1. */
+    --danger-ink: #fda4af;
+    --ok-ink: #6ee7b7;
 }
 
 
@@ -126,7 +132,7 @@ body {
     box-shadow: var(--shadow-raised), 0 0 45px rgba(244, 63, 94, 0.4);
 }
 
-.text-accent { color: var(--accent-primary); } 
+.text-accent { color: var(--accent-ink, var(--accent-primary)); } 
 .bg-accent { background-color: var(--accent-primary); }
 .text-income { color: var(--color-income); } 
 .text-expense { color: var(--color-expense); }
@@ -342,10 +348,13 @@ html[data-skin="cyber"] .hero-shade { background: linear-gradient(180deg, rgba(2
     --text-muted: #5c5546;
     --accent-primary: #e0a400;
     --accent-glow: rgba(255, 199, 0, 0.40);
-    --color-income: #1d9e57;
-    --color-expense: #e5484d;
+    --color-income: #12703c;
+    --color-expense: #d92c31;
     --border-glass: rgba(22, 19, 14, 0.55);
-    --invert-contrast: #ffffff;
+    --invert-contrast: #16130e;
+    --accent-ink: #7c5200;
+    --danger-ink: #991b1b;
+    --ok-ink: #0f6636;
     --font-main: 'Archivo', sans-serif;
     --font-display: 'Archivo Black', sans-serif;
     --shadow-raised: 5px 5px 0 #16130e;
@@ -376,11 +385,14 @@ html[data-skin="brutal"] .hero-shade { background: linear-gradient(180deg, rgba(
     --bg-glass-hi: #ffffff;
     --bg-inset: #ddd3f8;
     --text-main: #3b2f5e;
-    --text-muted: #7a6fa3;
+    --text-muted: #554a7d;
     --accent-primary: #7c3aed;
     --accent-glow: rgba(124, 58, 237, 0.35);
-    --color-income: #0ea47a;
-    --color-expense: #ec4899;
+    --color-income: #0a6e52;
+    --color-expense: #be185d;
+    --accent-ink: #5b21b6;
+    --danger-ink: #9f1239;
+    --ok-ink: #085c43;
     --border-glass: rgba(124, 58, 237, 0.16);
     --invert-contrast: #ffffff;
     --font-main: 'Nunito', sans-serif;
@@ -418,6 +430,22 @@ html[data-skin="brutal"] .bg-white\/10, html[data-skin="clay"] .bg-white\/10 { b
 html[data-skin="brutal"] .border-white\/10, html[data-skin="clay"] .border-white\/10 { border-color: rgba(22, 19, 14, 0.22) !important; }
 html[data-skin="clay"] .living-core .text-white { color: #ffffff !important; }
 html[data-skin="clay"] .living-core .text-\[var\(--text-muted\)\] { color: rgba(255, 255, 255, 0.75) !important; }
+
+/* --- Audit kontras r86: teks putih beropasitas + pastel Tailwind yang lolos
+   dari pemetaan lama. Di kulit terang kelas-kelas ini menjadi teks pucat di
+   atas permukaan pucat (tak terbaca); petakan ke variabel tema / rona pekat
+   dari keluarga warna yang sama. Tema gelap tidak tersentuh blok ini. --- */
+html[data-skin="brutal"] .text-white\/85, html[data-skin="clay"] .text-white\/85,
+html[data-skin="brutal"] .text-white\/75, html[data-skin="clay"] .text-white\/75 { color: var(--text-main) !important; }
+html[data-skin="brutal"] .text-gray-400, html[data-skin="clay"] .text-gray-400,
+html[data-skin="brutal"] .text-gray-500, html[data-skin="clay"] .text-gray-500 { color: var(--text-muted) !important; }
+html[data-skin="brutal"] .text-amber-300, html[data-skin="clay"] .text-amber-300,
+html[data-skin="brutal"] .text-amber-400, html[data-skin="clay"] .text-amber-400 { color: #92400e !important; }
+html[data-skin="brutal"] .text-sky-300, html[data-skin="clay"] .text-sky-300 { color: #075985 !important; }
+html[data-skin="brutal"] .text-violet-300, html[data-skin="clay"] .text-violet-300 { color: #6d28d9 !important; }
+html[data-skin="brutal"] .text-rose-300, html[data-skin="clay"] .text-rose-300,
+html[data-skin="brutal"] .text-rose-400, html[data-skin="clay"] .text-rose-400 { color: #be123c !important; }
+html[data-skin="brutal"] .text-emerald-400, html[data-skin="clay"] .text-emerald-400 { color: #065f46 !important; }
 
 /* --- Kelancaran geser: selama animasi pindah tab berjalan, bayangan panel
    disederhanakan agar komposit murah di GPU (terutama kulit Clay). --- */
@@ -474,7 +502,7 @@ html[data-skin="brutal"] .bg-black\/60, html[data-skin="clay"] .bg-black\/60 { b
     font-size: 0.85rem;
     transition: all .2s ease;
 }
-.aura-icon-btn:hover { color: var(--accent-primary); }
+.aura-icon-btn:hover { color: var(--accent-ink, var(--accent-primary)); }
 .aura-icon-btn.danger:hover { color: var(--color-expense); }
 .aura-pill-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: .25rem;
@@ -487,7 +515,7 @@ html[data-skin="brutal"] .bg-black\/60, html[data-skin="clay"] .bg-black\/60 { b
     letter-spacing: .08em; text-transform: uppercase;
     transition: all .2s ease;
 }
-.aura-pill-btn:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
+.aura-pill-btn:hover { color: var(--accent-ink, var(--accent-primary)); border-color: var(--accent-primary); }
 .aura-section-title {
     font-size: 10px; font-weight: 800;
     letter-spacing: .14em; text-transform: uppercase;
@@ -510,7 +538,7 @@ html[data-skin="brutal"] .bg-black\/50, html[data-skin="clay"] .bg-black\/50 { b
     display: flex; align-items: center; justify-content: center; gap: .5rem;
     border-radius: .75rem;
     background: color-mix(in srgb, var(--accent-primary) 14%, transparent);
-    color: var(--accent-primary);
+    color: var(--accent-ink, var(--accent-primary));
     border: 1px solid color-mix(in srgb, var(--accent-primary) 38%, transparent);
     font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
     transition: all .2s ease;
@@ -518,6 +546,35 @@ html[data-skin="brutal"] .bg-black\/50, html[data-skin="clay"] .bg-black\/50 { b
 .aura-action-btn:hover { background: color-mix(in srgb, var(--accent-primary) 24%, transparent); }
 html[data-skin="brutal"] .aura-action-btn { border: 2px solid #16130e; color: #16130e; box-shadow: 3px 3px 0 #16130e; }
 html[data-skin="clay"] .aura-action-btn { box-shadow: 3px 3px 8px rgba(94, 72, 180, 0.18), -2px -2px 6px rgba(255, 255, 255, 0.7); }
+
+/* --- Komponen status semantik (audit kontras r86) ---
+   Menggantikan pasangan kelas pastel keras (text-rose-200 di atas
+   bg-rose-500/10, lencana bg-red-950/40 + text-rose-400, dst.) yang hanya
+   terbaca di tema gelap dan hilang total di kulit terang (rasio ~1.0:1).
+   Kini: rona tipis dari warna semantik tema + tinta semantik per kulit. */
+.aura-badge-danger {
+    color: var(--danger-ink);
+    background: color-mix(in srgb, var(--color-expense) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-expense) 38%, transparent);
+}
+.aura-badge-ok {
+    color: var(--ok-ink);
+    background: color-mix(in srgb, var(--color-income) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-income) 38%, transparent);
+}
+.aura-warning-box {
+    color: var(--danger-ink);
+    background: color-mix(in srgb, var(--color-expense) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-expense) 32%, transparent);
+}
+.aura-danger-btn {
+    color: var(--danger-ink);
+    background: color-mix(in srgb, var(--color-expense) 13%, transparent);
+    border: 1px solid color-mix(in srgb, var(--color-expense) 42%, transparent);
+}
+.aura-danger-btn:hover { background: color-mix(in srgb, var(--color-expense) 22%, transparent); }
+.aura-ink-danger { color: var(--danger-ink); }
+.aura-ink-ok { color: var(--ok-ink); }
 
 /* --- Tahap 3: varian ukuran komponen + tombol putus-putus --- */
 .aura-icon-btn.sm { width: 1.6rem; height: 1.6rem; font-size: .65rem; }
@@ -527,7 +584,7 @@ html[data-skin="clay"] .aura-action-btn { box-shadow: 3px 3px 8px rgba(94, 72, 1
     display: flex; flex-direction: column; align-items: center; gap: .5rem;
     border-radius: .75rem;
     border: 2px dashed color-mix(in srgb, var(--accent-primary) 55%, transparent);
-    color: var(--accent-primary);
+    color: var(--accent-ink, var(--accent-primary));
     font-weight: 700;
     transition: all .2s ease;
 }
@@ -554,7 +611,7 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
 #auraTourTombol .aura-tour-spasi { flex: 1; }
 #auraTourLewati { font-size: 11px; font-weight: 700; color: var(--text-muted, #9aa3ad); padding: 9px 10px; }
 #auraTourKembali { font-size: 11px; font-weight: 700; padding: 9px 14px; border-radius: 12px; border: 1px solid var(--border-glass, rgba(255,255,255,.12)); color: var(--text-main, #f4f1ea); }
-#auraTourLanjut { font-size: 11px; font-weight: 800; padding: 9px 18px; border-radius: 12px; background: var(--accent-primary, #e08a4c); color: var(--bg-base, #10131a); }
+#auraTourLanjut { font-size: 11px; font-weight: 800; padding: 9px 18px; border-radius: 12px; background: var(--accent-primary, #e08a4c); color: var(--invert-contrast, #10131a); }
 #auraTourTombol button:active { transform: scale(.95); }
 
 /* === Formulir Sambutan: profil pertama kali (r48) === */
@@ -563,18 +620,18 @@ html[data-skin="clay"] { --bg-inset: #e0d7f8; --shadow-inset: inset 3px 3px 8px 
 .aura-sambut-judul { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
 .aura-sambut-isi { font-size: 12px; line-height: 1.65; color: var(--text-muted, #c6ccd4); margin-bottom: 14px; }
 .aura-sambut-label { display: block; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--text-muted, #9aa3ad); margin: 12px 0 5px; }
-.aura-sambut-input { width: 100%; box-sizing: border-box; border-radius: 12px; padding: 11px 12px; font-size: 13px; outline: none; background: rgba(0,0,0,.35); border: 1px solid var(--border-glass, rgba(255,255,255,.12)); color: var(--text-main, #f4f1ea); }
+.aura-sambut-input { width: 100%; box-sizing: border-box; border-radius: 12px; padding: 11px 12px; font-size: 13px; outline: none; background: var(--bg-inset); border: 1px solid var(--border-glass, rgba(255,255,255,.12)); color: var(--text-main, #f4f1ea); }
 .aura-sambut-input:focus { border-color: var(--accent-primary, #e08a4c); }
 .aura-sambut-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.aura-sambut-galat { font-size: 11px; font-weight: 700; color: #f87171; min-height: 14px; margin-top: 10px; }
-.aura-sambut-simpan { width: 100%; margin-top: 8px; padding: 13px; border-radius: 13px; font-size: 12px; font-weight: 800; background: var(--accent-primary, #e08a4c); color: var(--bg-base, #10131a); }
+.aura-sambut-galat { font-size: 11px; font-weight: 700; color: var(--color-expense); min-height: 14px; margin-top: 10px; }
+.aura-sambut-simpan { width: 100%; margin-top: 8px; padding: 13px; border-radius: 13px; font-size: 12px; font-weight: 800; background: var(--accent-primary, #e08a4c); color: var(--invert-contrast, #10131a); }
 .aura-sambut-simpan:disabled { opacity: .55; }
 .aura-sambut-lewati { width: 100%; margin-top: 6px; padding: 10px; font-size: 11px; font-weight: 700; color: var(--text-muted, #9aa3ad); }
 .aura-sambut-simpan:active, .aura-sambut-lewati:active { transform: scale(.97); }
 
 /* === Tombol + melayang untuk Transaksi Manual (r50) === */
 .fab-manual-wrap { position: relative; height: 0; z-index: 45; }
-#btn-manual-fab { position: absolute; right: 16px; bottom: 12px; width: 54px; height: 54px; border-radius: 9999px; background: var(--accent-primary, #e08a4c); color: var(--bg-base, #10131a); font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 26px rgba(0,0,0,.45); transition: transform .15s ease; cursor: pointer; }
+#btn-manual-fab { position: absolute; right: 16px; bottom: 12px; width: 54px; height: 54px; border-radius: 9999px; background: var(--accent-primary, #e08a4c); color: var(--invert-contrast, #10131a); font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 26px rgba(0,0,0,.45); transition: transform .15s ease; cursor: pointer; }
 #btn-manual-fab:active { transform: scale(.92); }
 /* Saat kotak chat disembunyikan, gelembung manual naik ke atas gelembung chat
    (tombol tampilkan chat: fixed, kanan 16px, bawah 100px, tinggi 48px)
@@ -714,8 +771,8 @@ body.share-selecting .share-select-check { display: inline-flex; }
 .trx-menu button { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: 0;
     color: var(--text-main); font-weight: 600; font-size: 12.5px; padding: 9px 10px; border-radius: 9px; cursor: pointer; text-align: left; }
 .trx-menu button i { width: 15px; text-align: center; color: var(--text-muted); }
-.trx-menu button.danger { color: #ef4444; }
-.trx-menu button.danger i { color: #ef4444; }
+.trx-menu button.danger { color: var(--color-expense); }
+.trx-menu button.danger i { color: var(--color-expense); }
 
 /* Money Flow (Tahap 2): chip nominal yang terbang antar kartu dompet */
 .aura-fly-chip { position: fixed; z-index: 200; pointer-events: none; transform: translate(-50%, -50%);
