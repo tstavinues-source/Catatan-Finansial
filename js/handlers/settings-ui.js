@@ -146,14 +146,14 @@ window.renderGroqKeysUI = function() {
         if (keys.length === 0) {
             el.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] text-center my-2 p-2 bg-black/40 rounded-lg border border-[var(--border-glass)]">Tidak ada Kunci Groq terpasang. Mesin Offline.</p>';
             if(badge) {
-                badge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
+                badge.className = "text-[9px] aura-badge-danger px-2 py-0.5 rounded font-mono";
                 badge.innerText = "OFFLINE";
             }
             return;
         }
 
         if(badge) {
-            badge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 px-2 py-0.5 rounded font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]";
+            badge.className = "text-[9px] aura-badge-ok px-2 py-0.5 rounded font-mono shadow-[0_0_10px_rgba(16,185,129,0.2)]";
             badge.innerText = `ONLINE (${keys.length})`;
         }
 
@@ -174,7 +174,7 @@ window.renderGroqKeysUI = function() {
 
             const isValid = dec && dec.startsWith('gsk_');
             const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
-            const statusColor = isValid ? 'text-emerald-400' : 'text-rose-400';
+            const statusColor = isValid ? 'aura-ink-ok' : 'aura-ink-danger';
 
             html += `
             <div class="flex justify-between items-center bg-[var(--bg-base)] p-2.5 rounded-xl border border-emerald-900/30 bg-emerald-900/10 mb-2 last:mb-0">
@@ -186,7 +186,7 @@ window.renderGroqKeysUI = function() {
                         Pool Ke-${index + 1} • Tersinkronisasi Firebase
                     </span>
                 </div>
-                <button onclick="window.removeGroqKey(${index})" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition">
+                <button onclick="window.removeGroqKey(${index})" class="aura-ink-danger p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition">
                     <i class="fa-solid fa-trash text-xs"></i>
                 </button>
             </div>`;
@@ -297,7 +297,7 @@ window.renderGeminiKeysUI = function() {
 
             const isValid = dec && (dec.startsWith('AIza') || dec.startsWith('AQ.'));
             const display = isValid ? `${dec.substring(0,8)}...${dec.substring(dec.length-4)}` : `(Data Cloud Korup)`;
-            const statusColor = isValid ? 'text-emerald-400' : 'text-rose-400';
+            const statusColor = isValid ? 'aura-ink-ok' : 'aura-ink-danger';
 
             html += `
             <div class="flex justify-between items-center bg-[var(--bg-base)] p-2.5 rounded-xl border border-emerald-900/30 bg-emerald-900/10 mb-2 last:mb-0">
@@ -309,7 +309,7 @@ window.renderGeminiKeysUI = function() {
                         Pool Manual Ke-${index + 1} • Tersinkronisasi Firebase
                     </span>
                 </div>
-                <button onclick="window.removeGeminiKey(${index})" class="text-rose-500 p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition">
+                <button onclick="window.removeGeminiKey(${index})" class="aura-ink-danger p-2 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg active:scale-90 transition">
                     <i class="fa-solid fa-trash text-xs"></i>
                 </button>
             </div>`;
@@ -334,7 +334,7 @@ window.syncGeminiEngine = async function(silent = false) {
         AuraState.instances.geminiEngine = geminiEngine;
         if (gCount > 0) {
             if (gBadge) {
-                gBadge.className = "text-[9px] bg-emerald-950/40 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-mono";
+                gBadge.className = "text-[9px] aura-badge-ok px-2 py-0.5 rounded font-mono";
                 gBadge.innerText = `ACTIVE (${gCount})`;
             }
             if (!silent && window.showToast) {
@@ -342,7 +342,7 @@ window.syncGeminiEngine = async function(silent = false) {
             }
         } else {
             if (gBadge) {
-                gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
+                gBadge.className = "text-[9px] aura-badge-danger px-2 py-0.5 rounded font-mono";
                 gBadge.innerText = "BELUM ADA KUNCI";
             }
             if (!silent && window.showToast) {
@@ -351,7 +351,7 @@ window.syncGeminiEngine = async function(silent = false) {
         }
     } catch (e) {
         if (gBadge) {
-            gBadge.className = "text-[9px] bg-red-950/40 text-rose-400 border border-red-900/50 px-2 py-0.5 rounded font-mono";
+            gBadge.className = "text-[9px] aura-badge-danger px-2 py-0.5 rounded font-mono";
             gBadge.innerText = "GALAT";
         }
         if (!silent && window.showToast) {

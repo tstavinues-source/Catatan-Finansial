@@ -62,7 +62,7 @@
     // Saat versi berubah, service worker lama dicabut dan seluruh cache
     // dibersihkan, lalu halaman dimuat ulang SEKALI — agar tidak ada lagi
     // tampilan campuran antara rilis lama dan baru di HP pengguna.
-    (function () { var V = '2026-11-07-r85'; try {
+    (function () { var V = '2026-11-07-r86'; try {
         if (localStorage.getItem('aurafi_app_ver') !== V) {
             localStorage.setItem('aurafi_app_ver', V);
             var jobs = [];
@@ -94,7 +94,7 @@
             <input type="text" id="aura-prompt-input" class="v-input w-full rounded-xl p-3 text-sm outline-none mb-5 font-mono text-white" autocomplete="off">
             <div class="flex gap-3">
                 <button id="aura-prompt-cancel" class="flex-1 py-3 rounded-xl border border-[var(--border-glass)] hover:bg-white/5 font-semibold text-xs transition active:scale-95 text-white">Batal</button>
-                <button id="aura-prompt-ok" class="flex-1 py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs shadow-[0_0_15px_var(--accent-glow)] hover:opacity-90 transition active:scale-95">Konfirmasi</button>
+                <button id="aura-prompt-ok" class="flex-1 py-3 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold text-xs shadow-[0_0_15px_var(--accent-glow)] hover:opacity-90 transition active:scale-95">Konfirmasi</button>
             </div>
         </div>
     </div>
@@ -170,7 +170,7 @@
                     </div>
                 </div>
             </div>
-            <button onclick="window.saveCategoryData()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition hover:opacity-90 active:scale-95">Simpan Kategori</button>
+            <button onclick="window.saveCategoryData()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition hover:opacity-90 active:scale-95">Simpan Kategori</button>
         </div>
     </div>
 
@@ -194,7 +194,7 @@
                 <div class="space-y-3 w-full mb-6">
                     <input type="email" id="login-email" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Email Terdaftar">
                     <input type="password" id="login-pass" class="v-input w-full rounded-2xl p-4 text-sm outline-none" placeholder="Kata Sandi">
-                    <button onclick="window.loginWithEmail()" class="w-full py-4 rounded-2xl bg-accent text-[var(--bg-base)] font-bold text-sm shadow-[0_0_20px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">
+                    <button onclick="window.loginWithEmail()" class="w-full py-4 rounded-2xl bg-accent text-[var(--invert-contrast)] font-bold text-sm shadow-[0_0_20px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">
                         <i class="fa-solid fa-envelope"></i> Masuk via Email
                     </button>
                 </div>
@@ -285,7 +285,7 @@
                     <span class="text-xs text-[var(--text-muted)] uppercase tracking-widest font-bold">Total Kalkulasi</span>
                     <span class="text-xl font-bold font-mono text-accent" id="staging-total-display">0</span>
                 </div>
-                <button onclick="window.saveStagingToDatabase()" class="w-full py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2 text-sm"><i class="fa-solid fa-cloud-arrow-up"></i> Konfirmasi & Simpan Permanen</button>
+                <button onclick="window.saveStagingToDatabase()" class="w-full py-4 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2 text-sm"><i class="fa-solid fa-cloud-arrow-up"></i> Konfirmasi & Simpan Permanen</button>
             </div>
         </div>
     </div>
@@ -352,7 +352,7 @@
                     </div>
                 </div>
             </div>
-            <button onclick="window.saveManualTransaction()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi</button>
+            <button onclick="window.saveManualTransaction()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition flex items-center justify-center gap-2"><i class="fa-solid fa-floppy-disk"></i> Simpan Transaksi</button>
         </div>
     </div>
 
@@ -412,7 +412,7 @@
                     <textarea id="edit-global-desc" rows="3" class="v-input w-full rounded-xl p-3 text-sm outline-none" placeholder="Ubah deskripsi di sini..."></textarea>
                 </div>
             </div>
-            <button onclick="window.saveEditTrx()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Update Global</button>
+            <button onclick="window.saveEditTrx()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Update Global</button>
         </div>
     </div>
 
@@ -506,7 +506,7 @@
                     </select>
                 </div>
             </div>
-            <button onclick="window.saveEditItem()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--bg-base)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Terapkan Perubahan</button>
+            <button onclick="window.saveEditItem()" class="w-full mt-6 py-4 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold shadow-[0_0_20px_var(--accent-glow)] transition"><i class="fa-solid fa-check mr-2"></i> Terapkan Perubahan</button>
         </div>
     </div>
 
@@ -727,7 +727,7 @@
                             <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
                                 <div class="flex justify-between items-center mb-2">
                                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] block font-bold">Gemini (Vision — Baca Struk)</label>
-                                    <span id="gemini-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">MENUNGGU</span>
+                                    <span id="gemini-status-badge" class="text-[8px] aura-badge-danger px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">MENUNGGU</span>
                                 </div>
                             <div id="gemini-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
                             <div class="flex gap-2 mb-2">
@@ -742,7 +742,7 @@
                             <div class="pt-3 mt-1 border-t border-[var(--border-glass)]">
                                 <div class="flex justify-between items-center mb-2">
                                     <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] block font-bold">Groq (Chat & Input Cepat)</label>
-                                    <span id="groq-status-badge" class="text-[8px] bg-red-950/40 text-rose-400 border border-red-900/50 px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">OFFLINE</span>
+                                    <span id="groq-status-badge" class="text-[8px] aura-badge-danger px-1.5 py-0.5 rounded uppercase tracking-[0.1em] font-mono">OFFLINE</span>
                                 </div>
                             <div id="groq-keys-container" class="space-y-2 mb-2 max-h-32 overflow-y-auto no-scrollbar"></div>
                             <div class="flex gap-2">
@@ -914,7 +914,7 @@
                             <p class="text-[10px] text-[var(--text-muted)] leading-relaxed">Catat dan tanya bukumu lewat obrolan dengan <b class="text-white">Claude</b> — kirim foto struk, tanya saldo, minta rekap. Yang menyambungkannya adalah <b class="text-white">kode koneksi pribadi</b> di bawah ini; server AuraFi hanya menerima kode milik akunmu sendiri.</p>
                             <button onclick="window.showClaudeConnectCode()" class="aura-action-btn"><i class="fa-solid fa-key"></i> Buat Kode Koneksi</button>
                             <div id="claude-connect-area" class="hidden space-y-2">
-                                <textarea id="claude-connect-code" readonly rows="4" class="w-full bg-black/50 border border-[var(--border-glass)] rounded-xl p-3 text-[9px] font-mono text-violet-200 break-all"></textarea>
+                                <textarea id="claude-connect-code" readonly rows="4" class="w-full bg-black/50 border border-[var(--border-glass)] rounded-xl p-3 text-[9px] font-mono text-[var(--text-main)] break-all"></textarea>
                                 <button onclick="window.copyClaudeConnectCode()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-copy"></i> Salin Kode</button>
                             </div>
                             <div class="grid grid-cols-2 gap-2">
@@ -928,8 +928,8 @@
                                 <p>3. Tambah header: nama <b class="text-white">Authorization</b>, nilai dari tombol <b class="text-white">Salin Header</b> di atas.</p>
                                 <p>4. Simpan &amp; hubungkan, lalu coba tanya &ldquo;Saldo saya berapa?&rdquo;. Pada transaksi pertama, Claude akan menanyakan mode konfirmasi pencatatanmu.</p>
                             </div>
-                            <p class="text-[9px] text-rose-200/80 bg-rose-500/10 border border-rose-400/20 rounded-xl p-3 leading-relaxed">Kode ini <b>setara kunci akunmu</b> — jangan dibagikan dan jangan ditangkap layar. Saat terhubung, <b>Claude (Anthropic)</b> membaca &amp; memproses data buku yang kamu minta lewat obrolan. Kamu bisa mencabut akses kapan pun dari panel ini; kode lama langsung berhenti berlaku.</p>
-                            <button onclick="window.revokeAiAccessFlow()" class="w-full py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 text-rose-200 font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> Cabut Akses AI</button>
+                            <p class="text-[9px] aura-warning-box rounded-xl p-3 leading-relaxed">Kode ini <b>setara kunci akunmu</b> — jangan dibagikan dan jangan ditangkap layar. Saat terhubung, <b>Claude (Anthropic)</b> membaca &amp; memproses data buku yang kamu minta lewat obrolan. Kamu bisa mencabut akses kapan pun dari panel ini; kode lama langsung berhenti berlaku.</p>
+                            <button onclick="window.revokeAiAccessFlow()" class="w-full py-2.5 rounded-xl aura-danger-btn font-bold text-[10px] uppercase tracking-wider transition flex items-center justify-center gap-2"><i class="fa-solid fa-ban"></i> Cabut Akses AI</button>
                         </div>
                     </div>
                 </div>
@@ -1158,7 +1158,7 @@
 
 
                 <div class="glass-panel p-0.5 flex rounded-xl border border-[var(--border-glass)] shrink-0">
-                    <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--bg-base)]">JPY</button>
+                    <button id="btn-curr-jpy" onclick="window.setCurrency('JPY')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all bg-accent text-[var(--invert-contrast)]">JPY</button>
                     <button id="btn-curr-idr" onclick="window.setCurrency('IDR')" class="px-2.5 py-1.5 rounded-lg text-[9px] font-black tracking-wider transition-all text-[var(--text-muted)]">IDR</button>
                 </div>
 
@@ -1478,7 +1478,7 @@
                     <p class="text-[9px] text-[var(--text-muted)] italic text-center">*Misal: Angka [1] & Satuan [Bulan] = Sistem akan menagih target menabung Anda setiap 1 Bulan sekali.</p>
                     </div>
 
-                    <button id="goal-submit-btn" onclick="window.saveGoal()" class="w-full bg-accent text-[var(--bg-base)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)] mt-2">Mulai Misi Menabung</button>
+                    <button id="goal-submit-btn" onclick="window.saveGoal()" class="w-full bg-accent text-[var(--invert-contrast)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)] mt-2">Mulai Misi Menabung</button>
                 </div>
 
                 <div class="flex flex-col md:grid md:grid-cols-2 md:gap-8 md:items-start pt-4 md:border-t md:border-[var(--border-glass)] mt-5 md:mt-8">
@@ -1603,7 +1603,7 @@
                 <button onclick="window.toggleChatBar(true)" class="w-8 h-12 text-[var(--text-muted)] hover:text-white rounded-xl flex items-center justify-center active:scale-90 transition shrink-0" aria-label="Sembunyikan kotak chat">
                     <i class="fa-solid fa-chevron-down text-xs"></i>
                 </button>
-                <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--bg-base)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label ="Kirim Input">
+                <button id="btn-send-main" onclick="window.handleSend()" class="w-12 h-12 bg-accent text-[var(--invert-contrast)] rounded-[14px] flex items-center justify-center shrink-0 hover:opacity-90 active:scale-90 transition shadow-[0_0_15px_var(--accent-glow)] disabled:opacity-50 disabled:shadow-none" aria-label ="Kirim Input">
                     <i class="fa-solid fa-paper-plane text-base" id="icon-send"></i>
                 </button>
             </div>
@@ -1633,7 +1633,7 @@
                 <span class="text-[10px] font-black tracking-widest uppercase">Wawasan</span>
             </button>
         </nav>
-        <button id="chat-show-btn" onclick="window.toggleChatBar(false)" class="hidden fixed right-4 bottom-[100px] z-40 w-12 h-12 rounded-full bg-accent text-[var(--bg-base)] shadow-2xl items-center justify-center active:scale-90 transition" aria-label="Tampilkan kotak chat">
+        <button id="chat-show-btn" onclick="window.toggleChatBar(false)" class="hidden fixed right-4 bottom-[100px] z-40 w-12 h-12 rounded-full bg-accent text-[var(--invert-contrast)] shadow-2xl items-center justify-center active:scale-90 transition" aria-label="Tampilkan kotak chat">
             <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 21l2-5.6A8.5 8.5 0 1 1 21 11.5z"/></svg>
         </button>
     </div>
@@ -1677,7 +1677,7 @@
             <div class="p-3 border-t border-[var(--border-glass)] bg-black/40 shrink-0 grid grid-cols-3 gap-2">
                 <button id="lap-btn-ai" onclick="window.requestReportAI()" class="py-2.5 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold text-[10px] uppercase tracking-wider transition hover:bg-indigo-500/30 active:scale-95"><i class="fa-solid fa-robot mr-1"></i> Narasi AI</button>
                 <button onclick="window.saveClosingReport()" class="py-2.5 rounded-xl bg-white/5 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition hover:bg-white/10 active:scale-95"><i class="fa-solid fa-box-archive mr-1"></i> Ke Arsip</button>
-                <button onclick="window.openPdfOptions()" class="py-2.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-[10px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-file-pdf mr-1"></i> Unduh PDF</button>
+                <button onclick="window.openPdfOptions()" class="py-2.5 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold text-[10px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-file-pdf mr-1"></i> Unduh PDF</button>
             </div>
         </div>
     </div>
@@ -1698,7 +1698,7 @@
                 <label class="flex items-center gap-3 bg-black/30 border border-[var(--border-glass)] rounded-xl px-3 py-2.5 cursor-pointer"><input type="checkbox" id="pdf-sec-perbandingan" checked class="w-4 h-4" style="accent-color: var(--accent-primary)"><span class="text-xs font-bold">Perbandingan siklus sebelumnya</span></label>
             </div>
             <div class="p-3 border-t border-[var(--border-glass)] bg-black/40">
-                <button onclick="window.generateReportPDF()" class="w-full py-3 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-[11px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-download mr-1"></i> Buat PDF</button>
+                <button onclick="window.generateReportPDF()" class="w-full py-3 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold text-[11px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-download mr-1"></i> Buat PDF</button>
             </div>
         </div>
     </div>
@@ -1721,7 +1721,7 @@
                 </div>
             </div>
             <div class="p-3 border-t border-[var(--border-glass)] bg-black/40 grid grid-cols-3 gap-2">
-                <button onclick="window.shareTrxAsText()" class="py-2.5 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-[10px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-message mr-1"></i> Teks</button>
+                <button onclick="window.shareTrxAsText()" class="py-2.5 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold text-[10px] uppercase tracking-wider transition hover:opacity-90 active:scale-95"><i class="fa-solid fa-message mr-1"></i> Teks</button>
                 <button onclick="window.shareTrxAsPdf()" class="py-2.5 rounded-xl bg-white/5 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition hover:bg-white/10 active:scale-95"><i class="fa-solid fa-file-pdf mr-1"></i> PDF</button>
                 <button onclick="window.copyShareTrxText()" class="py-2.5 rounded-xl bg-white/5 border border-[var(--border-glass)] font-bold text-[10px] uppercase tracking-wider transition hover:bg-white/10 active:scale-95"><i class="fa-solid fa-copy mr-1"></i> Salin</button>
             </div>

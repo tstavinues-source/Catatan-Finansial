@@ -84,7 +84,7 @@ export const Onboarding = {
                     <div class="p-4 border-t border-[var(--border-glass)] bg-black/40 flex gap-2">
                         <button id="btn-onboarding-prev" onclick="window.AuraOnboarding.prev()" class="w-12 h-12 rounded-xl border border-[var(--border-glass)] text-[var(--text-muted)] hover:text-white transition active:scale-95 flex items-center justify-center hidden"><i class="fa-solid fa-arrow-left"></i></button>
                         <button id="btn-onboarding-skip" onclick="window.AuraOnboarding.close()" class="flex-1 h-12 rounded-xl border border-[var(--border-glass)] text-[var(--text-muted)] hover:text-white font-bold text-xs transition active:scale-95">Tutup Panduan</button>
-                        <button id="btn-onboarding-next" onclick="window.AuraOnboarding.next()" class="flex-[2] h-12 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs shadow-[0_0_15px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
+                        <button id="btn-onboarding-next" onclick="window.AuraOnboarding.next()" class="flex-[2] h-12 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold text-xs shadow-[0_0_15px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2">Lanjut <i class="fa-solid fa-arrow-right"></i></button>
                     </div>
                 </div>
             </div>`;
@@ -129,7 +129,7 @@ export const Onboarding = {
                 el.className = "flex-[2] h-12 rounded-xl bg-emerald-400 text-black font-bold text-xs shadow-[0_0_15px_rgba(52,211,153,0.4)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2";
             } else {
                 el.innerHTML = 'Lanjut <i class="fa-solid fa-arrow-right"></i>';
-                el.className = "flex-[2] h-12 rounded-xl bg-accent text-[var(--bg-base)] font-bold text-xs shadow-[0_0_15px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2";
+                el.className = "flex-[2] h-12 rounded-xl bg-accent text-[var(--invert-contrast)] font-bold text-xs shadow-[0_0_15px_var(--accent-glow)] hover:opacity-90 transition active:scale-95 flex items-center justify-center gap-2";
             }
         });
     },

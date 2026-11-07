@@ -943,7 +943,7 @@ window.renderBrankas = function() {
                 + '<div class="flex justify-between text-[10px] text-[var(--text-muted)] font-mono mb-2"><span>' + fmt(saved) + ' terkumpul (' + pct + '%)</span><span>Target ' + fmt(target) + '</span></div>'
                 + '<div class="text-[10px] text-[var(--text-muted)] space-y-1"><p><i class="fa-regular fa-calendar mr-1"></i> Tenggat ' + fmtTgl(g.targetDate) + ' \u2022 ' + daysLeft + ' hari lagi</p>'
                 + '<p><i class="fa-solid fa-coins mr-1"></i> Rencana periode berikut: <b class="text-[var(--text-main)]">' + fmt(planNext) + '</b></p></div>'
-                + '<div class="flex gap-2 mt-3"><button onclick="window.openTopupGoal(\'' + gid + '\', \'' + escQ(g.name) + '\')" class="flex-1 bg-accent text-[var(--bg-base)] font-bold py-2.5 rounded-xl text-[11px] active:scale-[0.98] transition"><i class="fa-solid fa-plus"></i> Nabung</button>'
+                + '<div class="flex gap-2 mt-3"><button onclick="window.openTopupGoal(\'' + gid + '\', \'' + escQ(g.name) + '\')" class="flex-1 bg-accent text-[var(--invert-contrast)] font-bold py-2.5 rounded-xl text-[11px] active:scale-[0.98] transition"><i class="fa-solid fa-plus"></i> Nabung</button>'
                 + '<button onclick="window.openEditGoalFull(\'' + gid + '\')" class="glass-panel px-4 rounded-xl text-[11px] font-bold text-[var(--text-muted)] active:scale-95 transition"><i class="fa-solid fa-pen"></i></button></div></div>';
         }).join('');
     });

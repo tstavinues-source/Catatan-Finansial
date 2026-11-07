@@ -236,11 +236,11 @@ window.renderAnalytics = function() {
                         
                         subsHtml += `
                         <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/10 transition cursor-pointer active:scale-[0.99] group" onclick="window.openSubCategoryItems('${safeParent}', '${safeSub}')">
-                            <span class="text-[10px] text-slate-300 flex items-center gap-2 group-hover:text-white transition">
+                            <span class="text-[10px] text-[var(--text-muted)] flex items-center gap-2 group-hover:text-[var(--text-main)] transition">
                                 ${(typeof window.AuraIkonSlugSub === 'function' && window.AuraIkonSlugSub(sub.name)) ? `<span class="ikon-sub-slot" data-ikon-sub="${window.AuraIkonSlugSub(sub.name)}"><i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i></span>` : `<i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i>`} 
                                 ${displayName}
                             </span>
-                            <span class="text-[10px] font-mono font-bold text-slate-300 group-hover:text-white transition flex items-center gap-2">
+                            <span class="text-[10px] font-mono font-bold text-[var(--text-main)] transition flex items-center gap-2">
                                 ${window.formatAuraCurrency(sub.total)}
                                 <i class="fa-solid fa-chevron-right text-[8px] text-[var(--text-muted)] opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"></i>
                             </span>
@@ -248,7 +248,7 @@ window.renderAnalytics = function() {
                     });
                 } else {
                     subsHtml += `
-                    <div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center cursor-pointer hover:bg-white/10 hover:text-white transition active:scale-[0.99]" onclick="window.openSubCategoryItems('${safeParent}', '${safeParent}')">
+                    <div class="px-3 py-2 text-[10px] text-[var(--text-muted)] italic text-center cursor-pointer hover:bg-white/10 hover:text-[var(--text-main)] transition active:scale-[0.99]" onclick="window.openSubCategoryItems('${safeParent}', '${safeParent}')">
                         Seluruhnya adalah item umum ${p.name}. <span class="text-accent underline decoration-accent/50 ml-1">Lihat Rincian</span>
                     </div>`;
                 }
