@@ -8,7 +8,7 @@ import {
     getDatabase, ref, push, update, remove, onValue, get 
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 import { 
-    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged, deleteUser, reauthenticateWithPopup, sendPasswordResetEmail
+    getAuth, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, getRedirectResult, signInWithCredential, signOut, onAuthStateChanged, deleteUser, reauthenticateWithPopup, sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 import { FIREBASE_CONFIG, APP_CONFIG } from '../config/constants.js';
@@ -20,6 +20,7 @@ let firebaseAppInstance = null;
 let dbInstance = null;
 let authInstance = null;
 let googleAuthProviderInstance = null;
+let redirectResultPromise = null;
 
 Logger.info('Core', 'Menginisialisasi Firebase SDK Environment...');
 
@@ -290,6 +291,18 @@ window.loadRealtimeDatabaseData = function(silent = false) {
     }
 };
 
+// Keputusan murni: bolehkah kegagalan popup Google dijatuhkan ke alur
+// alih-halaman (redirect)? Hanya dua kode yang TIDAK boleh: metode masuk
+// dimatikan di konsol (redirect akan gagal dengan cara yang sama) dan akun
+// dinonaktifkan (persoalan akun, bukan persoalan jendela). Semua kegagalan
+// lain — popup terblokir/ditutup, galat internal, domain belum terdaftar,
+// bahkan galat tanpa kode — layak dicoba ulang lewat redirect. Diekspor
+// terpisah agar logika pemilihnya bisa diuji harness tanpa SDK.
+export function shouldFallbackToRedirect(error) {
+    const code = (error && error.code) || '';
+    return code !== 'auth/operation-not-allowed' && code !== 'auth/user-disabled';
+}
+
 export const FirebaseService = {
     loginWithEmail: async function(email, password) { return await signInWithEmailAndPassword(authInstance, email, password); },
     resetPassword: async function(email) { return await sendPasswordResetEmail(authInstance, email); },
@@ -324,7 +337,39 @@ export const FirebaseService = {
                 if (timer) clearTimeout(timer);
             }
         }
-        return await signInWithPopup(authInstance, googleAuthProviderInstance);
+        // Jalur web: popup adalah jalan utama, tetapi di peramban yang
+        // menghalangi popup atau penyimpanan pihak ketiga, popup bisa gagal
+        // SEKETIKA tanpa pemilih akun sempat tampil. Untuk kegagalan yang
+        // lolos shouldFallbackToRedirect, jatuhkan ke alur alih-halaman
+        // (redirect) yang tidak bergantung pada popup; hasilnya dipanen
+        // oleh consumeRedirectResult() saat halaman kembali termuat, dan
+        // observer auth memperlakukannya seperti login popup yang sukses.
+        try {
+            return await signInWithPopup(authInstance, googleAuthProviderInstance);
+        } catch (popupError) {
+            if (!shouldFallbackToRedirect(popupError)) throw popupError;
+            Logger.warn('Core', 'Login Google via popup gagal; menjatuhkan ke alur alih-halaman.', popupError);
+            return await signInWithRedirect(authInstance, googleAuthProviderInstance);
+        }
+    },
+
+    // Panen hasil alur alih-halaman Google. Dipanggil sekali oleh handler
+    // auth saat halaman termuat — termasuk muatan biasa tanpa redirect
+    // (getRedirectResult menjawab null dan tidak terjadi apa-apa). Promise
+    // di-cache supaya panggilan berulang tidak memanen dua kali. Tidak
+    // pernah melempar: hasil selalu { user } atau { error }.
+    consumeRedirectResult: function() {
+        if (!redirectResultPromise) {
+            redirectResultPromise = (async () => {
+                try {
+                    const result = await getRedirectResult(authInstance);
+                    return { user: (result && result.user) || null };
+                } catch (error) {
+                    return { error };
+                }
+            })();
+        }
+        return redirectResultPromise;
     },
     logout: async function() { return await signOut(authInstance); },
 
