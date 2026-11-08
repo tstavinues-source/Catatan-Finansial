@@ -30,7 +30,9 @@ window.clearLoginError = function() {
 
 // Peta kode galat Firebase Auth -> pesan ramah berbahasa Indonesia.
 // Pesan mentah Firebase (teknis, berbahasa Inggris) TIDAK pernah
-// ditampilkan ke pengguna; kode mentahnya cukup dicatat di Logger.
+// ditampilkan ke pengguna. Satu-satunya pengecualian: kode galat yang
+// belum terpetakan ikut disebut dalam kurung pada pesan bawaan, supaya
+// kegagalan yang belum dikenal bisa didiagnosis dari laporan pengguna.
 function friendlyAuthError(error) {
     const code = (error && error.code) || '';
     switch (code) {
@@ -54,7 +56,17 @@ function friendlyAuthError(error) {
             return 'Jendela masuk Google ditutup atau terblokir sebelum selesai. Silakan coba lagi.';
         case 'auth/operation-not-allowed':
             return 'Metode masuk ini belum diaktifkan. Silakan coba metode lain.';
+        case 'auth/unauthorized-domain':
+            return 'Domain situs ini belum terdaftar untuk masuk Google. Beri tahu pengelola aplikasi agar domain ini didaftarkan sebagai domain resmi di konsol Firebase.';
+        case 'auth/internal-error':
+        case 'auth/missing-initial-state':
+        case 'auth/web-storage-unsupported':
+            return 'Penyimpanan peramban untuk sesi masuk Google terhalang. Izinkan cookie pihak ketiga untuk situs ini, atau coba gunakan peramban lain.';
+        case 'auth/invalid-api-key':
+        case 'auth/app-not-authorized':
+            return 'Konfigurasi aplikasi untuk masuk Google bermasalah. Beri tahu pengelola aplikasi agar memeriksa kunci API dan domain resmi di konsol Firebase.';
         default:
+            if (code) return 'Terjadi kesalahan tak terduga (kode: ' + code + '). Silakan coba lagi sebentar lagi.';
             return 'Terjadi kesalahan tak terduga. Silakan coba lagi sebentar lagi.';
     }
 }
@@ -204,3 +216,20 @@ window.logoutAccount = async function() {
         }
     }, { confirmLabel: 'Keluar Akun' });
 };
+
+// Panen hasil masuk Google lewat alur alih-halaman, sekali saat modul ini
+// dimuat: bila pengguna baru kembali dari halaman Google (redirect dipakai
+// karena popup gagal), hasil masuknya menunggu untuk dipanen di sini.
+// Suksesnya tidak ditangani di sini — observer auth di firebase.js menutup
+// jendela login seperti login biasa. Galatnya ditampilkan dengan awalan
+// dan peta pesan yang sama seperti jalur popup.
+FirebaseService.consumeRedirectResult().then(function(outcome) {
+    if (outcome && outcome.error) {
+        Logger.error('Auth', 'Gagal login Google (alih-halaman):', outcome.error);
+        const friendly = friendlyAuthError(outcome.error);
+        window.showLoginError("Login Google gagal. " + friendly);
+        if (typeof window.showToast === 'function') {
+            window.showToast("Login Google gagal. " + friendly, true);
+        }
+    }
+}).catch(function() { /* consumeRedirectResult tidak pernah melempar; pengaman saja */ });
