@@ -19,13 +19,13 @@ window.BasmiHantuMutasi = function() {
     const txs = [...(AuraState.data.transactions || []), ...(AuraState.data.trash || [])];
     let count = 0;
     
-    Logger.info('BasmiHantu', 'MEMULAI OPERASI PEMUSNAHAN HANTU MUTASI...');
+    console.log("🕵️‍♂️ MEMULAI OPERASI PEMUSNAHAN HANTU MUTASI...");
     
     txs.forEach(t => {
         const name = (t.merchantName || t.storeName || "").toLowerCase();
         // Cari semua transaksi yang mengandung kata mutasi, hirogin, atau rekening lawas
         if (name.includes('mutasi') || name.includes('hirogin') || name.includes('rekening lawas')) {
-            Logger.info('BasmiHantu', 'Menembak target:', t.merchantName);
+            console.log("💥 Menembak target:", t.merchantName);
             if(window.deleteForever) {
                 window.deleteForever(t.id);
                 count++;
@@ -34,11 +34,11 @@ window.BasmiHantuMutasi = function() {
     });
     
     if (count > 0) {
-        Logger.success('BasmiHantu', `BERHASIL! ${count} data hantu dimusnahkan.`);
-        Logger.info('BasmiHantu', 'SILAKAN REFRESH HALAMAN BROWSER ANDA SEKARANG!');
+        console.log(`✅ BERHASIL! ${count} data hantu dimusnahkan.`);
+        console.log("🔄 SILAKAN REFRESH HALAMAN BROWSER ANDA SEKARANG!");
         if (window.showToast) window.showToast(`${count} Data Hantu Berhasil Dimusnahkan!`, false);
     } else {
-        Logger.success('BasmiHantu', 'Aman! Tidak ada data hantu ditemukan.');
+        console.log("✅ Aman! Tidak ada data hantu ditemukan.");
     }
 };
 

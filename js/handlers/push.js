@@ -5,8 +5,6 @@
 // daftarkan perangkat ke FCM -> simpan token ke Firebase
 // (settings/pushTokens) supaya Ren bisa mengirim push dari server.
 // ============================================================================
-import { Logger } from '../core/logger.js';
-
 (function () {
   const Cap = window.Capacitor;
   if (!Cap || typeof Cap.isNativePlatform !== "function" || !Cap.isNativePlatform()) return;
@@ -21,7 +19,7 @@ import { Logger } from '../core/logger.js';
       const map = {};
       map[token] = { platform: "android", updatedAt: new Date().toISOString() };
       await window.FirebaseService.updateSettings({ pushTokens: map });
-      Logger.info('Push', 'Token perangkat tersimpan.');
+      console.log("[Push] Token perangkat tersimpan.");
     } catch (e) {
       console.warn("[Push] Gagal menyimpan token:", e);
     }
@@ -54,7 +52,7 @@ import { Logger } from '../core/logger.js';
         perm = await PN.requestPermissions();
       }
       if (perm.receive !== "granted") {
-        Logger.info('Push', 'Izin notifikasi tidak diberikan; push nonaktif.');
+        console.log("[Push] Izin notifikasi tidak diberikan; push nonaktif.");
         return;
       }
       await PN.register();
