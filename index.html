@@ -25,11 +25,6 @@
     </script>
 
     <meta charset="UTF-8">
-    <!-- CSP (r91): asal eksternal sesuai audit pemuatan nyata aplikasi.
-         'unsafe-inline' untuk script/style TIDAK bisa dihindari tahap ini:
-         aplikasi memang inline-heavy (skrip & handler sebaris di berkas ini).
-         frame-ancestors tidak berlaku lewat meta, jadi tidak dicantumkan. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://agrivision-574be-default-rtdb.firebaseio.com wss://agrivision-574be-default-rtdb.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://generativelanguage.googleapis.com https://api.groq.com https://api.exchangerate-api.com https://aurafi-mcp.tstavinues.workers.dev; frame-src https://agrivision-574be.firebaseapp.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>AuraFi V3.2.5 - The Living Wealth OS</title>
     
