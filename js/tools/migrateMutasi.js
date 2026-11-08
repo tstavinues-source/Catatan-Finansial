@@ -3,6 +3,7 @@
  * (STERIL DARI BACKTICK MULTI-BARIS)
  */
 import { AuraState } from '../core/state.js';
+import { Logger } from '../core/logger.js';
 import { FirebaseService } from '../services/firebase.js';
 
 export const runMutasiMigration = async () => {
@@ -32,7 +33,7 @@ export const runMutasiMigration = async () => {
     });
 
     if (toUpdate.length === 0) {
-        console.log("✅ Tidak ada transaksi lawas yang perlu dimigrasi.");
+        Logger.info('MigrasiMutasi', 'Tidak ada transaksi lawas yang perlu dimigrasi.');
         if (window.showToast) window.showToast("Tidak ada transaksi mutasi lawas yang ditemukan.");
         return;
     }
@@ -48,7 +49,7 @@ export const runMutasiMigration = async () => {
     const confirmed = await window.AuraConfirm(msg);
 
     if (!confirmed) {
-        console.log("❌ Migrasi dibatalkan oleh user.");
+        Logger.info('MigrasiMutasi', 'Migrasi dibatalkan oleh user.');
         return;
     }
 
@@ -68,7 +69,7 @@ export const runMutasiMigration = async () => {
     }
 
     if (window.setProcessingStatus) window.setProcessingStatus(false);
-    console.log("Migrasi Selesai! Sukses: " + successCount + " | Gagal: " + failCount);
+    Logger.success('MigrasiMutasi', "Migrasi Selesai! Sukses: " + successCount + " | Gagal: " + failCount);
     if (window.showToast) window.showToast("Migrasi sukses: " + successCount + " data diperbarui.");
 };
 
