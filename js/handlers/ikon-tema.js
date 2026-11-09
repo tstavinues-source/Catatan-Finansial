@@ -21,11 +21,15 @@
     "Lainnya": "lainnya"
   };
   const SLUGS = Object.keys(SLUG).map(function (k) { return SLUG[k]; });
-  // Sub-kategori (grup Makanan): ikon TANPA latar (alfa), latar diatur chip.
+  // Sub-kategori: ikon TANPA latar (alfa), latar diatur chip.
+  // Grup Makanan (v1) + grup Belanja Pribadi (v1).
   const SUB_SLUG = {
     "Makanan": "makanan", "Buah": "buah", "Sayuran": "sayuran",
     "Daging": "daging", "Bumbu/Bahan Masakan": "bumbu",
-    "Bahan Pokok": "bahanpokok", "Camilan": "camilan"
+    "Bahan Pokok": "bahanpokok", "Camilan": "camilan",
+    "Sabun": "sabun", "Hair Care": "haircare", "Skincare": "skincare",
+    "Pakaian": "pakaian", "Elektronik": "elektronik", "Kesehatan": "kesehatan",
+    "Belanja Offline": "belanjaoffline", "Peralatan Rumah Tangga": "peralatan"
   };
   const SUB_SLUGS = Object.keys(SUB_SLUG).map(function (k) { return SUB_SLUG[k]; });
   const urlCache = {};  // tema -> { slug: blobUrl }
