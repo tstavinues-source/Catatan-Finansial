@@ -978,6 +978,18 @@ window.copyAiAuthHeader = async function (areaId, fieldId) {
         if (typeof window.showToast === 'function') window.showToast('Kode belum tersedia — pastikan kamu sudah masuk.', true);
     }
 };
+// Prompt instruksi untuk panel Muse: kode koneksi TIDAK PERNAH diberikan
+// sendirian — Muse tujuan menerima prompt ini bersama kodenya sebagai satu
+// paket serah-terima (keputusan user 2026-11-11, setelah sebuah Muse lain
+// salah menyimpulkan cara menyambung dari tokennya saja).
+window.copyMuseInstructionPrompt = async function () {
+    const field = document.getElementById('muse-instruction-text');
+    if (!field || !field.value) {
+        if (typeof window.showToast === 'function') window.showToast('Prompt instruksi tidak ditemukan.', true);
+        return;
+    }
+    await copyTextWithToast(field.value, 'Prompt instruksi tersalin — tempel ke obrolan Muse tujuanmu.');
+};
 window.revokeAiAccessFlow = async function () {
     if (!window.FirebaseService || typeof window.FirebaseService.revokeAiAccess !== 'function') {
         if (typeof window.showToast === 'function') window.showToast('Layanan belum siap. Coba lagi sebentar lagi.', true);
