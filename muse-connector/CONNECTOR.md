@@ -4,8 +4,16 @@ Menghubungkan Muse milik pengguna sendiri ke akun AuraFi-nya lewat
 **server jembatan MCP AuraFi** — server yang sama yang dipakai jalur Claude
 dan Gemini. Lewat konektor ini Muse bisa membaca saldo, dompet, transaksi,
 dan pengaturan buku; mencatat, mengubah, dan menghapus (lunak) transaksi;
-membuat dompet dan kategori; mengatur anggaran dan mata uang; mengelola misi
-tabungan dan tagihan berulang — selalu hanya pada buku milik pembuat kode.
+mengelola utang-piutang lengkap dengan pembayaran dan pelunasannya;
+membuat, mengubah, menyembunyikan, dan menghapus dompet; membuat, mengubah,
+memindah induk, dan menghapus kategori; mengatur anggaran dan mata uang;
+mengelola misi tabungan dan tagihan berulang; menghapus mutasi secara
+berpasangan; memusnahkan transaksi dari tempat sampah secara permanen;
+mengatur jangkar siklus gajian dan profil; membuat arsip tutup buku; dan
+mengimpor banyak transaksi sekaligus — selalu hanya pada buku milik
+pembuat kode. Cakupannya kini setara aplikasi: semua yang bisa ditambah,
+diubah, dihapus, dan dipindah pengguna di aplikasi AuraFi bisa dikerjakan
+lewat konektor ini (38 tool).
 
 ## Cara kerja identitas (baca ini dulu)
 
@@ -61,7 +69,7 @@ menulis kode ke berkas dalam bentuk apa pun.
 3. `bin/client.py` di paket ini sudah terkonfigurasi:
    - `PROVIDER = "custom.aurafi"`
    - `ENDPOINT = "https://aurafi-mcp.tstavinues.workers.dev/mcp"`
-   - `ALLOWED_TOOLS` sudah berisi ke-19 nama tool di bawah.
+   - `ALLOWED_TOOLS` sudah berisi ke-38 nama tool di bawah.
    Bila koneksimu terdaftar dengan slug lain (lihat catatan migrasi),
    ubah `PROVIDER` di salinanmu agar sama dengan slug terdaftar itu.
 4. Verifikasi dengan dua panggilan baca yang tidak mengubah apa pun, lalu
@@ -104,7 +112,7 @@ python3 bin/client.py call-tool --name konteks_buku --arguments-file konteks.jso
   pencatatan akun (tanya dulu vs langsung catat) — itu perilaku resmi
   server, teruskan pertanyaan itu kepada pengguna apa adanya.
 
-## Tool yang diizinkan (19)
+## Tool yang diizinkan (38)
 
 | Tool | Sifat | Fungsi |
 |---|---|---|
@@ -127,7 +135,37 @@ python3 bin/client.py call-tool --name konteks_buku --arguments-file konteks.jso
 | setor_tabungan | tulis | Menyetor ke misi tabungan |
 | buat_tagihan_berulang | tulis | Membuat tagihan berulang |
 | hapus_tagihan_berulang | tulis | Menghapus tagihan berulang |
+| catat_utang_piutang | tulis | Mencatat utang/piutang baru (+ transaksi pendamping di dompet) |
+| bayar_utang_piutang | tulis | Mencatat cicilan/pembayaran utang-piutang, termasuk Tandai Lunas |
+| hapus_pembayaran_utang | tulis | Membatalkan satu pembayaran utang-piutang |
+| hapus_utang_piutang | tulis | Menghapus lunak catatan utang-piutang beserta pendampingnya |
+| ubah_dompet | tulis | Mengubah nama/jenis dompet |
+| hapus_dompet | tulis | Menghapus dompet permanen (transaksi lama menjadi yatim — ada peringatan) |
+| atur_visibilitas_dompet | tulis | Menyembunyikan/menampilkan dompet dari total kekayaan |
+| ubah_kategori | tulis | Mengubah nama/jenis/induk/ikon/warna kategori gudang |
+| hapus_kategori | tulis | Menghapus kategori beserta anaknya (+ blokir nama/tombstones) |
+| pindah_induk_kategori | tulis | Mengatur induk laporan sub-kategori (categoryMappings) |
+| ubah_misi_tabungan | tulis | Mengubah kantong tabungan (nama, target, terkumpul, tanggal, periode) |
+| hapus_misi_tabungan | tulis | Menghapus kantong tabungan (transaksi setorannya tetap) |
+| hapus_mutasi | tulis | Menghapus lunak KEDUA kaki mutasi antar dompet sekaligus |
+| hapus_transaksi_permanen | tulis | Memusnahkan transaksi yang sudah ada di tempat sampah |
+| atur_jangkar_siklus | tulis | Menambah/menghapus tanggal jangkar siklus gajian |
+| atur_profil | tulis | Mengubah profil akun (nama lengkap, nama panggilan, negara, mata uang bawaan) |
+| buat_arsip_tutup_buku | tulis | Membuat snapshot arsip laporan satu periode |
+| hapus_arsip | tulis | Menghapus arsip tutup buku |
+| impor_transaksi | tulis | Mengimpor banyak transaksi sekaligus (hasil per item) |
 
 Saldo dompet tidak disimpan sebagai angka; server menghitungnya dari
-transaksi (pemasukan menambah; pengeluaran, mutasi keluar, dan setoran
-tabungan mengurangi), jadi `baca_saldo` selalu konsisten dengan isi buku.
+transaksi (pemasukan, mutasi masuk, dan penerimaan/utang masuk menambah;
+pengeluaran, mutasi keluar, pemberian piutang, dan setoran tabungan
+mengurangi), jadi `baca_saldo` selalu konsisten dengan isi buku. Arus
+utang-piutang mengubah saldo dompet tetapi TIDAK masuk total
+pemasukan/pengeluaran laporan — sama seperti di aplikasi.
+
+Catatan cakupan utang-piutang: catatan utang-piutang hidup di buku yang
+sama (node `debts`) dan selalu berpasangan atomik dengan transaksi
+pendampingnya bila memakai dompet; sisa dan status (Aktif/Sebagian/Lunas)
+adalah turunan dari pembayaran, bukan angka yang disimpan. Hapus mutasi
+selalu berpasangan agar saldo tidak timpang, dan hapus permanen hanya
+bisa dilakukan pada transaksi yang sudah berada di tempat sampah
+(pagar dua langkah, sama seperti aplikasi).
