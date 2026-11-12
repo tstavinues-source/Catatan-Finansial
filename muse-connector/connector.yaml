@@ -1,13 +1,15 @@
 id: "custom.aurafi"
 title: "AuraFi (konektor pengguna)"
-description: "Connect a user's own Muse to their AuraFi account using the personal connection code generated in the app (Pengaturan -> Hubungkan ke Muse). Reads and writes only that user's ledger subtree; no project secrets are involved."
+description: "Connect a user's own Muse to their AuraFi account through the AuraFi MCP bridge, using the personal connection code generated in the app (Pengaturan -> Hubungkan ke Muse). Reads and writes only that user's ledger subtree; no project secrets are involved."
 include_in_prompt: true
 require_auth: true
 aliases: ["AuraFi", "aurafi", "catatan keuangan"]
 auth:
-  kind: "api_key"
+  kind: "bearer"
   label: "Kode Koneksi AuraFi"
-  help: "In the AuraFi app, open Pengaturan -> Hubungkan ke Muse -> Buat Kode Koneksi, then paste the code here. It stays in the secure vault and is handed to the helper as a file at call time."
+  help: "In the AuraFi app, open Pengaturan -> Hubungkan ke Muse -> Buat Kode Koneksi, then enter the code on the secure API-access page for this connection. The code is registered against the single host aurafi-mcp.tstavinues.workers.dev and is sent to the AuraFi MCP bridge as an Authorization Bearer header; Muse swaps it in only on approved requests to that host. The agent and its helper never receive the raw code, and it must never be pasted into chat or written to a file."
+  api_hosts: ["aurafi-mcp.tstavinues.workers.dev"]
+  placement: "header"
   fields:
     - key: "code"
       label: "Kode Koneksi (diawali AURAFI1:)"
