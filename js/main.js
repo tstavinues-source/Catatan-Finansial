@@ -82,6 +82,7 @@ import './handlers/goals.js';
 import './handlers/debts.js';
 import './handlers/settings-ui.js';
 import './handlers/cycle-settings.js';
+import './handlers/category-budgets.js';
 import './handlers/reconcile.js';
 import './handlers/push.js';
 import './handlers/widget-sync.js';
