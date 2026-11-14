@@ -745,6 +745,9 @@ window.reCalculateAll = function() {
     if (typeof window.renderRecurringUIForBudget === 'function') {
         window.renderRecurringUIForBudget();
     }
+    if (typeof window.renderCategoryBudgets === 'function') {
+        window.renderCategoryBudgets();
+    }
 };
 
 window.debouncedCalculateAll = AuraUtils.debounce(window.reCalculateAll, APP_CONFIG.THROTTLE_MS);

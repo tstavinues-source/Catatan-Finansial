@@ -1496,6 +1496,7 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                                 <span id="dash-next-bill" class="text-xs font-bold num-tab text-[var(--text-main)] truncate block mt-0.5">—</span>
                             </div>
                         </div>
+                        <div id="dash-catbudget"></div>
                     </div>
                 </div>
             </div>
@@ -1612,6 +1613,55 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                     </div>
                 </div>
                 
+                <div class="glass-panel p-5 border-t-4 border-t-emerald-400 shadow-2xl mb-5">
+                    <h3 class="font-bold text-sm text-emerald-400"><i class="fa-solid fa-chart-pie mr-1"></i> Anggaran per Kategori</h3>
+                    <p class="text-[10px] text-[var(--text-muted)] leading-relaxed mt-1">Plafon maksimum atau target minimal per kategori, mengikuti <b>siklus gajian berjalan</b> — bukan bulan kalender. Status dihitung terhadap laju waktu siklus; proyeksi menunjukkan perkiraan penutup siklus bila laju belanja tidak berubah.</p>
+
+                    <div id="catbudget-list" class="mt-2"></div>
+
+                    <h4 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-5 mb-1">Atur Anggaran</h4>
+                    <div id="catbudget-settings-list"></div>
+
+                    <div class="space-y-3 mt-4">
+                        <div>
+                            <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kategori</label>
+                            <select id="catbudget-new-cat" data-picker-title="Kategori Anggaran" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black"></select>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-1/2">
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Jenis Batas</label>
+                                <select id="catbudget-new-jenis" data-picker-title="Jenis Batas" class="v-input w-full rounded-xl p-3 text-xs outline-none bg-black">
+                                    <option value="plafon">Plafon maksimum</option>
+                                    <option value="minimal">Target minimal</option>
+                                </select>
+                            </div>
+                            <div class="w-1/2">
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nominal per Siklus</label>
+                                <input id="catbudget-new-amt" type="number" placeholder="0" class="v-input w-full rounded-xl p-3 text-xs outline-none">
+                            </div>
+                        </div>
+                        <button onclick="window.simpanAnggaranKategoriBaru()" class="w-full bg-accent text-[var(--invert-contrast)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)]">Simpan Anggaran</button>
+                    </div>
+
+                    <h4 class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mt-5 mb-1">Peringatan &amp; Hitungan</h4>
+                    <label class="flex items-center justify-between gap-3 py-2 border-b border-[var(--border-glass)] cursor-pointer">
+                        <span class="text-xs font-bold">Peringatan 80%<span class="block text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Peringatkan saat kategori menyentuh 80% plafon</span></span>
+                        <input id="catbudget-opt-alert80" type="checkbox" onchange="window.ubahOpsiAnggaranKategori('alert80', this.checked)" class="w-5 h-5 shrink-0" style="accent-color:#34d399">
+                    </label>
+                    <label class="flex items-center justify-between gap-3 py-2 border-b border-[var(--border-glass)] cursor-pointer">
+                        <span class="text-xs font-bold">Peringatan 100% / lewat<span class="block text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Peringatkan tegas saat plafon terlampaui</span></span>
+                        <input id="catbudget-opt-alert100" type="checkbox" onchange="window.ubahOpsiAnggaranKategori('alert100', this.checked)" class="w-5 h-5 shrink-0" style="accent-color:#34d399">
+                    </label>
+                    <label class="flex items-center justify-between gap-3 py-2 border-b border-[var(--border-glass)] cursor-pointer">
+                        <span class="text-xs font-bold">Hanya kelompok Pribadi<span class="block text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Kewajiban &amp; Kewajiban Terpisah tidak memakan plafon kategori</span></span>
+                        <input id="catbudget-opt-pribadi" type="checkbox" onchange="window.ubahOpsiAnggaranKategori('hanyaPribadi', this.checked)" class="w-5 h-5 shrink-0" style="accent-color:#34d399">
+                    </label>
+                    <label class="flex items-center justify-between gap-3 py-2 cursor-pointer">
+                        <span class="text-xs font-bold">Proyeksi laju<span class="block text-[10px] text-[var(--text-muted)] font-medium mt-0.5">Tampilkan perkiraan penutup siklus di tiap anggaran</span></span>
+                        <input id="catbudget-opt-proyeksi" type="checkbox" onchange="window.ubahOpsiAnggaranKategori('proyeksi', this.checked)" class="w-5 h-5 shrink-0" style="accent-color:#34d399">
+                    </label>
+                </div>
+
                 <div id="goal-form" class="glass-panel p-5 space-y-4 hidden border-t-4 border-t-accent shadow-2xl transition-all mb-5">
                     <div class="flex justify-between items-center mb-2">
                         <h3 class="font-bold text-sm text-accent"><i class="fa-solid fa-rocket mr-1"></i> Misi Tabungan Baru</h3>
