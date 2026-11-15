@@ -57,6 +57,7 @@ ALLOWED_TOOLS: set[str] = {
     "hapus_mutasi",
     "hapus_transaksi_permanen",
     "atur_jangkar_siklus",
+    "atur_kelompok_kustom",
     "atur_profil",
     "buat_arsip_tutup_buku",
     "hapus_arsip",
