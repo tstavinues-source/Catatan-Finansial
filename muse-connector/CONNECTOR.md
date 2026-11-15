@@ -112,7 +112,31 @@ python3 bin/client.py call-tool --name konteks_buku --arguments-file konteks.jso
   pencatatan akun (tanya dulu vs langsung catat) — itu perilaku resmi
   server, teruskan pertanyaan itu kepada pengguna apa adanya.
 
-## Tool yang diizinkan (38)
+## Aturan satu konsep kategori & kelompok (wajib)
+
+Aturan pemilik buku (2026-11-15) — berlaku untuk semua buku, juga
+ditanam di instruksi server sehingga dibaca di awal sesi:
+
+- Tiga lapisan jangan dicampur: pohon gudang kategori (buat/ubah/hapus
+  kategori), pemetaan laporan (pindah_induk_kategori), dan kelompok
+  item. Kategori menjawab "belanja apa"; kelompok menjawab "pos apa /
+  untuk siapa". Nama kelompok tidak pernah dipakai sebagai induk
+  kategori.
+- Induk laporan baku: bahan makanan → Makanan; belanja & perawatan diri
+  (Sabun, Hair Care, Pengemasan & Penyimpanan, dll.) → Belanja Pribadi;
+  subkategori bayi (Makanan Bayi, Susu Bayi, Perawatan Bayi) →
+  Kebutuhan Bayi bila buku punya induk itu, BUKAN ke Makanan.
+- Dilarang memetakan kategori induk ke kategori lain (mis. Makanan →
+  Kebutuhan Pribadi); kategori induk berdiri sebagai grupnya sendiri.
+- Setiap kategori BARU wajib ikon FontAwesome yang sesuai maknanya +
+  warna serasi, lewat parameter `ikon`/`warna` pada buat_kategori —
+  jangan biarkan ikon generik bawaan.
+- Kelompok item hanya boleh memakai nama dari `kelompok_sah` di
+  konteks_buku (5 bawaan + kelompok kustom buku itu). Kelompok kustom
+  dibuat/dihapus hanya atas permintaan pemilik, lewat
+  atur_kelompok_kustom.
+
+## Tool yang diizinkan (39)
 
 | Tool | Sifat | Fungsi |
 |---|---|---|
@@ -126,7 +150,7 @@ python3 bin/client.py call-tool --name konteks_buku --arguments-file konteks.jso
 | hapus_transaksi | tulis | Menghapus lunak (masuk tempat sampah, bisa dipulihkan) |
 | pulihkan_transaksi | tulis | Memulihkan transaksi dari tempat sampah |
 | buat_dompet | tulis | Membuat dompet baru (tunai/cashless) |
-| buat_kategori | tulis | Membuat kategori/subkategori baru |
+| buat_kategori | tulis | Membuat kategori/subkategori baru (dengan ikon + warna) |
 | susun_kategori | tulis | Menata pemetaan kategori |
 | atur_anggaran | tulis | Mengatur anggaran/batas belanja |
 | atur_mata_uang | tulis | Mengatur mata uang buku (tanpa konversi nominal) |
@@ -150,6 +174,7 @@ python3 bin/client.py call-tool --name konteks_buku --arguments-file konteks.jso
 | hapus_mutasi | tulis | Menghapus lunak KEDUA kaki mutasi antar dompet sekaligus |
 | hapus_transaksi_permanen | tulis | Memusnahkan transaksi yang sudah ada di tempat sampah |
 | atur_jangkar_siklus | tulis | Menambah/menghapus tanggal jangkar siklus gajian |
+| atur_kelompok_kustom | tulis | Menambah/menghapus kelompok kustom buku (pos laporan item) |
 | atur_profil | tulis | Mengubah profil akun (nama lengkap, nama panggilan, negara, mata uang bawaan) |
 | buat_arsip_tutup_buku | tulis | Membuat snapshot arsip laporan satu periode |
 | hapus_arsip | tulis | Menghapus arsip tutup buku |
