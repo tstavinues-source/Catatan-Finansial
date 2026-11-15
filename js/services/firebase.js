@@ -191,6 +191,7 @@ try {
                 if (typeof window.renderRecurringUI === 'function') window.renderRecurringUI();
                 if (typeof window.renderRecurringUIForBudget === 'function') window.renderRecurringUIForBudget();
                 if (typeof window.renderCategoryDropdowns === 'function') window.renderCategoryDropdowns();
+                if (typeof window.refreshKelompokSelects === 'function') window.refreshKelompokSelects();
                 // FITUR BARU: label tombol "Siklus X-Y" ikut update sesuai settings.cycleStartDay
                 if (typeof window.updateCycleButtonLabel === 'function') window.updateCycleButtonLabel();
 
