@@ -1610,7 +1610,7 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                 <div class="glass-panel p-5 flex flex-col items-center">
                     <div class="w-full flex justify-between items-center mb-6">
                         <h3 class="font-bold text-xs flex items-center gap-2"><i class="fa-solid fa-chart-pie text-accent"></i> Distribusi Kategori</h3>
-                        <select id="stats-kelompok-filter" onchange="window.setAnalyticsKelompokFilter(this.value)" class="v-input rounded-lg px-2 py-1.5 text-[10px] outline-none bg-black">
+                        <select id="stats-kelompok-filter" data-picker-title="Filter Kelompok" onchange="window.setAnalyticsKelompokFilter(this.value)" class="v-input rounded-lg px-2 py-1.5 text-[10px] outline-none bg-black">
                             <option value="ALL">Semua Kelompok</option>
                             <option value="Pribadi">Pribadi Saja</option>
                             <option value="Kewajiban Terpisah">Kewajiban Saja</option>
