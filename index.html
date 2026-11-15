@@ -958,6 +958,33 @@
                 </div>
 
                 <div class="relative group">
+                    <button onclick="window.toggleSettingsSection('sec-kelompok'); if (window.renderKelompokKustomPengaturan) window.renderKelompokKustomPengaturan();" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
+                        <div class="flex items-center gap-4">
+                            <div class="icon-chip w-8 h-8"><i class="fa-solid fa-layer-group text-sm"></i></div>
+                            <span class="text-xs font-bold text-white tracking-widest uppercase">Kelompok Kustom</span>
+                        </div>
+                        <div class="aura-icon-btn"><i id="icon-sec-kelompok" class="fa-solid fa-plus transition-transform duration-300"></i></div>
+                    </button>
+                    <div id="sec-kelompok" class="max-h-0 opacity-0 overflow-hidden transition-all duration-500 ease-in-out relative z-0">
+                        <div class="p-4 bg-black/40 border-x border-b border-[var(--border-glass)] rounded-b-xl mt-[-10px] pt-6 space-y-3">
+                            <p class="text-[9px] text-[var(--text-muted)] leading-relaxed">Kelompok adalah <b class="text-white">pos laporan</b> tiap item (untuk siapa / pos apa), terpisah dari kategori. Tambahkan kelompokmu sendiri — mis. <b class="text-white">Kebutuhan Bayi</b> — agar pos itu terlihat utuh di laporan, dihitung seperti Pribadi. Kelompok kustom juga langsung dikenal AI yang terhubung ke buku ini.</p>
+                            <div>
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Kelompok Kustom Buku Ini</label>
+                                <div id="kelompok-kustom-daftar" class="space-y-1.5"></div>
+                            </div>
+                            <div>
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Tambah Kelompok</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="kelompok-kustom-input" maxlength="40" placeholder="mis. Kebutuhan Bayi" class="v-input flex-1 rounded-xl p-2.5 text-xs outline-none">
+                                    <button onclick="window.tambahKelompokKustom()" class="aura-pill-btn shrink-0"><i class="fa-solid fa-plus"></i> Tambah</button>
+                                </div>
+                                <p class="text-[9px] text-[var(--text-muted)] italic leading-relaxed mt-1">Menghapus kelompok tidak mengubah transaksi lama yang sudah memakainya.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative group">
                     <button onclick="window.toggleSettingsSection('sec-reminders')" class="w-full aura-head-bg border border-[var(--border-glass)] rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-all z-10 relative shadow-lg">
                         <div class="flex items-center gap-4">
                             <div class="icon-chip w-8 h-8"><i class="fa-solid fa-bell text-sm"></i></div>
