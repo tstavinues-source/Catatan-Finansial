@@ -52,6 +52,29 @@ window.refreshKelompokSelects = function() {
         // Pulihkan pilihan yang sedang aktif bila masih ada opsinya.
         if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
     }
+    // Filter kelompok panel Distribusi Kategori (STATS): kelompok kustom
+    // ikut menjadi pilihan saringan "<Nama> Saja", sejalan dengan
+    // "Pribadi Saja"/"Kewajiban Saja". Tanpa ini kelompok kustom hanya
+    // terlihat pada "Semua Kelompok" dan tidak bisa disaring sendiri.
+    const statsSel = document.getElementById('stats-kelompok-filter');
+    if (statsSel) {
+        const cur = statsSel.value;
+        statsSel.querySelectorAll('option[data-custom-kelompok]').forEach(o => o.remove());
+        for (const nama of getCustomKelompok()) {
+            const opt = document.createElement('option');
+            opt.value = nama;
+            opt.textContent = nama + ' Saja';
+            opt.dataset.customKelompok = '1';
+            statsSel.appendChild(opt);
+        }
+        if (cur && [...statsSel.options].some(o => o.value === cur)) {
+            statsSel.value = cur;
+        } else if (AuraState.temp?.analyticsKelompok && ![...statsSel.options].some(o => o.value === AuraState.temp.analyticsKelompok)) {
+            // Kelompok yang sedang menyaring sudah dihapus — kembali ke Semua.
+            AuraState.temp.analyticsKelompok = 'ALL';
+            statsSel.value = 'ALL';
+        }
+    }
 };
 
 function escapeHtml(s) {

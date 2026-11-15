@@ -146,7 +146,12 @@ window.renderAnalytics = function() {
             (trx.items || []).forEach(it => {
                 let rawCat = (it.kategori_barang || 'Lainnya').trim();
                 const itemKelompok = it.kelompok || (typeof window.inferKelompokItem === 'function' ? window.inferKelompokItem(rawCat, 'pengeluaran') : 'Pribadi');
-                if (kelFilter !== 'ALL' && itemKelompok !== kelFilter) return;
+                // "Kewajiban Saja" (nilai saringan 'Kewajiban Terpisah') juga
+                // mencakup item berlabel 'Kewajiban' — keduanya pos kewajiban
+                // di semua laporan lain. Kelompok kustom cocok persis namanya.
+                const cocokKelompok = kelFilter === 'ALL' || itemKelompok === kelFilter ||
+                    (kelFilter === 'Kewajiban Terpisah' && itemKelompok === 'Kewajiban');
+                if (!cocokKelompok) return;
                 let cleanCat = rawCat.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
                 // Konversi per cap transaksi SEBELUM dijumlah — satu sistem kurs.
                 let val = AuraUtils.convertCurrency((Number(it.harga) || 0) * (Number(it.qty) || 1), trx.mata_uang);
@@ -166,7 +171,10 @@ window.renderAnalytics = function() {
 
             // FIX DARI CLAUDE: Pajak dimasukkan agar Sinkron dengan Dashboard
             const feeVal = AuraUtils.convertCurrency(Number(trx.admin_fee || 0), trx.mata_uang);
-            if (feeVal > 0 && kelFilter !== 'Kewajiban Terpisah') {
+            // Pajak & biaya admin hanya tampil pada "Semua Kelompok" dan
+            // "Pribadi Saja" (perilaku lama dipertahankan); saringan
+            // kewajiban dan kelompok kustom tidak dicampuri pos ini.
+            if (feeVal > 0 && (kelFilter === 'ALL' || kelFilter === 'Pribadi')) {
                 const feeCatName = 'Pajak & Biaya Admin';
                 if (!catMap[feeCatName]) {
                     catMap[feeCatName] = { total: 0, style: { icon: 'fa-file-invoice-dollar', hex: '#facc15' }, subs: {} };
