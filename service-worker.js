@@ -1,4 +1,4 @@
-const CACHE_NAME = "aurafi-v2";
+const CACHE_NAME = "aurafi-v3";
 const PRECACHE = ["/", "/index.html", "/css/style.css", "/assets/hero-landscape.svg"];
 
 self.addEventListener("install", (event) => {
@@ -33,7 +33,27 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-  // Aset statis: sajikan cache dulu, segarkan di latar belakang.
+  // Skrip & gaya (.js/.css): utamakan jaringan dengan revalidasi ETag
+  // (cache: "no-cache") agar rilis baru tampil pada bukaan PERTAMA —
+  // respons 304 tetap murah bila berkas belum berubah. Cache hanya jadi
+  // penolong saat offline. (Sebelumnya aset ini cache-first, sehingga
+  // update baru terlihat pada bukaan kedua.)
+  const isScriptOrStyle = new URL(req.url).pathname.endsWith(".js") || new URL(req.url).pathname.endsWith(".css");
+  if (isScriptOrStyle) {
+    event.respondWith(
+      fetch(req, { cache: "no-cache" })
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+  // Aset statis lain: sajikan cache dulu, segarkan di latar belakang.
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
