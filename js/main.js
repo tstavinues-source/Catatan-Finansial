@@ -954,7 +954,7 @@ window.openAIIconSearch = async function() {
         if (!ActiveGroq) throw new Error("Mesin AI Groq belum dimuat oleh sistem.");
 
         if (typeof ActiveGroq.refreshKeys === 'function') {
-            ActiveGroq.refreshKeys();
+            await ActiveGroq.refreshKeys();
         }
 
         if (!ActiveGroq.keysPool || ActiveGroq.keysPool.length === 0) {
