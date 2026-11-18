@@ -146,7 +146,7 @@ export const WalletManager = {
         const wallet = AuraState.data.wallets[id];
         if(!wallet) return;
 
-        const isConfirmed = await window.AuraConfirm("Yakin ingin memusnahkan dompet <b>" + wallet.name + "</b>? Transaksi yang sudah masuk ke dompet ini akan tetap ada, tapi kehilangan identitas sumbernya.");
+        const isConfirmed = await window.AuraConfirm("Yakin ingin memusnahkan dompet <b>" + AuraUtils.escapeHtml(wallet.name) + "</b>? Transaksi yang sudah masuk ke dompet ini akan tetap ada, tapi kehilangan identitas sumbernya.");
         if (!isConfirmed) return;
 
         try {

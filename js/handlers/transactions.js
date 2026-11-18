@@ -163,8 +163,8 @@ window.executeTransfer = async function() {
 
     const formattedAmount = window.formatAuraCurrency ? window.formatAuraCurrency(amount) : amount;
     const confirmMsg = "Konfirmasi Mutasi Saldo:<br><br>" +
-        "Dari: <b class='text-rose-400'>" + sourceName + "</b><br>" +
-        "Ke: <b class='text-emerald-400'>" + destName + "</b><br>" +
+        "Dari: <b class='text-rose-400'>" + AuraUtils.escapeHtml(sourceName) + "</b><br>" +
+        "Ke: <b class='text-emerald-400'>" + AuraUtils.escapeHtml(destName) + "</b><br>" +
         "Total: <b class='text-white font-mono'>" + formattedAmount + "</b><br><br>" +
         "Lanjutkan pemindahan dana?";
     

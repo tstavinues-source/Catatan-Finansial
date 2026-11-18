@@ -61,9 +61,14 @@ export const CategoryManager = {
         });
 
         if (exactMatch) {
+            // KEAMANAN (audit 2026-11-18): icon/hex kategori kustom datang dari
+            // RTDB dan dirender ke atribut class/style. Hanya format yang sah
+            // yang diteruskan; nilai lain jatuh ke bawaan aman.
+            const icon = /^fa-[a-z0-9-]+(\s+fa-[a-z0-9-]+)*$/i.test(exactMatch.icon || '') ? exactMatch.icon : 'fa-tag';
+            const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(exactMatch.color || '') ? exactMatch.color : '#52525b';
             return { 
-                icon: exactMatch.icon || 'fa-tag', 
-                hex: exactMatch.color || '#52525b', 
+                icon: icon, 
+                hex: hex, 
                 name: exactMatch.name 
             };
         }
@@ -117,7 +122,9 @@ export const CategoryManager = {
         let optionsHtml = '';
         
         Object.values(allCats).forEach(function(c) { 
-            optionsHtml += `<option value="${c.name}">${c.name}</option>`; 
+            // KEAMANAN (audit 2026-11-18): nama kategori kustom dari RTDB wajib
+            // di-escape sebelum masuk markup <option> (value maupun teks).
+            optionsHtml += `<option value="${AuraUtils.escapeHtml(c.name)}">${AuraUtils.escapeHtml(c.name)}</option>`; 
         });
 
         AuraUtils.safeDOM('filter-category', function(el) {

@@ -334,7 +334,7 @@ window.bookReminderNow = async function(reminderId) {
     const wallets = AuraState.data.wallets || {};
     const w = wallets[rem.wallet_id] || {};
     const metode = w.type === 'tunai' ? 'tunai' : 'cashless';
-    const ok = await window.AuraConfirm('Catat "' + rem.name + '" sebesar ' + fmtJPY(rem.amount) + ' sekarang?');
+    const ok = await window.AuraConfirm('Catat "' + esc(rem.name) + '" sebesar ' + fmtJPY(rem.amount) + ' sekarang?');
     if (!ok) return;
     const today = todayLocalStr();
     const nowIso = new Date().toISOString();
@@ -468,7 +468,7 @@ window.saveReminder = async function() {
 window.deleteReminder = async function(reminderId) {
     const rem = getReminders().find(function(r) { return r.id === reminderId; });
     if (!rem) return;
-    const ok = await window.AuraConfirm('Hapus pengingat "' + rem.name + '"?');
+    const ok = await window.AuraConfirm('Hapus pengingat "' + esc(rem.name) + '"?');
     if (!ok) return;
     const list = getReminders().filter(function(r) { return r.id !== reminderId; });
     try {

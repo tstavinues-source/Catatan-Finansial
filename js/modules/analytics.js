@@ -40,9 +40,13 @@ function getCategoryStyleFromDB(catName) {
     const foundId = Object.keys(rawCats).find(id => rawCats[id].name.toLowerCase() === catName.toLowerCase());
     
     if (foundId && rawCats[foundId].icon && rawCats[foundId].color) {
+        // KEAMANAN (audit 2026-11-18): icon/hex dari RTDB dirender ke atribut
+        // class/style — hanya format sah yang diteruskan (selaras resolveStyle).
+        const icon = /^fa-[a-z0-9-]+(\s+fa-[a-z0-9-]+)*$/i.test(rawCats[foundId].icon) ? rawCats[foundId].icon : 'fa-tag';
+        const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(rawCats[foundId].color) ? rawCats[foundId].color : '#52525b';
         return {
-            icon: rawCats[foundId].icon,
-            hex: rawCats[foundId].color
+            icon: icon,
+            hex: hex
         };
     }
     return null;
@@ -233,12 +237,12 @@ window.renderAnalytics = function() {
 
                 let subsHtml = '';
                 const hasSpecificSubs = sortedSubs.some(sub => sub.name !== p.name);
-                const safeParent = p.name.replace(/'/g, "\\'");
+                const safeParent = AuraUtils.escapeJsString(p.name);
 
                 if (hasSpecificSubs) {
                     sortedSubs.forEach(sub => {
                         const displayName = sub.name === p.name ? `Item Umum ${p.name}` : sub.name;
-                        const safeSub = sub.name.replace(/'/g, "\\'");
+                        const safeSub = AuraUtils.escapeJsString(sub.name);
                         
                         const subStyle = getCategoryStyleFromDB(sub.name) || CategoryManager.resolveStyle(sub.name);
                         
@@ -246,7 +250,7 @@ window.renderAnalytics = function() {
                         <div class="flex justify-between items-center px-3 py-2 border-b border-white/5 last:border-0 hover:bg-white/10 transition cursor-pointer active:scale-[0.99] group" onclick="window.openSubCategoryItems('${safeParent}', '${safeSub}')">
                             <span class="text-[10px] text-[var(--text-muted)] flex items-center gap-2 group-hover:text-[var(--text-main)] transition">
                                 ${(typeof window.AuraIkonSlugSub === 'function' && window.AuraIkonSlugSub(sub.name)) ? `<span class="ikon-sub-slot" data-ikon-sub="${window.AuraIkonSlugSub(sub.name)}"><i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i></span>` : `<i class="fa-solid ${subStyle.icon} w-3 text-center" style="color: ${subStyle.hex};"></i>`} 
-                                ${displayName}
+                                ${AuraUtils.escapeHtml(displayName)}
                             </span>
                             <span class="text-[10px] font-mono font-bold text-[var(--text-main)] transition flex items-center gap-2">
                                 ${window.formatAuraCurrency(sub.total)}
@@ -269,7 +273,7 @@ window.renderAnalytics = function() {
                                 <i class="fa-solid ${p.style.icon}" style="color: ${p.style.hex};"></i>
                             </div>
                             <div>
-                                <p class="text-xs font-bold text-white">${p.name}</p>
+                                <p class="text-xs font-bold text-white">${AuraUtils.escapeHtml(p.name)}</p>
                                 <p class="text-[9px] text-[var(--text-muted)]">${percent}% dari total pengeluaran</p>
                             </div>
                         </div>
@@ -304,7 +308,7 @@ window.renderAnalytics = function() {
                     <div class="flex justify-between items-center">
                         <div class="flex items-center gap-2">
                             <span class="font-black text-sm w-4 text-center ${rankColor}">#${idx+1}</span>
-                            <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${m.name}</span>
+                            <span class="text-[10px] font-bold text-white truncate max-w-[150px]">${AuraUtils.escapeHtml(m.name)}</span>
                         </div>
                         <span class="text-[10px] font-mono text-accent font-bold">${window.formatAuraCurrency(m.total)}</span>
                     </div>
@@ -668,8 +672,8 @@ window.openParentPickerForMapping = function(subCat, currentParent) {
 function buildParentOptionRow(name, icon, color, isSelected, subCat) {
     const bgClass = isSelected ? 'bg-accent/20 border-accent text-white' : 'bg-black/30 border-[var(--border-glass)] hover:bg-white/5 text-slate-300 hover:text-white';
     const checkIcon = isSelected ? `<i class="fa-solid fa-circle-check text-accent text-lg"></i>` : '';
-    const safeSubCat = subCat.replace(/'/g, "\\'");
-    const safeName = name.replace(/'/g, "\\'");
+    const safeSubCat = AuraUtils.escapeJsString(subCat);
+    const safeName = AuraUtils.escapeJsString(name);
     
     return `
     <button onclick="window.executeCategoryMapping('${safeSubCat}', '${safeName}')" class="w-full flex justify-between items-center p-3 border rounded-xl transition-all active:scale-[0.98] ${bgClass}">
@@ -733,11 +737,11 @@ window.openCategoryMapper = function() {
         if(catId) {
             editBtnHtml = `<button onclick="window.closeCategoryMapper(); setTimeout(() => { if(typeof window.editCategory === 'function') window.editCategory('${catId}'); else window.openCategoryManager(); }, 300);" class="mr-2 w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition active:scale-90 shrink-0" title="Edit Ikon (Sudah ada di Gudang)"><i class="fa-solid fa-palette text-xs"></i></button>`;
         } else {
-            editBtnHtml = `<button onclick="window.addSingleCategoryToVault('${sub}')" class="mr-2 w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center hover:bg-amber-500 hover:text-white transition active:scale-90 shrink-0" title="Tambahkan ke Gudang & Atur Ikon"><i class="fa-solid fa-plus text-xs"></i></button>`;
+            editBtnHtml = `<button onclick="window.addSingleCategoryToVault('${AuraUtils.escapeJsString(sub)}')" class="mr-2 w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center hover:bg-amber-500 hover:text-white transition active:scale-90 shrink-0" title="Tambahkan ke Gudang & Atur Ikon"><i class="fa-solid fa-plus text-xs"></i></button>`;
         }
 
-        const safeSub = sub.replace(/'/g, "\\'");
-        const safeCurrentParent = currentParent.replace(/'/g, "\\'");
+        const safeSub = AuraUtils.escapeJsString(sub);
+        const safeCurrentParent = AuraUtils.escapeJsString(currentParent);
 
         listHtml += `
         <div class="flex justify-between items-center bg-black/30 p-3 border-b border-[var(--border-glass)] group hover:bg-white/5 transition">

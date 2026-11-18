@@ -137,7 +137,10 @@ try {
                 
                 if (data) {
                     for (const key in data) {
-                        const item = { id: key, ...data[key] };
+                        // KEAMANAN (audit 2026-11-18): id: key HARUS menang atas
+                        // field id tertanam di data — urutan spread dibalik agar
+                        // update/hapus selalu menyasar kunci record yang benar.
+                        const item = { ...data[key], id: key };
                         
                         // 🛡️ Pencegat legacy: transaksi mutasi lama yang belum sempat
                         // dimigrasi (belum punya tipe 'mutasi_keluar'/'mutasi_masuk')
@@ -208,7 +211,8 @@ try {
                 const data = snapshot.val();
                 const arr = [];
                 if (data) {
-                    for (const key in data) arr.push({ id: key, ...data[key] });
+                    // KEAMANAN (audit 2026-11-18): kunci record menang atas id tertanam.
+                    for (const key in data) arr.push({ ...data[key], id: key });
                 }
                 AuraState.data.goals = arr;
                 initialDataArrived.goals = true; 
@@ -826,7 +830,9 @@ export const FirebaseService = {
         const arr = [];
         if (snapshot.exists()) {
             const data = snapshot.val();
-            for (const key in data) arr.push({ id: key, ...data[key] });
+            // KEAMANAN (audit 2026-11-18): kunci record menang atas id tertanam,
+            // agar deleteArchive tidak salah sasar ke arsip lain.
+            for (const key in data) arr.push({ ...data[key], id: key });
         }
         // Urutkan dari yang terbaru
         return arr.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
