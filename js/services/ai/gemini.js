@@ -32,10 +32,12 @@ export class GeminiFailoverEngine {
             let rawManual = AuraState.data?.settings?.geminiKeysEncrypted || [];
             let encManual = Array.isArray(rawManual) ? rawManual : Object.values(rawManual);
             const uid = AuraState.user?.uid || null;
+            const salt = AuraState.data?.settings?.aiKeySalt || null;
             for (const enc of encManual) {
-                // Dekripsi lewat key-crypto: format baru AES; format lama XOR
+                // Dekripsi lewat key-crypto: format v2 (WebCrypto AES-GCM)
+                // yang ditulis sekarang; format warisan AES r90 dan XOR
                 // tetap terbaca selama masa migrasi. Entri rusak dilewati.
-                const dec = decryptStoredApiKey(enc, uid, (p) => {
+                const dec = await decryptStoredApiKey(enc, uid, salt, (p) => {
                     const t = p.trim();
                     return t.startsWith('AIza') || t.startsWith('AQ.');
                 });

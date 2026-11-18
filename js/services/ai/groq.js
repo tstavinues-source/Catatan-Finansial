@@ -11,17 +11,19 @@ export const GroqAPI = {
     keysPool: [], // <--- Jembatan agar Orchestrator tahu kunci sudah terpasang
     
     // Fungsi khusus untuk menarik dan mendekripsi kunci dari Cloud secara instan
-    refreshKeys: function() {
+    refreshKeys: async function() {
         let rawKeys = AuraState.data?.settings?.groqKeysEncrypted || [];
         let encKeys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
         const uid = AuraState.user?.uid || null;
+        const salt = AuraState.data?.settings?.aiKeySalt || null;
 
         this.keysPool = []; // Bersihkan memori sebelum diisi ulang
 
-        // Dekripsi lewat key-crypto: format baru AES; format lama XOR tetap
-        // terbaca selama masa migrasi. Tanpa UID, tidak ada kunci yang lolos.
+        // Dekripsi lewat key-crypto: format v2 (WebCrypto AES-GCM) yang
+        // ditulis sekarang; format warisan AES r90 dan XOR tetap terbaca
+        // selama masa migrasi. Tanpa UID, tidak ada kunci yang lolos.
         for (let k of encKeys) {
-            const dec = decryptStoredApiKey(k, uid, (p) => p.startsWith('gsk_'));
+            const dec = await decryptStoredApiKey(k, uid, salt, (p) => p.startsWith('gsk_'));
             if (dec) this.keysPool.push(dec.plain);
         }
     },
@@ -29,7 +31,7 @@ export const GroqAPI = {
     callGroq: async function(messages, systemPrompt, requireJson = false, imgBase64 = null) {
         
         // Tarik kunci segar dari Cloud setiap kali mau menembak
-        this.refreshKeys();
+        await this.refreshKeys();
         
         if (this.keysPool.length === 0) {
             throw new Error("API Key Groq kosong! Silakan pasang minimal 1 Key di menu Pengaturan.");

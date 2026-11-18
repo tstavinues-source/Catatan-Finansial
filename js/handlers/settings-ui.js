@@ -9,7 +9,7 @@ import { AuraUtils } from '../core/utils.js';
 import { APP_CONFIG } from '../config/constants.js';
 import { DEFAULT_STAPLES_TRACKERS } from '../config/categories.js';
 import { FirebaseService } from '../services/firebase.js';
-import { encryptApiKeyForStorage, decryptStoredApiKey, migrateStoredKeys, looksLikeAesEntry } from '../services/ai/key-crypto.js';
+import { encryptApiKeyForStorage, decryptStoredApiKey, migrateStoredKeys, generateKeySalt, isCurrentFormatEntry } from '../services/ai/key-crypto.js';
 import { get, ref, remove } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
 
 // ============================================================================
@@ -72,6 +72,26 @@ const isGeminiKeyPlain = (p) => {
     return t.startsWith('AIza') || t.startsWith('AQ.');
 };
 
+// Salt enkripsi kunci AI per-pengguna (settings.aiKeySalt): bahan
+// penurunan kunci format v2 (WebCrypto) di key-crypto. getAiKeySalt
+// baca-saja untuk jalur yang tidak boleh menulis (render, mesin AI);
+// ensureAiKeySalt membuat + menyimpan salt pada penulisan kunci pertama
+// dan mengembalikannya sesudah itu. Tanpa salt, format v2 tidak bisa
+// ditulis maupun dibaca (fail closed) — karena itu jalur tulis WAJIB
+// memanggil ensure lebih dulu.
+function getAiKeySalt() {
+    return AuraState.data?.settings?.aiKeySalt || null;
+}
+async function ensureAiKeySalt() {
+    const existing = getAiKeySalt();
+    if (existing) return existing;
+    const salt = generateKeySalt();
+    await FirebaseService.updateSettings({ aiKeySalt: salt });
+    if (!AuraState.data.settings) AuraState.data.settings = {};
+    AuraState.data.settings.aiKeySalt = salt;
+    return salt;
+}
+
 window.addGroqKey = async function() {
     const input = document.getElementById('new-groq-key');
     if (!input) return;
@@ -85,10 +105,12 @@ window.addGroqKey = async function() {
         return;
     }
     
-    // Enkripsi AES lewat key-crypto (frasa sandi = UID). Bila tidak bisa
-    // diamankan, batalkan — jangan pernah menyimpan kunci dalam bentuk lemah.
+    // Enkripsi v2 lewat key-crypto (WebCrypto AES-GCM; kunci diturunkan
+    // dari UID + salt per-pengguna). Bila tidak bisa diamankan, batalkan —
+    // jangan pernah menyimpan kunci dalam bentuk lemah.
     const uid = AuraState.user?.uid || null;
-    const encryptedBase64 = encryptApiKeyForStorage(key, uid);
+    const salt = await ensureAiKeySalt().catch(() => null);
+    const encryptedBase64 = await encryptApiKeyForStorage(key, uid, salt);
     if (!encryptedBase64) {
         if (window.showToast) {
             window.showToast("Gagal mengamankan kunci. Coba masuk ulang, lalu pasang kembali.", true);
@@ -98,9 +120,9 @@ window.addGroqKey = async function() {
 
     try {
         let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
-        // Penyimpanan selalu menulis ulang seluruh daftar dalam format baru:
-        // entri warisan XOR ikut termigrasi di sini.
-        let currentKeys = migrateStoredKeys(rawKeys, uid, isGroqKeyPlain).list;
+        // Penyimpanan selalu menulis ulang seluruh daftar dalam format v2:
+        // entri warisan (XOR maupun AES r90) ikut termigrasi di sini.
+        let currentKeys = (await migrateStoredKeys(rawKeys, uid, salt, isGroqKeyPlain)).list;
 
         currentKeys.push(encryptedBase64);
         
@@ -134,8 +156,11 @@ window.removeGroqKey = async function(index) {
 
         listedKeys.splice(index, 1);
 
-        // Tulis ulang sisa daftar dalam format baru (migrasi entri warisan).
-        let currentKeys = migrateStoredKeys(listedKeys, AuraState.user?.uid || null, isGroqKeyPlain).list;
+        // Tulis ulang sisa daftar dalam format v2 (migrasi entri warisan).
+        // Salt yang gagal dibuat tidak menggagalkan penghapusan: migrasi
+        // entri warisan cukup dilewati putaran ini.
+        const salt = await ensureAiKeySalt().catch(() => getAiKeySalt());
+        let currentKeys = (await migrateStoredKeys(listedKeys, AuraState.user?.uid || null, salt, isGroqKeyPlain)).list;
 
         await FirebaseService.updateSettings({ groqKeysEncrypted: currentKeys });
         
@@ -154,7 +179,13 @@ window.removeGroqKey = async function(index) {
     }
 };
 
-window.renderGroqKeysUI = function() {
+window.renderGroqKeysUI = async function() {
+    // Dekripsi format v2 bersifat asinkron (WebCrypto): hitung dulu semua
+    // kunci polosnya, baru gambar. Pemanggil fungsi ini tidak menunggu
+    // hasilnya (penyegar tampilan), jadi aman dijadikan async.
+    const rawKeysPre = AuraState.data.settings?.groqKeysEncrypted || [];
+    const keysPre = Array.isArray(rawKeysPre) ? rawKeysPre : Object.values(rawKeysPre);
+    const plainsPre = await Promise.all(keysPre.map((encKey) => decryptStoredApiKey(encKey, AuraState.user?.uid || null, getAiKeySalt(), isGroqKeyPlain)));
     AuraUtils.safeDOM('groq-keys-container', function(el) {
         let rawKeys = AuraState.data.settings?.groqKeysEncrypted || [];
         let keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
@@ -176,10 +207,9 @@ window.renderGroqKeysUI = function() {
         }
 
         let html = '';
-        const uid = AuraState.user?.uid || null;
 
         keys.forEach((encKey, index) => {
-            const dec = decryptStoredApiKey(encKey, uid, isGroqKeyPlain);
+            const dec = plainsPre[index];
             const plain = dec ? dec.plain : null;
 
             const isValid = !!plain;
@@ -218,10 +248,12 @@ window.addGeminiKey = async function() {
         return;
     }
     
-    // Enkripsi AES lewat key-crypto (frasa sandi = UID). Bila tidak bisa
-    // diamankan, batalkan — jangan pernah menyimpan kunci dalam bentuk lemah.
+    // Enkripsi v2 lewat key-crypto (WebCrypto AES-GCM; kunci diturunkan
+    // dari UID + salt per-pengguna). Bila tidak bisa diamankan, batalkan —
+    // jangan pernah menyimpan kunci dalam bentuk lemah.
     const uid = AuraState.user?.uid || null;
-    const encryptedBase64 = encryptApiKeyForStorage(key, uid);
+    const salt = await ensureAiKeySalt().catch(() => null);
+    const encryptedBase64 = await encryptApiKeyForStorage(key, uid, salt);
     if (!encryptedBase64) {
         if (window.showToast) {
             window.showToast("Gagal mengamankan kunci. Coba masuk ulang, lalu pasang kembali.", true);
@@ -231,9 +263,9 @@ window.addGeminiKey = async function() {
 
     try {
         let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
-        // Penyimpanan selalu menulis ulang seluruh daftar dalam format baru:
-        // entri warisan XOR ikut termigrasi di sini.
-        let currentKeys = migrateStoredKeys(rawKeys, uid, isGeminiKeyPlain).list;
+        // Penyimpanan selalu menulis ulang seluruh daftar dalam format v2:
+        // entri warisan (XOR maupun AES r90) ikut termigrasi di sini.
+        let currentKeys = (await migrateStoredKeys(rawKeys, uid, salt, isGeminiKeyPlain)).list;
 
         currentKeys.push(encryptedBase64);
         
@@ -268,8 +300,11 @@ window.removeGeminiKey = async function(index) {
 
         listedKeys.splice(index, 1);
 
-        // Tulis ulang sisa daftar dalam format baru (migrasi entri warisan).
-        let currentKeys = migrateStoredKeys(listedKeys, AuraState.user?.uid || null, isGeminiKeyPlain).list;
+        // Tulis ulang sisa daftar dalam format v2 (migrasi entri warisan).
+        // Salt yang gagal dibuat tidak menggagalkan penghapusan: migrasi
+        // entri warisan cukup dilewati putaran ini.
+        const salt = await ensureAiKeySalt().catch(() => getAiKeySalt());
+        let currentKeys = (await migrateStoredKeys(listedKeys, AuraState.user?.uid || null, salt, isGeminiKeyPlain)).list;
 
         await FirebaseService.updateSettings({ geminiKeysEncrypted: currentKeys });
         
@@ -289,7 +324,13 @@ window.removeGeminiKey = async function(index) {
     }
 };
 
-window.renderGeminiKeysUI = function() {
+window.renderGeminiKeysUI = async function() {
+    // Dekripsi format v2 bersifat asinkron (WebCrypto): hitung dulu semua
+    // kunci polosnya, baru gambar. Pemanggil fungsi ini tidak menunggu
+    // hasilnya (penyegar tampilan), jadi aman dijadikan async.
+    const rawKeysPre = AuraState.data.settings?.geminiKeysEncrypted || [];
+    const keysPre = Array.isArray(rawKeysPre) ? rawKeysPre : Object.values(rawKeysPre);
+    const plainsPre = await Promise.all(keysPre.map((encKey) => decryptStoredApiKey(encKey, AuraState.user?.uid || null, getAiKeySalt(), isGeminiKeyPlain)));
     AuraUtils.safeDOM('gemini-keys-container', function(el) {
         let rawKeys = AuraState.data.settings?.geminiKeysEncrypted || [];
         let keys = Array.isArray(rawKeys) ? rawKeys : Object.values(rawKeys);
@@ -300,10 +341,9 @@ window.renderGeminiKeysUI = function() {
         }
 
         let html = '';
-        const uid = AuraState.user?.uid || null;
 
         keys.forEach((encKey, index) => {
-            const dec = decryptStoredApiKey(encKey, uid, isGeminiKeyPlain);
+            const dec = plainsPre[index];
             const plain = dec ? dec.plain.trim() : null;
 
             const isValid = !!plain;
@@ -818,12 +858,13 @@ window.processRecurringBills = async function() {
     isProcessingBills = false;
 };
 
-// Migrasi diam-diam kunci AI format lama (XOR) ke format baru (AES).
-// Berjalan oportunistik dari pengawas berkala: begitu ada entri warisan
-// yang terbaca, seluruh daftar ditulis ulang ke Cloud dalam format baru —
-// pengguna tidak perlu memasukkan ulang kuncinya. Entri yang tidak terbaca
-// tidak pernah diubah. Saringan awalan AES membuat pemeriksaan ini murah
-// saat semua entri sudah format baru.
+// Migrasi diam-diam kunci AI format warisan (XOR pra-r90 dan AES r90) ke
+// format v2 (WebCrypto AES-GCM). Berjalan oportunistik dari pengawas
+// berkala: begitu ada entri warisan yang terbaca, seluruh daftar ditulis
+// ulang ke Cloud dalam format v2 — pengguna tidak perlu memasukkan ulang
+// kuncinya. Entri yang tidak terbaca tidak pernah diubah. Saringan
+// penanda v2 membuat pemeriksaan ini murah saat semua entri sudah v2.
+// Salt per-pengguna dibuat pada putaran pertama yang menemukan warisan.
 let aiKeyMigrationBusy = false;
 async function migrateLegacyAiKeysIfNeeded() {
     if (aiKeyMigrationBusy) return;
@@ -834,18 +875,19 @@ async function migrateLegacyAiKeysIfNeeded() {
     const asList = (raw) => Array.isArray(raw) ? raw : Object.values(raw || {});
     const groqRaw = asList(settings.groqKeysEncrypted || []);
     const geminiRaw = asList(settings.geminiKeysEncrypted || []);
-    const adaWarisan = groqRaw.some((k) => !looksLikeAesEntry(k)) || geminiRaw.some((k) => !looksLikeAesEntry(k));
+    const adaWarisan = groqRaw.some((k) => !isCurrentFormatEntry(k)) || geminiRaw.some((k) => !isCurrentFormatEntry(k));
     if (!adaWarisan) return;
 
     aiKeyMigrationBusy = true;
     try {
+        const salt = await ensureAiKeySalt();
         const updates = {};
-        const groq = migrateStoredKeys(groqRaw, uid, isGroqKeyPlain);
+        const groq = await migrateStoredKeys(groqRaw, uid, salt, isGroqKeyPlain);
         if (groq.changed) {
             updates.groqKeysEncrypted = groq.list;
             settings.groqKeysEncrypted = groq.list;
         }
-        const gemini = migrateStoredKeys(geminiRaw, uid, isGeminiKeyPlain);
+        const gemini = await migrateStoredKeys(geminiRaw, uid, salt, isGeminiKeyPlain);
         if (gemini.changed) {
             updates.geminiKeysEncrypted = gemini.list;
             settings.geminiKeysEncrypted = gemini.list;
@@ -864,7 +906,7 @@ async function migrateLegacyAiKeysIfNeeded() {
 setInterval(() => {
     if (!AuraState.data || !AuraState.data.settings) return;
 
-    // 0. Migrasi format kunci AI (XOR -> AES) bila masih ada entri warisan
+    // 0. Migrasi format kunci AI (warisan -> v2) bila masih ada entri lama
     migrateLegacyAiKeysIfNeeded();
     
     // 1. Pantau Perubahan Kunci Groq
