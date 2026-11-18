@@ -361,6 +361,16 @@ window.addEventListener('DOMContentLoaded', () => {
     
     const savedCurr = localStorage.getItem('aurafi_active_currency') || 'JPY';
     window.setCurrency(savedCurr);
+
+    // Kolom-kolom nominal utama: tampilkan titik ribuan gaya Indonesia
+    // selagi mengetik (nilai yang disimpan tetap angka murni — parse
+    // memakai AuraUtils.parseNominal di tiap jalur simpan).
+    if (window.AuraUtils && typeof AuraUtils.pasangFormatRibuan === 'function') {
+        ['manual-trx-amount', 'new-rec-amt', 'catbudget-new-amt', 'goal-target', 'topup-goal-amount', 'debt-jumlah', 'debt-pay-amount', 'wallet-form-initial'].forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) AuraUtils.pasangFormatRibuan(el);
+        });
+    }
     
     const savedTheme = localStorage.getItem('aurafi_active_theme') || 'emerald';
     window.applyAndSaveTheme(savedTheme, true);

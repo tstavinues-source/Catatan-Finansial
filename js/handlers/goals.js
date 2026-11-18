@@ -52,7 +52,7 @@ function getFreqDays(val, unit) {
 
 window.saveGoal = async function() { 
     const name = document.getElementById('goal-name')?.value.trim();
-    const amt = parseFloat(document.getElementById('goal-target')?.value);
+    const amt = AuraUtils.parseNominal(document.getElementById('goal-target')?.value);
     const startDate = document.getElementById('goal-start-date')?.value;
     const endDate = document.getElementById('goal-end-date')?.value;
     const periodVal = document.getElementById('goal-period-val')?.value;
@@ -178,6 +178,11 @@ window.openTopupGoal = function(id, name) {
     AuraState.temp.topupGoalId = id;
     document.getElementById('topup-goal-name').innerText = name;
     document.getElementById('topup-goal-amount').value = '';
+    // Nominal setor diartikan dalam mata uang KANTONG ini — labelnya
+    // menyebut satuan itu dengan jelas agar tidak tertukar tampilan.
+    const goal = (AuraState.data.goals || []).find(g => g.id === id);
+    const goalCurr = goal?.currency || AuraState.system.displayCurrency || 'JPY';
+    AuraUtils.safeDOM('topup-goal-unit', el => el.innerText = `Nominal dalam ${AuraUtils.labelSatuan(goalCurr)} — mata uang kantong ini.`);
     
     if (typeof window.showModal === 'function') window.showModal('modal-topup-goal');
 };
@@ -187,7 +192,7 @@ window.openTopupGoal = function(id, name) {
 // ============================================================================
 window.saveProgressGoal = async function() {
     const id = AuraState.temp.topupGoalId;
-    const amt = parseFloat(document.getElementById('topup-goal-amount')?.value);
+    const amt = AuraUtils.parseNominal(document.getElementById('topup-goal-amount')?.value);
     const source = document.getElementById('topup-goal-source')?.value || 'cashless';
     
     if(!id || isNaN(amt) || amt <= 0) {
@@ -205,7 +210,10 @@ window.saveProgressGoal = async function() {
         await FirebaseService.updateGoal(id, { savedAmount: currentSaved + amt });
         
         // 2. Buat Log Transaksi "Nabung" agar memotong uang tanpa mengganggu Burn Rate
-        const currentCurr = AuraState.system.displayCurrency || 'JPY';
+        // Transaksi pendamping WAJIB se-mata-uang dengan kantongnya: nominal
+        // setor menambah savedAmount yang berdenominasi currency kantong,
+        // jadi cap transaksinya mengikuti kantong — bukan tampilan saat ini.
+        const currentCurr = goal.currency || AuraState.system.displayCurrency || 'JPY';
         const timestamp = new Date().toISOString();
         
         const tabunganTrx = {

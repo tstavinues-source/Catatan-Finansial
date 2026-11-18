@@ -299,7 +299,7 @@ window.saveManualTransaction = async function() {
     const type = typeInput ? typeInput.value : 'pengeluaran';
     const walletId = walletInput ? walletInput.value : null; 
     const currency = currInput ? currInput.value : 'JPY';
-    const amount = parseFloat(amtInput.value);
+    const amount = AuraUtils.parseNominal(amtInput.value);
     const category = (catInput && catInput.value.trim() !== '') ? catInput.value : 'Lainnya';
 
     if (!store) {

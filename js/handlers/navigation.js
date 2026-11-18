@@ -308,6 +308,8 @@ window.setCurrency = function(curr) {
         window.FirebaseService.updateSettings({ currency: curr }).catch(err => Logger.warn('Navigation', 'Gagal menyimpan mata uang', err));
     }
     
+    if (typeof window.perbaruiLabelSatuanInput === 'function') window.perbaruiLabelSatuanInput();
+
     if (typeof window.loadRealtimeDatabaseData === 'function') {
         window.loadRealtimeDatabaseData(true);
     } else if (typeof window.debouncedCalculateAll === 'function') {
@@ -324,14 +326,21 @@ window.toggleGoalForm = function() {
 };
 
 window.promptBudget = function() {
+    // Limit kini BERCAP mata uang tampilan saat dipasang (pola yang sama
+    // seperti dompet/utang): prompt menyebut satuannya dengan jelas, cap
+    // disimpan bersama angka, dan dasbor mengonversi dari cap itu. Dulu
+    // angka disimpan mentah lalu selalu dianggap yen di dasbor, jadi limit
+    // 5.000.000 yang dipasang pada posisi IDR tertampil Rp551jt.
+    const curr = AuraState.system.displayCurrency || 'JPY';
     // Menggunakan AURA ALERT PROMPT untuk UI yang lebih premium
-    window.AuraAlert.prompt("Batas Pengeluaran Pribadi (Nominal Angka):", "Masukkan nominal...", (amt) => {
+    window.AuraAlert.prompt(`Batas Pengeluaran Pribadi — dalam ${AuraUtils.labelSatuan(curr)}, mengikuti posisi tampilan saat ini:`, "Masukkan nominal...", (amt) => {
         if (amt !== null) {
-            const parsedAmt = parseFloat(amt);
+            const parsedAmt = AuraUtils.parseNominal(amt);
             if (!isNaN(parsedAmt) && parsedAmt >= 0) {
                 AuraState.data.monthlyBudget = parsedAmt;
+                AuraState.data.monthlyBudgetCurrency = curr;
                 if (AuraState.user.uid && window.FirebaseService) {
-                    window.FirebaseService.updateSettings({ monthlyBudget: { limit: parsedAmt } });
+                    window.FirebaseService.updateSettings({ monthlyBudget: { limit: parsedAmt, currency: curr } });
                 }
                 if (typeof window.debouncedCalculateAll === 'function') window.debouncedCalculateAll();
                 if (window.showToast) window.showToast(`Limit pribadi diperbarui!`);
@@ -339,7 +348,18 @@ window.promptBudget = function() {
                 if (window.showToast) window.showToast("Input tidak valid!", true);
             }
         }
-    });
+    }, { formatRibuan: true });
+};
+
+// Label satuan pada kolom-kolom nominal: selalu mengikuti mata uang
+// tampilan saat ini, agar user tahu ia mengetik dalam mata uang apa.
+window.perbaruiLabelSatuanInput = function() {
+    const teks = ' — ' + AuraUtils.labelSatuan(AuraState.system.displayCurrency || 'JPY');
+    AuraUtils.safeDOM('new-rec-amt-unit', el => el.innerText = teks);
+    AuraUtils.safeDOM('catbudget-new-amt-unit', el => el.innerText = teks);
+    AuraUtils.safeDOM('goal-target-unit', el => el.innerText = teks);
+    AuraUtils.safeDOM('debt-jumlah-unit', el => el.innerText = teks);
+    AuraUtils.safeDOM('wallet-form-initial-unit', el => el.innerText = teks);
 };
 
 // Keterangan rentang tanggal yang sedang ditampilkan (di atas pemilih Siklus/Bulan Ini/Semua)

@@ -451,7 +451,7 @@ function buatTrxPendamping(debt, peran, jumlah, tanggal, walletId, deskripsi) {
 window.saveDebtForm = async function() {
     const arah = AuraState.temp.debtDir === 'piutang' ? 'piutang' : 'utang';
     const pihak = (document.getElementById('debt-pihak')?.value || '').trim();
-    const jumlah = parseFloat(document.getElementById('debt-jumlah')?.value);
+    const jumlah = AuraUtils.parseNominal(document.getElementById('debt-jumlah')?.value);
     const tanggal = document.getElementById('debt-tanggal')?.value || todayStr();
     const tempo = document.getElementById('debt-tempo')?.value || '';
     const walletId = document.getElementById('debt-wallet')?.value || '';
@@ -516,7 +516,7 @@ window.openDebtPayForm = function() {
         el.innerText = (arah === 'utang' ? 'Utang ke ' : 'Piutang dari ') + d.pihak + ' · Sisa ' + fmtAmt(sisa, d.mata_uang);
     });
     AuraUtils.safeDOM('debt-pay-amount-label', function(el) {
-        el.innerText = arah === 'utang' ? 'Jumlah Dibayar' : 'Jumlah Diterima';
+        el.innerText = (arah === 'utang' ? 'Jumlah Dibayar' : 'Jumlah Diterima') + ' — ' + AuraUtils.labelSatuan(d.mata_uang);
     });
     AuraUtils.safeDOM('debt-pay-amount', function(el) { el.value = ''; });
     AuraUtils.safeDOM('debt-pay-tanggal', function(el) { el.value = todayStr(); });
@@ -533,7 +533,7 @@ window.openDebtPayForm = function() {
 
 window.updateDebtPayPreview = function() {
     const sisa = Number(AuraState.temp.debtPaySisa) || 0;
-    const amt = parseFloat(document.getElementById('debt-pay-amount')?.value) || 0;
+    const amt = AuraUtils.parseNominal(document.getElementById('debt-pay-amount')?.value) || 0;
     const curr = AuraState.temp.debtPayCurr;
     AuraUtils.safeDOM('debt-pay-sisa-preview', function(el) {
         el.innerText = fmtAmt(sisa, curr) + ' → ' + fmtAmt(Math.max(0, sisa - amt), curr);
@@ -547,7 +547,7 @@ window.saveDebtPayment = async function() {
     const arah = d.arah === 'piutang' ? 'piutang' : 'utang';
     const ids = activeTrxIds();
     const sisa = hitungSisa(d, ids);
-    const jumlah = parseFloat(document.getElementById('debt-pay-amount')?.value);
+    const jumlah = AuraUtils.parseNominal(document.getElementById('debt-pay-amount')?.value);
     const tanggal = document.getElementById('debt-pay-tanggal')?.value || todayStr();
     const catatan = (document.getElementById('debt-pay-catatan')?.value || '').trim();
     const walletId = d.wallet_id ? (document.getElementById('debt-pay-wallet')?.value || d.wallet_id) : null;

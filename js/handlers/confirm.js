@@ -38,12 +38,22 @@ window.AuraAlert = {
         window.__styleConfirmModal(!!opts.danger, opts.confirmLabel || 'Ya, Lanjutkan');
         if (typeof window.showModal === 'function') window.showModal('modal-confirm');
     },
-    prompt: function(message, placeholder, onConfirmCallback) {
+    prompt: function(message, placeholder, onConfirmCallback, options) {
         document.getElementById('prompt-msg').innerText = message;
         const input = document.getElementById('prompt-input');
         if(input) {
             input.placeholder = placeholder || "Ketik jawaban di sini...";
             input.value = "";
+            // Pemformatan ribuan OPT-IN (mis. prompt nominal): hanya aktif
+            // bila pemanggil memintanya lewat options.formatRibuan; prompt
+            // teks biasa tidak berubah sama sekali. Dilepas saat modal tutup.
+            if (options && options.formatRibuan) {
+                AuraUtils.pasangFormatRibuan(input);
+                AuraState.temp.promptFormatRibuan = true;
+            } else if (AuraState.temp.promptFormatRibuan) {
+                AuraUtils.lepasFormatRibuan(input);
+                AuraState.temp.promptFormatRibuan = false;
+            }
         }
         AuraState.temp.promptCallback = onConfirmCallback;
         if (typeof window.showModal === 'function') window.showModal('modal-custom-prompt');
@@ -56,6 +66,11 @@ window.AuraAlert = {
 // 2. HANDLER MODAL PROMPT
 // ============================================================================
 window.closePromptModal = function() {
+    if (AuraState.temp.promptFormatRibuan) {
+        const input = document.getElementById('prompt-input');
+        if (input) AuraUtils.lepasFormatRibuan(input);
+        AuraState.temp.promptFormatRibuan = false;
+    }
     if (typeof window.closeModal === 'function') window.closeModal('modal-custom-prompt');
     AuraState.temp.promptCallback = null;
 };
