@@ -123,7 +123,16 @@ window.openEditGoalFull = function(id) {
     AuraState.temp.editGoalId = id;
     
     document.getElementById('edit-goal-name').value = goal.name || '';
-    document.getElementById('edit-goal-target').value = goal.targetAmount || 0;
+    // Target ditampilkan dengan titik ribuan dan label satuannya menyebut
+    // mata uang KANTONG ini (goal.currency; kantong lama tanpa cap dibaca
+    // sebagai mata uang buku) — sama seperti label pada modal setor.
+    const targetEl = document.getElementById('edit-goal-target');
+    if (targetEl) {
+        targetEl.value = AuraUtils.formatRibuan(goal.targetAmount || 0);
+        AuraUtils.pasangFormatRibuan(targetEl);
+    }
+    const goalCurr = goal.currency || (AuraState.data.settings && AuraState.data.settings.currency) || 'JPY';
+    AuraUtils.safeDOM('edit-goal-target-unit', el => el.innerText = ' — ' + AuraUtils.labelSatuan(goalCurr));
     document.getElementById('edit-goal-saved').value = goal.savedAmount || 0;
     document.getElementById('edit-goal-start-date').value = goal.startDate || '';
     document.getElementById('edit-goal-end-date').value = goal.targetDate || '';
@@ -141,7 +150,7 @@ window.saveFullEditGoal = async function() {
     if(!id) return;
 
     const name = document.getElementById('edit-goal-name')?.value.trim();
-    const targetAmount = parseFloat(document.getElementById('edit-goal-target')?.value);
+    const targetAmount = AuraUtils.parseNominal(document.getElementById('edit-goal-target')?.value);
     const savedAmount = parseFloat(document.getElementById('edit-goal-saved')?.value);
     const startDate = document.getElementById('edit-goal-start-date')?.value;
     const targetDate = document.getElementById('edit-goal-end-date')?.value;

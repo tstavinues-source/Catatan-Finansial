@@ -355,7 +355,12 @@ window.promptBudget = function() {
 // tampilan saat ini, agar user tahu ia mengetik dalam mata uang apa.
 window.perbaruiLabelSatuanInput = function() {
     const teks = ' — ' + AuraUtils.labelSatuan(AuraState.system.displayCurrency || 'JPY');
-    AuraUtils.safeDOM('new-rec-amt-unit', el => el.innerText = teks);
+    // Saat form tagihan sedang dalam mode edit, label nominal mengikuti
+    // mata uang TAGIHAN yang diedit — bukan mata uang tampilan.
+    AuraUtils.safeDOM('new-rec-amt-unit', el => {
+        const editCurr = (AuraState.temp && AuraState.temp.editRecurringId) ? AuraState.temp.editRecurringCurrency : null;
+        el.innerText = editCurr ? ' — ' + AuraUtils.labelSatuan(editCurr) + ' (mata uang tagihan ini)' : teks;
+    });
     AuraUtils.safeDOM('catbudget-new-amt-unit', el => el.innerText = teks);
     AuraUtils.safeDOM('goal-target-unit', el => el.innerText = teks);
     AuraUtils.safeDOM('debt-jumlah-unit', el => el.innerText = teks);
