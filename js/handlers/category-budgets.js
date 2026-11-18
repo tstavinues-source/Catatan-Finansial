@@ -56,6 +56,19 @@ function opsi() {
     return { ...OPSI_BAWAAN, ...(AuraState.data.settings?.categoryBudgetOptions || {}) };
 }
 
+// Batas anggaran kini BERCAP mata uang (def.currency = mata uang tampilan
+// saat batas disimpan). Semua perbandingan & tampilan memakai batas yang
+// SUDAH dikonversi dari cap-nya ke mata uang tampilan — sama seperti
+// "terpakai" yang memang selalu terkonversi. Batas lama tanpa cap dibaca
+// sebagai mata uang buku (settings.currency), bukan yen dan bukan tebakan.
+function batasTampil(def) {
+    return AuraUtils.convertCurrency(Number(def?.batas) || 0, def?.currency || AuraState.data.settings?.currency);
+}
+
+function capTampilanSaatIni() {
+    return AuraState.system.displayCurrency || 'JPY';
+}
+
 function normalisasiNama(str) {
     return String(str || 'Lainnya').trim().split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 }
@@ -139,7 +152,7 @@ function hitungTerpakai() {
 }
 
 function statusAnggaran(def, terpakai, progresWaktu) {
-    const batas = Number(def.batas) || 0;
+    const batas = batasTampil(def);
     const pct = batas > 0 ? (terpakai / batas) * 100 : 0;
     const proyeksi = progresWaktu > 0.02 ? terpakai / progresWaktu : terpakai;
     if (def.jenis === 'minimal') {
@@ -157,7 +170,8 @@ function barisHtml(nama, def, terpakai, ctx, lengkap) {
     const st = statusAnggaran(def, terpakai, ctx.progresWaktu);
     const style = CategoryManager.resolveStyle(nama);
     const fmt = window.formatAuraCurrency || (v => String(v));
-    const sisa = (Number(def.batas) || 0) - terpakai;
+    const batas = batasTampil(def);
+    const sisa = batas - terpakai;
     const hariSisa = Math.max(0, ctx.totalHari - ctx.hariBerlalu);
     let metaKanan, garisProyeksi = '';
     if (def.jenis === 'minimal') {
@@ -174,8 +188,8 @@ function barisHtml(nama, def, terpakai, ctx, lengkap) {
         if (lengkap && opsi().proyeksi) {
             garisProyeksi = st.kunci === 'lewat'
                 ? `<p class="text-[10px] mt-1.5" style="color:var(--color-expense)">Sudah melewati plafon sebesar ${fmt(-sisa)} pada siklus ini.</p>`
-                : st.proyeksi > (Number(def.batas) || 0)
-                    ? `<p class="text-[10px] mt-1.5" style="color:#fbbf24">Proyeksi laju: diperkirakan menutup siklus di ${fmt(st.proyeksi)} — lewat plafon ${fmt(st.proyeksi - (Number(def.batas) || 0))} bila laju tidak berubah.</p>`
+                : st.proyeksi > batas
+                    ? `<p class="text-[10px] mt-1.5" style="color:#fbbf24">Proyeksi laju: diperkirakan menutup siklus di ${fmt(st.proyeksi)} — lewat plafon ${fmt(st.proyeksi - batas)} bila laju tidak berubah.</p>`
                     : `<p class="text-[10px] mt-1.5 text-[var(--text-muted)]">Proyeksi laju: menutup di ±${fmt(st.proyeksi)} — aman di bawah plafon.</p>`;
         }
     }
@@ -185,7 +199,7 @@ function barisHtml(nama, def, terpakai, ctx, lengkap) {
         <div class="flex items-center gap-2">
             <div class="w-7 h-7 icon-chip shrink-0"><i class="fa-solid ${style.icon} text-[10px]" style="color:${style.hex}"></i></div>
             <span class="text-xs font-bold flex-1 truncate">${AuraUtils.escapeHtml(nama)}</span>
-            <span class="text-xs font-bold num-tab">${fmt(terpakai)} <span class="text-[var(--text-muted)] font-medium">/ ${labelBatas}${fmt(Number(def.batas) || 0)}</span></span>
+            <span class="text-xs font-bold num-tab">${fmt(terpakai)} <span class="text-[var(--text-muted)] font-medium">/ ${labelBatas}${fmt(batas)}</span></span>
         </div>
         <div class="w-full h-2 bg-black/50 rounded-full overflow-hidden mt-2 border border-[var(--border-glass)]">
             <div class="h-full rounded-full transition-all duration-700" style="width:${Math.min(st.pct, 100)}%;background:${st.warna}"></div>
@@ -209,7 +223,8 @@ function periksaPeringatan(ctx) {
     Object.keys(semua).forEach(nama => {
         const def = semua[nama];
         if (def.jenis === 'minimal') return;
-        const pct = (Number(def.batas) || 0) > 0 ? (ctx.totals[nama] || 0) / def.batas * 100 : 0;
+        const batasDef = batasTampil(def);
+        const pct = batasDef > 0 ? (ctx.totals[nama] || 0) / batasDef * 100 : 0;
         if (o.alert100 && pct >= 100) {
             const k = `${kunciSiklus}|${nama}|100`;
             if (!flags[k]) {
@@ -293,10 +308,12 @@ window.renderCategoryBudgets = function () {
                     <option value="plafon" ${def.jenis !== 'minimal' ? 'selected' : ''}>Plafon maks</option>
                     <option value="minimal" ${def.jenis === 'minimal' ? 'selected' : ''}>Target min</option>
                 </select>
-                <input type="number" value="${Number(def.batas) || 0}" onchange="window.ubahBatasAnggaranKategori('${enc}', this.value)" class="v-input rounded-lg p-2 text-[11px] outline-none w-[96px] text-right font-mono" aria-label="Batas ${AuraUtils.escapeHtml(n)}">
+                <input type="text" inputmode="numeric" value="${AuraUtils.formatRibuan(batasTampil(def))}" onchange="window.ubahBatasAnggaranKategori('${enc}', this.value)" class="catbudget-batas-input v-input rounded-lg p-2 text-[11px] outline-none w-[96px] text-right font-mono" aria-label="Batas ${AuraUtils.escapeHtml(n)}">
+                <span class="text-[10px] text-[var(--text-muted)] font-bold shrink-0">${AuraUtils.simbolSatuan(AuraState.system.displayCurrency)}</span>
                 <button onclick="window.hapusAnggaranKategori('${enc}')" class="aura-icon-btn shrink-0" title="Hapus anggaran ${AuraUtils.escapeHtml(n)}"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
             </div>`;
         }).join('');
+        el.querySelectorAll('.catbudget-batas-input').forEach(inp => AuraUtils.pasangFormatRibuan(inp));
     });
 
     AuraUtils.safeDOM('catbudget-new-cat', sel => {
@@ -332,11 +349,11 @@ window.simpanAnggaranKategoriBaru = function () {
     const jenisEl = document.getElementById('catbudget-new-jenis');
     const amtEl = document.getElementById('catbudget-new-amt');
     const nama = (sel?.value || '').trim();
-    const batas = Number(amtEl?.value) || 0;
+    const batas = AuraUtils.parseNominal(amtEl?.value) || 0;
     if (!nama) { if (window.showToast) window.showToast('Pilih kategori dulu.', true); return; }
     if (batas <= 0) { if (window.showToast) window.showToast('Isi nominal batasnya dulu.', true); return; }
     const semua = { ...budgets() };
-    semua[nama] = { batas, jenis: jenisEl?.value === 'minimal' ? 'minimal' : 'plafon' };
+    semua[nama] = { batas, jenis: jenisEl?.value === 'minimal' ? 'minimal' : 'plafon', currency: capTampilanSaatIni() };
     simpanAnggaran({ categoryBudgets: semua });
     if (amtEl) amtEl.value = '';
     if (window.showToast) window.showToast(`Anggaran ${nama} disimpan untuk siklus berjalan.`);
@@ -344,11 +361,11 @@ window.simpanAnggaranKategoriBaru = function () {
 
 window.ubahBatasAnggaranKategori = function (encNama, val) {
     const nama = decodeURIComponent(encNama);
-    const batas = Number(val) || 0;
+    const batas = AuraUtils.parseNominal(val) || 0;
     const semua = { ...budgets() };
     if (!semua[nama]) return;
     if (batas <= 0) { if (window.showToast) window.showToast('Nominal batas harus lebih dari 0.', true); window.renderCategoryBudgets(); return; }
-    semua[nama] = { ...semua[nama], batas };
+    semua[nama] = { ...semua[nama], batas, currency: capTampilanSaatIni() };
     simpanAnggaran({ categoryBudgets: semua });
 };
 

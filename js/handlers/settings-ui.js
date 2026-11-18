@@ -409,7 +409,7 @@ window.addRecurringPayment = async function() {
     if(!nameEl || !amtEl || !dateEl) return;
     
     const name = nameEl.value.trim();
-    const amt = parseFloat(amtEl.value);
+    const amt = AuraUtils.parseNominal(amtEl.value);
     const date = parseInt(dateEl.value);
     const walletId = walletEl ? walletEl.value : '';
     const wallet = walletId ? (AuraState.data.wallets || {})[walletId] : null;
@@ -427,7 +427,7 @@ window.addRecurringPayment = async function() {
     
     const recId = `rec_${Date.now()}`;
     const updates = {};
-    updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method, wallet_id: walletId };
+    updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method, wallet_id: walletId, currency: AuraState.system.displayCurrency || 'JPY' };
     
     try {
         await FirebaseService.updateSettings(updates);
@@ -481,7 +481,7 @@ window.renderRecurringUI = function() {
                     <div class="w-8 h-8 icon-chip shrink-0 text-sky-400 ml-1"><i class="fa-solid fa-file-invoice text-[10px]"></i></div>
                     <div class="flex flex-col">
                     <span class="font-bold text-xs text-sky-400">${AuraUtils.escapeHtml(rp.name)}</span>
-                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | <i class="fa-solid fa-credit-card"></i> ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Belum ada dompet'}</span>
+                    <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || (AuraState.data.settings && AuraState.data.settings.currency)))}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | <i class="fa-solid fa-credit-card"></i> ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Belum ada dompet'}</span>
                     </div>
                 </div>
                 <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
@@ -524,7 +524,7 @@ window.renderRecurringUIForBudget = function() {
                     </div>
                 </div>
                 <p class="font-bold text-sm font-mono text-[var(--text-main)]">
-                    ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || 'JPY'))}
+                    ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || (AuraState.data.settings && AuraState.data.settings.currency)))}
                 </p>
             </div>`;
         });
@@ -772,7 +772,7 @@ window.processRecurringBills = async function() {
                 tanggal: timestamp.split('T')[0],
                 createdAt: timestamp,
                 nominal: Number(rp.amount),
-                mata_uang: AuraState.system.displayCurrency || 'JPY',
+                mata_uang: rp.currency || (AuraState.data.settings && AuraState.data.settings.currency) || 'JPY',
                 wallet_id: rp.wallet_id,
                 metode_pembayaran: billMethod,
                 tipe: 'pengeluaran',

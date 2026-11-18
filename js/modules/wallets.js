@@ -56,7 +56,7 @@ export const WalletManager = {
         const id = idEl ? idEl.value : '';
         const name = nameEl ? nameEl.value.trim() : '';
         const type = typeEl ? typeEl.value : 'cashless';
-        const initialBalance = initEl ? (Number(initEl.value) || 0) : 0;
+        const initialBalance = initEl ? (AuraUtils.parseNominal(initEl.value) || 0) : 0;
 
         if(!name) {
             if(window.showToast) window.showToast("Instruksi ditolak: Nama dompet wajib diisi!", true);

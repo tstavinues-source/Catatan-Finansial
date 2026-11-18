@@ -343,7 +343,7 @@ window.reCalculateAll = function() {
     AuraUtils.safeDOM('dash-split-cash-pct', el => el.innerText = `${cashSplitPct}%`);
     AuraUtils.safeDOM('dash-split-bank-pct', el => el.innerText = `${100 - cashSplitPct}%`);
 
-    const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, 'JPY');
+    const limitVal = AuraUtils.convertCurrency(AuraState.data.monthlyBudget || 0, AuraState.data.monthlyBudgetCurrency || (AuraState.data.settings && AuraState.data.settings.currency));
     // Limit berlaku untuk PENGELUARAN PRIBADI (keputusan pemilik 2026-10-30):
     // kewajiban tidak bisa dikontrol, pribadi bisa.
     const burnPct = limitVal > 0 ? (periodPersonal / limitVal) * 100 : 0;

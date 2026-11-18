@@ -15,7 +15,7 @@ export const FIREBASE_CONFIG = {
 
 export const APP_CONFIG = {
     LEDGER_NODE: 'aurafi_ledger',
-    VERSION: '3.2.11',
+    VERSION: '3.2.12',
     DEFAULT_CURRENCY: 'JPY',
     DEFAULT_THEME: 'midnight',
     THROTTLE_MS: 300,        

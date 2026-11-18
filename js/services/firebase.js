@@ -178,6 +178,9 @@ try {
 
                 if (data.monthlyBudget?.limit !== undefined) {
                     AuraState.data.monthlyBudget = data.monthlyBudget.limit;
+                    // Cap mata uang limit ikut dibawa ke state. Limit lama
+                    // tanpa cap dibaca sebagai mata uang buku (settings).
+                    AuraState.data.monthlyBudgetCurrency = data.monthlyBudget.currency || data.currency || null;
                 }
 
                 if (data.groqApiKeys) {

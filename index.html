@@ -328,7 +328,7 @@
                     </div>
                     <div class="w-2/3">
                         <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Total Nominal</label>
-                        <input type="number" id="manual-trx-amount" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold text-accent" placeholder="0">
+                        <input type="text" inputmode="numeric" id="manual-trx-amount" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold text-accent" placeholder="0">
                     </div>
                 </div>
                 <div class="flex gap-3">
@@ -609,8 +609,8 @@
                     <input type="text" id="debt-pihak" placeholder="Nama orang / pihak" class="v-input w-full rounded-xl p-3 text-sm outline-none">
                 </div>
                 <div>
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jumlah Pinjaman</label>
-                    <input type="number" id="debt-jumlah" placeholder="0" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold">
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jumlah Pinjaman<span id="debt-jumlah-unit"></span></label>
+                    <input type="text" inputmode="numeric" id="debt-jumlah" placeholder="0" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono font-bold">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -650,7 +650,7 @@
             <div class="space-y-4">
                 <div>
                     <label id="debt-pay-amount-label" class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Jumlah Dibayar</label>
-                    <input type="number" id="debt-pay-amount" placeholder="0" oninput="window.updateDebtPayPreview()" class="v-input w-full rounded-xl p-4 font-mono font-bold text-lg outline-none">
+                    <input type="text" inputmode="numeric" id="debt-pay-amount" placeholder="0" oninput="window.updateDebtPayPreview()" class="v-input w-full rounded-xl p-4 font-mono font-bold text-lg outline-none">
                 </div>
                 <div>
                     <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Tanggal</label>
@@ -690,7 +690,8 @@
                     <option value="tunai">Dompet Tunai</option>
                 </select>
             </div>
-            <input type="number" id="topup-goal-amount" placeholder="Nominal Disetor" class="v-input w-full rounded-xl p-4 text-center font-mono font-bold text-lg outline-none mb-4 focus:border-emerald-500">
+            <input type="text" inputmode="numeric" id="topup-goal-amount" placeholder="Nominal Disetor" class="v-input w-full rounded-xl p-4 text-center font-mono font-bold text-lg outline-none mb-2 focus:border-emerald-500">
+            <p id="topup-goal-unit" class="text-[10px] text-[var(--text-muted)] mb-4 font-bold"></p>
             <button onclick="window.saveProgressGoal()" class="w-full py-4 rounded-xl bg-emerald-500 text-black font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.4)] transition hover:opacity-90 active:scale-95">Setor & Kunci Dana!</button>
         </div>
     </div>
@@ -1240,8 +1241,8 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                     </select>
                 </div>
                 <div id="wallet-form-initial-container">
-                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Saldo Awal (Modal Awal)</label>
-                    <input type="number" id="wallet-form-initial" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono text-accent font-bold" value="0">
+                    <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Saldo Awal (Modal Awal)<span id="wallet-form-initial-unit"></span></label>
+                    <input type="text" inputmode="numeric" id="wallet-form-initial" class="v-input w-full rounded-xl p-3 text-sm outline-none font-mono text-accent font-bold" value="0">
                     <p class="text-[8px] text-[var(--text-muted)] mt-1 italic">*Saldo awal hanya diisi saat pembuatan pertama kali.</p>
                 </div>
             </div>
@@ -1663,8 +1664,8 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                                 </select>
                             </div>
                             <div class="w-1/2">
-                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nominal per Siklus</label>
-                                <input id="catbudget-new-amt" type="number" placeholder="0" class="v-input w-full rounded-xl p-3 text-xs outline-none">
+                                <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nominal per Siklus<span id="catbudget-new-amt-unit"></span></label>
+                                <input id="catbudget-new-amt" type="text" inputmode="numeric" placeholder="0" class="v-input w-full rounded-xl p-3 text-xs outline-none">
                             </div>
                         </div>
                         <button onclick="window.simpanAnggaranKategoriBaru()" class="w-full bg-accent text-[var(--invert-contrast)] font-bold p-3.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition text-sm shadow-[0_0_15px_var(--accent-glow)]">Simpan Anggaran</button>
@@ -1706,8 +1707,8 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                     <div id="goal-misi-fields" class="space-y-4">
                     
                     <div>
-                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Target Dana Terkumpul</label>
-                        <input type="number" id="goal-target" placeholder="Nominal Target" class="v-input w-full rounded-xl p-3.5 text-sm outline-none font-mono text-accent font-bold">
+                        <label class="text-[10px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block font-bold">Target Dana Terkumpul<span id="goal-target-unit"></span></label>
+                        <input type="text" inputmode="numeric" id="goal-target" placeholder="Nominal Target" class="v-input w-full rounded-xl p-3.5 text-sm outline-none font-mono text-accent font-bold">
                     </div>
                     
                     <div class="flex gap-3">
@@ -1763,8 +1764,8 @@ Jangan daftarkan Firebase/Realtime Database langsung sebagai konektor API — ja
                                     <input id="new-rec-name" placeholder="Cth: Listrik / Internet" class="v-input w-full rounded-xl p-3 text-xs outline-none">
                                 </div>
                                 <div>
-                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nominal Target</label>
-                                    <input id="new-rec-amt" type="number" placeholder="0" class="v-input w-full rounded-xl p-3 text-xs outline-none">
+                                    <label class="text-[9px] uppercase tracking-widest text-[var(--text-muted)] mb-1 block">Nominal Target<span id="new-rec-amt-unit"></span></label>
+                                    <input id="new-rec-amt" type="text" inputmode="numeric" placeholder="0" class="v-input w-full rounded-xl p-3 text-xs outline-none">
                                 </div>
                                 <div class="flex gap-3">
                                     <div class="w-1/2">

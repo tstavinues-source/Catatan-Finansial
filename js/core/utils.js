@@ -102,6 +102,72 @@ export const AuraUtils = {
         return numAmount; 
     },
 
+    // SATUAN MATA UANG untuk label kolom input: user harus selalu tahu ia
+    // mengetik dalam mata uang apa (perintah pemilik 2026-11-18).
+    labelSatuan: function(curr) {
+        return curr === 'IDR' ? 'Rupiah (Rp)' : 'Yen (¥)';
+    },
+
+    simbolSatuan: function(curr) {
+        return curr === 'IDR' ? 'Rp' : '¥';
+    },
+
+    // FORMAT RIBUAN kolom input nominal (gaya Indonesia: 5000000 -> 5.000.000).
+    // Pemformatan HANYA tampilan kolom: nilai yang disimpan ke Firebase/state
+    // tetap angka murni lewat parseNominal. Nominal AuraFi selalu bulat, jadi
+    // parse membuang semua karakter non-digit (termasuk titik ribuan).
+    formatRibuan: function(value) {
+        const digits = String(value === null || value === undefined ? '' : value).replace(/[^\d]/g, '');
+        if (!digits) return '';
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    },
+
+    parseNominal: function(value) {
+        if (typeof value === 'number') return value;
+        const digits = String(value === null || value === undefined ? '' : value).replace(/[^\d]/g, '');
+        if (digits === '') return NaN;
+        return parseInt(digits, 10);
+    },
+
+    // Pasang pemformat ribuan langsung (selagi mengetik) pada satu elemen
+    // input. Idempoten. Kolom type="number" diubah menjadi text + inputmode
+    // numeric karena type number tidak bisa menampilkan titik. Posisi kursor
+    // dijaga dengan menghitung digit sebelum kursor.
+    pasangFormatRibuan: function(el) {
+        if (!el || el.dataset.ribuanTerpasang === '1') return;
+        el.dataset.ribuanTerpasang = '1';
+        if (el.type === 'number') el.type = 'text';
+        el.setAttribute('inputmode', 'numeric');
+        el._formatRibuanHandler = function() {
+            const before = el.value;
+            const pos = (typeof el.selectionStart === 'number') ? el.selectionStart : null;
+            const digitsBefore = pos !== null ? before.slice(0, pos).replace(/[^\d]/g, '').length : null;
+            const formatted = AuraUtils.formatRibuan(before);
+            if (before === formatted) return;
+            el.value = formatted;
+            if (digitsBefore !== null && typeof el.setSelectionRange === 'function') {
+                let seen = 0, newPos = formatted.length;
+                if (digitsBefore === 0) {
+                    newPos = 0;
+                } else {
+                    for (let i = 0; i < formatted.length; i++) {
+                        if (/\d/.test(formatted[i])) { seen++; if (seen === digitsBefore) { newPos = i + 1; break; } }
+                    }
+                }
+                try { el.setSelectionRange(newPos, newPos); } catch (e) { /* abaikan */ }
+            }
+        };
+        el.addEventListener('input', el._formatRibuanHandler);
+        if (el.value) el.value = AuraUtils.formatRibuan(el.value);
+    },
+
+    lepasFormatRibuan: function(el) {
+        if (!el) return;
+        if (el._formatRibuanHandler) el.removeEventListener('input', el._formatRibuanHandler);
+        el._formatRibuanHandler = null;
+        el.dataset.ribuanTerpasang = '';
+    },
+
     safeDOM: function(id, callback) {
         const el = document.getElementById(id);
         if (el && typeof callback === 'function') {
