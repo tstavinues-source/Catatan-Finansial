@@ -465,23 +465,47 @@ window.addRecurringPayment = async function() {
         return;
     }
     
-    const recId = `rec_${Date.now()}`;
+    const editId = (AuraState.temp && AuraState.temp.editRecurringId) || null;
     const updates = {};
-    updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method, wallet_id: walletId, currency: AuraState.system.displayCurrency || 'JPY' };
-    
+    if (editId) {
+        // MODE EDIT: tulis per-field agar field lain pada record yang sama
+        // (mis. lastExecutedMonth milik auto-biller) tidak ikut terhapus.
+        // Currency DIPERTAHANKAN persis seperti sebelumnya; record lama
+        // yang belum punya cap diberi cap mata uang buku — fallback yang
+        // sama dengan yang dipakai saat nominalnya ditampilkan di form.
+        const existing = (AuraState.data.settings?.recurringPayments || {})[editId] || {};
+        const currency = existing.currency || (AuraState.data.settings && AuraState.data.settings.currency) || 'JPY';
+        updates[`recurringPayments/${editId}/name`] = name;
+        updates[`recurringPayments/${editId}/amount`] = amt;
+        updates[`recurringPayments/${editId}/date`] = date;
+        updates[`recurringPayments/${editId}/method`] = method;
+        updates[`recurringPayments/${editId}/wallet_id`] = walletId;
+        updates[`recurringPayments/${editId}/currency`] = currency;
+    } else {
+        const recId = `rec_${Date.now()}`;
+        updates[`recurringPayments/${recId}`] = { name, amount: amt, date, method, wallet_id: walletId, currency: AuraState.system.displayCurrency || 'JPY' };
+    }
+
     try {
         await FirebaseService.updateSettings(updates);
-        
-        nameEl.value = '';
-        amtEl.value = '';
-        dateEl.value = '';
-        
-        if(window.showToast) {
-            window.showToast("Tagihan otomatis ditambahkan.");
+
+        if (editId) {
+            window.cancelEditRecurringPayment();
+            if(window.showToast) {
+                window.showToast("Tagihan diperbarui.");
+            }
+        } else {
+            nameEl.value = '';
+            amtEl.value = '';
+            dateEl.value = '';
+
+            if(window.showToast) {
+                window.showToast("Tagihan otomatis ditambahkan.");
+            }
         }
     } catch(e) {
         if(window.showToast) {
-            window.showToast("Gagal menambah.", true);
+            window.showToast(editId ? "Gagal memperbarui." : "Gagal menambah.", true);
         }
     }
 };
@@ -500,6 +524,58 @@ window.removeRecurringPayment = async function(id) {
             window.showToast("Gagal menghapus.", true);
         }
     }
+};
+
+// Mode edit memakai form tambah yang sama (bukan sistem form kedua): form
+// diisi dari record, tombol simpan beralih ke mode edit, dan simpan
+// ditangani cabang editId di addRecurringPayment.
+window.editRecurringPayment = function(id) {
+    const rp = (AuraState.data.settings?.recurringPayments || {})[id];
+    if (!rp) return;
+    const nameEl = document.getElementById('new-rec-name');
+    const amtEl = document.getElementById('new-rec-amt');
+    const dateEl = document.getElementById('new-rec-date');
+    const methodEl = document.getElementById('new-rec-method');
+    const walletEl = document.getElementById('new-rec-wallet');
+    if (!nameEl || !amtEl || !dateEl) return;
+
+    // Nominal tagihan berdenominasi mata uangnya SENDIRI: form menampilkan
+    // angka tersimpan apa adanya (diformat titik ribuan) dan labelnya
+    // menyebut mata uang tagihan itu — bukan mata uang tampilan saat ini.
+    const billCurr = rp.currency || (AuraState.data.settings && AuraState.data.settings.currency) || 'JPY';
+    AuraState.temp.editRecurringId = id;
+    AuraState.temp.editRecurringCurrency = billCurr;
+
+    nameEl.value = rp.name || '';
+    amtEl.value = AuraUtils.formatRibuan(rp.amount || 0);
+    dateEl.value = rp.date || '';
+    if (methodEl) methodEl.value = rp.method || 'cashless';
+    if (typeof window.populateRecurringWalletSelect === 'function') window.populateRecurringWalletSelect();
+    if (walletEl) walletEl.value = rp.wallet_id || '';
+
+    AuraUtils.safeDOM('new-rec-amt-unit', el => el.innerText = ' — ' + AuraUtils.labelSatuan(billCurr) + ' (mata uang tagihan ini)');
+    AuraUtils.safeDOM('rec-form-title', el => el.innerHTML = '<i class="fa-solid fa-pen"></i> Edit Tagihan Rutin');
+    AuraUtils.safeDOM('rec-submit-btn', el => el.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan');
+    AuraUtils.safeDOM('rec-cancel-btn', el => el.classList.remove('hidden'));
+
+    if (typeof window.closeModal === 'function') window.closeModal('modal-settings');
+    if (typeof window.switchView === 'function') window.switchView('budgets');
+    if (typeof amtEl.scrollIntoView === 'function') amtEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+
+window.cancelEditRecurringPayment = function() {
+    if (AuraState.temp) {
+        AuraState.temp.editRecurringId = null;
+        AuraState.temp.editRecurringCurrency = null;
+    }
+    ['new-rec-name', 'new-rec-amt', 'new-rec-date'].forEach(function(fid) {
+        const el = document.getElementById(fid);
+        if (el) el.value = '';
+    });
+    AuraUtils.safeDOM('rec-form-title', el => el.innerHTML = '➕ Tambah Tagihan Rutin');
+    AuraUtils.safeDOM('rec-submit-btn', el => el.innerHTML = '<i class="fa-solid fa-plus"></i> Tambah Tagihan');
+    AuraUtils.safeDOM('rec-cancel-btn', el => el.classList.add('hidden'));
+    if (typeof window.perbaruiLabelSatuanInput === 'function') window.perbaruiLabelSatuanInput();
 };
 
 window.renderRecurringUI = function() {
@@ -524,12 +600,17 @@ window.renderRecurringUI = function() {
                     <span class="text-[9px] text-[var(--text-muted)] font-mono">H-(${rp.date}) | ${window.formatAuraCurrency(AuraUtils.convertCurrency(rp.amount || 0, rp.currency || (AuraState.data.settings && AuraState.data.settings.currency)))}${rp.wallet_id && (AuraState.data.wallets || {})[rp.wallet_id] ? ' | <i class="fa-solid fa-credit-card"></i> ' + AuraUtils.escapeHtml((AuraState.data.wallets)[rp.wallet_id].name) : ' | <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> Belum ada dompet'}</span>
                     </div>
                 </div>
+                <div class="flex items-center shrink-0">
+                <button onclick="window.editRecurringPayment('${id}')" class="text-sky-400 p-1 hover:text-sky-300 transition active:scale-90">
+                    <i class="fa-solid fa-pen text-xs"></i>
+                </button>
                 <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 p-1 hover:text-rose-400 transition active:scale-90">
                     <i class="fa-solid fa-trash-can text-xs"></i>
                 </button>
+                </div>
             </div>`;
         });
-        
+
         el.innerHTML = htmlCompiled;
     });
 };
@@ -553,7 +634,10 @@ window.renderRecurringUIForBudget = function() {
                     <div class="w-9 h-9 icon-chip shrink-0 text-sky-400"><i class="fa-solid fa-file-invoice text-xs"></i></div>
                     <div>
                     <h4 class="font-bold text-xs text-sky-400 flex items-center gap-2">
-                        ${AuraUtils.escapeHtml(rp.name)} 
+                        ${AuraUtils.escapeHtml(rp.name)}
+                        <button onclick="window.editRecurringPayment('${id}')" class="text-sky-400 hover:text-sky-300 transition opacity-0 group-hover:opacity-100">
+                            <i class="fa-solid fa-pen text-[10px]"></i>
+                        </button>
                         <button onclick="window.removeRecurringPayment('${id}')" class="text-rose-500 hover:text-rose-400 transition opacity-0 group-hover:opacity-100">
                             <i class="fa-solid fa-trash text-[10px]"></i>
                         </button>

@@ -389,7 +389,9 @@ window.openEditTrxModal = function(id) {
 
     AuraUtils.safeDOM('edit-global-store', el => el.value = AuraUtils.escapeHtml(trx.merchantName || trx.storeName || trx.kategori || ''));
     AuraUtils.safeDOM('edit-global-curr', el => el.value = trx.mata_uang);
-    AuraUtils.safeDOM('edit-global-nominal', el => el.value = trx.nominal || 0);
+    // Nominal ditampilkan dengan titik ribuan (format tampilan saja —
+    // nilai tersimpan tetap angka murni lewat parseNominal saat simpan).
+    AuraUtils.safeDOM('edit-global-nominal', el => { el.value = AuraUtils.formatRibuan(trx.nominal || 0); AuraUtils.pasangFormatRibuan(el); });
     AuraUtils.safeDOM('edit-global-type', el => el.value = trx.tipe || 'pengeluaran');
     AuraUtils.safeDOM('edit-global-desc', el => el.value = AuraUtils.escapeHtml(trx.description || trx.catatan_ai || ''));
     AuraUtils.safeDOM('edit-global-date', el => el.value = trx.tanggal || '');
@@ -417,7 +419,7 @@ window.saveEditTrx = async function() {
     const storeName = storeEl ? storeEl.value.trim() : ''; 
     const curr = currEl ? currEl.value : 'JPY';
     const walletId = walletEl ? walletEl.value : null; 
-    const nominal = nominalEl ? parseFloat(nominalEl.value) : 0;
+    const nominal = nominalEl ? AuraUtils.parseNominal(nominalEl.value) : 0;
     const tipe = typeEl ? typeEl.value : 'pengeluaran'; 
     const desc = descEl ? descEl.value.trim() : '';
 

@@ -366,7 +366,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // selagi mengetik (nilai yang disimpan tetap angka murni — parse
     // memakai AuraUtils.parseNominal di tiap jalur simpan).
     if (window.AuraUtils && typeof AuraUtils.pasangFormatRibuan === 'function') {
-        ['manual-trx-amount', 'new-rec-amt', 'catbudget-new-amt', 'goal-target', 'topup-goal-amount', 'debt-jumlah', 'debt-pay-amount', 'wallet-form-initial'].forEach(function(id) {
+        ['manual-trx-amount', 'new-rec-amt', 'catbudget-new-amt', 'goal-target', 'topup-goal-amount', 'debt-jumlah', 'debt-pay-amount', 'wallet-form-initial', 'edit-global-nominal', 'edit-goal-target'].forEach(function(id) {
             const el = document.getElementById(id);
             if (el) AuraUtils.pasangFormatRibuan(el);
         });
