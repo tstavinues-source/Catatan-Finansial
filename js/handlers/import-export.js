@@ -68,8 +68,14 @@ window.downloadCSV = function() {
     const cleanCSVField = function(val) {
         if (val === undefined || val === null) return "";
         let strVal = String(val).replace(/"/g, '""');
-        if (strVal.startsWith('=') || strVal.startsWith('+') || strVal.startsWith('-') || strVal.startsWith('@')) {
-            strVal = "'" + strVal;
+        // KEAMANAN (audit 2026-11-18): Sheets/Excel mengabaikan whitespace di
+        // awal sel sebelum menafsirkan formula, jadi pemeriksaan karakter
+        // pemicu harus dilakukan pada nilai yang sudah dibuang whitespace
+        // awalnya (spasi/tab/CR/LF) — bukan pada string mentah. '|' dan '%'
+        // ikut diperlakukan sebagai pemicu.
+        const probe = strVal.replace(/^[\s\uFEFF]+/, '');
+        if (probe.startsWith('=') || probe.startsWith('+') || probe.startsWith('-') || probe.startsWith('@') || probe.startsWith('|') || probe.startsWith('%')) {
+            strVal = "'" + probe;
         }
         return `"${strVal}"`;
     };
@@ -188,6 +194,11 @@ window.processFileImport = async function(event) {
                 
                 for(let i = 0; i < parsedTransactions.length; i++) {
                     const data = parsedTransactions[i];
+                    // KEAMANAN (audit 2026-11-18): buang field id dari berkas
+                    // impor — push() membuat kunci baru; id tertanam yang lolos
+                    // akan menimpa kunci itu di state dan mengalihkan
+                    // update/hapus ke record asli pemilik id tersebut.
+                    delete data.id;
                     data.user_id = AuraState.data.settings?.profile?.nickname || "Imported User";
                     // PERBAIKAN: sebelumnya transaksi hasil import ditulis LANGSUNG ke
                     // Firebase tanpa lewat _autoRegisterToVault (satu-satunya jalur yang

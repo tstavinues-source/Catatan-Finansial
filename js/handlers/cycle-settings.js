@@ -56,7 +56,15 @@ window.renderSiklusPengaturan = function() {
 
     const daftar = document.getElementById('siklus-daftar-jangkar');
     if (!daftar) return;
-    const anchors = [...(AuraState.data.settings?.cycleAnchors || [])].sort().reverse();
+    // KEAMANAN (audit 2026-11-18): cycleAnchors dibaca mentah dari RTDB dan
+    // bisa berisi entri bukan tanggal (mis. ditulis lewat jalur generik).
+    // Hanya entri tanggal sah yang dirender; entri lain dibuang dari tampilan.
+    // Tombol hapus memakai data-attribute + addEventListener — BUKAN
+    // interpolasi string ke innerHTML/onclick — karena formatTanggal
+    // mengembalikan string mentah untuk entri non-tanggal.
+    const anchors = [...(AuraState.data.settings?.cycleAnchors || [])]
+        .filter(str => typeof str === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(str) && !isNaN(new Date(str + 'T00:00:00').getTime()))
+        .sort().reverse();
     if (!anchors.length) {
         daftar.innerHTML = '<p class="text-[10px] text-[var(--text-muted)] italic">Belum ada tanggal gajian yang ditandai.</p>';
         return;
@@ -64,9 +72,12 @@ window.renderSiklusPengaturan = function() {
     daftar.innerHTML = anchors.map(str =>
         `<div class="flex items-center justify-between gap-2 bg-black/30 border border-[var(--border-glass)] rounded-lg px-3 py-2">
             <span class="text-[11px] font-bold text-white"><i class="fa-solid fa-calendar-check text-emerald-400 mr-2"></i>${formatTanggal(str)}</span>
-            <button onclick="window.hapusJangkarSiklus('${str}')" class="aura-icon-btn shrink-0" title="Hapus tanggal ini"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
+            <button type="button" data-jangkar="${str}" class="aura-icon-btn shrink-0" title="Hapus tanggal ini"><i class="fa-solid fa-trash-can text-[10px]"></i></button>
         </div>`
     ).join('');
+    daftar.querySelectorAll('[data-jangkar]').forEach(btn => {
+        btn.addEventListener('click', () => window.hapusJangkarSiklus(btn.dataset.jangkar));
+    });
 };
 
 window.tambahJangkarSiklus = function() {

@@ -19,6 +19,25 @@ export const AuraUtils = {
         return text.replace(/[&<>"']/g, function(m) { return map[m]; });
     },
 
+    // Encoder untuk nilai yang disisipkan ke string JS berkutip tunggal di
+    // dalam atribut HTML berkutip ganda (mis. onclick="fn('${...}')").
+    // escapeHtml TIDAK cukup di konteks ini: &#039; di-decode peramban kembali
+    // menjadi petik sebelum JS berjalan, dan backslash yang tidak di-escape
+    // membuat urutan \' lolos dari string. Urutan di sini penting: '&' dulu
+    // (cegah penyelundupan entitas), lalu backslash, lalu petik, lalu petik
+    // ganda sebagai entitas (di-decode menjadi " di dalam string JS — aman),
+    // terakhir CR/LF sebagai urutan escape JS.
+    escapeJsString: function(text) {
+        if (typeof text !== 'string') return text;
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '&quot;')
+            .replace(/\r/g, '\\r')
+            .replace(/\n/g, '\\n');
+    },
+
     parseCleanJSON: function(text) {
         try {
             if (!text || typeof text !== 'string') throw new Error("Output AI kosong.");

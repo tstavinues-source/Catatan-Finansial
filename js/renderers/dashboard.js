@@ -502,13 +502,16 @@ window.reCalculateAll = function() {
                 const metIcon = (t.metode_pembayaran === 'tunai' || wallets[t.wallet_id]?.type === 'tunai') ?
                 '<i class="fa-solid fa-money-bill"></i>' : '<i class="fa-regular fa-credit-card"></i>';
                 
-                let walletDisp = walletName;
+                // KEAMANAN (audit 2026-11-18): nama dompet dari RTDB wajib
+                // di-escape sebelum dirender; markup panah mutasi di bawah
+                // adalah markup aplikasi sendiri dan tetap dipertahankan.
+                let walletDisp = AuraUtils.escapeHtml(walletName);
                 let metIconDisp = metIcon;
                 if (isMergedMutasi) {
                     const partner = mutasiById[pairId];
-                    const fromName = walletName;
+                    const fromName = AuraUtils.escapeHtml(walletName);
                     const toName = (partner && wallets[partner.wallet_id] && wallets[partner.wallet_id].name) || '';
-                    walletDisp = toName ? (fromName + ' <span class="mutasi-flow-inline" aria-hidden="true"><span></span><span></span><span></span></span> ' + toName) : fromName;
+                    walletDisp = toName ? (fromName + ' <span class="mutasi-flow-inline" aria-hidden="true"><span></span><span></span><span></span></span> ' + AuraUtils.escapeHtml(toName)) : fromName;
                     metIconDisp = '';
                 }
                 
@@ -528,7 +531,7 @@ window.reCalculateAll = function() {
                         <div class="flex justify-between items-center text-xs bg-white/5 p-2 rounded-xl group/it">
                             <div class="flex-1 truncate">
                                 <span class="text-[var(--text-main)] font-medium mr-1">${AuraUtils.escapeHtml(it.nama_barang)}</span>
-                                <span class="text-[8px] px-1.5 py-0.5 rounded font-bold mr-1" style="background-color: ${itCatHex}20; color: ${itCatHex};">${it.kategori_barang || 'Lainnya'}</span>
+                                <span class="text-[8px] px-1.5 py-0.5 rounded font-bold mr-1" style="background-color: ${itCatHex}20; color: ${itCatHex};">${AuraUtils.escapeHtml(it.kategori_barang || 'Lainnya')}</span>
                                 <span class="text-[9px] text-[var(--text-muted)] font-mono font-bold">x${it.qty}</span> 
                                 ${taxBadge}
                             </div>
@@ -678,7 +681,7 @@ window.reCalculateAll = function() {
             <div class="glass-panel p-4 relative overflow-hidden border-t-2 ${remainingTarget <= 0 ? 'border-t-emerald-400' : 'border-t-accent'} mb-4 group">
                 
                 <div class="absolute top-3 right-3 flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10">
-                    <button onclick="window.openTopupGoal('${g.id}', '${AuraUtils.escapeHtml(g.name)}')" class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Setor Tabungan"><i class="fa-solid fa-plus text-xs"></i></button>
+                    <button onclick="window.openTopupGoal('${g.id}', '${AuraUtils.escapeJsString(g.name)}')" class="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Setor Tabungan"><i class="fa-solid fa-plus text-xs"></i></button>
                     <button onclick="window.openEditGoalFull('${g.id}')" class="w-8 h-8 rounded-full bg-accent/20 text-accent hover:bg-accent/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Edit Misi"><i class="fa-solid fa-pen text-xs"></i></button>
                     <button onclick="window.confirmDelGoal('${g.id}')" class="w-8 h-8 rounded-full bg-rose-500/20 text-rose-400 hover:bg-rose-500/50 hover:text-white flex items-center justify-center transition shadow-lg active:scale-90" title="Hapus Permanen"><i class="fa-solid fa-trash text-xs"></i></button>
                 </div>
@@ -909,7 +912,10 @@ window.renderBrankas = function() {
     const goals = AuraState.data.goals || [];
     const fmt = window.formatAuraCurrency;
     const esc = function(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-    const escQ = function(v) { return esc(v).replace(/'/g, "\\'"); };
+    // KEAMANAN (audit 2026-11-18): escQ lama hanya mengganti petik tanpa
+    // meng-escape backslash, sehingga urutan \' pada nama bisa lolos dari
+    // string onclick. Pakai encoder string-JS bersama dari AuraUtils.
+    const escQ = function(v) { return AuraUtils.escapeJsString(String(v == null ? '' : v)); };
     const conv = function(g, v) { return AuraUtils.convertCurrency(Number(v) || 0, g.currency); };
     let totalAll = 0;
     const simpanan = [], misi = [];

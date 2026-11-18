@@ -725,7 +725,7 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
     } else {
         parents.forEach(parent => {
             const mySubs = children.filter(sub => sub.parentId === parent.id);
-            const safeParentName = parent.name.replace(/'/g, "\\'");
+            const safeParentName = AuraUtils.escapeJsString(parent.name);
             const pStyle = window.getCategoryDisplayStyle(parent.name);
             
             html += `
@@ -741,7 +741,7 @@ window.openCategoryPicker = async function(targetValId, trxType, targetDisplayId
             if (mySubs.length > 0) {
                 html += `<div class="ml-4 pl-4 border-l border-[var(--border-glass)] space-y-1 mb-2">`;
                 mySubs.forEach(sub => {
-                    const safeSubName = sub.name.replace(/'/g, "\\'");
+                    const safeSubName = AuraUtils.escapeJsString(sub.name);
                     const sStyle = window.getCategoryDisplayStyle(sub.name);
                     html += `
                     <button onclick="window.selectCategoryFromPicker('${safeSubName}', '${safeParentName}')" class="w-full text-left p-2.5 rounded-lg hover:bg-white/5 active:bg-white/10 transition flex items-center gap-3 group">
