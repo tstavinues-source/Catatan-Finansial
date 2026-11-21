@@ -183,6 +183,34 @@ try {
                     AuraState.data.monthlyBudgetCurrency = data.monthlyBudget.currency || data.currency || null;
                 }
 
+                // KUNCI CAP MATA UANG (perbaikan 2026-11-21): limit dan tagihan
+                // rutin lama tanpa cap dibaca mengikuti settings.currency, jadi
+                // tombol pindah kurs diam-diam mengganti denominasi mereka
+                // (limit ¥40.000 terbaca sebagai Rp40.000). Cap sekali dengan
+                // mata uang buku saat ini dan simpan balik — sesudah tercap,
+                // denominasi terkunci dan pindah kurs hanya mengubah tampilan
+                // lewat konversi seperti seharusnya.
+                const bookCurr = (data.currency === 'IDR' || data.currency === 'JPY')
+                    ? data.currency
+                    : ((data.profile && (data.profile.defaultCurrency === 'IDR' || data.profile.defaultCurrency === 'JPY')) ? data.profile.defaultCurrency : null);
+                if (bookCurr && window.FirebaseService && typeof window.FirebaseService.updateSettings === 'function') {
+                    const capUpdates = {};
+                    if (data.monthlyBudget?.limit !== undefined && !data.monthlyBudget.currency) {
+                        capUpdates['monthlyBudget/currency'] = bookCurr;
+                    }
+                    if (data.recurringPayments && typeof data.recurringPayments === 'object') {
+                        for (const rpId in data.recurringPayments) {
+                            const rp = data.recurringPayments[rpId];
+                            if (rp && typeof rp === 'object' && !rp.currency) {
+                                capUpdates[`recurringPayments/${rpId}/currency`] = bookCurr;
+                            }
+                        }
+                    }
+                    if (Object.keys(capUpdates).length > 0) {
+                        window.FirebaseService.updateSettings(capUpdates).catch(err => Logger.warn('Firebase', 'Gagal mengunci cap mata uang', err));
+                    }
+                }
+
                 if (data.groqApiKeys) {
                     AuraState.data.groqKeys = Object.keys(data.groqApiKeys).map(key => ({ id: key, ...data.groqApiKeys[key] }));
                     if (typeof window.renderGroqKeysUI === 'function') window.renderGroqKeysUI();
